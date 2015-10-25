@@ -1,0 +1,19 @@
+#pragma once
+#include "math.hpp"
+
+class Stage;
+class Component {
+public:
+    Stage* stage;
+    mat4 model;
+    virtual void update() = 0;
+    virtual void draw(const mat4& projection, const mat4& viewInv) = 0;
+    float posX() {
+        return model.data[12];
+    }
+    float posY() {
+        return model.data[13];
+    }
+    virtual ~Component(){}
+};
+
