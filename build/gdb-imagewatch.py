@@ -6,11 +6,14 @@ import os
 from ctypes import cdll
 
 script_path = os.path.dirname(os.path.realpath(__file__))
-print(script_path)
 lib = cdll.LoadLibrary(script_path+'/libwatch.so')
-lib.showBin.argtypes = [ctypes.py_object, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+lib.plot_binary.argtypes = [ctypes.py_object, # Buffer ptr
+                            ctypes.py_object, # Variable name
+                            ctypes.c_int, # Buffer width
+                            ctypes.c_int, # Buffer height
+                            ctypes.c_int, # Number of channels
+                            ctypes.c_int] # Type (0=float32, 1=uint8)
 
-"""
 """
 if __name__ == "__main__":
     import numpy
@@ -29,14 +32,18 @@ if __name__ == "__main__":
 
     tex_arr = numpy.asarray(tex, numpy.float32)
     mem = memoryview(tex_arr)
-    lib.showBin(mem, width, height, channels, 0)
+    lib.plot_binary(mem, width, height, channels, 0)
 
     exit()
     pass
 """
-"""
+
+def plot_thread(mem, var_name, width, height, channels, type):
+    lib.plot_binary(mem, var_name, width, height, channels, type)
+    pass
 
 import gdb
+import threading
 class PlotterCommand(gdb.Command):
     def __init__(self):
         super(PlotterCommand, self).__init__("plot",
@@ -51,27 +58,26 @@ class PlotterCommand(gdb.Command):
 
         char_type = gdb.lookup_type("char")
         char_pointer_type = char_type.pointer()
-        #buffer = v['data'].cast(char_pointer_type)
         buffer = gdb.parse_and_eval(args[0]+'.ptr()').cast(char_pointer_type)
-        width = picked_obj['w']
-        height = picked_obj['h']
-        channels = picked_obj['channels']
-        type = picked_obj['type']
+        width = int(picked_obj['w'])
+        height = int(picked_obj['h'])
+        channels = int(picked_obj['channels'])
+        type = int(picked_obj['type'])
       
-        tex_size = channels
+        texel_size = channels
         if type==0:
-            tex_size *= 4 # float type
+            texel_size *= 4 # float type
         elif type==1:
-            tex_size *= 1 # uint8_t type
+            texel_size *= 1 # uint8_t type
             pass
 
-        bytes = tex_size * width*height
+        bytes = texel_size * width*height
         inferior = gdb.selected_inferior()
-        print(str(width)+', '+str(height)+', '+str(channels))
         mem = inferior.read_memory(buffer, bytes)
 
-        lib.showBin(mem, width, height, channels, type)
-
+        plot_thread_instance=threading.Thread(target=plot_thread, args=(mem, args[0], width, height, channels, type))
+        plot_thread_instance.daemon=True
+        plot_thread_instance.start()
         pass
 
     pass

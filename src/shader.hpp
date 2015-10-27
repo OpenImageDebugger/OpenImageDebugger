@@ -8,8 +8,6 @@
 
 #include "shaders/imagewatch_shaders.hpp"
 
-using namespace std;
-
 class ShaderProgram {
 public:
     enum TexelChannels {Grayscale, RGB};

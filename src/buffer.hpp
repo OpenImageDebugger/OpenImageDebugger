@@ -19,14 +19,9 @@ public:
     int type;
     uint8_t* buffer;
 
-    void initialize(uint8_t* buffer, int buffer_width_i,
-            int buffer_height_i, int channels, int type) {
-        this->channels = channels;
-        this->type = type;
-        this->buffer = buffer;
-
-        buffer_width_f = (float)buffer_width_i;
-        buffer_height_f = (float)buffer_height_i;
+    bool initialize() {
+        int buffer_width_i = static_cast<int>(buffer_width_f);
+        int buffer_height_i = static_cast<int>(buffer_height_f);
 
         float buffPosX, buffPosY;
         buffPosX = trunc(buffer_width_f/2.0);
@@ -42,28 +37,28 @@ public:
         // Initialize contrast parameters
         {
             float lowest[] = {
-                numeric_limits<float>::max(),
-                numeric_limits<float>::max(),
-                numeric_limits<float>::max()
+                std::numeric_limits<float>::max(),
+                std::numeric_limits<float>::max(),
+                std::numeric_limits<float>::max()
             };
             float upper[] = {
-                numeric_limits<float>::lowest(),
-                numeric_limits<float>::lowest(),
-                numeric_limits<float>::lowest()
+                std::numeric_limits<float>::lowest(),
+                std::numeric_limits<float>::lowest(),
+                std::numeric_limits<float>::lowest()
             };
 
             for(int i = buffer_height_i * buffer_width_i -1; i>=0; --i) {
                 for(int c = 0; c < channels; ++c) {
                     if(type == 0) {
-                        lowest[c] = min(lowest[c],
+                        lowest[c] = std::min(lowest[c],
                                 reinterpret_cast<float*>(buffer)[channels*i + c]);
-                        upper[c] = max(upper[c],
+                        upper[c] = std::max(upper[c],
                                 reinterpret_cast<float*>(buffer)[channels*i + c]);
                     }
                     else if(type == 1) {
-                        lowest[c] = min(lowest[c],
+                        lowest[c] = std::min(lowest[c],
                                 static_cast<float>(buffer[channels*i + c]));
-                        upper[c] = max(upper[c],
+                        upper[c] = std::max(upper[c],
                                 static_cast<float>(buffer[channels*i + c]));
                     }
                 }
@@ -130,13 +125,18 @@ public:
         } else if(channels == 3) {
             tex_format = GL_RGB;
         }
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, buffer_width_i, buffer_height_i, 0, tex_format, tex_type, (void*)buffer);
+        glPixelStoref(GL_UNPACK_ALIGNMENT, 1);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexStorage2D( GL_TEXTURE_2D, 1, GL_RGB32F, buffer_width_i, buffer_height_i);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, buffer_width_i, buffer_height_i, tex_format, tex_type, reinterpret_cast<GLvoid*>(buffer));
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+        return true;
     }
 
     void update();

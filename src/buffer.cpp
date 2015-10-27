@@ -6,6 +6,8 @@
 #include "buffer.hpp"
 #include "stage.hpp"
 
+using namespace std;
+
 void Buffer::update() {
     float zoom = stage->camera_component.zoom;
     if(zoom > 40) {

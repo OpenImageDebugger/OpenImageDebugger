@@ -22,8 +22,8 @@ public:
             return false;
         }
 
-        if(FT_New_Face(ft, "serif.ttf", 0, &font)) {
-            cerr << "Could not open font serif.ttf" << endl;
+        if(FT_New_Face(ft, "/home/csantos/workspace/gdb-imagewatch/build/serif.ttf", 0, &font)) {
+            std::cerr << "Could not open font serif.ttf" << std::endl;
             return false;
         }
         FT_Set_Pixel_Sizes(font, 0, font_size);
@@ -86,7 +86,7 @@ private:
             text_texture_tls[*p][0] = g->bitmap_left;
             text_texture_tls[*p][1] = g->bitmap_top;
             boxW += g->bitmap.width;
-            boxH = max(boxH, (float)g->bitmap.rows);
+            boxH = std::max(boxH, (float)g->bitmap.rows);
         }
 
         text_texture_width = text_texture_height = 1.0f;
@@ -98,7 +98,7 @@ private:
 
         // Clears generated buffer
         {
-            vector<uint8_t> zeros(text_texture_width*text_texture_height, 0);
+            std::vector<uint8_t> zeros(text_texture_width*text_texture_height, 0);
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, text_texture_width, text_texture_height, GL_RED, GL_UNSIGNED_BYTE, zeros.data());
         }
 

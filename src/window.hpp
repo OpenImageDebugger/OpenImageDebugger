@@ -10,7 +10,7 @@ class Window {
 public:
     bool create(std::string title, int gl_major_version, int gl_minor_version,
             uint8_t* buffer, int buffer_width_i, int buffer_height_i,
-            int channels, int type, int width = 800, int height = 600,
+            int channels, int type, int win_width = 800, int win_height = 600,
             GLFWmonitor* monitor = NULL) {
         // Initialize GLFW
         if( !glfwInit() ) {
@@ -24,7 +24,7 @@ public:
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
-        window_ = glfwCreateWindow(width, height, title.c_str(), monitor, NULL);   
+        window_ = glfwCreateWindow(win_width, win_height, title.c_str(), monitor, NULL);   
 
         if(window_ == nullptr) {
             std::cerr << "Failed to open GLFW window." << std::endl;
@@ -46,8 +46,9 @@ public:
         }
 
         // Setup stage
-        return stage_.initialize(this, width, height, buffer, buffer_width_i,
-                buffer_height_i, channels, type);
+        glfwGetFramebufferSize(window_, &window_width_i_, &window_height_i_);
+        return stage_.initialize(this, buffer, buffer_width_i, buffer_height_i,
+                channels, type);
     }
 
     GLFWwindow* glfw_window(){
@@ -71,7 +72,6 @@ public:
     }
 
     void run() {
-        glfwGetFramebufferSize(window_, &window_width_i_, &window_height_i_);
         do {
             ////
             // Update logic
@@ -88,7 +88,6 @@ public:
         while( !glfwWindowShouldClose(window_) );
 
         glfwDestroyWindow(window_);
-        glfwTerminate();
     }
 
     double mouseX() {
@@ -97,6 +96,16 @@ public:
 
     double mouseY() {
         return mouseY_;
+    }
+
+    // Window width
+    int window_width() {
+        return window_width_i_;
+    }
+
+    // Window height
+    int window_height() {
+        return window_height_i_;
     }
 
 private:
@@ -122,7 +131,7 @@ private:
         glfwGetFramebufferSize(window, &this_->window_width_i_,
                 &this_->window_height_i_);
 
-        this_->stage_.window_resized(w, h);
+        this_->stage_.window_resized(this_->window_width_i_, this_->window_height_i_);
     }
 
     void set_callbacks() {

@@ -6,6 +6,8 @@
 #include "buffer_values.hpp"
 #include "stage.hpp"
 
+using namespace std;
+
 void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
     float zoom = stage->camera_component.zoom;
     if(zoom > 40) {
@@ -32,7 +34,7 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
         for(int y = lower_y; y < upper_y; ++y) {
             for(int x = lower_x; x < upper_x; ++x) {
                 char pix_label[100];
-                int pos = (buffer_height_i-y-1)*buffer_width_i*channels + x*channels;
+                int pos = y*buffer_width_i*channels + x*channels;
                 if(channels == 1) {
                     if(type == 0)
                         sprintf(pix_label, "%.4f", reinterpret_cast<float*>(buffer)[pos]);
@@ -86,7 +88,7 @@ void BufferValues::draw_text(const mat4& projection, const mat4& viewInv,
     text_prog.uniformMatrix4fv("mvp", 1, GL_FALSE,
             (projection*viewInv*model).data);
     text_prog.uniform2f("pix_coord", x/(buffer_width_f-1.0f),
-            (buffer_height_f+y-1.0f)/(buffer_height_f-1.0f));
+            (-y)/(buffer_height_f-1.0f));
     text_prog.uniform3fv("brightness_contrast", 2,
             auto_buffer_contrast_brightness);
 

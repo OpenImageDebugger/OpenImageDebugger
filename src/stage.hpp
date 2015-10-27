@@ -12,22 +12,34 @@ public:
     BufferValues text_component;
     Window* window;
 
-    bool initialize(Window* win, int w, int h, uint8_t* buffer, int buffer_width_i,
+    bool initialize(Window* win, uint8_t* buffer, int buffer_width_i,
             int buffer_height_i, int channels, int type) {
         window = win;
+
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-        camera_component.stage = this;
-        buffer_component.stage = this;
-        text_component.stage = this;
+        Component* all_components[] = {
+            &camera_component, &buffer_component, &text_component
+        };
 
-        buffer_component.initialize(buffer, buffer_width_i, buffer_height_i, channels, type);
-        // The camera MUST be initialized AFTER the buffer
-        camera_component.initialize(w, h);
-        if(!text_component.initialize()) {
-            return false;
+        buffer_component.buffer = buffer;
+        buffer_component.channels = channels;
+        buffer_component.type = type;
+        buffer_component.buffer_width_f = static_cast<float>(buffer_width_i);
+        buffer_component.buffer_height_f = static_cast<float>(buffer_height_i);
+
+        for(auto comp: all_components) {
+            comp->stage = this;
+            if(!comp->initialize()) {
+                return false;
+            }
+        }
+
+        for(auto comp: all_components) {
+            if(!comp->post_initialize())
+                return false;
         }
 
         return true;

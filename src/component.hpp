@@ -6,6 +6,13 @@ class Component {
 public:
     Stage* stage;
     mat4 model;
+    virtual bool initialize() {
+        return true;
+    }
+    // Called after all components are initialized
+    virtual bool post_initialize() {
+        return true;
+    }
     virtual void update() = 0;
     virtual void draw(const mat4& projection, const mat4& viewInv) = 0;
     float posX() {

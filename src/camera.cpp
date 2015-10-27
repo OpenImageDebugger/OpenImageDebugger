@@ -25,7 +25,10 @@ void Camera::update() {
     last_mouse_y = mouseY;
 }
 
-void Camera::initialize(int w, int h) {
+bool Camera::post_initialize() {
+    int w = stage->window->window_width();
+    int h = stage->window->window_height();
+
     float buffPosX = stage->buffer_component.posX();
     float buffPosY = stage->buffer_component.posY();
 
@@ -33,4 +36,6 @@ void Camera::initialize(int w, int h) {
     model.setFromST(1.0/zoom, 1.0/zoom, 1.0, -camera_pos_x_, -camera_pos_y_, 0.f);
 
     window_resized(w, h);
+
+    return true;
 }
