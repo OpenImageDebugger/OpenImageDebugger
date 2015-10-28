@@ -21,6 +21,8 @@ public:
 
 
     bool buffer_update() {
+        computeContrastBrightnessParameters();
+
         glBindTexture(GL_TEXTURE_2D, buff_tex);
 
         glPixelStoref(GL_UNPACK_ALIGNMENT, 1);
@@ -51,6 +53,57 @@ public:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     }
 
+    void computeContrastBrightnessParameters() {
+        int buffer_width_i = static_cast<int>(buffer_width_f);
+        int buffer_height_i = static_cast<int>(buffer_height_f);
+
+        float lowest[] = {
+            std::numeric_limits<float>::max(),
+            std::numeric_limits<float>::max(),
+            std::numeric_limits<float>::max()
+        };
+        float upper[] = {
+            std::numeric_limits<float>::lowest(),
+            std::numeric_limits<float>::lowest(),
+            std::numeric_limits<float>::lowest()
+        };
+
+        for(int i = buffer_height_i * buffer_width_i -1; i>=0; --i) {
+            for(int c = 0; c < channels; ++c) {
+                if(type == 0) {
+                    lowest[c] = std::min(lowest[c],
+                            reinterpret_cast<float*>(buffer)[channels*i + c]);
+                    upper[c] = std::max(upper[c],
+                            reinterpret_cast<float*>(buffer)[channels*i + c]);
+                }
+                else if(type == 1) {
+                    lowest[c] = std::min(lowest[c],
+                            static_cast<float>(buffer[channels*i + c]));
+                    upper[c] = std::max(upper[c],
+                            static_cast<float>(buffer[channels*i + c]));
+                }
+            }
+        }
+
+        float* auto_buffer_contrast = auto_buffer_contrast_brightness;
+        float* auto_buffer_brightness = auto_buffer_contrast_brightness+3;
+        for(int c = 0; c < channels; ++c) {
+            float maxIntensity = 1.0f;
+            if(type == 0)
+                maxIntensity = 1.0f;
+            else if(type == 1)
+                maxIntensity = 255.0f;
+            auto_buffer_contrast[c] = maxIntensity/(upper[c]-lowest[c]);
+            auto_buffer_brightness[c] = -lowest[c]/maxIntensity*auto_buffer_contrast[c];
+        }
+        if(channels == 1) {
+            for(int c = 1; c < 3; ++c) {
+                auto_buffer_contrast[c] = auto_buffer_contrast[0];
+                auto_buffer_brightness[c] = auto_buffer_brightness[0];
+            }
+        }
+    }
+
     void setup_gl_buffer() {
         int buffer_width_i = static_cast<int>(buffer_width_f);
         int buffer_height_i = static_cast<int>(buffer_height_f);
@@ -67,53 +120,8 @@ public:
                 buffPosX, buffPosY, 0.0f);
 
         // Initialize contrast parameters
-        {
-            float lowest[] = {
-                std::numeric_limits<float>::max(),
-                std::numeric_limits<float>::max(),
-                std::numeric_limits<float>::max()
-            };
-            float upper[] = {
-                std::numeric_limits<float>::lowest(),
-                std::numeric_limits<float>::lowest(),
-                std::numeric_limits<float>::lowest()
-            };
-
-            for(int i = buffer_height_i * buffer_width_i -1; i>=0; --i) {
-                for(int c = 0; c < channels; ++c) {
-                    if(type == 0) {
-                        lowest[c] = std::min(lowest[c],
-                                reinterpret_cast<float*>(buffer)[channels*i + c]);
-                        upper[c] = std::max(upper[c],
-                                reinterpret_cast<float*>(buffer)[channels*i + c]);
-                    }
-                    else if(type == 1) {
-                        lowest[c] = std::min(lowest[c],
-                                static_cast<float>(buffer[channels*i + c]));
-                        upper[c] = std::max(upper[c],
-                                static_cast<float>(buffer[channels*i + c]));
-                    }
-                }
-            }
-
-            float* auto_buffer_contrast = auto_buffer_contrast_brightness;
-            float* auto_buffer_brightness = auto_buffer_contrast_brightness+3;
-            for(int c = 0; c < channels; ++c) {
-                float maxIntensity = 1.0f;
-                if(type == 0)
-                    maxIntensity = 1.0f;
-                else if(type == 1)
-                    maxIntensity = 255.0f;
-                auto_buffer_contrast[c] = maxIntensity/(upper[c]-lowest[c]);
-                auto_buffer_brightness[c] = -lowest[c]/maxIntensity*auto_buffer_contrast[c];
-            }
-            if(channels == 1) {
-                for(int c = 1; c < 3; ++c) {
-                    auto_buffer_contrast[c] = auto_buffer_contrast[0];
-                    auto_buffer_brightness[c] = auto_buffer_brightness[0];
-                }
-            }
-        }
+        computeContrastBrightnessParameters();
+        
 
         // Buffer texture
         glGenTextures(1, &buff_tex);
