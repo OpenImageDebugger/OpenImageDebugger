@@ -9,7 +9,7 @@
 
 class BufferValues : public Component {
 public:
-    const float font_size = 96.0f;
+    static constexpr float font_size = 96.0f;
 
     ~BufferValues() {
         glDeleteTextures(1, &text_tex);

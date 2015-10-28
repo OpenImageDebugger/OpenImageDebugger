@@ -3,15 +3,54 @@
 #include <string>
 #include <iostream>
 #include <GLFW/glfw3.h>
+#include <deque>
+
+#include <Python.h>
+
+#include <mutex>
 
 #include "stage.hpp"
 
 class Window {
 public:
+    ~Window() {
+        Py_DECREF(owned_buffer);
+    }
+
+    struct BufferUpdateMessage {
+        PyObject* py_buffer;
+        int width_i;
+        int height_i;
+        int channels;
+        int type;
+    };
+    std::deque<BufferUpdateMessage> pending_updates;
+
+    void buffer_update(PyObject* pybuffer, int buffer_width_i, int buffer_height_i,
+            int channels, int type) {
+        Py_INCREF(pybuffer);
+
+
+        BufferUpdateMessage new_buffer;
+        new_buffer.py_buffer = pybuffer;
+        new_buffer.width_i = buffer_width_i;
+        new_buffer.height_i = buffer_height_i;
+        new_buffer.channels = channels;
+        new_buffer.type = type;
+        {
+        std::unique_lock<std::mutex> lock(mtx_);
+        pending_updates.push_back(new_buffer);
+        }
+    }
+
     bool create(std::string title, int gl_major_version, int gl_minor_version,
-            uint8_t* buffer, int buffer_width_i, int buffer_height_i,
+            PyObject* pybuffer, int buffer_width_i, int buffer_height_i,
             int channels, int type, int win_width = 800, int win_height = 600,
             GLFWmonitor* monitor = NULL) {
+        owned_buffer = pybuffer;
+        Py_INCREF(owned_buffer);
+        uint8_t* buffer = reinterpret_cast<uint8_t*>(PyMemoryView_GET_BUFFER(owned_buffer)->buf);
+
         // Initialize GLFW
         if( !glfwInit() ) {
             std::cerr << "Failed to initialize GLFW\n" << std::endl;
@@ -45,9 +84,15 @@ public:
             return false;
         }
 
-        // Setup stage
         glfwGetFramebufferSize(window_, &window_width_i_, &window_height_i_);
-        return stage_.initialize(this, buffer, buffer_width_i, buffer_height_i,
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+
+        // Setup stage
+        stage_.window = this;
+        return stage_.initialize(buffer, buffer_width_i, buffer_height_i,
                 channels, type);
     }
 
@@ -84,6 +129,24 @@ public:
 
             glfwSwapBuffers(window_);
             glfwPollEvents();
+
+            // Check for buffer updates
+            {
+                if(pending_updates.size() > 0) {
+                    BufferUpdateMessage message;
+                    {
+                        std::unique_lock<std::mutex> lock(mtx_);
+                        message = pending_updates.front();
+                        pending_updates.pop_front();
+                    }
+                    Py_DECREF(owned_buffer);
+                    owned_buffer = message.py_buffer;
+                    uint8_t* buffer = reinterpret_cast<uint8_t*>(
+                            PyMemoryView_GET_BUFFER(owned_buffer)->buf);
+                    stage_.buffer_update(buffer, message.width_i,
+                            message.height_i, message.channels, message.type);
+                }
+            }
         }
         while( !glfwWindowShouldClose(window_) );
 
@@ -108,12 +171,18 @@ public:
         return window_height_i_;
     }
 
+    Stage* stage() {
+        return &stage_;
+    }
+
 private:
     GLFWwindow* window_;
     Stage stage_;
     int window_width_i_, window_height_i_;
     double mouseX_, mouseY_;
     bool mouseDown_;
+    PyObject* owned_buffer;
+    std::mutex mtx_;
 
     static Window* getThisPtr(GLFWwindow *window) {
         return reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
@@ -125,7 +194,7 @@ private:
         this_->stage_.scroll_callback(y);
     }
 
-    static void resize_callback(GLFWwindow *window, int w, int h) {
+    static void resize_callback(GLFWwindow *window, int, int) {
         Window* this_ = getThisPtr(window);
 
         glfwGetFramebufferSize(window, &this_->window_width_i_,

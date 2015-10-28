@@ -9,15 +9,16 @@
 using namespace std;
 
 void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
-    float zoom = stage->camera_component.zoom;
+    float zoom = (stage->getComponent<Camera>("camera_component"))->zoom;
     if(zoom > 40) {
-        float buffer_width_f = stage->buffer_component.buffer_width_f;
-        float buffer_height_f = stage->buffer_component.buffer_height_f;
+        Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
+        float buffer_width_f = buffer_component->buffer_width_f;
+        float buffer_height_f = buffer_component->buffer_height_f;
         int buffer_width_i = static_cast<int>(buffer_width_f);
         int buffer_height_i = static_cast<int>(buffer_height_f);
-        int channels = stage->buffer_component.channels;
-        int type = stage->buffer_component.type;
-        uint8_t* buffer = stage->buffer_component.buffer;
+        int channels = buffer_component->channels;
+        int type = buffer_component->type;
+        uint8_t* buffer = buffer_component->buffer;
 
         vec4 tl_ndc(-1,1,0,1);
         vec4 br_ndc(1,-1,0,1);
@@ -63,10 +64,11 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
 
 void BufferValues::draw_text(const mat4& projection, const mat4& viewInv,
         const char* text, float x, float y, float scale) {
-    float buffer_width_f = stage->buffer_component.buffer_width_f;
-    float buffer_height_f = stage->buffer_component.buffer_height_f;
+    Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
+    float buffer_width_f = buffer_component->buffer_width_f;
+    float buffer_height_f = buffer_component->buffer_height_f;
     float* auto_buffer_contrast_brightness =
-        stage->buffer_component.auto_buffer_contrast_brightness;
+        buffer_component->auto_buffer_contrast_brightness;
 
     mat4 model;
     model.setIdentity();
@@ -77,7 +79,7 @@ void BufferValues::draw_text(const mat4& projection, const mat4& viewInv,
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
     glActiveTexture(GL_TEXTURE0);
-    GLuint buff_tex = stage->buffer_component.buff_tex;
+    GLuint buff_tex = buffer_component->buff_tex;
     glBindTexture(GL_TEXTURE_2D, buff_tex);
     text_prog.uniform1i("buff_sampler", 0);
 

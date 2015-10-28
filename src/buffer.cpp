@@ -9,7 +9,8 @@
 using namespace std;
 
 void Buffer::update() {
-    float zoom = stage->camera_component.zoom;
+    Camera* camera = stage->getComponent<Camera>("camera_component");
+    float zoom = camera->zoom;
     if(zoom > 40) {
         buff_prog.uniform1i("enable_borders", 1);
     } else {

@@ -29,8 +29,9 @@ bool Camera::post_initialize() {
     int w = stage->window->window_width();
     int h = stage->window->window_height();
 
-    float buffPosX = stage->buffer_component.posX();
-    float buffPosY = stage->buffer_component.posY();
+    Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
+    float buffPosX = buffer_component->posX();
+    float buffPosY = buffer_component->posY();
 
     camera_pos_x_ = -buffPosX, camera_pos_y_ = -buffPosY;
     model.setFromST(1.0/zoom, 1.0/zoom, 1.0, -camera_pos_x_, -camera_pos_y_, 0.f);
@@ -38,4 +39,8 @@ bool Camera::post_initialize() {
     window_resized(w, h);
 
     return true;
+}
+
+bool Camera::post_buffer_update() {
+    return post_initialize();
 }

@@ -9,6 +9,13 @@ public:
     virtual bool initialize() {
         return true;
     }
+    virtual bool buffer_update() {
+        return true;
+    }
+    virtual bool post_buffer_update() {
+        return true;
+    }
+
     // Called after all components are initialized
     virtual bool post_initialize() {
         return true;

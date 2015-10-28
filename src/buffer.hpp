@@ -19,7 +19,39 @@ public:
     int type;
     uint8_t* buffer;
 
-    bool initialize() {
+
+    bool buffer_update() {
+        glBindTexture(GL_TEXTURE_2D, buff_tex);
+
+        glPixelStoref(GL_UNPACK_ALIGNMENT, 1);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+        GLuint tex_type = GL_UNSIGNED_BYTE;
+        GLuint tex_format = GL_RED;
+        if(type == 0) {
+            tex_type = GL_FLOAT;
+        } else if (type == 1) {
+            tex_type = GL_UNSIGNED_BYTE;
+        }
+        if(channels == 1) {
+            tex_format = GL_RED;
+        } else if(channels == 3) {
+            tex_format = GL_RGB;
+        }
+
+        int buffer_width_i = static_cast<int>(buffer_width_f);
+        int buffer_height_i = static_cast<int>(buffer_height_f);
+
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, buffer_width_i, buffer_height_i, tex_format, tex_type, reinterpret_cast<GLvoid*>(buffer));
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    }
+
+    void setup_gl_buffer() {
         int buffer_width_i = static_cast<int>(buffer_width_f);
         int buffer_height_i = static_cast<int>(buffer_height_f);
 
@@ -73,7 +105,7 @@ public:
                 else if(type == 1)
                     maxIntensity = 255.0f;
                 auto_buffer_contrast[c] = maxIntensity/(upper[c]-lowest[c]);
-                auto_buffer_brightness[c] = -lowest[c]*auto_buffer_contrast[c];
+                auto_buffer_brightness[c] = -lowest[c]/maxIntensity*auto_buffer_contrast[c];
             }
             if(channels == 1) {
                 for(int c = 1; c < 3; ++c) {
@@ -83,6 +115,34 @@ public:
             }
         }
 
+        // Buffer texture
+        glGenTextures(1, &buff_tex);
+        glBindTexture(GL_TEXTURE_2D, buff_tex);
+        GLuint tex_type = GL_UNSIGNED_BYTE;
+        GLuint tex_format = GL_RED;
+        if(type == 0) {
+            tex_type = GL_FLOAT;
+        } else if (type == 1) {
+            tex_type = GL_UNSIGNED_BYTE;
+        }
+        if(channels == 1) {
+            tex_format = GL_RED;
+        } else if(channels == 3) {
+            tex_format = GL_RGB;
+        }
+        glPixelStoref(GL_UNPACK_ALIGNMENT, 1);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexStorage2D( GL_TEXTURE_2D, 1, GL_RGB32F, buffer_width_i, buffer_height_i);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, buffer_width_i, buffer_height_i, tex_format, tex_type, reinterpret_cast<GLvoid*>(buffer));
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    }
+
+    bool initialize() {
         // Buffer Shaders
         ShaderProgram::TexelChannels channelType;
         if(channels == 1)
@@ -110,31 +170,7 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 
-        // Buffer texture
-        glGenTextures(1, &buff_tex);
-        glBindTexture(GL_TEXTURE_2D, buff_tex);
-        GLuint tex_type = GL_UNSIGNED_BYTE;
-        GLuint tex_format = GL_RED;
-        if(type == 0) {
-            tex_type = GL_FLOAT;
-        } else if (type == 1) {
-            tex_type = GL_UNSIGNED_BYTE;
-        }
-        if(channels == 1) {
-            tex_format = GL_RED;
-        } else if(channels == 3) {
-            tex_format = GL_RGB;
-        }
-        glPixelStoref(GL_UNPACK_ALIGNMENT, 1);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glTexStorage2D( GL_TEXTURE_2D, 1, GL_RGB32F, buffer_width_i, buffer_height_i);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, buffer_width_i, buffer_height_i, tex_format, tex_type, reinterpret_cast<GLvoid*>(buffer));
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        setup_gl_buffer();
 
         return true;
     }

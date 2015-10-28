@@ -10,6 +10,7 @@ public:
     void update();
     void draw(const mat4& projection, const mat4& viewInv) {}
 
+    bool post_buffer_update();
     bool post_initialize();
 
     void window_resized(int w, int h);

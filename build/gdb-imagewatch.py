@@ -13,6 +13,12 @@ lib.plot_binary.argtypes = [ctypes.py_object, # Buffer ptr
                             ctypes.c_int, # Buffer height
                             ctypes.c_int, # Number of channels
                             ctypes.c_int] # Type (0=float32, 1=uint8)
+lib.update_plot.argtypes = [ctypes.py_object, # Buffer ptr
+                            ctypes.py_object, # Variable name
+                            ctypes.c_int, # Buffer width
+                            ctypes.c_int, # Buffer height
+                            ctypes.c_int, # Number of channels
+                            ctypes.c_int] # Type (0=float32, 1=uint8)
 
 """
 if __name__ == "__main__":
@@ -38,12 +44,16 @@ if __name__ == "__main__":
     pass
 """
 
+observed_variables = set()
 def plot_thread(mem, var_name, width, height, channels, type):
+    observed_variables.add(str(var_name))
     lib.plot_binary(mem, var_name, width, height, channels, type)
+    observed_variables.remove(str(var_name))
     pass
 
 import gdb
 import threading
+
 class PlotterCommand(gdb.Command):
     def __init__(self):
         super(PlotterCommand, self).__init__("plot",
@@ -58,7 +68,7 @@ class PlotterCommand(gdb.Command):
 
         char_type = gdb.lookup_type("char")
         char_pointer_type = char_type.pointer()
-        buffer = gdb.parse_and_eval(args[0]+'.ptr()').cast(char_pointer_type)
+        buffer = picked_obj['data'].cast(char_pointer_type)
         width = int(picked_obj['w'])
         height = int(picked_obj['h'])
         channels = int(picked_obj['channels'])
@@ -84,3 +94,33 @@ class PlotterCommand(gdb.Command):
 
 PlotterCommand()
 
+# Update all buffers on each stop event
+def stop_event_handler(event):
+    for variable in observed_variables:
+        picked_obj = gdb.parse_and_eval(variable)
+
+        char_type = gdb.lookup_type("char")
+        char_pointer_type = char_type.pointer()
+        buffer = picked_obj['data'].cast(char_pointer_type)
+        width = int(picked_obj['w'])
+        height = int(picked_obj['h'])
+        channels = int(picked_obj['channels'])
+        type = int(picked_obj['type'])
+      
+        texel_size = channels
+        if type==0:
+            texel_size *= 4 # float type
+        elif type==1:
+            texel_size *= 1 # uint8_t type
+            pass
+
+        bytes = texel_size * width*height
+        inferior = gdb.selected_inferior()
+        mem = inferior.read_memory(buffer, bytes)
+
+        print(variable,width,height,channels,type)
+        lib.update_plot(mem, variable, width, height, channels, type)
+        pass
+    pass
+
+gdb.events.stop.connect(stop_event_handler)
