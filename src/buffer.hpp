@@ -21,15 +21,30 @@ public:
 
 
     bool buffer_update() {
+        glDeleteTextures(1, &buff_tex);
+
         computeContrastBrightnessParameters();
 
+        glGenTextures(1, &buff_tex);
         glBindTexture(GL_TEXTURE_2D, buff_tex);
-
-        glPixelStoref(GL_UNPACK_ALIGNMENT, 1);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
         GLuint tex_type = GL_UNSIGNED_BYTE;
         GLuint tex_format = GL_RED;
+
+        int buffer_width_i = static_cast<int>(buffer_width_f);
+        int buffer_height_i = static_cast<int>(buffer_height_f);
+
+        float buffPosX, buffPosY;
+        buffPosX = trunc(buffer_width_f/2.0);
+        buffPosY = trunc(-buffer_height_f/2.0);
+        if(buffer_width_i%2 == 0)
+            buffPosX -= 0.5f;
+        if(buffer_height_i%2 == 0)
+            buffPosY += 0.5f;
+
+        model.setFromST(buffer_width_i, buffer_height_i, 1.0,
+                buffPosX, buffPosY, 0.0f);
+
         if(type == 0) {
             tex_type = GL_FLOAT;
         } else if (type == 1) {
@@ -41,9 +56,9 @@ public:
             tex_format = GL_RGB;
         }
 
-        int buffer_width_i = static_cast<int>(buffer_width_f);
-        int buffer_height_i = static_cast<int>(buffer_height_f);
-
+        glPixelStoref(GL_UNPACK_ALIGNMENT, 1);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexStorage2D( GL_TEXTURE_2D, 1, GL_RGB32F, buffer_width_i, buffer_height_i);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, buffer_width_i, buffer_height_i, tex_format, tex_type, reinterpret_cast<GLvoid*>(buffer));
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

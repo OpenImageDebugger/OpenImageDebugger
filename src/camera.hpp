@@ -4,6 +4,7 @@
 
 class Camera : public Component {
 public:
+    static constexpr float zoom_factor = 1.2;
     float zoom = 1.0;
     mat4 projection;
 
@@ -17,11 +18,12 @@ public:
     
     void scroll_callback(int delta) {
         zoom_power_ += delta;
-        zoom = pow(1.2, zoom_power_);
+        zoom = pow(zoom_factor, zoom_power_);
         model.setFromST(1.0/zoom, 1.0/zoom, 1.0, -camera_pos_x_, -camera_pos_y_, 0.f);
     }
 
 private:
+    void set_initial_zoom();
     float zoom_power_ = 0.0;
     float camera_pos_x_ = 0.0;
     float camera_pos_y_ = 0.0;

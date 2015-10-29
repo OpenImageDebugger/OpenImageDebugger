@@ -96,6 +96,8 @@ public:
 
     template<typename T>
     T* getComponent(std::string tag) {
+        if(all_components.find(tag) == all_components.end())
+            return nullptr;
         return dynamic_cast<T*>(all_components[tag].get());
     }
 

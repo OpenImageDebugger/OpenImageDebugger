@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     tex_arr = numpy.asarray(tex, numpy.float32)
     mem = memoryview(tex_arr)
-    lib.plot_binary(mem, width, height, channels, 0)
+    lib.plot_binary(mem, 'python_test', width, height, channels, 0)
 
     exit()
     pass
@@ -63,6 +63,10 @@ class PlotterCommand(gdb.Command):
 
     def invoke(self, arg, from_tty):
         args = gdb.string_to_argv(arg)
+
+        if str(args[0]) in observed_variables:
+            print('Variable '+str(args[0])+ ' is already being visualized!')
+            return
 
         picked_obj = gdb.parse_and_eval(args[0])
 

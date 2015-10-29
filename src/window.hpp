@@ -3,11 +3,11 @@
 #include <string>
 #include <iostream>
 #include <GLFW/glfw3.h>
+#include <sstream>
 #include <deque>
+#include <mutex>
 
 #include <Python.h>
-
-#include <mutex>
 
 #include "stage.hpp"
 
@@ -18,6 +18,7 @@ public:
     }
 
     struct BufferUpdateMessage {
+        std::string var_name_str;
         PyObject* py_buffer;
         int width_i;
         int height_i;
@@ -26,12 +27,13 @@ public:
     };
     std::deque<BufferUpdateMessage> pending_updates;
 
-    void buffer_update(PyObject* pybuffer, int buffer_width_i, int buffer_height_i,
-            int channels, int type) {
+    void buffer_update(PyObject* pybuffer, const std::string& var_name_str,
+            int buffer_width_i, int buffer_height_i, int channels, int type) {
         Py_INCREF(pybuffer);
 
 
         BufferUpdateMessage new_buffer;
+        new_buffer.var_name_str = var_name_str;
         new_buffer.py_buffer = pybuffer;
         new_buffer.width_i = buffer_width_i;
         new_buffer.height_i = buffer_height_i;
@@ -43,11 +45,13 @@ public:
         }
     }
 
-    bool create(std::string title, int gl_major_version, int gl_minor_version,
-            PyObject* pybuffer, int buffer_width_i, int buffer_height_i,
-            int channels, int type, int win_width = 800, int win_height = 600,
-            GLFWmonitor* monitor = NULL) {
+    bool create(const std::string& var_name_str, int gl_major_version,
+            int gl_minor_version, PyObject* pybuffer, int buffer_width_i,
+            int buffer_height_i, int channels, int type, int win_width = 800,
+            int win_height = 600, GLFWmonitor* monitor = NULL) {
         owned_buffer = pybuffer;
+        var_name_ = var_name_str;
+
         Py_INCREF(owned_buffer);
         uint8_t* buffer = reinterpret_cast<uint8_t*>(PyMemoryView_GET_BUFFER(owned_buffer)->buf);
 
@@ -63,7 +67,8 @@ public:
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
-        window_ = glfwCreateWindow(win_width, win_height, title.c_str(), monitor, NULL);   
+        window_ = glfwCreateWindow(win_width, win_height, "", monitor, NULL);   
+        setWindowTitle(var_name_str, buffer_width_i, buffer_height_i, channels, type);
 
         if(window_ == nullptr) {
             std::cerr << "Failed to open GLFW window." << std::endl;
@@ -92,8 +97,12 @@ public:
 
         // Setup stage
         stage_.window = this;
-        return stage_.initialize(buffer, buffer_width_i, buffer_height_i,
+        bool init_status = stage_.initialize(buffer, buffer_width_i, buffer_height_i,
                 channels, type);
+
+        setWindowTitle(var_name_str, buffer_width_i, buffer_height_i, channels, type);
+
+        return init_status;
     }
 
     GLFWwindow* glfw_window(){
@@ -143,6 +152,8 @@ public:
                     owned_buffer = message.py_buffer;
                     uint8_t* buffer = reinterpret_cast<uint8_t*>(
                             PyMemoryView_GET_BUFFER(owned_buffer)->buf);
+                    setWindowTitle(message.var_name_str, message.width_i,
+                            message.height_i, message.channels, message.type);
                     stage_.buffer_update(buffer, message.width_i,
                             message.height_i, message.channels, message.type);
                 }
@@ -178,11 +189,42 @@ public:
 private:
     GLFWwindow* window_;
     Stage stage_;
+    std::string var_name_;
     int window_width_i_, window_height_i_;
     double mouseX_, mouseY_;
     bool mouseDown_;
     PyObject* owned_buffer;
     std::mutex mtx_;
+
+    void setWindowTitle(const std::string& var_name_str, int buffer_width_i,
+            int buffer_height_i, int channels, int type) {
+        std::stringstream window_name;
+        window_name << "[GDB-ImageWatch] " << var_name_str <<
+            " (" << buffer_width_i << "x" << buffer_height_i << "; ";
+
+        if(type == 0)
+            window_name << "float32";
+        else if(type==1)
+            window_name << "uint8";
+
+        window_name << "; ";
+
+        if (channels==1)
+            window_name << "1 channel)";
+        else
+            window_name << channels << " channels)";
+
+        float zoom = 1.0;
+        Camera* cam = stage_.getComponent<Camera>("camera_component");
+        if(cam != nullptr)
+            zoom = cam->zoom;
+        char zoom_str[40];
+        sprintf(zoom_str, "%.2f", zoom*100.0);
+        window_name << " - " << zoom_str << "%";
+
+        glfwSetWindowTitle(window_, window_name.str().c_str());
+    }
+
 
     static Window* getThisPtr(GLFWwindow *window) {
         return reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
@@ -192,13 +234,19 @@ private:
         Window* this_ = getThisPtr(window);
 
         this_->stage_.scroll_callback(y);
+
+        // Update window title
+        Buffer* buff = this_->stage_.getComponent<Buffer>("buffer_component");
+        int bw = buff->buffer_width_f;
+        int bh = buff->buffer_height_f;
+        this_->setWindowTitle(this_->var_name_, bw, bh, buff->channels, buff->type);
     }
 
-    static void resize_callback(GLFWwindow *window, int, int) {
+    static void resize_callback(GLFWwindow *window, int w, int h) {
         Window* this_ = getThisPtr(window);
 
-        glfwGetFramebufferSize(window, &this_->window_width_i_,
-                &this_->window_height_i_);
+        this_->window_width_i_ = w;
+        this_->window_height_i_ = h;
 
         this_->stage_.window_resized(this_->window_width_i_, this_->window_height_i_);
     }
@@ -208,7 +256,7 @@ private:
 
         glfwSetErrorCallback(Window::error_callback);
         glfwSetScrollCallback(window_, &Window::scroll_callback);
-        glfwSetWindowSizeCallback(window_, &Window::resize_callback);
+        glfwSetFramebufferSizeCallback(window_, &Window::resize_callback);
     }
 };
 
