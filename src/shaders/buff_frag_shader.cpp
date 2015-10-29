@@ -22,8 +22,15 @@ void main()
 
     vec2 buffer_position = uv*buffer_dimension;
     vec2 err = round(buffer_position)-buffer_position;
-    if((enable_borders==1) && (abs(err.x)<0.01||abs(err.y)<0.01)) {
-        color.rgb = vec3(1.0);
+    if(enable_borders==1) {
+        color.rgb = color.rgb*brightness_contrast[0] + brightness_contrast[1];
+
+        const float alpha = 0.01;
+        float x_ = fract(buffer_position.x);
+        float y_ = fract(buffer_position.y);
+        float vertical_border = clamp(abs(-1.0/alpha * x_ + 0.5/alpha) - (0.5/alpha-1.0), 0.0, 1.0);
+        float horizontal_border = clamp(abs(-1.0/alpha * y_ + 0.5/alpha) - (0.5/alpha-1.0), 0.0, 1.0);
+        color.rgb += vec3(vertical_border+horizontal_border);
     }
     else {
         color.rgb = color.rgb*brightness_contrast[0] + brightness_contrast[1];
