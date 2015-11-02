@@ -57,6 +57,10 @@ all dependencies are correctly installed) and run:
 
     ./build.sh
 
+Now edit the `~/.gdbinit` file and add: 
+
+    source /path/to/gdb-imagewatch/build/gdb-imagewatch.py
+
 ### Configure plugin
 
 By default, the plugin assumes that your buffer data structure has the
