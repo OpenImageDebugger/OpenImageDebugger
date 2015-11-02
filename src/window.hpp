@@ -15,6 +15,7 @@ class Window {
 public:
     ~Window() {
         Py_DECREF(owned_buffer);
+        glfwDestroyWindow(window_);
     }
 
     struct BufferUpdateMessage {
@@ -160,8 +161,6 @@ public:
             }
         }
         while( !glfwWindowShouldClose(window_) );
-
-        glfwDestroyWindow(window_);
     }
 
     double mouseX() {

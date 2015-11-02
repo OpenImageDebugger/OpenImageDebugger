@@ -4,6 +4,7 @@ import sys
 import ctypes
 import os
 from ctypes import cdll
+import pysigset, signal
 
 script_path = os.path.dirname(os.path.realpath(__file__))
 lib = cdll.LoadLibrary(script_path+'/libwatch.so')
@@ -44,6 +45,9 @@ if __name__ == "__main__":
     pass
 """
 
+import gdb
+import threading
+
 observed_variables = set()
 def plot_thread(mem, var_name, width, height, channels, type):
     observed_variables.add(str(var_name))
@@ -51,8 +55,15 @@ def plot_thread(mem, var_name, width, height, channels, type):
     observed_variables.remove(str(var_name))
     pass
 
-import gdb
-import threading
+def get_buffer_size(width, height, channels, type):
+    texel_size = channels
+    if type==0:
+        texel_size *= 4 # float type
+    elif type==1:
+        texel_size *= 1 # uint8_t type
+        pass
+
+    return texel_size * width*height
 
 class PlotterCommand(gdb.Command):
     def __init__(self):
@@ -78,25 +89,23 @@ class PlotterCommand(gdb.Command):
         channels = int(picked_obj['channels'])
         type = int(picked_obj['type'])
       
-        texel_size = channels
-        if type==0:
-            texel_size *= 4 # float type
-        elif type==1:
-            texel_size *= 1 # uint8_t type
-            pass
-
-        bytes = texel_size * width*height
+        bytes = get_buffer_size(width, height, channels, type)
         inferior = gdb.selected_inferior()
         mem = inferior.read_memory(buffer, bytes)
 
-        plot_thread_instance=threading.Thread(target=plot_thread, args=(mem, args[0], width, height, channels, type))
-        plot_thread_instance.daemon=True
-        plot_thread_instance.start()
+        ##
+        # By default, my new threads will be the ones receiving the precious
+        # signals from the operating system. These signals should go to GDB so
+        # it can do its thing, and since it doesnt get them, my threads will
+        # make gdb hang. The solution is to configure the new thread to forward
+        # the signal back to the main thread, which is done by pysigset.
+        with pysigset.suspended_signals(signal.SIGCHLD):
+            plot_thread_instance=threading.Thread(target=plot_thread, args=(mem, args[0], width, height, channels, type))
+            plot_thread_instance.daemon=True
+            plot_thread_instance.start()
         pass
 
     pass
-
-PlotterCommand()
 
 # Update all buffers on each stop event
 def stop_event_handler(event):
@@ -111,14 +120,7 @@ def stop_event_handler(event):
         channels = int(picked_obj['channels'])
         type = int(picked_obj['type'])
       
-        texel_size = channels
-        if type==0:
-            texel_size *= 4 # float type
-        elif type==1:
-            texel_size *= 1 # uint8_t type
-            pass
-
-        bytes = texel_size * width*height
+        bytes = get_buffer_size(width, height, channels, type)
         inferior = gdb.selected_inferior()
         mem = inferior.read_memory(buffer, bytes)
 
@@ -127,4 +129,7 @@ def stop_event_handler(event):
         pass
     pass
 
+##
+# Setup GDB interface
+PlotterCommand()
 gdb.events.stop.connect(stop_event_handler)
