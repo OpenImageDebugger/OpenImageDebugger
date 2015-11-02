@@ -55,6 +55,17 @@ def plot_thread(mem, var_name, width, height, channels, type):
     observed_variables.remove(str(var_name))
     pass
 
+def get_buffer_info(picked_obj):
+    char_type = gdb.lookup_type("char")
+    char_pointer_type = char_type.pointer()
+    buffer = picked_obj['data'].cast(char_pointer_type)
+    width = int(picked_obj['w'])
+    height = int(picked_obj['h'])
+    channels = int(picked_obj['channels'])
+    type = int(picked_obj['type'])
+
+    return (buffer, width, height, channels, type)
+
 def get_buffer_size(width, height, channels, type):
     texel_size = channels
     if type==0:
@@ -81,13 +92,7 @@ class PlotterCommand(gdb.Command):
 
         picked_obj = gdb.parse_and_eval(args[0])
 
-        char_type = gdb.lookup_type("char")
-        char_pointer_type = char_type.pointer()
-        buffer = picked_obj['data'].cast(char_pointer_type)
-        width = int(picked_obj['w'])
-        height = int(picked_obj['h'])
-        channels = int(picked_obj['channels'])
-        type = int(picked_obj['type'])
+        buffer, width, height, channels, type = get_buffer_info(picked_obj)
       
         bytes = get_buffer_size(width, height, channels, type)
         inferior = gdb.selected_inferior()
@@ -112,13 +117,7 @@ def stop_event_handler(event):
     for variable in observed_variables:
         picked_obj = gdb.parse_and_eval(variable)
 
-        char_type = gdb.lookup_type("char")
-        char_pointer_type = char_type.pointer()
-        buffer = picked_obj['data'].cast(char_pointer_type)
-        width = int(picked_obj['w'])
-        height = int(picked_obj['h'])
-        channels = int(picked_obj['channels'])
-        type = int(picked_obj['type'])
+        buffer, width, height, channels, type = get_buffer_info(picked_obj)
       
         bytes = get_buffer_size(width, height, channels, type)
         inferior = gdb.selected_inferior()

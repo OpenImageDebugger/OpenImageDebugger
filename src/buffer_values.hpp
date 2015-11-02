@@ -22,8 +22,9 @@ public:
             return false;
         }
 
-        if(FT_New_Face(ft, "/home/csantos/workspace/gdb-imagewatch/build/serif.ttf", 0, &font)) {
-            std::cerr << "Could not open font serif.ttf" << std::endl;
+        // The macro FONT_PATH is defined at compile time.
+        if(FT_New_Face(ft, FONT_PATH, 0, &font)) {
+            std::cerr << "Could not open font " FONT_PATH << std::endl;
             return false;
         }
         FT_Set_Pixel_Sizes(font, 0, font_size);
