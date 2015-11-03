@@ -19,27 +19,37 @@ void Camera::update() {
         // Mouse is down. Update camera_pos_x_/camera_pos_y_
         camera_pos_x_ += (mouseX-last_mouse_x)/zoom;
         camera_pos_y_ += -(mouseY-last_mouse_y)/zoom;
-        model.setFromST(1.0/zoom, 1.0/zoom, 1.0, -camera_pos_x_, -camera_pos_y_, 0.f);
+        set_model_matrix();
     }
     last_mouse_x = mouseX;
     last_mouse_y = mouseY;
 }
 
+void Camera::reset_buffer_origin() {
+    Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
+
+    buffer_origin_x_ = -buffer_component->posX();
+    buffer_origin_y_ = -buffer_component->posY();
+
+    set_model_matrix();
+}
+
 bool Camera::post_initialize() {
+    reset_buffer_origin();
+
     int w = stage->window->window_width();
     int h = stage->window->window_height();
-
-    Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
-    float buffPosX = buffer_component->posX();
-    float buffPosY = buffer_component->posY();
-
-    camera_pos_x_ = -buffPosX, camera_pos_y_ = -buffPosY;
-    model.setFromST(1.0/zoom, 1.0/zoom, 1.0, -camera_pos_x_, -camera_pos_y_, 0.f);
 
     window_resized(w, h);
     set_initial_zoom();
 
     return true;
+}
+
+void Camera::set_model_matrix() {
+    model.setFromST(1.0/zoom, 1.0/zoom, 1.0,
+            -camera_pos_x_-buffer_origin_x_,
+            -camera_pos_y_-buffer_origin_y_, 0.f);
 }
 
 void Camera::set_initial_zoom() {
@@ -69,9 +79,10 @@ void Camera::set_initial_zoom() {
     }
 
     zoom = pow(zoom_factor, zoom_power_);
-    model.setFromST(1.0/zoom, 1.0/zoom, 1.0, -camera_pos_x_, -camera_pos_y_, 0.f);
+    set_model_matrix();
 }
 
 bool Camera::post_buffer_update() {
-    return post_initialize();
+    reset_buffer_origin();
+    return true;
 }

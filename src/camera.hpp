@@ -19,12 +19,16 @@ public:
     void scroll_callback(int delta) {
         zoom_power_ += delta;
         zoom = pow(zoom_factor, zoom_power_);
-        model.setFromST(1.0/zoom, 1.0/zoom, 1.0, -camera_pos_x_, -camera_pos_y_, 0.f);
+        set_model_matrix();
     }
 
 private:
+    void reset_buffer_origin();
     void set_initial_zoom();
+    void set_model_matrix();
     float zoom_power_ = 0.0;
+    float buffer_origin_x_ = 0.0;
+    float buffer_origin_y_ = 0.0;
     float camera_pos_x_ = 0.0;
     float camera_pos_y_ = 0.0;
     float last_mouse_x;
