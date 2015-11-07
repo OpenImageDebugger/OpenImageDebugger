@@ -31,8 +31,6 @@ void update_plot( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
     auto wnd_it = windows.find(var_name_str);
 
     if(wnd_it != windows.end()) {
-        uint8_t* buffer = reinterpret_cast<uint8_t*>(PyMemoryView_GET_BUFFER(pybuffer)->buf);
-
         Window* window = wnd_it->second.get();
         window->buffer_update(pybuffer, var_name_str, buffer_width_i, buffer_height_i, channels, type);
     }

@@ -7,7 +7,7 @@ from ctypes import cdll
 import pysigset, signal
 
 script_path = os.path.dirname(os.path.realpath(__file__))
-lib = cdll.LoadLibrary(script_path+'/libwatch.so')
+lib = cdll.LoadLibrary(script_path+'/libgdb-imagewatch.so')
 lib.plot_binary.argtypes = [ctypes.py_object, # Buffer ptr
                             ctypes.py_object, # Variable name
                             ctypes.c_int, # Buffer width
@@ -25,14 +25,14 @@ lib.update_plot.argtypes = [ctypes.py_object, # Buffer ptr
 if __name__ == "__main__":
     import numpy
     import math
-    width=100
-    height=80
-    channels=3
+    width=2
+    height=2
+    channels=1
     tex = [None]*width*height*channels
     for y in range(0,height):
         for x in range(0,width):
             for c in range(0, channels):
-                tex[y*channels*width+channels*x+c] = math.cos(x/width*math.pi+c/channels*math.pi/4.0)*255
+                tex[y*channels*width+channels*x+c] = y/10+x/10#math.cos(x/width*math.pi+c/channels*math.pi/4.0)*255
                 pass
             pass
         pass

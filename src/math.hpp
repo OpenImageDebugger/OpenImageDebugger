@@ -16,7 +16,7 @@ public:
     x(x), y(y), z(z), w(w) {
     }
 
-    void print() {
+    void print() const {
         for(int i = 0; i < 4; ++i)
             std::cout << data[i] << " ";
         std::cout << std::endl;
@@ -59,7 +59,7 @@ public:
 
     void setOrthoProjection(float right, float top, float near, float far) {
         data[0] = 1.0/right;
-        data[5] = 1.0/top;
+        data[5] = -1.0/top;
         data[10] = -2.0/(far-near);
         data[14] = -(far+near)/(far-near);
 
@@ -69,7 +69,7 @@ public:
         data[15] = 1.0;
     }
 
-    void print() {
+    void print() const {
         for(int y = 0; y < 4; ++y) {
             for(int x = 0; x < 4; ++x)
                 printf("%.4e\t ",data[4*x+y]);

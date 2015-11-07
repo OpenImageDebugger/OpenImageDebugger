@@ -51,9 +51,9 @@ Finally, download and install [GLFW3][1].
 
 ### Build plugin and configure GDB
 
-To build the plugin, enter the `build` folder, edit the `build.sh` file
-according to your needs (the default settings should work on a Ubuntu 14.04 if
-all dependencies are correctly installed) and run:
+To build the plugin, edit the `CMakeLists.txt` file according to your needs
+(the default settings should work on a Ubuntu 14.04 if all dependencies are
+correctly installed), enter the `build` folder and run:
 
     ./build.sh
 

@@ -18,7 +18,7 @@ void Camera::update() {
     if(stage->window->isMouseDown()) {
         // Mouse is down. Update camera_pos_x_/camera_pos_y_
         camera_pos_x_ += (mouseX-last_mouse_x)/zoom;
-        camera_pos_y_ += -(mouseY-last_mouse_y)/zoom;
+        camera_pos_y_ += (mouseY-last_mouse_y)/zoom;
         set_model_matrix();
     }
     last_mouse_x = mouseX;
@@ -28,8 +28,10 @@ void Camera::update() {
 void Camera::reset_buffer_origin() {
     Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
 
-    buffer_origin_x_ = -buffer_component->posX();
-    buffer_origin_y_ = -buffer_component->posY();
+    buffer_origin_x_ = -buffer_component->buffer_width_f/2.0
+                       - buffer_component->posX()/2.0;
+    buffer_origin_y_ = -buffer_component->buffer_height_f/2.0
+                       - buffer_component->posY()/2.0;
 
     set_model_matrix();
 }
