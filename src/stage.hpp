@@ -13,7 +13,7 @@ public:
     std::map<std::string, std::shared_ptr<Component>> all_components;
 
     bool initialize(uint8_t* buffer, int buffer_width_i,
-            int buffer_height_i, int channels, int type) {
+            int buffer_height_i, int channels, int type, int step) {
         std::shared_ptr<Buffer> buffer_component = std::make_shared<Buffer>();
         all_components["camera_component"] = std::make_shared<Camera>();
         all_components["buffer_component"] = buffer_component;
@@ -24,6 +24,7 @@ public:
         buffer_component->type = type;
         buffer_component->buffer_width_f = static_cast<float>(buffer_width_i);
         buffer_component->buffer_height_f = static_cast<float>(buffer_height_i);
+        buffer_component->step = step;
 
         for(auto comp: all_components) {
             comp.second->stage = this;
@@ -41,7 +42,7 @@ public:
     }
 
     bool buffer_update(uint8_t* buffer, int buffer_width_i,
-            int buffer_height_i, int channels, int type) {
+            int buffer_height_i, int channels, int type, int step) {
         Buffer* buffer_component = getComponent<Buffer>("buffer_component");
 
         buffer_component->buffer = buffer;
@@ -49,6 +50,7 @@ public:
         buffer_component->type = type;
         buffer_component->buffer_width_f = static_cast<float>(buffer_width_i);
         buffer_component->buffer_height_f = static_cast<float>(buffer_height_i);
+        buffer_component->step = step;
 
         for(auto comp: all_components) {
             comp.second->stage = this;

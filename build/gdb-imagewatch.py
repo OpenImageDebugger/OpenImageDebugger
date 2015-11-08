@@ -13,13 +13,15 @@ lib.plot_binary.argtypes = [ctypes.py_object, # Buffer ptr
                             ctypes.c_int, # Buffer width
                             ctypes.c_int, # Buffer height
                             ctypes.c_int, # Number of channels
-                            ctypes.c_int] # Type (0=float32, 1=uint8)
+                            ctypes.c_int, # Type (0=float32, 1=uint8)
+                            ctypes.c_int] # Step size (in pixels)
 lib.update_plot.argtypes = [ctypes.py_object, # Buffer ptr
                             ctypes.py_object, # Variable name
                             ctypes.c_int, # Buffer width
                             ctypes.c_int, # Buffer height
                             ctypes.c_int, # Number of channels
-                            ctypes.c_int] # Type (0=float32, 1=uint8)
+                            ctypes.c_int, # Type (0=float32, 1=uint8)
+                            ctypes.c_int] # Step size (in pixels)
 
 """
 if __name__ == "__main__":
@@ -49,24 +51,48 @@ import gdb
 import threading
 
 observed_variables = set()
-def plot_thread(mem, var_name, width, height, channels, type):
+def plot_thread(mem, var_name, width, height, channels, type, step):
     observed_variables.add(str(var_name))
-    lib.plot_binary(mem, var_name, width, height, channels, type)
+    print('got step:',step)
+    lib.plot_binary(mem, var_name, width, height, channels, type, step)
     observed_variables.remove(str(var_name))
     pass
 
+##
+# Default values created for OpenCV Mat structures. Change it according to your
+# needs.
 def get_buffer_info(picked_obj):
+    # OpenCV constants
+    CV_CN_MAX = 512
+    CV_CN_SHIFT = 3
+    CV_MAT_CN_MASK = ((CV_CN_MAX - 1) << CV_CN_SHIFT)
+    CV_DEPTH_MAX = (1 << CV_CN_SHIFT)
+    CV_MAT_TYPE_MASK = (CV_DEPTH_MAX*CV_CN_MAX - 1)
+    CV_8U = 0
+    CV_32F = 5
+
     char_type = gdb.lookup_type("char")
     char_pointer_type = char_type.pointer()
     buffer = picked_obj['data'].cast(char_pointer_type)
-    width = int(picked_obj['w'])
-    height = int(picked_obj['h'])
-    channels = int(picked_obj['channels'])
-    type = int(picked_obj['type'])
+    width = int(picked_obj['cols'])
+    height = int(picked_obj['rows'])
+    flags = int(picked_obj['flags'])
 
-    return (buffer, width, height, channels, type)
+    channels = ((((flags) & CV_MAT_CN_MASK) >> CV_CN_SHIFT) + 1)
+    step = int(int(picked_obj['step']['buf'][0])/channels)
 
-def get_buffer_size(width, height, channels, type):
+    cvtype = ((flags) & CV_MAT_TYPE_MASK)
+
+    if (cvtype&7) == CV_8U:
+        type = 1 # uint8_t
+    elif (cvtype&7) == (CV_32F):
+        type = 0 # float32
+        step = int(step/4)
+        pass
+
+    return (buffer, width, height, channels, type, step)
+
+def get_buffer_size(width, height, channels, type, step):
     texel_size = channels
     if type==0:
         texel_size *= 4 # float type
@@ -74,7 +100,7 @@ def get_buffer_size(width, height, channels, type):
         texel_size *= 1 # uint8_t type
         pass
 
-    return texel_size * width*height
+    return texel_size * step*height
 
 class PlotterCommand(gdb.Command):
     def __init__(self):
@@ -92,9 +118,9 @@ class PlotterCommand(gdb.Command):
 
         picked_obj = gdb.parse_and_eval(args[0])
 
-        buffer, width, height, channels, type = get_buffer_info(picked_obj)
+        buffer, width, height, channels, type, step = get_buffer_info(picked_obj)
       
-        bytes = get_buffer_size(width, height, channels, type)
+        bytes = get_buffer_size(width, height, channels, type, step)
         inferior = gdb.selected_inferior()
         mem = inferior.read_memory(buffer, bytes)
 
@@ -105,7 +131,7 @@ class PlotterCommand(gdb.Command):
         # make gdb hang. The solution is to configure the new thread to forward
         # the signal back to the main thread, which is done by pysigset.
         with pysigset.suspended_signals(signal.SIGCHLD):
-            plot_thread_instance=threading.Thread(target=plot_thread, args=(mem, args[0], width, height, channels, type))
+            plot_thread_instance=threading.Thread(target=plot_thread, args=(mem, args[0], width, height, channels, type, step))
             plot_thread_instance.daemon=True
             plot_thread_instance.start()
         pass
@@ -117,14 +143,13 @@ def stop_event_handler(event):
     for variable in observed_variables:
         picked_obj = gdb.parse_and_eval(variable)
 
-        buffer, width, height, channels, type = get_buffer_info(picked_obj)
+        buffer, width, height, channels, type, step = get_buffer_info(picked_obj)
       
-        bytes = get_buffer_size(width, height, channels, type)
+        bytes = get_buffer_size(width, height, channels, type, step)
         inferior = gdb.selected_inferior()
         mem = inferior.read_memory(buffer, bytes)
 
-        print(variable,width,height,channels,type)
-        lib.update_plot(mem, variable, width, height, channels, type)
+        lib.update_plot(mem, variable, width, height, channels, type, step)
         pass
     pass
 

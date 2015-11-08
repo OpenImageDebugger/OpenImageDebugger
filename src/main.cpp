@@ -18,13 +18,15 @@
 using namespace std;
 
 extern "C" {
-    void plot_binary( PyObject* pybuffer, PyObject* var_name, int buffer_width_i, int buffer_height_i, int channels, int type );
-    void update_plot( PyObject* pybuffer, PyObject* var_name, int buffer_width_i, int buffer_height_i, int channels, int type );
+    void plot_binary( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
+            int buffer_height_i, int channels, int type, int step);
+    void update_plot( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
+            int buffer_height_i, int channels, int type, int step);
 }
 
 map<string, shared_ptr<Window>> windows;
 void update_plot( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
-        int buffer_height_i, int channels, int type )
+        int buffer_height_i, int channels, int type, int step)
 {
     PyObject *var_name_bytes = PyUnicode_AsEncodedString(var_name, "ASCII", "strict");
     string var_name_str = PyBytes_AS_STRING(var_name_bytes);
@@ -32,19 +34,20 @@ void update_plot( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
 
     if(wnd_it != windows.end()) {
         Window* window = wnd_it->second.get();
-        window->buffer_update(pybuffer, var_name_str, buffer_width_i, buffer_height_i, channels, type);
+        window->buffer_update(pybuffer, var_name_str, buffer_width_i, buffer_height_i,
+                channels, type, step);
     }
 }
 
 void plot_binary( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
-        int buffer_height_i, int channels, int type )
+        int buffer_height_i, int channels, int type, int step)
 {
     PyObject *var_name_bytes = PyUnicode_AsEncodedString(var_name, "ASCII", "strict");
     string var_name_str = PyBytes_AS_STRING(var_name_bytes);
 
     shared_ptr<Window> window = make_shared<Window>();
     if(!window->create(var_name_str, 3,2, pybuffer, buffer_width_i,
-                buffer_height_i, channels, type)) { // OpenGL version 3.2
+                buffer_height_i, channels, type, step)) { // OpenGL version 3.2
         return;
     }
     window->printGLInfo();

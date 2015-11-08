@@ -25,11 +25,12 @@ public:
         int height_i;
         int channels;
         int type;
+        int step;
     };
     std::deque<BufferUpdateMessage> pending_updates;
 
     void buffer_update(PyObject* pybuffer, const std::string& var_name_str,
-            int buffer_width_i, int buffer_height_i, int channels, int type) {
+            int buffer_width_i, int buffer_height_i, int channels, int type, int step) {
         Py_INCREF(pybuffer);
 
 
@@ -40,6 +41,7 @@ public:
         new_buffer.height_i = buffer_height_i;
         new_buffer.channels = channels;
         new_buffer.type = type;
+        new_buffer.step = step;
         {
         std::unique_lock<std::mutex> lock(mtx_);
         pending_updates.push_back(new_buffer);
@@ -48,7 +50,7 @@ public:
 
     bool create(const std::string& var_name_str, int gl_major_version,
             int gl_minor_version, PyObject* pybuffer, int buffer_width_i,
-            int buffer_height_i, int channels, int type, int win_width = 800,
+            int buffer_height_i, int channels, int type, int step, int win_width = 800,
             int win_height = 600, GLFWmonitor* monitor = NULL) {
         owned_buffer = pybuffer;
         var_name_ = var_name_str;
@@ -99,7 +101,7 @@ public:
         // Setup stage
         stage_.window = this;
         bool init_status = stage_.initialize(buffer, buffer_width_i, buffer_height_i,
-                channels, type);
+                channels, type, step);
 
         setWindowTitle(var_name_str, buffer_width_i, buffer_height_i, channels, type);
 
@@ -156,7 +158,8 @@ public:
                     setWindowTitle(message.var_name_str, message.width_i,
                             message.height_i, message.channels, message.type);
                     stage_.buffer_update(buffer, message.width_i,
-                            message.height_i, message.channels, message.type);
+                            message.height_i, message.channels, message.type,
+                            message.step);
                 }
             }
 

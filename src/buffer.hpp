@@ -7,7 +7,7 @@
 using namespace std;
 class Buffer : public Component {
 public:
-    int max_texture_size = 128;
+    int max_texture_size = 2048;
 
     std::vector<GLuint> buff_tex;
 
@@ -22,6 +22,7 @@ public:
     float buffer_height_f;
     int channels;
     int type;
+    int step;
     uint8_t* buffer;
 
     bool buffer_update() {
@@ -47,19 +48,22 @@ public:
             std::numeric_limits<float>::lowest()
         };
 
-        for(int i = buffer_height_i * buffer_width_i -1; i>=0; --i) {
-            for(int c = 0; c < channels; ++c) {
-                if(type == 0) {
-                    lowest[c] = std::min(lowest[c],
-                            reinterpret_cast<float*>(buffer)[channels*i + c]);
-                    upper[c] = std::max(upper[c],
-                            reinterpret_cast<float*>(buffer)[channels*i + c]);
-                }
-                else if(type == 1) {
-                    lowest[c] = std::min(lowest[c],
-                            static_cast<float>(buffer[channels*i + c]));
-                    upper[c] = std::max(upper[c],
-                            static_cast<float>(buffer[channels*i + c]));
+        for(int y = 0; y < buffer_height_i; ++y) {
+            for(int x = 0; x < buffer_width_i; ++x) {
+                int i = y*step + x;
+                for(int c = 0; c < channels; ++c) {
+                    if(type == 0) {
+                        lowest[c] = std::min(lowest[c],
+                                reinterpret_cast<float*>(buffer)[channels*i + c]);
+                        upper[c] = std::max(upper[c],
+                                reinterpret_cast<float*>(buffer)[channels*i + c]);
+                    }
+                    else if(type == 1) {
+                        lowest[c] = std::min(lowest[c],
+                                static_cast<float>(buffer[channels*i + c]));
+                        upper[c] = std::max(upper[c],
+                                static_cast<float>(buffer[channels*i + c]));
+                    }
                 }
             }
         }
@@ -217,7 +221,7 @@ private:
         int remaining_h = buffer_height_i;
         glPixelStoref(GL_UNPACK_ALIGNMENT, 1);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, buffer_width_i);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, step);
 
         for(int ty = 0; ty < num_textures_y; ++ty) {
             int buff_h = std::min(remaining_h, max_texture_size);

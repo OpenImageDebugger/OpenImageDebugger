@@ -15,7 +15,7 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
         Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
         float buffer_width_f = buffer_component->buffer_width_f;
         float buffer_height_f = buffer_component->buffer_height_f;
-        int buffer_width_i = static_cast<int>(buffer_width_f);
+        int step = buffer_component->step;
         int channels = buffer_component->channels;
         int type = buffer_component->type;
         uint8_t* buffer = buffer_component->buffer;
@@ -35,7 +35,7 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
         char pix_label[30];
         for(int y = lower_y; y < upper_y; ++y) {
             for(int x = lower_x; x < upper_x; ++x) {
-                int pos = (y*buffer_width_i + x)*channels;
+                int pos = (y*step + x)*channels;
                 if(channels == 1) {
                     if(type == 0) {
                         float fpix = reinterpret_cast<float*>(buffer)[pos];
