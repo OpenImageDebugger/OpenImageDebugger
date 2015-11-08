@@ -12,18 +12,19 @@ An OpenGL based advanced buffer visualization tool for GDB.
 * GPU accelerated
 * Supported buffer types: uint8_t and float
 * Supported buffer channels: Grayscale and RGB
+* Supports big buffers whose dimensions exceed GL_MAX_TEXTURE_SIZE.
+* Supports data structures that map to a ROI of a bigger buffer.
 
 ## Roadmap
 
-* Add support for big buffers whose dimensions exceed GL_MAX_TEXTURE_SIZE.
-* Add support for buffer striding and offsetting (required in order to plot
-  ROIs).
 * QtCreator integration.
 * Improve user extensibility by importing modules that describe the user buffer
   data structure.
 * Create a more sophisticated GUI, possibly based on Qt, allowing for more.
   features to be exposed, configured and toggled at runtime.
 * Show all available buffers of the user type from the current context.
+* Support more data types: Short, int and double
+* Support buffers with 2 channels
 * Special plot types:
   * 3D topologies.
   * Histograms.
@@ -55,7 +56,8 @@ To build the plugin, edit the `CMakeLists.txt` file according to your needs
 (the default settings should work on a Ubuntu 14.04 if all dependencies are
 correctly installed), enter the `build` folder and run:
 
-    ./build.sh
+    cmake ..
+    make -j4
 
 Now edit the `~/.gdbinit` file and add: 
 
@@ -69,16 +71,33 @@ following signature:
 ```cpp
 struct Buffer {
     void* data;
-    int w;
-    int h;
-    int type;
-    int channels;
+    int cols; // Width
+    int rows; // Height
+    int flags; // OpenCV flags
+    struct {
+       int buf[2]; // Buf[0] = width of the containing
+                   // buffer*channels; buff[1] = channels
+    } step;
 };
 ```
 
-This is probably not the signature of your data structure, which means you need
-to adapt the `gdb-imagewatch.py` file to your needs. This is actually pretty
-simple and only involves editing the function `get_buffer_info()`.
+This is the signature found in the `Mat` type from OpenCV. If you use a
+different buffer type, you need to adapt the `gdb-imagewatch.py` file to your
+needs. This is actually pretty simple and only involves editing the function
+`get_buffer_info()`. It must return a tuple with the following fields, in
+order:
+
+ * **buffer** Pointer to the buffer
+ * **width**  Width of the ROI
+ * **height** Height of the ROI 
+ * **channels** Number of color channels (currently, only 1 and 3 are
+   supported)
+ * **type** Identifier for the type of the underlying buffer. The supported
+   values are:
+   * 0 for `float`
+   * 1 for `uint8_t`
+ * **step** Width, in pixels, of the underlying containing buffer. If the ROI
+   is the total buffer size, this is the same of the buffer width.
 
 ### Using plugin
 
