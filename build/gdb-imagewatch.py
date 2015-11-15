@@ -74,6 +74,9 @@ def get_buffer_info(picked_obj):
     char_type = gdb.lookup_type("char")
     char_pointer_type = char_type.pointer()
     buffer = picked_obj['data'].cast(char_pointer_type)
+    if buffer==0x0:
+        raise Exception('Received null buffer!')
+
     width = int(picked_obj['cols'])
     height = int(picked_obj['rows'])
     flags = int(picked_obj['flags'])
@@ -141,15 +144,18 @@ class PlotterCommand(gdb.Command):
 # Update all buffers on each stop event
 def stop_event_handler(event):
     for variable in observed_variables:
-        picked_obj = gdb.parse_and_eval(variable)
+        try:
+            picked_obj = gdb.parse_and_eval(variable)
 
-        buffer, width, height, channels, type, step = get_buffer_info(picked_obj)
-      
-        bytes = get_buffer_size(width, height, channels, type, step)
-        inferior = gdb.selected_inferior()
-        mem = inferior.read_memory(buffer, bytes)
+            buffer, width, height, channels, type, step = get_buffer_info(picked_obj)
+        
+            bytes = get_buffer_size(width, height, channels, type, step)
+            inferior = gdb.selected_inferior()
+            mem = inferior.read_memory(buffer, bytes)
 
-        lib.update_plot(mem, variable, width, height, channels, type, step)
+            lib.update_plot(mem, variable, width, height, channels, type, step)
+        except:
+            pass
         pass
     pass
 
