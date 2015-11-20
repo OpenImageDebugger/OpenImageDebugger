@@ -40,7 +40,7 @@ void ShaderProgram::uniform2f(const std::string& name, float x, float y) {
     glUniform2f(uniforms_[name], x, y);
 }
 
-void ShaderProgram::uniform3fv(const std::string& name, int count, float* data) {
+void ShaderProgram::uniform3fv(const std::string& name, int count, const float* data) {
     glUniform3fv(uniforms_[name], count, data);
 }
 

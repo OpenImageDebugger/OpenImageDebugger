@@ -10,10 +10,10 @@ public:
     int max_texture_size = 2048;
 
     std::vector<GLuint> buff_tex;
+    static const float no_ac_params[6];
 
     ~Buffer();
 
-    float auto_buffer_contrast_brightness[6] = {1.0,1.0,1.0, 0.0, 0.0, 0.0};
     float buffer_width_f;
     float buffer_height_f;
     int channels;
@@ -29,43 +29,66 @@ public:
         return true;
     }
 
-    void computeContrastBrightnessParameters() {
+    void recomputeMinColorValues() {
         int buffer_width_i = static_cast<int>(buffer_width_f);
         int buffer_height_i = static_cast<int>(buffer_height_f);
 
-        float lowest[] = {
-            std::numeric_limits<float>::max(),
-            std::numeric_limits<float>::max(),
-            std::numeric_limits<float>::max()
-        };
-        float upper[] = {
-            std::numeric_limits<float>::lowest(),
-            std::numeric_limits<float>::lowest(),
-            std::numeric_limits<float>::lowest()
-        };
+        float *lowest = min_buffer_values();
+        for(int i = 0; i < 3; ++i)
+            lowest[i] = std::numeric_limits<float>::max();
 
         for(int y = 0; y < buffer_height_i; ++y) {
             for(int x = 0; x < buffer_width_i; ++x) {
                 int i = y*step + x;
                 for(int c = 0; c < channels; ++c) {
-                    if(type == 0) {
+                    if(type == 0)
                         lowest[c] = std::min(lowest[c],
                                 reinterpret_cast<float*>(buffer)[channels*i + c]);
-                        upper[c] = std::max(upper[c],
-                                reinterpret_cast<float*>(buffer)[channels*i + c]);
-                    }
-                    else if(type == 1) {
+                    else if(type == 1)
                         lowest[c] = std::min(lowest[c],
                                 static_cast<float>(buffer[channels*i + c]));
-                        upper[c] = std::max(upper[c],
-                                static_cast<float>(buffer[channels*i + c]));
-                    }
                 }
             }
         }
+    }
 
-        float* auto_buffer_contrast = auto_buffer_contrast_brightness;
-        float* auto_buffer_brightness = auto_buffer_contrast_brightness+3;
+    void recomputeMaxColorValues() {
+        int buffer_width_i = static_cast<int>(buffer_width_f);
+        int buffer_height_i = static_cast<int>(buffer_height_f);
+
+        float *upper = max_buffer_values();
+        for(int i = 0; i < 3; ++i)
+            upper[i] = std::numeric_limits<float>::lowest();
+
+        for(int y = 0; y < buffer_height_i; ++y) {
+            for(int x = 0; x < buffer_width_i; ++x) {
+                int i = y*step + x;
+                for(int c = 0; c < channels; ++c) {
+                    if(type == 0)
+                        upper[c] = std::max(upper[c],
+                                reinterpret_cast<float*>(buffer)[channels*i + c]);
+                    else if(type == 1)
+                        upper[c] = std::max(upper[c],
+                                static_cast<float>(buffer[channels*i + c]));
+                }
+            }
+        }
+    }
+
+    void resetContrastBrightnessParameters() {
+        recomputeMaxColorValues();
+        recomputeMinColorValues();
+
+        computeContrastBrightnessParameters();
+    }
+
+    void computeContrastBrightnessParameters() {
+        float *lowest = min_buffer_values();
+        float *upper = max_buffer_values();
+
+        float* auto_buffer_contrast = auto_buffer_contrast_brightness_;
+        float* auto_buffer_brightness = auto_buffer_contrast_brightness_+3;
+
         for(int c = 0; c < channels; ++c) {
             float maxIntensity = 1.0f;
             if(type == 0)
@@ -118,8 +141,26 @@ public:
     int num_textures_x;
     int num_textures_y;
 
+    float* min_buffer_values() {
+        return min_buffer_values_;
+    }
+
+    float* max_buffer_values() {
+        return max_buffer_values_;
+    }
+
+    float* auto_buffer_contrast_brightness() {
+        return auto_buffer_contrast_brightness_;
+    }
+
+    void set_min_buffer_values();
+    void set_max_buffer_values();
+
 private:
     void setup_gl_buffer();
+    float min_buffer_values_[3];
+    float max_buffer_values_[3];
+    float auto_buffer_contrast_brightness_[6] = {1.0,1.0,1.0, 0.0,0.0,0.0};
 
     ShaderProgram buff_prog;
     GLuint vbo;

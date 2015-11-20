@@ -23,7 +23,8 @@ public:
     }
 
     bool initialize(GLCanvas* gl_canvas, uint8_t* buffer, int buffer_width_i,
-            int buffer_height_i, int channels, int type, int step) {
+            int buffer_height_i, int channels, int type, int step, bool ac_enabled) {
+        contrast_enabled = ac_enabled;
         std::shared_ptr<Buffer> buffer_component = std::make_shared<Buffer>();
         all_components["camera_component"] = std::make_shared<Camera>();
         all_components["buffer_component"] = buffer_component;
@@ -120,6 +121,8 @@ public:
                 camera_component->window_resized(w, h);
         }
     }
+
+    bool contrast_enabled;
 
 private:
     std::map<std::string, std::shared_ptr<Component>> all_components;

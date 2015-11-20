@@ -167,8 +167,13 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
 void BufferValues::draw_text(const mat4& projection, const mat4& viewInv,
         const char* text, float x, float y, float y_offset, float scale) {
     Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
-    float* auto_buffer_contrast_brightness =
-        buffer_component->auto_buffer_contrast_brightness;
+    const float* auto_buffer_contrast_brightness;
+    if(stage->contrast_enabled) {
+        auto_buffer_contrast_brightness =
+                buffer_component->auto_buffer_contrast_brightness();
+    } else {
+        auto_buffer_contrast_brightness = Buffer::no_ac_params;
+    }
 
     text_prog.use();
     glEnableVertexAttribArray(0);

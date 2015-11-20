@@ -6,13 +6,35 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    currently_selected_stage_(nullptr)
+    currently_selected_stage_(nullptr),
+    ac_enabled(true)
 {
     ui->setupUi(this);
 
     connect(&update_timer_, SIGNAL(timeout()), this, SLOT(loop()));
     connect(ui->imageList, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(buffer_selected(QListWidgetItem*)));
     ui->bufferPreview->set_main_window(this);
+
+    // Configure auto contrast inputs
+    ui->ac_red_min->setValidator(   new QDoubleValidator() );
+    ui->ac_green_min->setValidator( new QDoubleValidator() );
+    ui->ac_blue_min->setValidator(  new QDoubleValidator() );
+
+    ui->ac_red_max->setValidator(   new QDoubleValidator() );
+    ui->ac_green_max->setValidator( new QDoubleValidator() );
+    ui->ac_blue_max->setValidator(  new QDoubleValidator() );
+
+    connect(ui->ac_red_min, SIGNAL(editingFinished()), this, SLOT(ac_red_min_update()));
+    connect(ui->ac_red_max, SIGNAL(editingFinished()), this, SLOT(ac_red_max_update()));
+    connect(ui->ac_green_min, SIGNAL(editingFinished()), this, SLOT(ac_green_min_update()));
+    connect(ui->ac_green_max, SIGNAL(editingFinished()), this, SLOT(ac_green_max_update()));
+    connect(ui->ac_blue_min, SIGNAL(editingFinished()), this, SLOT(ac_blue_min_update()));
+    connect(ui->ac_blue_max, SIGNAL(editingFinished()), this, SLOT(ac_blue_max_update()));
+
+    connect(ui->ac_reset_min, SIGNAL(clicked()), this, SLOT(ac_min_reset()));
+    connect(ui->ac_reset_max, SIGNAL(clicked()), this, SLOT(ac_max_reset()));
+
+    connect(ui->acToggle, SIGNAL(clicked()), this, SLOT(ac_toggle()));
 }
 
 MainWindow::~MainWindow()
@@ -46,7 +68,7 @@ void MainWindow::loop() {
                     PyMemoryView_GET_BUFFER(request.py_buffer)->buf);
         shared_ptr<Stage> stage = make_shared<Stage>();
         if(!stage->initialize(ui->bufferPreview, buffer, request.width_i, request.height_i,
-                              request.channels, request.type, request.step)) {
+                              request.channels, request.type, request.step, ac_enabled)) {
             cerr << "[error] Could not initialize opengl canvas!"<<endl;
         }
         stages_[request.var_name_str] = stage;
@@ -77,4 +99,109 @@ void MainWindow::loop() {
         currently_selected_stage_->update();
         currently_selected_stage_->draw();
     }
+}
+
+void MainWindow::buffer_selected(QListWidgetItem * item) {
+    std::map<std::string, std::shared_ptr<Stage>>::iterator stage = stages_.find(item->data(Qt::UserRole).toString().toStdString());
+    if(stage != stages_.end()) {
+        currently_selected_stage_ = stage->second.get();
+        Buffer* buffer = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+        float* ac_min = buffer->min_buffer_values();
+        float* ac_max = buffer->max_buffer_values();
+
+        ui->ac_red_min->setText(QString::number(ac_min[0]));
+        ui->ac_green_min->setText(QString::number(ac_min[1]));
+        ui->ac_blue_min->setText(QString::number(ac_min[2]));
+
+        ui->ac_red_max->setText(QString::number(ac_max[0]));
+        ui->ac_green_max->setText(QString::number(ac_max[1]));
+        ui->ac_blue_max->setText(QString::number(ac_max[2]));
+    }
+}
+
+void MainWindow::ac_red_min_update()
+{
+    set_ac_min_value(0, ui->ac_red_min->text().toFloat());
+}
+
+void MainWindow::ac_green_min_update()
+{
+    set_ac_min_value(1, ui->ac_green_min->text().toFloat());
+}
+
+void MainWindow::ac_blue_min_update()
+{
+    set_ac_min_value(2, ui->ac_blue_min->text().toFloat());
+}
+
+void MainWindow::set_ac_min_value(int idx, float value)
+{
+   if(currently_selected_stage_ != nullptr) {
+       Buffer* buff = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+       buff->min_buffer_values()[idx] = value;
+       buff->computeContrastBrightnessParameters();
+   }
+}
+
+void MainWindow::set_ac_max_value(int idx, float value)
+{
+   if(currently_selected_stage_ != nullptr) {
+       Buffer* buff = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+       buff->max_buffer_values()[idx] = value;
+       buff->computeContrastBrightnessParameters();
+   }
+}
+
+void MainWindow::ac_red_max_update()
+{
+    set_ac_max_value(0, ui->ac_red_max->text().toFloat());
+}
+
+void MainWindow::ac_green_max_update()
+{
+    set_ac_max_value(1, ui->ac_green_max->text().toFloat());
+}
+
+void MainWindow::ac_blue_max_update()
+{
+    set_ac_max_value(2, ui->ac_blue_max->text().toFloat());
+}
+
+void MainWindow::ac_min_reset()
+{
+   if(currently_selected_stage_ != nullptr) {
+       Buffer* buff = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+       buff->recomputeMinColorValues();
+       buff->computeContrastBrightnessParameters();
+
+       // Update inputs
+       float* ac_min = buff->min_buffer_values();
+
+       ui->ac_red_min->setText(QString::number(ac_min[0]));
+       ui->ac_green_min->setText(QString::number(ac_min[1]));
+       ui->ac_blue_min->setText(QString::number(ac_min[2]));
+   }
+}
+
+void MainWindow::ac_max_reset()
+{
+   if(currently_selected_stage_ != nullptr) {
+       Buffer* buff = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+       buff->recomputeMaxColorValues();
+       buff->computeContrastBrightnessParameters();
+
+       // Update inputs
+       float* ac_max = buff->max_buffer_values();
+
+       ui->ac_red_max->setText(QString::number(ac_max[0]));
+       ui->ac_green_max->setText(QString::number(ac_max[1]));
+       ui->ac_blue_max->setText(QString::number(ac_max[2]));
+   }
+}
+
+void MainWindow::ac_toggle()
+{
+    ac_enabled = !ac_enabled;
+    for(auto& stage: stages_)
+        stage.second->contrast_enabled = ac_enabled;
 }

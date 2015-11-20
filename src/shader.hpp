@@ -19,7 +19,7 @@ public:
 
     void uniform2f(const std::string& name, float x, float y);
 
-    void uniform3fv(const std::string& name, int count, float* data);
+    void uniform3fv(const std::string& name, int count, const float *data);
 
     void uniformMatrix4fv(const std::string& name, int count, GLboolean transpose, const float* value);
 

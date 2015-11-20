@@ -5,6 +5,8 @@
 
 using namespace std;
 
+constexpr float Buffer::no_ac_params[6] = {1.0, 1.0, 1.0, 0, 0, 0};
+
 Buffer::~Buffer() {
     int num_textures = num_textures_x*num_textures_y;
     glDeleteTextures(num_textures, buff_tex.data());
@@ -60,7 +62,11 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
     glEnableVertexAttribArray(0);
     glActiveTexture(GL_TEXTURE0);
     buff_prog.uniform1i("sampler", 0);
-    buff_prog.uniform3fv("brightness_contrast", 2, auto_buffer_contrast_brightness);
+    if(stage->contrast_enabled) {
+        buff_prog.uniform3fv("brightness_contrast", 2, auto_buffer_contrast_brightness_);
+    } else {
+        buff_prog.uniform3fv("brightness_contrast", 2, no_ac_params);
+    }
 
     int buffer_width_i = static_cast<int>(buffer_width_f);
     int buffer_height_i = static_cast<int>(buffer_height_f);
@@ -98,7 +104,7 @@ void Buffer::setup_gl_buffer() {
     model.setFromST(buffer_width_i, buffer_height_i, 1.0, 0.0, 0.0, 0.0f);
 
     // Initialize contrast parameters
-    computeContrastBrightnessParameters();
+    resetContrastBrightnessParameters();
 
     // Buffer texture
     num_textures_x = ceil(((float)buffer_width_i)/((float)max_texture_size));

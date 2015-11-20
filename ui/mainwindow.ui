@@ -71,9 +71,9 @@
        </property>
       </widget>
       <widget class="QWidget" name="verticalLayoutWidget">
-       <layout class="QVBoxLayout" name="verticalLayout">
+       <layout class="QVBoxLayout" name="rightPanelLayout">
         <item>
-         <widget class="QWidget" name="widget_2" native="true">
+         <widget class="QWidget" name="toolbar" native="true">
           <property name="minimumSize">
            <size>
             <width>0</width>
@@ -94,7 +94,7 @@
             <rect>
              <x>150</x>
              <y>11</y>
-             <width>22</width>
+             <width>118</width>
              <height>24</height>
             </rect>
            </property>
@@ -105,7 +105,7 @@
             <string/>
            </property>
            <property name="text">
-            <string/>
+            <string>autocontrast</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
@@ -169,7 +169,7 @@
            </property>
            <layout class="QGridLayout" name="gridLayout">
             <item row="0" column="0">
-             <widget class="QLabel" name="label">
+             <widget class="QLabel" name="label_min">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
@@ -179,7 +179,7 @@
              </widget>
             </item>
             <item row="0" column="1">
-             <widget class="QLabel" name="label_3">
+             <widget class="QLabel" name="label_red_min">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
@@ -189,14 +189,14 @@
              </widget>
             </item>
             <item row="0" column="2">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox">
+             <widget class="QLineEdit" name="ac_red_min">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
              </widget>
             </item>
             <item row="0" column="3">
-             <widget class="QLabel" name="label_9">
+             <widget class="QLabel" name="label_green_min">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
@@ -206,14 +206,14 @@
              </widget>
             </item>
             <item row="0" column="4">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_5">
+             <widget class="QLineEdit" name="ac_green_min">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
              </widget>
             </item>
             <item row="0" column="5">
-             <widget class="QLabel" name="label_17">
+             <widget class="QLabel" name="label_blue_min">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
@@ -223,14 +223,14 @@
              </widget>
             </item>
             <item row="0" column="6">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_11">
+             <widget class="QLineEdit" name="ac_blue_min">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
              </widget>
             </item>
             <item row="1" column="0">
-             <widget class="QLabel" name="label_2">
+             <widget class="QLabel" name="label_max">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
@@ -240,7 +240,7 @@
              </widget>
             </item>
             <item row="1" column="1">
-             <widget class="QLabel" name="label_4">
+             <widget class="QLabel" name="label_red_max">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
@@ -250,14 +250,14 @@
              </widget>
             </item>
             <item row="1" column="2">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_2">
+             <widget class="QLineEdit" name="ac_red_max">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
              </widget>
             </item>
             <item row="1" column="3">
-             <widget class="QLabel" name="label_10">
+             <widget class="QLabel" name="label_green_max">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
@@ -267,21 +267,21 @@
              </widget>
             </item>
             <item row="1" column="6">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_12">
+             <widget class="QLineEdit" name="ac_blue_max">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
              </widget>
             </item>
             <item row="1" column="4">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_6">
+             <widget class="QLineEdit" name="ac_green_max">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
              </widget>
             </item>
             <item row="1" column="5">
-             <widget class="QLabel" name="label_18">
+             <widget class="QLabel" name="label_blue_max">
               <property name="styleSheet">
                <string notr="true"/>
               </property>
@@ -291,14 +291,14 @@
              </widget>
             </item>
             <item row="0" column="7">
-             <widget class="QToolButton" name="toolButton">
+             <widget class="QToolButton" name="ac_reset_min">
               <property name="text">
                <string>Reset</string>
               </property>
              </widget>
             </item>
             <item row="1" column="7">
-             <widget class="QToolButton" name="toolButton_2">
+             <widget class="QToolButton" name="ac_reset_max">
               <property name="text">
                <string>Reset</string>
               </property>
