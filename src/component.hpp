@@ -2,9 +2,12 @@
 #include "math.hpp"
 
 class Stage;
+class GLCanvas;
 class Component {
 public:
     Stage* stage;
+    GLCanvas* gl_canvas;
+
     mat4 model;
     virtual bool initialize() {
         return true;

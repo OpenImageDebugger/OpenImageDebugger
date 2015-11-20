@@ -1,11 +1,8 @@
 #include <GL/glew.h>
-#define GLFW_INCLUDE_GL3
-#define GLFW_NO_GLU
-#include <GLFW/glfw3.h>
 
 #include "camera.hpp"
 #include "stage.hpp"
-#include "window.hpp"
+#include "mainwindow.h"
 
 void Camera::window_resized(int w, int h) {
     projection.setOrthoProjection(w/2.0, h/2.0, -1.0f, 1.0f);
@@ -13,9 +10,9 @@ void Camera::window_resized(int w, int h) {
 }
 
 void Camera::update() {
-    float mouseX = stage->window->mouseX();
-    float mouseY = stage->window->mouseY();
-    if(stage->window->isMouseDown()) {
+    float mouseX = gl_canvas->mouseX();
+    float mouseY = gl_canvas->mouseY();
+    if(gl_canvas->isMouseDown()) {
         // Mouse is down. Update camera_pos_x_/camera_pos_y_
         camera_pos_x_ += (mouseX-last_mouse_x)/zoom;
         camera_pos_y_ += (mouseY-last_mouse_y)/zoom;
@@ -39,8 +36,8 @@ void Camera::reset_buffer_origin() {
 bool Camera::post_initialize() {
     reset_buffer_origin();
 
-    int w = stage->window->window_width();
-    int h = stage->window->window_height();
+    int w = gl_canvas->width();
+    int h = gl_canvas->height();
 
     window_resized(w, h);
     set_initial_zoom();
@@ -55,8 +52,8 @@ void Camera::set_model_matrix() {
 }
 
 void Camera::set_initial_zoom() {
-    int win_w = stage->window->window_width();
-    int win_h = stage->window->window_height();
+    int win_w = gl_canvas->width();
+    int win_h = gl_canvas->height();
     Buffer* buff = stage->getComponent<Buffer>("buffer_component");
     float buf_w = buff->buffer_width_f;
     float buf_h = buff->buffer_height_f;

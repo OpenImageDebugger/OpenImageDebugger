@@ -20,7 +20,7 @@ An OpenGL based advanced buffer visualization tool for GDB.
 * QtCreator integration.
 * Improve user extensibility by importing modules that describe the user buffer
   data structure.
-* Create a more sophisticated GUI, possibly based on Qt, allowing for more.
+* Create a more sophisticated GUI, possibly based on Qt, allowing for more
   features to be exposed, configured and toggled at runtime.
 * Show all available buffers of the user type from the current context.
 * Support more data types: Short, int and double
@@ -33,8 +33,8 @@ An OpenGL based advanced buffer visualization tool for GDB.
 
 ### Dependencies
 
-GDB-ImageWatch requires python 3+, GLEW, GLFW and GDB 7.10+ compiled with
-python 3 support. On Ubuntu:
+GDB-ImageWatch requires python 3+, GLEW, GLFW, Qt 4.8+ and GDB 7.10+ compiled
+with python 3 support. On Ubuntu:
 
     sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip
     sudo pip3 install pysigset

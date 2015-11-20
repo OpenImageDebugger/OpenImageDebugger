@@ -16,7 +16,7 @@ public:
 
     void window_resized(int w, int h);
     
-    void scroll_callback(int delta) {
+    void scroll_callback(float delta) {
         zoom_power_ += delta;
         zoom = pow(zoom_factor, zoom_power_);
         set_model_matrix();

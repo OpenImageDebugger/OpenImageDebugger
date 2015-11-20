@@ -1,18 +1,28 @@
-#pragma once
+#ifndef STAGE_HPP
+#define STAGE_HPP
 
 #include <memory>
+#include <map>
 
-#include "buffer.hpp"
+#include "stage.hpp"
 #include "camera.hpp"
+#include "buffer.hpp"
 #include "buffer_values.hpp"
 
-class Window;
-class Stage {
+class Stage
+{
 public:
-    Window* window;
-    std::map<std::string, std::shared_ptr<Component>> all_components;
 
-    bool initialize(uint8_t* buffer, int buffer_width_i,
+    Stage();
+
+    template<typename T>
+    T* getComponent(std::string tag) {
+        if(all_components.find(tag) == all_components.end())
+            return nullptr;
+        return dynamic_cast<T*>(all_components[tag].get());
+    }
+
+    bool initialize(GLCanvas* gl_canvas, uint8_t* buffer, int buffer_width_i,
             int buffer_height_i, int channels, int type, int step) {
         std::shared_ptr<Buffer> buffer_component = std::make_shared<Buffer>();
         all_components["camera_component"] = std::make_shared<Camera>();
@@ -28,6 +38,7 @@ public:
 
         for(auto comp: all_components) {
             comp.second->stage = this;
+            comp.second->gl_canvas = gl_canvas;
             if(!comp.second->initialize()) {
                 return false;
             }
@@ -67,7 +78,6 @@ public:
         return true;
     }
 
-
     void update() {
         for(auto comp: all_components)
             comp.second->update();
@@ -77,15 +87,20 @@ public:
         glClear(GL_COLOR_BUFFER_BIT);
 
         // TODO use camera tags so I can have multiple cameras (useful for drawing GUI)
+
         Camera* camera_component =
             dynamic_cast<Camera*>(all_components["camera_component"].get());
+
+        if(camera_component == nullptr)
+            return;
+
         mat4 viewInv = camera_component->model.inv();
 
         for(auto comp: all_components)
             comp.second->draw(camera_component->projection, viewInv);
     }
 
-    void scroll_callback(int delta) {
+    void scroll_callback(float delta) {
         for(auto comp: all_components) {
             Camera* camera_component = dynamic_cast<Camera*>(comp.second.get());
 
@@ -96,14 +111,7 @@ public:
         }
     }
 
-    template<typename T>
-    T* getComponent(std::string tag) {
-        if(all_components.find(tag) == all_components.end())
-            return nullptr;
-        return dynamic_cast<T*>(all_components[tag].get());
-    }
-
-    void window_resized(int w, int h) {
+    void resize_callback(int w, int h) {
         for(auto comp: all_components) {
             Camera* camera_component = dynamic_cast<Camera*>(comp.second.get());
 
@@ -112,4 +120,9 @@ public:
                 camera_component->window_resized(w, h);
         }
     }
+
+private:
+    std::map<std::string, std::shared_ptr<Component>> all_components;
 };
+
+#endif // STAGE_HPP
