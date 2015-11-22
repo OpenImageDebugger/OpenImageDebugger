@@ -39,7 +39,49 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    for(auto& held_buffer: held_buffers_)
+        Py_DECREF(held_buffer.second);
+
     delete ui;
+}
+
+void MainWindow::reset_ac_min_labels()
+{
+    Buffer* buffer = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+    float* ac_min = buffer->min_buffer_values();
+
+    ui->ac_red_min->setText(QString::number(ac_min[0]));
+
+    if(buffer->channels == 3) {
+        if(!ui->ac_green_min->isEnabled()) {
+            ui->ac_green_min->setEnabled(true);
+            ui->ac_blue_min->setEnabled(true);
+        }
+        ui->ac_green_min->setText(QString::number(ac_min[1]));
+        ui->ac_blue_min->setText(QString::number(ac_min[2]));
+    } else {
+        ui->ac_green_min->setEnabled(false);
+        ui->ac_blue_min->setEnabled(false);
+    }
+}
+
+void MainWindow::reset_ac_max_labels()
+{
+    Buffer* buffer = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+    float* ac_max = buffer->max_buffer_values();
+
+    ui->ac_red_max->setText(QString::number(ac_max[0]));
+    if(buffer->channels == 3) {
+        if(!ui->ac_green_max->isEnabled()) {
+            ui->ac_green_max->setEnabled(true);
+            ui->ac_blue_max->setEnabled(true);
+        }
+        ui->ac_green_max->setText(QString::number(ac_max[1]));
+        ui->ac_blue_max->setText(QString::number(ac_max[2]));
+    } else {
+        ui->ac_green_max->setEnabled(false);
+        ui->ac_blue_max->setEnabled(false);
+    }
 }
 
 void MainWindow::plot_buffer(BufferRequestMessage &buff)
@@ -66,32 +108,49 @@ void MainWindow::loop() {
 
         uint8_t* buffer = reinterpret_cast<uint8_t*>(
                     PyMemoryView_GET_BUFFER(request.py_buffer)->buf);
-        shared_ptr<Stage> stage = make_shared<Stage>();
-        if(!stage->initialize(ui->bufferPreview, buffer, request.width_i, request.height_i,
-                              request.channels, request.type, request.step, ac_enabled)) {
-            cerr << "[error] Could not initialize opengl canvas!"<<endl;
+        auto buffer_stage = stages_.find(request.var_name_str);
+        if(buffer_stage == stages_.end()) {
+            // New buffer request
+            held_buffers_[request.var_name_str] = request.py_buffer;
+            shared_ptr<Stage> stage = make_shared<Stage>();
+            if(!stage->initialize(ui->bufferPreview, buffer, request.width_i, request.height_i,
+                                  request.channels, request.type, request.step, ac_enabled)) {
+                cerr << "[error] Could not initialize opengl canvas!"<<endl;
+            }
+            stages_[request.var_name_str] = stage;
+
+            int bytes_per_line = request.width_i * request.channels;
+            QImage bufferIcon(buffer, request.width_i, request.height_i, bytes_per_line,
+                              QImage::Format_RGB888);
+            if(bufferIcon.width() > bufferIcon.height())
+                bufferIcon = bufferIcon.scaledToWidth(200);
+            else
+                bufferIcon = bufferIcon.scaledToHeight(100);
+
+            stringstream label;
+            label << request.var_name_str << "\n[" << request.width_i << "x" <<
+                     request.height_i << "]\nuint8x3";
+            QListWidgetItem* item = new QListWidgetItem(QPixmap::fromImage(bufferIcon),
+                                                        label.str().c_str());
+            item->setData(Qt::UserRole, QString(request.var_name_str.c_str()));
+            item->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
+            item->setSizeHint(QSize(205,200));
+            item->setTextAlignment(Qt::AlignHCenter);
+            ui->imageList->addItem(item);
+        } else {
+            Py_DECREF(held_buffers_[request.var_name_str]);
+            held_buffers_[request.var_name_str] = request.py_buffer;
+            buffer_stage->second->buffer_update(buffer, request.width_i, request.height_i,
+                                                request.channels, request.type,
+                                                request.step);
+            // Update AC values
+            if(currently_selected_stage_ != nullptr) {
+                reset_ac_min_labels();
+                reset_ac_max_labels();
+            }
         }
-        stages_[request.var_name_str] = stage;
+
         pending_updates_.pop_front();
-
-        int bytes_per_line = request.width_i * request.channels;
-        QImage bufferIcon(buffer, request.width_i, request.height_i, bytes_per_line,
-                          QImage::Format_RGB888);
-        if(bufferIcon.width() > bufferIcon.height())
-            bufferIcon = bufferIcon.scaledToWidth(200);
-        else
-            bufferIcon = bufferIcon.scaledToHeight(100);
-
-        stringstream label;
-        label << request.var_name_str << "\n[" << request.width_i << "x" <<
-                 request.height_i << "]\nuint8x3";
-        QListWidgetItem* item = new QListWidgetItem(QPixmap::fromImage(bufferIcon),
-                                                    label.str().c_str());
-        item->setData(Qt::UserRole, QString(request.var_name_str.c_str()));
-        item->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
-        item->setSizeHint(QSize(205,200));
-        item->setTextAlignment(Qt::AlignHCenter);
-        ui->imageList->addItem(item);
     }
 
     ui->bufferPreview->updateGL();
@@ -105,17 +164,8 @@ void MainWindow::buffer_selected(QListWidgetItem * item) {
     std::map<std::string, std::shared_ptr<Stage>>::iterator stage = stages_.find(item->data(Qt::UserRole).toString().toStdString());
     if(stage != stages_.end()) {
         currently_selected_stage_ = stage->second.get();
-        Buffer* buffer = currently_selected_stage_->getComponent<Buffer>("buffer_component");
-        float* ac_min = buffer->min_buffer_values();
-        float* ac_max = buffer->max_buffer_values();
-
-        ui->ac_red_min->setText(QString::number(ac_min[0]));
-        ui->ac_green_min->setText(QString::number(ac_min[1]));
-        ui->ac_blue_min->setText(QString::number(ac_min[2]));
-
-        ui->ac_red_max->setText(QString::number(ac_max[0]));
-        ui->ac_green_max->setText(QString::number(ac_max[1]));
-        ui->ac_blue_max->setText(QString::number(ac_max[2]));
+        reset_ac_min_labels();
+        reset_ac_max_labels();
     }
 }
 
@@ -175,11 +225,7 @@ void MainWindow::ac_min_reset()
        buff->computeContrastBrightnessParameters();
 
        // Update inputs
-       float* ac_min = buff->min_buffer_values();
-
-       ui->ac_red_min->setText(QString::number(ac_min[0]));
-       ui->ac_green_min->setText(QString::number(ac_min[1]));
-       ui->ac_blue_min->setText(QString::number(ac_min[2]));
+       reset_ac_min_labels();
    }
 }
 
@@ -191,11 +237,7 @@ void MainWindow::ac_max_reset()
        buff->computeContrastBrightnessParameters();
 
        // Update inputs
-       float* ac_max = buff->max_buffer_values();
-
-       ui->ac_red_max->setText(QString::number(ac_max[0]));
-       ui->ac_green_max->setText(QString::number(ac_max[1]));
-       ui->ac_blue_max->setText(QString::number(ac_max[2]));
+       reset_ac_max_labels();
    }
 }
 

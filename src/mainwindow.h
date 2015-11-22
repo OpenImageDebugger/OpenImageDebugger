@@ -51,6 +51,9 @@ public:
         }
     }
 
+    void reset_ac_min_labels();
+    void reset_ac_max_labels();
+
 public Q_SLOTS:
     void loop();
     void buffer_selected(QListWidgetItem * item);
@@ -71,6 +74,7 @@ private:
     QTimer update_timer_;
     Stage* currently_selected_stage_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
+    std::map<std::string, PyObject*> held_buffers_;
     std::mutex mtx_;
     std::deque<BufferRequestMessage> pending_updates_;
     Ui::MainWindow *ui;

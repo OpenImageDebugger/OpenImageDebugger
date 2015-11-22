@@ -50,6 +50,10 @@ public:
                 }
             }
         }
+
+        // For single channel buffers: fill with 0
+        for(int c = channels; c < 3; ++c)
+            lowest[c] = 0.0;
     }
 
     void recomputeMaxColorValues() {
@@ -73,11 +77,15 @@ public:
                 }
             }
         }
+
+        // For single channel buffers: fill with 0
+        for(int c = channels; c < 3; ++c)
+            upper[c] = 0.0;
     }
 
     void resetContrastBrightnessParameters() {
-        recomputeMaxColorValues();
         recomputeMinColorValues();
+        recomputeMaxColorValues();
 
         computeContrastBrightnessParameters();
     }

@@ -3,7 +3,7 @@ QT += core gui opengl widgets gui
 TARGET = gdb-imagewatch
 TEMPLATE = lib
 
-QMAKE_CXXFLAGS += -fPIC
+QMAKE_CXXFLAGS += -fPIC -pthread
 
 SOURCES += src/camera.cpp\
            src/main.cpp \
