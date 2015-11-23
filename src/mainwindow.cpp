@@ -138,8 +138,15 @@ void MainWindow::loop() {
             stages_[request.var_name_str] = stage;
 
             int bytes_per_line = request.step * request.channels;
-            QImage bufferIcon(buffer, request.width_i, request.height_i, bytes_per_line,
+            QImage bufferIcon;
+            if(request.channels == 1)
+                bufferIcon = QImage(buffer, request.width_i, request.height_i, bytes_per_line,
+                              QImage::Format_Mono);
+            else {
+                assert(request.channels == 3);
+                bufferIcon = QImage(buffer, request.width_i, request.height_i, bytes_per_line,
                               QImage::Format_RGB888);
+            }
             if(bufferIcon.width() > bufferIcon.height())
                 bufferIcon = bufferIcon.scaledToWidth(200);
             else
@@ -153,7 +160,7 @@ void MainWindow::loop() {
                                                         label.str().c_str());
             item->setData(Qt::UserRole, QString(request.var_name_str.c_str()));
             item->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
-            item->setSizeHint(QSize(205,200));
+            item->setSizeHint(QSize(205,bufferIcon.height() + 90));
             item->setTextAlignment(Qt::AlignHCenter);
             ui->imageList->addItem(item);
         } else {
