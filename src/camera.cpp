@@ -6,7 +6,6 @@
 
 void Camera::window_resized(int w, int h) {
     projection.setOrthoProjection(w/2.0, h/2.0, -1.0f, 1.0f);
-    glViewport(0, 0, w, h);
 }
 
 void Camera::update() {

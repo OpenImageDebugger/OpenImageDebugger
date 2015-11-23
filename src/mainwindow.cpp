@@ -5,8 +5,8 @@
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow),
     currently_selected_stage_(nullptr),
+    ui(new Ui::MainWindow),
     ac_enabled(true)
 {
     ui->setupUi(this);
@@ -43,6 +43,24 @@ MainWindow::~MainWindow()
         Py_DECREF(held_buffer.second);
 
     delete ui;
+}
+
+void MainWindow::draw()
+{
+    if(currently_selected_stage_ != nullptr) {
+        currently_selected_stage_->draw();
+    }
+}
+
+void MainWindow::get_observed_variables(PyObject *observed_set)
+{
+    for(const auto& stage: stages_) {
+#if PY_MAJOR_VERSION >= 3
+        PySet_Add(observed_set, PyUnicode_FromString(stage.first.c_str()));
+#else
+        PySet_Add(observed_set, PyString_FromString(stage.first.c_str()));
+#endif
+    }
 }
 
 void MainWindow::reset_ac_min_labels()
@@ -119,13 +137,14 @@ void MainWindow::loop() {
             }
             stages_[request.var_name_str] = stage;
 
-            int bytes_per_line = request.width_i * request.channels;
+            int bytes_per_line = request.step * request.channels;
             QImage bufferIcon(buffer, request.width_i, request.height_i, bytes_per_line,
                               QImage::Format_RGB888);
             if(bufferIcon.width() > bufferIcon.height())
                 bufferIcon = bufferIcon.scaledToWidth(200);
             else
                 bufferIcon = bufferIcon.scaledToHeight(100);
+            bufferIcon.save("/tmp/teste.png");
 
             stringstream label;
             label << request.var_name_str << "\n[" << request.width_i << "x" <<
@@ -156,7 +175,6 @@ void MainWindow::loop() {
     ui->bufferPreview->updateGL();
     if(currently_selected_stage_ != nullptr) {
         currently_selected_stage_->update();
-        currently_selected_stage_->draw();
     }
 }
 

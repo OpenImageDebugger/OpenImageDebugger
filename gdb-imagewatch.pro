@@ -18,6 +18,12 @@ SOURCES += src/camera.cpp\
            src/glcanvas.cpp \
            src/stage.cpp
 
+required_resources.path = $$OUT_PWD
+required_resources.files = resources/serif.ttf
+                           resources/gdb-imagewatch.py
+
+INSTALLS += required_resources
+
 CONFIG += link_pkgconfig \
           c++11 \
           no_keywords

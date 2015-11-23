@@ -5,7 +5,11 @@ import ctypes
 import os
 from ctypes import cdll
 import pysigset, signal
+import threading
+import time
 
+##
+# Load imagewatch library and set up its API
 script_path = os.path.dirname(os.path.realpath(__file__))
 lib = cdll.LoadLibrary(script_path+'/libgdb-imagewatch.so')
 lib.plot_binary.argtypes = [ctypes.py_object, # Buffer ptr
@@ -22,41 +26,60 @@ lib.update_plot.argtypes = [ctypes.py_object, # Buffer ptr
                             ctypes.c_int, # Number of channels
                             ctypes.c_int, # Type (0=float32, 1=uint8)
                             ctypes.c_int] # Step size (in pixels)
+lib.get_observed_variables.argtypes = [ctypes.py_object] # Observed variables set
+lib.update_plot.rettype = ctypes.c_bool # Buffer ptr
 
-"""
-if __name__ == "__main__":
+def initialize_window():
+    ##
+    # Initialize imagewatch window
+    with pysigset.suspended_signals(signal.SIGCHLD):
+        # By default, my new threads will be the ones receiving the precious
+        # signals from the operating system. These signals should go to GDB so it
+        # could do its thing, and since it doesnt get them, my thread will make gdb
+        # hang. The solution is to configure the new thread to forward the signal
+        # back to the main thread, which is done by pysigset.
+        wnd_thread_instance=threading.Thread(target=lib.initialize_window)
+        wnd_thread_instance.daemon=True
+        wnd_thread_instance.start()
+
+##
+# Test application
+if len(sys.argv)==2 and sys.argv[1] == '--test':
     import numpy
     import math
-    width=2
-    height=2
-    channels=1
+
+    initialize_window()
+
+    width=10
+    height=10
+    channels=3
     tex = [None]*width*height*channels
+    tex2 = [None]*width*height*channels
     for y in range(0,height):
         for x in range(0,width):
             for c in range(0, channels):
-                tex[y*channels*width+channels*x+c] = y/10+x/10#math.cos(x/width*math.pi+c/channels*math.pi/4.0)*255
+                tex[y*channels*width+channels*x+c] = math.cos(x/width*math.pi+c/channels*math.pi/4.0)*255
+                tex2[y*channels*width+channels*x+c] = 10*x+10*y
                 pass
             pass
         pass
 
-    tex_arr = numpy.asarray(tex, numpy.float32)
+    tex_arr = numpy.asarray(tex, numpy.uint8)
+    tex_arr2 = numpy.asarray(tex2, numpy.uint8)
     mem = memoryview(tex_arr)
-    lib.plot_binary(mem, 'python_test', width, height, channels, 0)
+    mem2 = memoryview(tex_arr2)
+    step = width
+    lib.plot_binary(mem, 'python_test', width, height, channels, 1, step)
+    lib.plot_binary(mem2, 'python_test2', width, height, channels, 1, step)
 
+    while lib.is_running():
+        time.sleep(0.5)
+
+    lib.terminate()
     exit()
     pass
-"""
 
 import gdb
-import threading
-
-observed_variables = set()
-def plot_thread(mem, var_name, width, height, channels, type, step):
-    observed_variables.add(str(var_name))
-    print('got step:',step)
-    lib.plot_binary(mem, var_name, width, height, channels, type, step)
-    observed_variables.remove(str(var_name))
-    pass
 
 ##
 # Default values created for OpenCV Mat structures. Change it according to your
@@ -113,11 +136,11 @@ class PlotterCommand(gdb.Command):
         pass
 
     def invoke(self, arg, from_tty):
-        args = gdb.string_to_argv(arg)
+        if not lib.is_running():
+            initialize_window()
 
-        if str(args[0]) in observed_variables:
-            print('Variable '+str(args[0])+ ' is already being visualized!')
-            return
+        args = gdb.string_to_argv(arg)
+        var_name = str(args[0])
 
         picked_obj = gdb.parse_and_eval(args[0])
 
@@ -127,22 +150,15 @@ class PlotterCommand(gdb.Command):
         inferior = gdb.selected_inferior()
         mem = inferior.read_memory(buffer, bytes)
 
-        ##
-        # By default, my new threads will be the ones receiving the precious
-        # signals from the operating system. These signals should go to GDB so
-        # it can do its thing, and since it doesnt get them, my threads will
-        # make gdb hang. The solution is to configure the new thread to forward
-        # the signal back to the main thread, which is done by pysigset.
-        with pysigset.suspended_signals(signal.SIGCHLD):
-            plot_thread_instance=threading.Thread(target=plot_thread, args=(mem, args[0], width, height, channels, type, step))
-            plot_thread_instance.daemon=True
-            plot_thread_instance.start()
+        lib.plot_binary(mem, var_name, width, height, channels, type, step)
         pass
 
     pass
 
 # Update all buffers on each stop event
 def stop_event_handler(event):
+    observed_variables = set()
+    lib.get_observed_variables(observed_variables)
     for variable in observed_variables:
         try:
             picked_obj = gdb.parse_and_eval(variable)

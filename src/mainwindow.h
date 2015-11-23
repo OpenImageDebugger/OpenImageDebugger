@@ -40,6 +40,8 @@ public:
         QMainWindow::show();
     }
 
+    void draw();
+
     void resize_callback(int w, int h) {
         for(auto& stage: stages_)
             stage.second->resize_callback(w, h);
@@ -50,6 +52,8 @@ public:
             currently_selected_stage_->scroll_callback(delta);
         }
     }
+
+    void get_observed_variables(PyObject* observed_set);
 
     void reset_ac_min_labels();
     void reset_ac_max_labels();
@@ -73,12 +77,12 @@ public Q_SLOTS:
 private:
     QTimer update_timer_;
     Stage* currently_selected_stage_;
-    std::map<std::string, std::shared_ptr<Stage>> stages_;
     std::map<std::string, PyObject*> held_buffers_;
     std::mutex mtx_;
     std::deque<BufferRequestMessage> pending_updates_;
     Ui::MainWindow *ui;
     bool ac_enabled;
+    std::map<std::string, std::shared_ptr<Stage>> stages_;
 
     QListWidgetItem* generateListItem(BufferRequestMessage&);
     void set_ac_min_value(int idx, float value);

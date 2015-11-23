@@ -49,9 +49,7 @@ public:
 
     void initializeGL();
 
-    void paintGL() {
-        swapBuffers();
-    }
+    void paintGL();
 
     void resizeGL(int w, int h);
 

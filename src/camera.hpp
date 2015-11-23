@@ -9,7 +9,7 @@ public:
     mat4 projection;
 
     void update();
-    void draw(const mat4& projection, const mat4& viewInv) {}
+    void draw(const mat4&, const mat4&) {}
 
     bool post_buffer_update();
     bool post_initialize();

@@ -14,7 +14,14 @@ void GLCanvas::initializeGL() {
 }
 
 void GLCanvas::resizeGL(int w, int h) {
+    glViewport(0, 0, w, h);
     main_window_->resize_callback(w,h);
+}
+
+void GLCanvas::paintGL() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    main_window_->draw();
+    swapBuffers();
 }
 
 void GLCanvas::wheelEvent(QWheelEvent* ev) {

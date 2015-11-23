@@ -24,17 +24,24 @@ extern "C" {
     void initialize_window();
     void terminate();
     bool is_running();
+    void get_observed_variables(PyObject* observed_set);
     void plot_binary( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
             int buffer_height_i, int channels, int type, int step);
     void update_plot( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
             int buffer_height_i, int channels, int type, int step);
 }
 
-MainWindow* wnd;
+MainWindow* wnd = nullptr;
 bool is_running_ = false;
 
 bool is_running() {
     return is_running_;
+}
+
+void get_observed_variables(PyObject* observed_set) {
+    if(wnd != nullptr) {
+        wnd->get_observed_variables(observed_set);
+    }
 }
 
 void update_plot( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
@@ -85,11 +92,11 @@ void signalHandler( int signum )
 }
 
 void initialize_window() {
-    char* argv[] = { "GDB ImageWatch", NULL };
+    const char* argv[] = { "GDB ImageWatch", NULL };
     int argc = 1;
     sighandler_t gdb_sigchld_handler = std::signal(SIGCHLD, signalHandler);
 
-    QApplication app(argc, &argv[0]);
+    QApplication app(argc, const_cast<char**>(&argv[0]));
     MainWindow window;
     window.show();
     wnd = &window;
@@ -100,6 +107,7 @@ void initialize_window() {
 
     app.exec();
 
+    wnd = nullptr;
     is_running_ = false;
 }
 
