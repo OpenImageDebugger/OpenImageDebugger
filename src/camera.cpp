@@ -6,6 +6,8 @@
 
 void Camera::window_resized(int w, int h) {
     projection.setOrthoProjection(w/2.0, h/2.0, -1.0f, 1.0f);
+    canvas_width_ = w;
+    canvas_height_ = h;
 }
 
 void Camera::update() {
@@ -35,10 +37,7 @@ void Camera::reset_buffer_origin() {
 bool Camera::post_initialize() {
     reset_buffer_origin();
 
-    int w = gl_canvas->width();
-    int h = gl_canvas->height();
-
-    window_resized(w, h);
+    window_resized(gl_canvas->width(), gl_canvas->height());
     set_initial_zoom();
 
     return true;
@@ -51,26 +50,25 @@ void Camera::set_model_matrix() {
 }
 
 void Camera::set_initial_zoom() {
-    int win_w = gl_canvas->width();
-    int win_h = gl_canvas->height();
     Buffer* buff = stage->getComponent<Buffer>("buffer_component");
     float buf_w = buff->buffer_width_f;
     float buf_h = buff->buffer_height_f;
+    zoom_power_ = 0.0;
 
-    if(win_w>buf_w && win_h>buf_h) {
+    if(canvas_width_>buf_w && canvas_height_>buf_h) {
         // Zoom in
         zoom_power_ += 1.0;
         float new_zoom = pow(zoom_factor, zoom_power_);
-        while(win_w>new_zoom*buf_w && win_h>new_zoom*buf_h) {
+        while(canvas_width_>new_zoom*buf_w && canvas_height_>new_zoom*buf_h) {
             zoom_power_ += 1.0;
             new_zoom = pow(zoom_factor, zoom_power_);
         }
         zoom_power_ -= 1.0;
-    } else if(win_w<buf_w || win_h<buf_h) {
+    } else if(canvas_width_<buf_w || canvas_height_<buf_h) {
         // Zoom out
         zoom_power_ -= 1.0;
         float new_zoom = pow(zoom_factor, zoom_power_);
-        while(win_w<new_zoom*buf_w || win_h<new_zoom*buf_h) {
+        while(canvas_width_<new_zoom*buf_w || canvas_height_<new_zoom*buf_h) {
             zoom_power_ -= 1.0;
             new_zoom = pow(zoom_factor, zoom_power_);
         }

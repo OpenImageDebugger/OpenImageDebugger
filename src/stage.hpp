@@ -124,6 +124,8 @@ public:
 
     bool contrast_enabled;
 
+    std::vector<uint8_t> buffer_icon_;
+
 private:
     std::map<std::string, std::shared_ptr<Component>> all_components;
 };

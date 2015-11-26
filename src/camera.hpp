@@ -21,10 +21,10 @@ public:
         zoom = pow(zoom_factor, zoom_power_);
         set_model_matrix();
     }
+    void set_initial_zoom();
 
 private:
     void reset_buffer_origin();
-    void set_initial_zoom();
     void set_model_matrix();
     float zoom_power_ = 0.0;
     float buffer_origin_x_ = 0.0;
@@ -33,5 +33,7 @@ private:
     float camera_pos_y_ = 0.0;
     float last_mouse_x;
     float last_mouse_y;
+    int canvas_width_;
+    int canvas_height_;
 };
 

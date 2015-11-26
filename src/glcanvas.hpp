@@ -57,6 +57,8 @@ public:
         main_window_ = mw;
     }
 
+    void render_buffer_icon(Stage *stage);
+
     void wheelEvent(QWheelEvent* ev);
 
 private:
@@ -64,4 +66,6 @@ private:
     int mouseY_;
     bool mouseDown_[2];
     MainWindow* main_window_;
+    GLuint icon_texture_;
+    GLuint icon_fbo_;
 };

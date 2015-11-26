@@ -19,7 +19,7 @@ SOURCES += src/camera.cpp\
            src/stage.cpp
 
 required_resources.path = $$OUT_PWD
-required_resources.files = resources/serif.ttf
+required_resources.files = resources/serif.ttf \
                            resources/gdb-imagewatch.py
 
 INSTALLS += required_resources

@@ -137,21 +137,14 @@ void MainWindow::loop() {
             }
             stages_[request.var_name_str] = stage;
 
-            int bytes_per_line = request.step * request.channels;
             QImage bufferIcon;
-            if(request.channels == 1)
-                bufferIcon = QImage(buffer, request.width_i, request.height_i, bytes_per_line,
-                              QImage::Format_Mono);
-            else {
-                assert(request.channels == 3);
-                bufferIcon = QImage(buffer, request.width_i, request.height_i, bytes_per_line,
-                              QImage::Format_RGB888);
-            }
-            if(bufferIcon.width() > bufferIcon.height())
-                bufferIcon = bufferIcon.scaledToWidth(200);
-            else
-                bufferIcon = bufferIcon.scaledToHeight(100);
-            bufferIcon.save("/tmp/teste.png");
+            ui->bufferPreview->render_buffer_icon(stage.get());
+
+            const int icon_width = 200;
+            const int icon_height = 100;
+            int bytes_per_line = icon_width * 3;
+            bufferIcon = QImage(stage->buffer_icon_.data(), icon_width,
+                                icon_height, bytes_per_line, QImage::Format_RGB888);
 
             stringstream label;
             label << request.var_name_str << "\n[" << request.width_i << "x" <<
