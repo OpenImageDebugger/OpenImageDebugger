@@ -94,7 +94,7 @@
             <rect>
              <x>150</x>
              <y>11</y>
-             <width>118</width>
+             <width>120</width>
              <height>24</height>
             </rect>
            </property>
@@ -133,6 +133,38 @@
             <bool>true</bool>
            </property>
            <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+          <widget class="QToolButton" name="reposition_buffer">
+           <property name="geometry">
+            <rect>
+             <x>270</x>
+             <y>11</y>
+             <width>100</width>
+             <height>24</height>
+            </rect>
+           </property>
+           <property name="toolTip">
+            <string extracomment="Reposition buffer on center"/>
+           </property>
+           <property name="text">
+            <string>reposition</string>
+           </property>
+          </widget>
+          <widget class="QToolButton" name="linkViewsToggle">
+           <property name="geometry">
+            <rect>
+             <x>370</x>
+             <y>11</y>
+             <width>90</width>
+             <height>24</height>
+            </rect>
+           </property>
+           <property name="text">
+            <string>link views</string>
+           </property>
+           <property name="checkable">
             <bool>true</bool>
            </property>
           </widget>

@@ -35,28 +35,20 @@ public:
     void plot_buffer(BufferRequestMessage& buff);
     ~MainWindow();
 
-    void show() {
-        update_timer_.start(16);
-        QMainWindow::show();
-    }
+    void show();
 
     void draw();
 
-    void resize_callback(int w, int h) {
-        for(auto& stage: stages_)
-            stage.second->resize_callback(w, h);
-    }
+    void resize_callback(int w, int h);
 
-    void scroll_callback(float delta) {
-        if(currently_selected_stage_ != nullptr) {
-            currently_selected_stage_->scroll_callback(delta);
-        }
-    }
+    void scroll_callback(float delta);
 
     void get_observed_variables(PyObject* observed_set);
 
     void reset_ac_min_labels();
     void reset_ac_max_labels();
+
+    void mouse_drag_event(int mouse_x, int mouse_y);
 
 public Q_SLOTS:
     void loop();
@@ -74,14 +66,19 @@ public Q_SLOTS:
 
     void ac_toggle();
 
+    void recenter_buffer();
+
+    void link_views_toggle();
+
 private:
     QTimer update_timer_;
     Stage* currently_selected_stage_;
     std::map<std::string, PyObject*> held_buffers_;
     std::mutex mtx_;
     std::deque<BufferRequestMessage> pending_updates_;
-    Ui::MainWindow *ui;
-    bool ac_enabled;
+    Ui::MainWindow *ui_;
+    bool ac_enabled_;
+    bool link_views_enabled_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
 
     QListWidgetItem* generateListItem(BufferRequestMessage&);

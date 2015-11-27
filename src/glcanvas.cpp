@@ -2,6 +2,37 @@
 #include "mainwindow.h"
 #include "glcanvas.hpp"
 
+GLCanvas::GLCanvas(QWidget *parent) : QGLWidget(parent) {
+    mouseDown_[0] = mouseDown_[1] = false;
+}
+
+void GLCanvas::mouseMoveEvent(QMouseEvent *ev) {
+    int last_mouse_x = mouseX_;
+    int last_mouse_y = mouseY_;
+
+    mouseX_ = ev->localPos().x();
+    mouseY_ = ev->localPos().y();
+
+    if(mouseDown_[0]) {
+        main_window_->mouse_drag_event(mouseX_ - last_mouse_x,
+                                       mouseY_ - last_mouse_y);
+    }
+}
+
+void GLCanvas::mousePressEvent(QMouseEvent *ev) {
+    if(ev->button() == Qt::LeftButton)
+        mouseDown_[0] = true;
+    if(ev->button() == Qt::RightButton)
+        mouseDown_[1] = true;
+}
+
+void GLCanvas::mouseReleaseEvent(QMouseEvent *ev) {
+    if(ev->button() == Qt::LeftButton)
+        mouseDown_[0] = false;
+    if(ev->button() == Qt::RightButton)
+        mouseDown_[1] = false;
+}
+
 void GLCanvas::initializeGL() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -71,6 +102,10 @@ void GLCanvas::render_buffer_icon(Stage* stage) {
 void GLCanvas::resizeGL(int w, int h) {
     glViewport(0, 0, w, h);
     main_window_->resize_callback(w,h);
+}
+
+void GLCanvas::set_main_window(MainWindow *mw) {
+    main_window_ = mw;
 }
 
 void GLCanvas::paintGL() {

@@ -6,35 +6,40 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     currently_selected_stage_(nullptr),
-    ui(new Ui::MainWindow),
-    ac_enabled(true)
+    ui_(new Ui::MainWindow),
+    ac_enabled_(true),
+    link_views_enabled_(false)
 {
-    ui->setupUi(this);
+    ui_->setupUi(this);
 
     connect(&update_timer_, SIGNAL(timeout()), this, SLOT(loop()));
-    connect(ui->imageList, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(buffer_selected(QListWidgetItem*)));
-    ui->bufferPreview->set_main_window(this);
+    connect(ui_->imageList, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(buffer_selected(QListWidgetItem*)));
+    ui_->bufferPreview->set_main_window(this);
 
     // Configure auto contrast inputs
-    ui->ac_red_min->setValidator(   new QDoubleValidator() );
-    ui->ac_green_min->setValidator( new QDoubleValidator() );
-    ui->ac_blue_min->setValidator(  new QDoubleValidator() );
+    ui_->ac_red_min->setValidator(   new QDoubleValidator() );
+    ui_->ac_green_min->setValidator( new QDoubleValidator() );
+    ui_->ac_blue_min->setValidator(  new QDoubleValidator() );
 
-    ui->ac_red_max->setValidator(   new QDoubleValidator() );
-    ui->ac_green_max->setValidator( new QDoubleValidator() );
-    ui->ac_blue_max->setValidator(  new QDoubleValidator() );
+    ui_->ac_red_max->setValidator(   new QDoubleValidator() );
+    ui_->ac_green_max->setValidator( new QDoubleValidator() );
+    ui_->ac_blue_max->setValidator(  new QDoubleValidator() );
 
-    connect(ui->ac_red_min, SIGNAL(editingFinished()), this, SLOT(ac_red_min_update()));
-    connect(ui->ac_red_max, SIGNAL(editingFinished()), this, SLOT(ac_red_max_update()));
-    connect(ui->ac_green_min, SIGNAL(editingFinished()), this, SLOT(ac_green_min_update()));
-    connect(ui->ac_green_max, SIGNAL(editingFinished()), this, SLOT(ac_green_max_update()));
-    connect(ui->ac_blue_min, SIGNAL(editingFinished()), this, SLOT(ac_blue_min_update()));
-    connect(ui->ac_blue_max, SIGNAL(editingFinished()), this, SLOT(ac_blue_max_update()));
+    connect(ui_->ac_red_min, SIGNAL(editingFinished()), this, SLOT(ac_red_min_update()));
+    connect(ui_->ac_red_max, SIGNAL(editingFinished()), this, SLOT(ac_red_max_update()));
+    connect(ui_->ac_green_min, SIGNAL(editingFinished()), this, SLOT(ac_green_min_update()));
+    connect(ui_->ac_green_max, SIGNAL(editingFinished()), this, SLOT(ac_green_max_update()));
+    connect(ui_->ac_blue_min, SIGNAL(editingFinished()), this, SLOT(ac_blue_min_update()));
+    connect(ui_->ac_blue_max, SIGNAL(editingFinished()), this, SLOT(ac_blue_max_update()));
 
-    connect(ui->ac_reset_min, SIGNAL(clicked()), this, SLOT(ac_min_reset()));
-    connect(ui->ac_reset_max, SIGNAL(clicked()), this, SLOT(ac_max_reset()));
+    connect(ui_->ac_reset_min, SIGNAL(clicked()), this, SLOT(ac_min_reset()));
+    connect(ui_->ac_reset_max, SIGNAL(clicked()), this, SLOT(ac_max_reset()));
 
-    connect(ui->acToggle, SIGNAL(clicked()), this, SLOT(ac_toggle()));
+    connect(ui_->acToggle, SIGNAL(clicked()), this, SLOT(ac_toggle()));
+
+    connect(ui_->reposition_buffer, SIGNAL(clicked()), this, SLOT(recenter_buffer()));
+
+    connect(ui_->linkViewsToggle, SIGNAL(clicked()), this, SLOT(link_views_toggle()));
 }
 
 MainWindow::~MainWindow()
@@ -42,13 +47,35 @@ MainWindow::~MainWindow()
     for(auto& held_buffer: held_buffers_)
         Py_DECREF(held_buffer.second);
 
-    delete ui;
+    delete ui_;
+}
+
+void MainWindow::show() {
+    update_timer_.start(16);
+    QMainWindow::show();
 }
 
 void MainWindow::draw()
 {
     if(currently_selected_stage_ != nullptr) {
         currently_selected_stage_->draw();
+    }
+}
+
+void MainWindow::resize_callback(int w, int h)
+{
+    for(auto& stage: stages_)
+        stage.second->resize_callback(w, h);
+}
+
+void MainWindow::scroll_callback(float delta)
+{
+    if(link_views_enabled_) {
+        for(auto& stage: stages_) {
+            stage.second->scroll_callback(delta);
+        }
+    } else if(currently_selected_stage_ != nullptr) {
+        currently_selected_stage_->scroll_callback(delta);
     }
 }
 
@@ -68,18 +95,18 @@ void MainWindow::reset_ac_min_labels()
     Buffer* buffer = currently_selected_stage_->getComponent<Buffer>("buffer_component");
     float* ac_min = buffer->min_buffer_values();
 
-    ui->ac_red_min->setText(QString::number(ac_min[0]));
+    ui_->ac_red_min->setText(QString::number(ac_min[0]));
 
     if(buffer->channels == 3) {
-        if(!ui->ac_green_min->isEnabled()) {
-            ui->ac_green_min->setEnabled(true);
-            ui->ac_blue_min->setEnabled(true);
+        if(!ui_->ac_green_min->isEnabled()) {
+            ui_->ac_green_min->setEnabled(true);
+            ui_->ac_blue_min->setEnabled(true);
         }
-        ui->ac_green_min->setText(QString::number(ac_min[1]));
-        ui->ac_blue_min->setText(QString::number(ac_min[2]));
+        ui_->ac_green_min->setText(QString::number(ac_min[1]));
+        ui_->ac_blue_min->setText(QString::number(ac_min[2]));
     } else {
-        ui->ac_green_min->setEnabled(false);
-        ui->ac_blue_min->setEnabled(false);
+        ui_->ac_green_min->setEnabled(false);
+        ui_->ac_blue_min->setEnabled(false);
     }
 }
 
@@ -88,17 +115,28 @@ void MainWindow::reset_ac_max_labels()
     Buffer* buffer = currently_selected_stage_->getComponent<Buffer>("buffer_component");
     float* ac_max = buffer->max_buffer_values();
 
-    ui->ac_red_max->setText(QString::number(ac_max[0]));
+    ui_->ac_red_max->setText(QString::number(ac_max[0]));
     if(buffer->channels == 3) {
-        if(!ui->ac_green_max->isEnabled()) {
-            ui->ac_green_max->setEnabled(true);
-            ui->ac_blue_max->setEnabled(true);
+        if(!ui_->ac_green_max->isEnabled()) {
+            ui_->ac_green_max->setEnabled(true);
+            ui_->ac_blue_max->setEnabled(true);
         }
-        ui->ac_green_max->setText(QString::number(ac_max[1]));
-        ui->ac_blue_max->setText(QString::number(ac_max[2]));
+        ui_->ac_green_max->setText(QString::number(ac_max[1]));
+        ui_->ac_blue_max->setText(QString::number(ac_max[2]));
     } else {
-        ui->ac_green_max->setEnabled(false);
-        ui->ac_blue_max->setEnabled(false);
+        ui_->ac_green_max->setEnabled(false);
+        ui_->ac_blue_max->setEnabled(false);
+    }
+}
+
+void MainWindow::mouse_drag_event(int mouse_x, int mouse_y)
+{
+    if(link_views_enabled_) {
+        for(auto& stage: stages_)
+            stage.second->mouse_drag_event(mouse_x, mouse_y);
+    } else if(currently_selected_stage_ != nullptr) {
+        currently_selected_stage_->mouse_drag_event(mouse_x, mouse_y);
+        cout << mouse_x << ","<<mouse_y<<endl;
     }
 }
 
@@ -131,14 +169,14 @@ void MainWindow::loop() {
             // New buffer request
             held_buffers_[request.var_name_str] = request.py_buffer;
             shared_ptr<Stage> stage = make_shared<Stage>();
-            if(!stage->initialize(ui->bufferPreview, buffer, request.width_i, request.height_i,
-                                  request.channels, request.type, request.step, ac_enabled)) {
+            if(!stage->initialize(ui_->bufferPreview, buffer, request.width_i, request.height_i,
+                                  request.channels, request.type, request.step, ac_enabled_)) {
                 cerr << "[error] Could not initialize opengl canvas!"<<endl;
             }
             stages_[request.var_name_str] = stage;
 
             QImage bufferIcon;
-            ui->bufferPreview->render_buffer_icon(stage.get());
+            ui_->bufferPreview->render_buffer_icon(stage.get());
 
             const int icon_width = 200;
             const int icon_height = 100;
@@ -155,7 +193,7 @@ void MainWindow::loop() {
             item->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
             item->setSizeHint(QSize(205,bufferIcon.height() + 90));
             item->setTextAlignment(Qt::AlignHCenter);
-            ui->imageList->addItem(item);
+            ui_->imageList->addItem(item);
         } else {
             Py_DECREF(held_buffers_[request.var_name_str]);
             held_buffers_[request.var_name_str] = request.py_buffer;
@@ -172,7 +210,7 @@ void MainWindow::loop() {
         pending_updates_.pop_front();
     }
 
-    ui->bufferPreview->updateGL();
+    ui_->bufferPreview->updateGL();
     if(currently_selected_stage_ != nullptr) {
         currently_selected_stage_->update();
     }
@@ -189,17 +227,17 @@ void MainWindow::buffer_selected(QListWidgetItem * item) {
 
 void MainWindow::ac_red_min_update()
 {
-    set_ac_min_value(0, ui->ac_red_min->text().toFloat());
+    set_ac_min_value(0, ui_->ac_red_min->text().toFloat());
 }
 
 void MainWindow::ac_green_min_update()
 {
-    set_ac_min_value(1, ui->ac_green_min->text().toFloat());
+    set_ac_min_value(1, ui_->ac_green_min->text().toFloat());
 }
 
 void MainWindow::ac_blue_min_update()
 {
-    set_ac_min_value(2, ui->ac_blue_min->text().toFloat());
+    set_ac_min_value(2, ui_->ac_blue_min->text().toFloat());
 }
 
 void MainWindow::set_ac_min_value(int idx, float value)
@@ -222,17 +260,17 @@ void MainWindow::set_ac_max_value(int idx, float value)
 
 void MainWindow::ac_red_max_update()
 {
-    set_ac_max_value(0, ui->ac_red_max->text().toFloat());
+    set_ac_max_value(0, ui_->ac_red_max->text().toFloat());
 }
 
 void MainWindow::ac_green_max_update()
 {
-    set_ac_max_value(1, ui->ac_green_max->text().toFloat());
+    set_ac_max_value(1, ui_->ac_green_max->text().toFloat());
 }
 
 void MainWindow::ac_blue_max_update()
 {
-    set_ac_max_value(2, ui->ac_blue_max->text().toFloat());
+    set_ac_max_value(2, ui_->ac_blue_max->text().toFloat());
 }
 
 void MainWindow::ac_min_reset()
@@ -261,7 +299,20 @@ void MainWindow::ac_max_reset()
 
 void MainWindow::ac_toggle()
 {
-    ac_enabled = !ac_enabled;
+    ac_enabled_ = !ac_enabled_;
     for(auto& stage: stages_)
-        stage.second->contrast_enabled = ac_enabled;
+        stage.second->contrast_enabled = ac_enabled_;
+}
+
+void MainWindow::recenter_buffer()
+{
+   if(currently_selected_stage_ != nullptr) {
+       Camera* cam = currently_selected_stage_->getComponent<Camera>("camera_component");
+       cam->recenter_camera();
+   }
+}
+
+void MainWindow::link_views_toggle()
+{
+    link_views_enabled_ = !link_views_enabled_;
 }

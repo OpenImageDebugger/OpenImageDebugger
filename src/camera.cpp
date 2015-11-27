@@ -10,17 +10,13 @@ void Camera::window_resized(int w, int h) {
     canvas_height_ = h;
 }
 
+void Camera::scroll_callback(float delta) {
+    zoom_power_ += delta;
+    zoom = pow(zoom_factor, zoom_power_);
+    set_model_matrix();
+}
+
 void Camera::update() {
-    float mouseX = gl_canvas->mouseX();
-    float mouseY = gl_canvas->mouseY();
-    if(gl_canvas->isMouseDown()) {
-        // Mouse is down. Update camera_pos_x_/camera_pos_y_
-        camera_pos_x_ += (mouseX-last_mouse_x)/zoom;
-        camera_pos_y_ += (mouseY-last_mouse_y)/zoom;
-        set_model_matrix();
-    }
-    last_mouse_x = mouseX;
-    last_mouse_y = mouseY;
 }
 
 void Camera::reset_buffer_origin() {
@@ -75,6 +71,22 @@ void Camera::set_initial_zoom() {
     }
 
     zoom = pow(zoom_factor, zoom_power_);
+    set_model_matrix();
+}
+
+void Camera::recenter_camera()
+{
+    camera_pos_x_ = camera_pos_y_ = 0.0f;
+    reset_buffer_origin();
+    set_initial_zoom();
+}
+
+void Camera::mouse_drag_event(int mouseX, int mouseY)
+{
+    // Mouse is down. Update camera_pos_x_/camera_pos_y_
+    camera_pos_x_ += mouseX/zoom;
+    camera_pos_y_ += mouseY/zoom;
+
     set_model_matrix();
 }
 

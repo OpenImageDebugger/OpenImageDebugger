@@ -16,12 +16,12 @@ public:
 
     void window_resized(int w, int h);
     
-    void scroll_callback(float delta) {
-        zoom_power_ += delta;
-        zoom = pow(zoom_factor, zoom_power_);
-        set_model_matrix();
-    }
+    void scroll_callback(float delta);
     void set_initial_zoom();
+
+    void recenter_camera();
+
+    void mouse_drag_event(int mouse_x, int mouse_y);
 
 private:
     void reset_buffer_origin();
@@ -31,8 +31,6 @@ private:
     float buffer_origin_y_ = 0.0;
     float camera_pos_x_ = 0.0;
     float camera_pos_y_ = 0.0;
-    float last_mouse_x;
-    float last_mouse_y;
     int canvas_width_;
     int canvas_height_;
 };

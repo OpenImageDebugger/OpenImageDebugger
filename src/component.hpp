@@ -19,6 +19,9 @@ public:
         return true;
     }
 
+    virtual void mouse_drag_event(int /* mouse_x */,
+                                  int /* mouse_y */) {}
+
     // Called after all components are initialized
     virtual bool post_initialize() {
         return true;

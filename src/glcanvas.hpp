@@ -20,28 +20,13 @@ public:
         return mouseY_;
     }
 
-    explicit GLCanvas(QWidget* parent = 0) : QGLWidget(parent) {
-        mouseDown_[0] = mouseDown_[1] = false;
-    }
+    explicit GLCanvas(QWidget* parent = 0);
 
-    void mouseMoveEvent(QMouseEvent* ev) {
-        mouseX_ = ev->localPos().x();
-        mouseY_ = ev->localPos().y();
-    }
+    void mouseMoveEvent(QMouseEvent* ev);
 
-    void mousePressEvent(QMouseEvent* ev) {
-        if(ev->button() == Qt::LeftButton)
-            mouseDown_[0] = true;
-        if(ev->button() == Qt::RightButton)
-            mouseDown_[1] = true;
-    }
+    void mousePressEvent(QMouseEvent* ev);
 
-    void mouseReleaseEvent(QMouseEvent* ev) {
-        if(ev->button() == Qt::LeftButton)
-            mouseDown_[0] = false;
-        if(ev->button() == Qt::RightButton)
-            mouseDown_[1] = false;
-    }
+    void mouseReleaseEvent(QMouseEvent* ev);
 
     bool isMouseDown() {
         return mouseDown_[0];
@@ -53,9 +38,7 @@ public:
 
     void resizeGL(int w, int h);
 
-    void set_main_window(MainWindow* mw) {
-        main_window_ = mw;
-    }
+    void set_main_window(MainWindow* mw);
 
     void render_buffer_icon(Stage *stage);
 
