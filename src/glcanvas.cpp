@@ -16,6 +16,9 @@ void GLCanvas::mouseMoveEvent(QMouseEvent *ev) {
     if(mouseDown_[0]) {
         main_window_->mouse_drag_event(mouseX_ - last_mouse_x,
                                        mouseY_ - last_mouse_y);
+    } else {
+        main_window_->mouse_move_event(mouseX_ - last_mouse_x,
+                                       mouseY_ - last_mouse_y);
     }
 }
 

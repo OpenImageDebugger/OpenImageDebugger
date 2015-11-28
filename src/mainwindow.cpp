@@ -1,4 +1,5 @@
 #include <sstream>
+#include <iomanip>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -40,6 +41,11 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui_->reposition_buffer, SIGNAL(clicked()), this, SLOT(recenter_buffer()));
 
     connect(ui_->linkViewsToggle, SIGNAL(clicked()), this, SLOT(link_views_toggle()));
+
+    status_bar = new QLabel();
+    status_bar->setAlignment(Qt::AlignRight);
+    setStyleSheet("QStatusBar::item { border: 0px solid black };");
+    statusBar()->addWidget(status_bar, 1);
 }
 
 MainWindow::~MainWindow()
@@ -77,6 +83,8 @@ void MainWindow::scroll_callback(float delta)
     } else if(currently_selected_stage_ != nullptr) {
         currently_selected_stage_->scroll_callback(delta);
     }
+
+    update_statusbar();
 }
 
 void MainWindow::get_observed_variables(PyObject *observed_set)
@@ -138,6 +146,11 @@ void MainWindow::mouse_drag_event(int mouse_x, int mouse_y)
         currently_selected_stage_->mouse_drag_event(mouse_x, mouse_y);
         cout << mouse_x << ","<<mouse_y<<endl;
     }
+}
+
+void MainWindow::mouse_move_event(int, int)
+{
+    update_statusbar();
 }
 
 void MainWindow::plot_buffer(BufferRequestMessage &buff)
@@ -222,6 +235,8 @@ void MainWindow::buffer_selected(QListWidgetItem * item) {
         currently_selected_stage_ = stage->second.get();
         reset_ac_min_labels();
         reset_ac_max_labels();
+
+        update_statusbar();
     }
 }
 
@@ -256,6 +271,29 @@ void MainWindow::set_ac_max_value(int idx, float value)
        buff->max_buffer_values()[idx] = value;
        buff->computeContrastBrightnessParameters();
    }
+}
+
+void MainWindow::update_statusbar()
+{
+    if(currently_selected_stage_ != nullptr) {
+        stringstream message;
+        Camera* cam = currently_selected_stage_->getComponent<Camera>("camera_component");
+
+        float mouseX = ui_->bufferPreview->mouseX();
+        float mouseY = ui_->bufferPreview->mouseY();
+        float winW = ui_->bufferPreview->width();
+        float winH = ui_->bufferPreview->height();
+        vec4 mouse_pos_ndc( 2.0*(mouseX-winW/2)/winW, -2.0*(mouseY-winH/2)/winH, 0,1);
+        mat4 view = cam->model.inv();
+        mat4 vp_inv = (cam->projection*view).inv();
+
+        vec4 mouse_pos = vp_inv * mouse_pos_ndc;
+
+        message << std::fixed << std::setprecision(1) <<
+                   "(" << floorf(mouse_pos.x) << "," << floorf(mouse_pos.y) << ")\t" <<
+                   cam->zoom * 100.0 << "%";
+        status_bar->setText(message.str().c_str());
+    }
 }
 
 void MainWindow::ac_red_max_update()

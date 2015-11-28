@@ -8,6 +8,7 @@
 #include <string>
 #include <QTimer>
 #include <QListWidgetItem>
+#include <QLabel>
 
 #include "glcanvas.hpp"
 #include "stage.hpp"
@@ -49,6 +50,7 @@ public:
     void reset_ac_max_labels();
 
     void mouse_drag_event(int mouse_x, int mouse_y);
+    void mouse_move_event(int mouse_x, int mouse_y);
 
 public Q_SLOTS:
     void loop();
@@ -80,10 +82,13 @@ private:
     bool ac_enabled_;
     bool link_views_enabled_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
+    QLabel *status_bar;
 
     QListWidgetItem* generateListItem(BufferRequestMessage&);
     void set_ac_min_value(int idx, float value);
     void set_ac_max_value(int idx, float value);
+
+    void update_statusbar();
 };
 
 #endif // MAINWINDOW_H
