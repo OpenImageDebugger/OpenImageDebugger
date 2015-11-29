@@ -144,7 +144,6 @@ void MainWindow::mouse_drag_event(int mouse_x, int mouse_y)
             stage.second->mouse_drag_event(mouse_x, mouse_y);
     } else if(currently_selected_stage_ != nullptr) {
         currently_selected_stage_->mouse_drag_event(mouse_x, mouse_y);
-        cout << mouse_x << ","<<mouse_y<<endl;
     }
 }
 
@@ -193,7 +192,7 @@ void MainWindow::loop() {
 
             const int icon_width = 200;
             const int icon_height = 100;
-            int bytes_per_line = icon_width * 3;
+            const int bytes_per_line = icon_width * 3;
             bufferIcon = QImage(stage->buffer_icon_.data(), icon_width,
                                 icon_height, bytes_per_line, QImage::Format_RGB888);
 
@@ -213,6 +212,25 @@ void MainWindow::loop() {
             buffer_stage->second->buffer_update(buffer, request.width_i, request.height_i,
                                                 request.channels, request.type,
                                                 request.step);
+            // Update buffer icon
+            Stage* stage = stages_[request.var_name_str].get();
+            ui_->bufferPreview->render_buffer_icon(stage);
+
+            // Looking for corresponding item...
+            const int icon_width = 200;
+            const int icon_height = 100;
+            const int bytes_per_line = icon_width * 3;
+            QImage bufferIcon(stage->buffer_icon_.data(), icon_width,
+                                icon_height, bytes_per_line, QImage::Format_RGB888);
+
+            for(int i = 0; i < ui_->imageList->count(); ++i) {
+                QListWidgetItem* item = ui_->imageList->item(i);
+                if(item->data(Qt::UserRole) == request.var_name_str.c_str()) {
+                    item->setIcon(QPixmap::fromImage(bufferIcon));
+                    break;
+                }
+            }
+
             // Update AC values
             if(currently_selected_stage_ != nullptr) {
                 reset_ac_min_labels();

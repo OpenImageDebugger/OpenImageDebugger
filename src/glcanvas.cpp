@@ -66,7 +66,6 @@ void GLCanvas::initializeGL() {
     status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     switch(status) {
     case GL_FRAMEBUFFER_COMPLETE:
-        cout<<"Info: FBO configuration is going to work well -- chill out!" << endl;
         break;
     default:
         cerr << "Error: FBO configuration is not supported -- sorry mate!" << endl;
@@ -82,24 +81,24 @@ void GLCanvas::render_buffer_icon(Stage* stage) {
     glViewport(0, 0, icon_width, icon_height);
 
     Camera* cam = stage->getComponent<Camera>("camera_component");
+    Camera camera_backup(*cam);
 
     // Adapt camera to the thumbnail dimentions
     cam->window_resized(icon_width, icon_height);
     // Flips the projected image along the horizontal axis
     cam->projection.setOrthoProjection(icon_width/2.0, -icon_height/2.0, -1.0f, 1.0f);
-    cam->set_initial_zoom();
+    // Reposition buffer in the center of the canvas
+    cam->recenter_camera();
 
     stage->draw();
     stage->buffer_icon_.resize(3*icon_width*icon_height);
     glReadPixels(0, 0, icon_width, icon_height, GL_RGB, GL_UNSIGNED_BYTE,
                  stage->buffer_icon_.data());
 
+    // Reset stage camera
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
     glViewport(0, 0, width(), height());
-
-    // Reset stage camera
-    cam->window_resized(width(), height());
-    cam->set_initial_zoom();
+    *cam = camera_backup;
 }
 
 void GLCanvas::resizeGL(int w, int h) {
