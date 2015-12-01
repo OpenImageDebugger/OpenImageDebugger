@@ -1,6 +1,8 @@
 #include <sstream>
 #include <iomanip>
 
+#include <QShortcut>
+
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
@@ -12,10 +14,13 @@ MainWindow::MainWindow(QWidget *parent) :
     link_views_enabled_(false)
 {
     ui_->setupUi(this);
+    ui_->splitter->setSizes({210, 100000000});
 
     connect(&update_timer_, SIGNAL(timeout()), this, SLOT(loop()));
-    connect(ui_->imageList, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(buffer_selected(QListWidgetItem*)));
+    connect(ui_->imageList, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), this, SLOT(buffer_selected(QListWidgetItem*)));
     ui_->bufferPreview->set_main_window(this);
+    shortcut = shared_ptr<QShortcut>(new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList));
+    connect(shortcut.get(), SIGNAL(activated()), this, SLOT(remove_selected_buffer()));
 
     // Configure auto contrast inputs
     ui_->ac_red_min->setValidator(   new QDoubleValidator() );
@@ -222,11 +227,15 @@ void MainWindow::loop() {
             const int bytes_per_line = icon_width * 3;
             QImage bufferIcon(stage->buffer_icon_.data(), icon_width,
                                 icon_height, bytes_per_line, QImage::Format_RGB888);
+            stringstream label;
+            label << request.var_name_str << "\n[" << request.width_i << "x" <<
+                     request.height_i << "]\nuint8x3";
 
             for(int i = 0; i < ui_->imageList->count(); ++i) {
                 QListWidgetItem* item = ui_->imageList->item(i);
                 if(item->data(Qt::UserRole) == request.var_name_str.c_str()) {
                     item->setIcon(QPixmap::fromImage(bufferIcon));
+                    item->setText(label.str().c_str());
                     break;
                 }
             }
@@ -371,4 +380,12 @@ void MainWindow::recenter_buffer()
 void MainWindow::link_views_toggle()
 {
     link_views_enabled_ = !link_views_enabled_;
+}
+
+void MainWindow::remove_selected_buffer() {
+    if(ui_->imageList->count() > 0 && currently_selected_stage_ != nullptr) {
+        cout << ui_->imageList->currentRow() << endl;
+        QListWidgetItem* removedItem = ui_->imageList->takeItem(ui_->imageList->currentRow());
+        stages_.erase(removedItem->data(Qt::UserRole).toString().toStdString());
+    }
 }

@@ -157,6 +157,25 @@ class PlotterCommand(gdb.Command):
 
 # Update all buffers on each stop event
 def stop_event_handler(event):
+    ###
+    frame = gdb.selected_frame()
+    block = frame.block()
+    names = set()
+    while block:
+        for symbol in block:
+            if (symbol.is_argument or symbol.is_variable):
+                name = symbol.name
+                if not name in names:
+                    names.add(name)
+                    print(symbol.name,symbol.type)
+                    pass
+                pass
+            pass
+        block = block.superblock
+        pass
+    print(names)
+    ###
+
     observed_variables = set()
     lib.get_observed_variables(observed_variables)
     for variable in observed_variables:

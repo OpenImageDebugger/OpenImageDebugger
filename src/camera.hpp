@@ -4,7 +4,7 @@
 
 class Camera : public Component {
 public:
-    static constexpr float zoom_factor = 1.2;
+    static constexpr float zoom_factor = 1.1;
     float zoom = 1.0;
     mat4 projection;
 

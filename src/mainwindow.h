@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QListWidgetItem>
 #include <QLabel>
+#include <QShortcut>
 
 #include "glcanvas.hpp"
 #include "stage.hpp"
@@ -72,6 +73,8 @@ public Q_SLOTS:
 
     void link_views_toggle();
 
+    void remove_selected_buffer();
+
 private:
     QTimer update_timer_;
     Stage* currently_selected_stage_;
@@ -83,6 +86,7 @@ private:
     bool link_views_enabled_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
     QLabel *status_bar;
+    std::shared_ptr<QShortcut> shortcut;
 
     QListWidgetItem* generateListItem(BufferRequestMessage&);
     void set_ac_min_value(int idx, float value);
