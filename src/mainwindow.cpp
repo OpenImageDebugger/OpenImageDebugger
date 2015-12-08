@@ -19,8 +19,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&update_timer_, SIGNAL(timeout()), this, SLOT(loop()));
     connect(ui_->imageList, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), this, SLOT(buffer_selected(QListWidgetItem*)));
     ui_->bufferPreview->set_main_window(this);
-    shortcut = shared_ptr<QShortcut>(new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList));
-    connect(shortcut.get(), SIGNAL(activated()), this, SLOT(remove_selected_buffer()));
+    buffer_removal_shortcut = shared_ptr<QShortcut>(new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList));
+    connect(buffer_removal_shortcut.get(), SIGNAL(activated()), this, SLOT(remove_selected_buffer()));
 
     // Configure auto contrast inputs
     ui_->ac_red_min->setValidator(   new QDoubleValidator() );
@@ -257,6 +257,9 @@ void MainWindow::loop() {
 }
 
 void MainWindow::buffer_selected(QListWidgetItem * item) {
+    if(item == nullptr)
+        return;
+
     std::map<std::string, std::shared_ptr<Stage>>::iterator stage = stages_.find(item->data(Qt::UserRole).toString().toStdString());
     if(stage != stages_.end()) {
         currently_selected_stage_ = stage->second.get();
@@ -384,8 +387,10 @@ void MainWindow::link_views_toggle()
 
 void MainWindow::remove_selected_buffer() {
     if(ui_->imageList->count() > 0 && currently_selected_stage_ != nullptr) {
-        cout << ui_->imageList->currentRow() << endl;
         QListWidgetItem* removedItem = ui_->imageList->takeItem(ui_->imageList->currentRow());
         stages_.erase(removedItem->data(Qt::UserRole).toString().toStdString());
+
+        if(stages_.size() == 0)
+            currently_selected_stage_ = nullptr;
     }
 }

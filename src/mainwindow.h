@@ -86,7 +86,7 @@ private:
     bool link_views_enabled_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
     QLabel *status_bar;
-    std::shared_ptr<QShortcut> shortcut;
+    std::shared_ptr<QShortcut> buffer_removal_shortcut;
 
     QListWidgetItem* generateListItem(BufferRequestMessage&);
     void set_ac_min_value(int idx, float value);

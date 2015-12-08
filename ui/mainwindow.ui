@@ -61,7 +61,7 @@
            <string/>
           </property>
           <property name="placeholderText">
-           <string>search symbols</string>
+           <string>add symbols</string>
           </property>
          </widget>
         </item>
