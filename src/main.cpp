@@ -21,9 +21,10 @@
 using namespace std;
 
 extern "C" {
-    void initialize_window();
+    void initialize_window(int(*plot_callback)(const char*));
     void terminate();
     bool is_running();
+    void update_available_variables(PyObject* available_set);
     void get_observed_variables(PyObject* observed_set);
     void plot_binary( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
             int buffer_height_i, int channels, int type, int step);
@@ -36,6 +37,10 @@ bool is_running_ = false;
 
 bool is_running() {
     return is_running_;
+}
+
+void update_available_variables(PyObject* available_set) {
+    wnd->update_available_variables(available_set);
 }
 
 void get_observed_variables(PyObject* observed_set) {
@@ -91,7 +96,8 @@ void signalHandler( int signum )
     cout << "SIGNAL (" << signum << ") received.\n";
 }
 
-void initialize_window() {
+void initialize_window(int(*plot_callback)(const char*)) {
+
     const char* argv[] = { "GDB ImageWatch", NULL };
     int argc = 1;
     sighandler_t gdb_sigchld_handler = std::signal(SIGCHLD, signalHandler);
@@ -100,6 +106,7 @@ void initialize_window() {
     MainWindow window;
     window.show();
     wnd = &window;
+    wnd->plot_callback = plot_callback;
     is_running_ = true;
 
     // Restore GDB SIGCHLD handler

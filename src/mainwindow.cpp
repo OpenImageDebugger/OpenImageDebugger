@@ -9,18 +9,24 @@
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     currently_selected_stage_(nullptr),
+    completer_updated_(false),
     ui_(new Ui::MainWindow),
     ac_enabled_(true),
-    link_views_enabled_(false)
+    link_views_enabled_(false),
+    plot_callback(nullptr)
 {
     ui_->setupUi(this);
     ui_->splitter->setSizes({210, 100000000});
 
     connect(&update_timer_, SIGNAL(timeout()), this, SLOT(loop()));
+
     connect(ui_->imageList, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), this, SLOT(buffer_selected(QListWidgetItem*)));
-    ui_->bufferPreview->set_main_window(this);
     buffer_removal_shortcut = shared_ptr<QShortcut>(new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList));
     connect(buffer_removal_shortcut.get(), SIGNAL(activated()), this, SLOT(remove_selected_buffer()));
+
+    connect(ui_->symbolList, SIGNAL(editingFinished()), this, SLOT(on_symbol_selected()));
+
+    ui_->bufferPreview->set_main_window(this);
 
     // Configure auto contrast inputs
     ui_->ac_red_min->setValidator(   new QDoubleValidator() );
@@ -250,6 +256,12 @@ void MainWindow::loop() {
         pending_updates_.pop_front();
     }
 
+    if(completer_updated_) {
+        symbol_completer_ = shared_ptr<QCompleter>(new QCompleter(available_vars_));
+        ui_->symbolList->setCompleter(symbol_completer_.get());
+        completer_updated_ = false;
+    }
+
     ui_->bufferPreview->updateGL();
     if(currently_selected_stage_ != nullptr) {
         currently_selected_stage_->update();
@@ -260,7 +272,7 @@ void MainWindow::buffer_selected(QListWidgetItem * item) {
     if(item == nullptr)
         return;
 
-    std::map<std::string, std::shared_ptr<Stage>>::iterator stage = stages_.find(item->data(Qt::UserRole).toString().toStdString());
+    auto stage = stages_.find(item->data(Qt::UserRole).toString().toStdString());
     if(stage != stages_.end()) {
         currently_selected_stage_ = stage->second.get();
         reset_ac_min_labels();
@@ -385,7 +397,8 @@ void MainWindow::link_views_toggle()
     link_views_enabled_ = !link_views_enabled_;
 }
 
-void MainWindow::remove_selected_buffer() {
+void MainWindow::remove_selected_buffer()
+{
     if(ui_->imageList->count() > 0 && currently_selected_stage_ != nullptr) {
         QListWidgetItem* removedItem = ui_->imageList->takeItem(ui_->imageList->currentRow());
         stages_.erase(removedItem->data(Qt::UserRole).toString().toStdString());
@@ -393,4 +406,21 @@ void MainWindow::remove_selected_buffer() {
         if(stages_.size() == 0)
             currently_selected_stage_ = nullptr;
     }
+}
+
+void MainWindow::update_available_variables(PyObject *available_set)
+{
+    int count = PyList_Size(available_set);
+    for(int i = 0; i < count; ++i) {
+        PyObject *var_name_bytes = PyUnicode_AsEncodedString(PyList_GetItem(available_set, i), "ASCII", "strict");
+        string var_name_str = PyBytes_AS_STRING(var_name_bytes);
+        available_vars_.push_back(var_name_str.c_str());
+    }
+
+    completer_updated_ = true;
+}
+
+void MainWindow::on_symbol_selected() {
+    const char* symbol_name = ui_->symbolList->text().toLocal8Bit().constData();
+    plot_callback(symbol_name);
 }

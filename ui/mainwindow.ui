@@ -41,7 +41,7 @@
          <number>1</number>
         </property>
         <item>
-         <widget class="QLineEdit" name="lineEdit">
+         <widget class="QLineEdit" name="symbolList">
           <property name="minimumSize">
            <size>
             <width>210</width>
@@ -104,7 +104,7 @@
            <bool>true</bool>
           </property>
           <property name="dragDropMode">
-           <enum>QAbstractItemView::NoDragDrop</enum>
+           <enum>QAbstractItemView::DragDrop</enum>
           </property>
           <property name="iconSize">
            <size>

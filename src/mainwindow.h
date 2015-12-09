@@ -10,6 +10,7 @@
 #include <QListWidgetItem>
 #include <QLabel>
 #include <QShortcut>
+#include <QCompleter>
 
 #include "glcanvas.hpp"
 #include "stage.hpp"
@@ -52,6 +53,7 @@ public:
 
     void mouse_drag_event(int mouse_x, int mouse_y);
     void mouse_move_event(int mouse_x, int mouse_y);
+    int(*plot_callback)(const char*);
 
 public Q_SLOTS:
     void loop();
@@ -75,12 +77,22 @@ public Q_SLOTS:
 
     void remove_selected_buffer();
 
+    void update_available_variables(PyObject* available_set);
+
+    void on_symbol_selected();
+
 private:
     QTimer update_timer_;
+
     Stage* currently_selected_stage_;
     std::map<std::string, PyObject*> held_buffers_;
     std::mutex mtx_;
     std::deque<BufferRequestMessage> pending_updates_;
+
+    std::shared_ptr<QCompleter> symbol_completer_;
+    bool completer_updated_;
+    QStringList available_vars_;
+
     Ui::MainWindow *ui_;
     bool ac_enabled_;
     bool link_views_enabled_;
