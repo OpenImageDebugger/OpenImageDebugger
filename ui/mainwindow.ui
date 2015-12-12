@@ -61,7 +61,7 @@
            <string/>
           </property>
           <property name="placeholderText">
-           <string>add symbols</string>
+           <string>add symbols (ctrl+k)</string>
           </property>
          </widget>
         </item>

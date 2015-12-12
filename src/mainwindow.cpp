@@ -20,9 +20,12 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(&update_timer_, SIGNAL(timeout()), this, SLOT(loop()));
 
+    symbol_list_focus_shortcut_ = shared_ptr<QShortcut>(new QShortcut(QKeySequence(Qt::CTRL|Qt::Key_K), this));
+    connect(symbol_list_focus_shortcut_.get(), SIGNAL(activated()), ui_->symbolList, SLOT(setFocus()));
+
     connect(ui_->imageList, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), this, SLOT(buffer_selected(QListWidgetItem*)));
-    buffer_removal_shortcut = shared_ptr<QShortcut>(new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList));
-    connect(buffer_removal_shortcut.get(), SIGNAL(activated()), this, SLOT(remove_selected_buffer()));
+    buffer_removal_shortcut_ = shared_ptr<QShortcut>(new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList));
+    connect(buffer_removal_shortcut_.get(), SIGNAL(activated()), this, SLOT(remove_selected_buffer()));
 
     connect(ui_->symbolList, SIGNAL(editingFinished()), this, SLOT(on_symbol_selected()));
 
