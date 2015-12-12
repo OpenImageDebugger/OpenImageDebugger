@@ -38,20 +38,24 @@ lib.update_available_variables.argtypes = [
                               ctypes.py_object # List of available variables in
                               ]                # the current context
 
+def request_buffer_update(variable):
+    picked_obj = gdb.parse_and_eval(variable)
+
+    buffer, width, height, channels, type, step = get_buffer_info(picked_obj)
+
+    bytes = get_buffer_size(width, height, channels, type, step)
+    inferior = gdb.selected_inferior()
+    mem = inferior.read_memory(buffer, bytes)
+
+    lib.update_plot(mem, variable, width, height, channels, type, step)
+    pass
+
 class MainThreadPlotVariableRunner():
     def __init__(self, variable):
         self.variable = variable;
         pass
     def __call__(self):
-        picked_obj = gdb.parse_and_eval(self.variable)
-
-        buffer, width, height, channels, type, step = get_buffer_info(picked_obj)
-
-        bytes = get_buffer_size(width, height, channels, type, step)
-        inferior = gdb.selected_inferior()
-        mem = inferior.read_memory(buffer, bytes)
-
-        lib.update_plot(mem, self.variable, width, height, channels, type, step)
+        request_buffer_update(self.variable)
         pass
     pass
 
@@ -131,12 +135,9 @@ def get_buffer_info(picked_obj):
     CV_8U = 0
     CV_32F = 5
 
-    print('olar?')
     char_type = gdb.lookup_type("char")
-    print('olar?0')
     char_pointer_type = char_type.pointer()
     buffer = picked_obj['data'].cast(char_pointer_type)
-    print('olar?1')
     if buffer==0x0:
         raise Exception('Received null buffer!')
 
@@ -176,9 +177,6 @@ class PlotterCommand(gdb.Command):
         pass
 
     def invoke(self, arg, from_tty):
-        if not lib.is_running():
-            initialize_window()
-
         args = gdb.string_to_argv(arg)
         var_name = str(args[0])
 
@@ -223,21 +221,20 @@ def update_observable_suggestions():
 
 # Update all buffers on each stop event
 def stop_event_handler(event):
+    if not lib.is_running():
+        initialize_window()
+        while not lib.is_running():
+            time.sleep(0.1)
+            pass
+        pass
+
     update_observable_suggestions()
 
     observed_variables = set()
     lib.get_observed_variables(observed_variables)
     for variable in observed_variables:
         try:
-            picked_obj = gdb.parse_and_eval(variable)
-
-            buffer, width, height, channels, type, step = get_buffer_info(picked_obj)
-        
-            bytes = get_buffer_size(width, height, channels, type, step)
-            inferior = gdb.selected_inferior()
-            mem = inferior.read_memory(buffer, bytes)
-
-            lib.update_plot(mem, variable, width, height, channels, type, step)
+            request_buffer_update(variable)
         except:
             pass
         pass

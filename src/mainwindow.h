@@ -81,6 +81,8 @@ public Q_SLOTS:
 
     void on_symbol_selected();
 
+    void on_symbol_completed(QString str);
+
 private:
     QTimer update_timer_;
 

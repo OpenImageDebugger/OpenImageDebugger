@@ -257,8 +257,16 @@ void MainWindow::loop() {
     }
 
     if(completer_updated_) {
+        if(ui_->symbolList->completer() != nullptr) {
+            disconnect(ui_->symbolList->completer(), SIGNAL(activated(QString)),
+                       this, SLOT(on_symbol_completed(QString)));
+        }
+
         symbol_completer_ = shared_ptr<QCompleter>(new QCompleter(available_vars_));
         ui_->symbolList->setCompleter(symbol_completer_.get());
+
+        connect(ui_->symbolList->completer(), SIGNAL(activated(QString)), this, SLOT(on_symbol_completed(QString)));
+
         completer_updated_ = false;
     }
 
@@ -423,4 +431,13 @@ void MainWindow::update_available_variables(PyObject *available_set)
 void MainWindow::on_symbol_selected() {
     const char* symbol_name = ui_->symbolList->text().toLocal8Bit().constData();
     plot_callback(symbol_name);
+    // Clear symbol input
+    ui_->symbolList->setText("");
+}
+
+void MainWindow::on_symbol_completed(QString str) {
+    plot_callback(str.toLocal8Bit().constData());
+    // Clear symbol input
+    ui_->symbolList->setText("");
+    ui_->symbolList->clearFocus();
 }
