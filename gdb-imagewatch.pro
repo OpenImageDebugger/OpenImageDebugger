@@ -20,7 +20,9 @@ SOURCES += src/camera.cpp\
 
 required_resources.path = $$OUT_PWD
 required_resources.files = resources/serif.ttf \
-                           resources/gdb-imagewatch.py
+                           resources/gdb-imagewatch.py \
+                           resources/gdbiwtype.py \
+                           resources/__init__.py
 
 INSTALLS += required_resources
 

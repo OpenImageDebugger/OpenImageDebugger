@@ -18,10 +18,6 @@ An OpenGL based advanced buffer visualization tool for GDB.
 ## Roadmap
 
 * QtCreator integration.
-* Improve user extensibility by importing modules that describe the user buffer
-  data structure.
-* Create a more sophisticated GUI, possibly based on Qt, allowing for more
-  features to be exposed, configured and toggled at runtime.
 * Show all available buffers of the user type from the current context.
 * Support more data types: Short, int and double
 * Support buffers with 2 channels
@@ -82,10 +78,12 @@ struct Buffer {
 ```
 
 This is the signature found in the `Mat` type from OpenCV. If you use a
-different buffer type, you need to adapt the `gdb-imagewatch.py` file to your
-needs. This is actually pretty simple and only involves editing the function
-`get_buffer_info()`. It must return a tuple with the following fields, in
-order:
+different buffer type, you need to adapt the file `resources/gdbiwtype.py` to
+your needs. This is actually pretty simple and only involves editing the
+functions `get_buffer_info()` and `is_symbol_observable()`.
+
+The function `get_buffer_info()` must return a tuple with the following fields,
+in order:
 
  * **buffer** Pointer to the buffer
  * **width**  Width of the ROI
@@ -99,9 +97,18 @@ order:
  * **step** Width, in pixels, of the underlying containing buffer. If the ROI
    is the total buffer size, this is the same of the buffer width.
 
+The function `is_symbol_observable()` receives a gdb symbol and only returns
+`True` if that symbol is of the observable type (the buffer you are dealing
+with). By default, it works well with the `cv::Mat` type.
+
 ### Using plugin
 
-When GDB hits a breakpoint, simply call:
+When GDB hits a breakpoint, the imagewatch window will be opened. You only need
+to type the name of the buffer to be watched in the "add symbols" input, and
+press <enter>.
+
+Alternatively, you can also invoke the imagewatch window from GDB with the
+following command:
 
     plot variable_name
 

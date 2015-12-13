@@ -105,8 +105,8 @@ void initialize_window(int(*plot_callback)(const char*)) {
     QApplication app(argc, const_cast<char**>(&argv[0]));
     MainWindow window;
     window.show();
+    window.set_plot_callback(plot_callback);
     wnd = &window;
-    wnd->plot_callback = plot_callback;
     is_running_ = true;
 
     // Restore GDB SIGCHLD handler

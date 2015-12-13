@@ -13,7 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui_(new Ui::MainWindow),
     ac_enabled_(true),
     link_views_enabled_(false),
-    plot_callback(nullptr)
+    plot_callback_(nullptr)
 {
     ui_->setupUi(this);
     ui_->splitter->setSizes({210, 100000000});
@@ -422,6 +422,7 @@ void MainWindow::remove_selected_buffer()
 void MainWindow::update_available_variables(PyObject *available_set)
 {
     int count = PyList_Size(available_set);
+    available_vars_.clear();
     for(int i = 0; i < count; ++i) {
         PyObject *var_name_bytes = PyUnicode_AsEncodedString(PyList_GetItem(available_set, i), "ASCII", "strict");
         string var_name_str = PyBytes_AS_STRING(var_name_bytes);
@@ -433,14 +434,18 @@ void MainWindow::update_available_variables(PyObject *available_set)
 
 void MainWindow::on_symbol_selected() {
     const char* symbol_name = ui_->symbolList->text().toLocal8Bit().constData();
-    plot_callback(symbol_name);
+    plot_callback_(symbol_name);
     // Clear symbol input
     ui_->symbolList->setText("");
 }
 
 void MainWindow::on_symbol_completed(QString str) {
-    plot_callback(str.toLocal8Bit().constData());
+    plot_callback_(str.toLocal8Bit().constData());
     // Clear symbol input
     ui_->symbolList->setText("");
     ui_->symbolList->clearFocus();
+}
+
+void MainWindow::set_plot_callback(int (*plot_cbk)(const char *)) {
+    plot_callback_ = plot_cbk;
 }

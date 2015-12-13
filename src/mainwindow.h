@@ -53,7 +53,8 @@ public:
 
     void mouse_drag_event(int mouse_x, int mouse_y);
     void mouse_move_event(int mouse_x, int mouse_y);
-    int(*plot_callback)(const char*);
+
+    void set_plot_callback(int(*plot_cbk)(const char*));
 
 public Q_SLOTS:
     void loop();
@@ -106,6 +107,8 @@ private:
     QListWidgetItem* generateListItem(BufferRequestMessage&);
     void set_ac_min_value(int idx, float value);
     void set_ac_max_value(int idx, float value);
+
+    int(*plot_callback_)(const char*);
 
     void update_statusbar();
 };

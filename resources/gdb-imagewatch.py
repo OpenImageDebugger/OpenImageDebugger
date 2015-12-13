@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
 import sys
-import ctypes
 import os
+import ctypes
 from ctypes import cdll
 import pysigset, signal
 import threading
@@ -11,6 +11,7 @@ import time
 ##
 # Load imagewatch library and set up its API
 script_path = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(script_path)
 lib = cdll.LoadLibrary(script_path+'/libgdb-imagewatch.so')
 lib.plot_binary.argtypes = [ctypes.py_object, # Buffer ptr
                             ctypes.py_object, # Variable name
@@ -41,7 +42,7 @@ lib.update_available_variables.argtypes = [
 def request_buffer_update(variable):
     picked_obj = gdb.parse_and_eval(variable)
 
-    buffer, width, height, channels, type, step = get_buffer_info(picked_obj)
+    buffer, width, height, channels, type, step = gdbiwtype.get_buffer_info(picked_obj)
 
     bytes = get_buffer_size(width, height, channels, type, step)
     inferior = gdb.selected_inferior()
@@ -121,43 +122,7 @@ if len(sys.argv)==2 and sys.argv[1] == '--test':
     pass
 
 import gdb
-
-##
-# Default values created for OpenCV Mat structures. Change it according to your
-# needs.
-def get_buffer_info(picked_obj):
-    # OpenCV constants
-    CV_CN_MAX = 512
-    CV_CN_SHIFT = 3
-    CV_MAT_CN_MASK = ((CV_CN_MAX - 1) << CV_CN_SHIFT)
-    CV_DEPTH_MAX = (1 << CV_CN_SHIFT)
-    CV_MAT_TYPE_MASK = (CV_DEPTH_MAX*CV_CN_MAX - 1)
-    CV_8U = 0
-    CV_32F = 5
-
-    char_type = gdb.lookup_type("char")
-    char_pointer_type = char_type.pointer()
-    buffer = picked_obj['data'].cast(char_pointer_type)
-    if buffer==0x0:
-        raise Exception('Received null buffer!')
-
-    width = int(picked_obj['cols'])
-    height = int(picked_obj['rows'])
-    flags = int(picked_obj['flags'])
-
-    channels = ((((flags) & CV_MAT_CN_MASK) >> CV_CN_SHIFT) + 1)
-    step = int(int(picked_obj['step']['buf'][0])/channels)
-
-    cvtype = ((flags) & CV_MAT_TYPE_MASK)
-
-    if (cvtype&7) == CV_8U:
-        type = 1 # uint8_t
-    elif (cvtype&7) == (CV_32F):
-        type = 0 # float32
-        step = int(step/4)
-        pass
-
-    return (buffer, width, height, channels, type, step)
+import gdbiwtype
 
 def get_buffer_size(width, height, channels, type, step):
     texel_size = channels
@@ -182,7 +147,7 @@ class PlotterCommand(gdb.Command):
 
         picked_obj = gdb.parse_and_eval(args[0])
 
-        buffer, width, height, channels, type, step = get_buffer_info(picked_obj)
+        buffer, width, height, channels, type, step = gdbiwtype.get_buffer_info(picked_obj)
       
         bytes = get_buffer_size(width, height, channels, type, step)
         inferior = gdb.selected_inferior()
@@ -193,10 +158,6 @@ class PlotterCommand(gdb.Command):
 
     pass
 
-def is_symbol_observable(symbol):
-    symbol_type = str(symbol.type)
-    return symbol_type == 'cv::Mat' or symbol_type == 'cv::Mat *'
-
 def update_observable_suggestions():
     frame = gdb.selected_frame()
     block = frame.block()
@@ -205,7 +166,7 @@ def update_observable_suggestions():
         for symbol in block:
             if (symbol.is_argument or symbol.is_variable):
                 name = symbol.name
-                if (not name in observable_symbols) and (is_symbol_observable(symbol)):
+                if (not name in observable_symbols) and (gdbiwtype.is_symbol_observable(symbol)):
                     observable_symbols.append(name)
                     pass
                 pass
