@@ -9,6 +9,10 @@ An OpenGL based advanced buffer visualization tool for GDB.
 * Auto update: Whenever a breakpoint is hit, the buffer view is automatically
   updated.
 * Auto contrast
+* Editable contrast clamp values, useful when inspecting a buffer that contains
+  uninitialized values.
+* Link views together, moving all watched buffers when a single buffer is moved
+  on the screen
 * GPU accelerated
 * Supported buffer types: uint8_t and float
 * Supported buffer channels: Grayscale and RGB
@@ -105,7 +109,7 @@ with). By default, it works well with the `cv::Mat` type.
 
 When GDB hits a breakpoint, the imagewatch window will be opened. You only need
 to type the name of the buffer to be watched in the "add symbols" input, and
-press <enter>.
+press `<enter>`.
 
 Alternatively, you can also invoke the imagewatch window from GDB with the
 following command:
