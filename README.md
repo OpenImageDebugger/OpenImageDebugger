@@ -52,14 +52,18 @@ Finally, download and install [GLFW3][1].
 
 ### Build plugin and configure GDB
 
-To build the plugin, edit the `CMakeLists.txt` file according to your needs
-(the default settings should work on a Ubuntu 14.04 if all dependencies are
-correctly installed), enter the `build` folder and run:
+To build this plugin, create a `build` folder, open a terminal window inside it
+and run:
 
-    cmake ..
+    qmake ..
     make -j4
+    make install
 
-Now edit the `~/.gdbinit` file and add: 
+The `make install` step is absolutely required, and will only copy the
+dependencies to the build folder (thus, it doesn't require any special user
+privileges).
+
+Now edit the `~/.gdbinit` file and append the following line: 
 
     source /path/to/gdb-imagewatch/build/gdb-imagewatch.py
 
