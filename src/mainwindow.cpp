@@ -212,7 +212,8 @@ void MainWindow::loop() {
 
             stringstream label;
             label << request.var_name_str << "\n[" << request.width_i << "x" <<
-                     request.height_i << "]\nuint8x3";
+                     request.height_i << "]\n" <<
+                     get_type_label(request.type, request.channels);
             QListWidgetItem* item = new QListWidgetItem(QPixmap::fromImage(bufferIcon),
                                                         label.str().c_str());
             item->setData(Qt::UserRole, QString(request.var_name_str.c_str()));
@@ -238,7 +239,8 @@ void MainWindow::loop() {
                                 icon_height, bytes_per_line, QImage::Format_RGB888);
             stringstream label;
             label << request.var_name_str << "\n[" << request.width_i << "x" <<
-                     request.height_i << "]\nuint8x3";
+                     request.height_i << "]\n" <<
+                     get_type_label(request.type, request.channels);
 
             for(int i = 0; i < ui_->imageList->count(); ++i) {
                 QListWidgetItem* item = ui_->imageList->item(i);
@@ -347,6 +349,19 @@ void MainWindow::update_statusbar()
                    cam->zoom * 100.0 << "%";
         status_bar->setText(message.str().c_str());
     }
+}
+
+string MainWindow::get_type_label(int type, int channels)
+{
+    stringstream result;
+    if(type == 0) {
+        result << "float32";
+    } else if(type == 1) {
+        result << "uint8";
+    }
+    result << "x" << channels;
+
+    return result.str();
 }
 
 void MainWindow::ac_red_max_update()

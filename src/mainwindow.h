@@ -111,6 +111,8 @@ private:
     int(*plot_callback_)(const char*);
 
     void update_statusbar();
+
+    std::string get_type_label(int type, int channels);
 };
 
 #endif // MAINWINDOW_H
