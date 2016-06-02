@@ -162,11 +162,19 @@ def update_observable_suggestions():
     frame = gdb.selected_frame()
     block = frame.block()
     observable_symbols = list()
-    while block:
+    while not block is None:
         for symbol in block:
             if (symbol.is_argument or symbol.is_variable):
                 name = symbol.name
-                if (not name in observable_symbols) and (gdbiwtype.is_symbol_observable(symbol)):
+                # Get struct/class fields
+                if name == 'this':
+                    # The GDB API is a bit convoluted, so I have to do some contortion in order
+                    # to get the class type from the this object so I can iterate over its fields
+                    this_type = gdb.parse_and_eval(symbol.name).dereference().type
+                    for field_name, field_val in this_type.iteritems():
+                        if (not field_name in observable_symbols) and (gdbiwtype.is_symbol_observable(field_val)):
+                            observable_symbols.append(field_name)
+                elif (not name in observable_symbols) and (gdbiwtype.is_symbol_observable(symbol)):
                     observable_symbols.append(name)
                     pass
                 pass
