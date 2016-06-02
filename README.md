@@ -28,6 +28,8 @@ An OpenGL based advanced buffer visualization tool for GDB.
 * Special plot types:
   * 3D topologies.
   * Histograms.
+* Rotate visualized buffers
+* Allow dumping buffers to a file
 
 ## Installation
 
