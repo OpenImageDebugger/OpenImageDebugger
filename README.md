@@ -1,6 +1,8 @@
 # gdb-imagewatch
 An OpenGL based advanced buffer visualization tool for GDB.
 
+![](https://raw.githubusercontent.com/csantosbh/gdb-imagewatch/master/doc/sample_window.png)
+
 ## Features
 
 * GUI interactivity: Scroll to zoom, left click+drag to move the buffer around.
