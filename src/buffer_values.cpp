@@ -145,6 +145,19 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                         sprintf(pix_label, "%d", buffer[pos]);
 
                     draw_text(projection, viewInv, pix_label, x, y, 0.0);
+                } else if(channels==2) {
+                    for(int c = 0; c < 2; ++c) {
+                        float y_off = ((float)-c+0.5f)/3.0;
+                        if(type == 0) {
+                            sprintf(pix_label, "%.4f",
+                                    reinterpret_cast<float*>(buffer)[pos+c]);
+                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                        }
+                        else if(type == 1) {
+                            sprintf(pix_label, "%d", buffer[pos+c]);
+                            draw_text(projection, viewInv, pix_label, x, y, y_off, 0.5f);
+                        }
+                    }
                 } else if(channels==3) {
                     for(int c = 0; c < 3; ++c) {
                         float y_off = ((float)-c+1.0f)/5.0;

@@ -24,6 +24,7 @@ def get_buffer_info(picked_obj):
     flags = int(picked_obj['flags'])
 
     channels = ((((flags) & CV_MAT_CN_MASK) >> CV_CN_SHIFT) + 1)
+    print('channels!!',channels)
     step = int(int(picked_obj['step']['buf'][0])/channels)
 
     cvtype = ((flags) & CV_MAT_TYPE_MASK)
