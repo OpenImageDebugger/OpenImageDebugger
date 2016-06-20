@@ -1,5 +1,8 @@
 import gdb
 
+GIW_TYPES_FLOAT32 = 0
+GIW_TYPES_UINT8 = 1
+
 ##
 # Default values created for OpenCV Mat structures. Change it according to your
 # needs.
@@ -30,9 +33,9 @@ def get_buffer_info(picked_obj):
     cvtype = ((flags) & CV_MAT_TYPE_MASK)
 
     if (cvtype&7) == CV_8U:
-        type = 1 # uint8_t
+        type = GIW_TYPES_UINT8
     elif (cvtype&7) == (CV_32F):
-        type = 0 # float32
+        type = GIW_TYPES_FLOAT32
         step = int(step/4)
         pass
 

@@ -23,10 +23,10 @@ public:
     }
 
     bool initialize(GLCanvas* gl_canvas, uint8_t* buffer, int buffer_width_i,
-            int buffer_height_i, int channels, int type, int step, bool ac_enabled);
+            int buffer_height_i, int channels, Buffer::BufferType type, int step, bool ac_enabled);
 
     bool buffer_update(uint8_t* buffer, int buffer_width_i,
-            int buffer_height_i, int channels, int type, int step);
+            int buffer_height_i, int channels, Buffer::BufferType type, int step);
 
     void update();
 

@@ -21,6 +21,11 @@ An OpenGL based advanced buffer visualization tool for GDB.
 * Supports big buffers whose dimensions exceed GL_MAX_TEXTURE_SIZE.
 * Supports data structures that map to a ROI of a bigger buffer.
 
+## Requirements
+
+ * An OpenGL 4.0+ compliant GPU
+ * A C++11 compliant compiler (gcc-4.9 or later is recommended)
+
 ## Roadmap
 
 * QtCreator integration.

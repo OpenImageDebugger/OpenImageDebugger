@@ -13,15 +13,21 @@ out vec4 color;
 
 void main()
 {
-	// Output color = red 
-#ifdef GRAYSCALE
+#if defined(FORMAT_R)
+    // Output color = grayscale
     color = texture(sampler, uv).rrra;
+#elif defined(FORMAT_RG)
+    // Output color = two channels
+    color = texture(sampler, uv).rgaa;
+    color.b = 0;
 #else
+    // Output color = rgb/rgba
     color = texture(sampler, uv);
 #endif
 
     vec2 buffer_position = uv*buffer_dimension;
     vec2 err = round(buffer_position)-buffer_position;
+
     if(enable_borders==1) {
         color.rgb = color.rgb*brightness_contrast[0] + brightness_contrast[1];
 

@@ -25,7 +25,7 @@ struct BufferRequestMessage {
     int width_i;
     int height_i;
     int channels;
-    int type;
+    Buffer::BufferType type;
     int step;
 };
 
@@ -112,7 +112,7 @@ private:
 
     void update_statusbar();
 
-    std::string get_type_label(int type, int channels);
+    std::string get_type_label(Buffer::BufferType type, int channels);
 };
 
 #endif // MAINWINDOW_H

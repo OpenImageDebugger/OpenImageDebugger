@@ -4,7 +4,7 @@ Stage::Stage()
 {
 }
 
-bool Stage::initialize(GLCanvas *gl_canvas, uint8_t *buffer, int buffer_width_i, int buffer_height_i, int channels, int type, int step, bool ac_enabled) {
+bool Stage::initialize(GLCanvas *gl_canvas, uint8_t *buffer, int buffer_width_i, int buffer_height_i, int channels, Buffer::BufferType type, int step, bool ac_enabled) {
     contrast_enabled = ac_enabled;
     std::shared_ptr<Buffer> buffer_component = std::make_shared<Buffer>();
     all_components["camera_component"] = std::make_shared<Camera>();
@@ -34,7 +34,7 @@ bool Stage::initialize(GLCanvas *gl_canvas, uint8_t *buffer, int buffer_width_i,
     return true;
 }
 
-bool Stage::buffer_update(uint8_t *buffer, int buffer_width_i, int buffer_height_i, int channels, int type, int step) {
+bool Stage::buffer_update(uint8_t *buffer, int buffer_width_i, int buffer_height_i, int channels, Buffer::BufferType type, int step) {
     Buffer* buffer_component = getComponent<Buffer>("buffer_component");
 
     buffer_component->buffer = buffer;

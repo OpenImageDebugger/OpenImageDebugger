@@ -61,7 +61,7 @@ void update_plot( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
     request.width_i = buffer_width_i;
     request.height_i = buffer_height_i;
     request.channels = channels;
-    request.type = type;
+    request.type = static_cast<Buffer::BufferType>(type);
     request.step = step;
 
     while(wnd == nullptr)
@@ -82,7 +82,7 @@ void plot_binary( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
     request.width_i = buffer_width_i;
     request.height_i = buffer_height_i;
     request.channels = channels;
-    request.type = type;
+    request.type = static_cast<Buffer::BufferType>(type);
     request.step = step;
 
     while(wnd == nullptr)

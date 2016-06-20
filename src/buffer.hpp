@@ -12,12 +12,14 @@ public:
     std::vector<GLuint> buff_tex;
     static const float no_ac_params[6];
 
+    enum class BufferType { Float32 = 0, UnsignedByte = 1, Short = 2, UnsignedShort = 3, Int32 = 4, UnsignedInt32 = 5 };
+
     ~Buffer();
 
     float buffer_width_f;
     float buffer_height_f;
     int channels;
-    int type;
+    BufferType type;
     int step;
     uint8_t* buffer;
 
@@ -41,12 +43,24 @@ public:
             for(int x = 0; x < buffer_width_i; ++x) {
                 int i = y*step + x;
                 for(int c = 0; c < channels; ++c) {
-                    if(type == 0)
+                    if(type == BufferType::Float32)
                         lowest[c] = std::min(lowest[c],
                                 reinterpret_cast<float*>(buffer)[channels*i + c]);
-                    else if(type == 1)
+                    else if(type == BufferType::UnsignedByte)
                         lowest[c] = std::min(lowest[c],
                                 static_cast<float>(buffer[channels*i + c]));
+                    else if(type == BufferType::Short)
+                        lowest[c] = std::min(lowest[c],
+                                static_cast<float>(reinterpret_cast<short*>(buffer)[channels*i + c]));
+                    else if(type == BufferType::UnsignedShort)
+                        lowest[c] = std::min(lowest[c],
+                                static_cast<float>(reinterpret_cast<unsigned short*>(buffer)[channels*i + c]));
+                    else if(type == BufferType::Int32)
+                        lowest[c] = std::min(lowest[c],
+                                static_cast<float>(reinterpret_cast<int*>(buffer)[channels*i + c]));
+                    else if(type == BufferType::UnsignedInt32)
+                        lowest[c] = std::min(lowest[c],
+                                static_cast<float>(reinterpret_cast<unsigned int*>(buffer)[channels*i + c]));
                 }
             }
         }
@@ -68,12 +82,24 @@ public:
             for(int x = 0; x < buffer_width_i; ++x) {
                 int i = y*step + x;
                 for(int c = 0; c < channels; ++c) {
-                    if(type == 0)
+                    if(type == BufferType::Float32)
                         upper[c] = std::max(upper[c],
                                 reinterpret_cast<float*>(buffer)[channels*i + c]);
-                    else if(type == 1)
+                    else if(type == BufferType::UnsignedByte)
                         upper[c] = std::max(upper[c],
                                 static_cast<float>(buffer[channels*i + c]));
+                    else if(type == BufferType::Short)
+                        upper[c] = std::max(upper[c],
+                                static_cast<float>(reinterpret_cast<short*>(buffer)[channels*i + c]));
+                    else if(type == BufferType::UnsignedShort)
+                        upper[c] = std::max(upper[c],
+                                static_cast<float>(reinterpret_cast<unsigned short*>(buffer)[channels*i + c]));
+                    else if(type == BufferType::Int32)
+                        upper[c] = std::max(upper[c],
+                                static_cast<float>(reinterpret_cast<int*>(buffer)[channels*i + c]));
+                    else if(type == BufferType::UnsignedInt32)
+                        upper[c] = std::max(upper[c],
+                                static_cast<float>(reinterpret_cast<unsigned int*>(buffer)[channels*i + c]));
                 }
             }
         }
@@ -99,9 +125,9 @@ public:
 
         for(int c = 0; c < channels; ++c) {
             float maxIntensity = 1.0f;
-            if(type == 0)
+            if(type == BufferType::Float32)
                 maxIntensity = 1.0f;
-            else if(type == 1)
+            else // All non-real values have max color 255
                 maxIntensity = 255.0f;
             float upp_minus_low = upper[c]-lowest[c];
 

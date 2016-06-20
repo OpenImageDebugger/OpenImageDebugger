@@ -27,9 +27,13 @@ bool Buffer::initialize() {
     // Buffer Shaders
     ShaderProgram::TexelChannels channelType;
     if(channels == 1)
-        channelType = ShaderProgram::Grayscale;
-    else
-        channelType = ShaderProgram::RGB;
+        channelType = ShaderProgram::FormatR;
+    else if(channels == 2)
+        channelType = ShaderProgram::FormatRG;
+    else if(channels == 3)
+        channelType = ShaderProgram::FormatRGB;
+    else if(channels == 4)
+        channelType = ShaderProgram::FormatRGBA;
 
     buff_prog.create(shader::buff_vert_shader,
                      shader::buff_frag_shader,
@@ -116,15 +120,29 @@ void Buffer::setup_gl_buffer() {
 
     GLuint tex_type = GL_UNSIGNED_BYTE;
     GLuint tex_format = GL_RED;
-    if(type == 0) {
+
+    if(type == BufferType::Float32) {
         tex_type = GL_FLOAT;
-    } else if (type == 1) {
+    } else if (type == BufferType::UnsignedByte) {
         tex_type = GL_UNSIGNED_BYTE;
+    } else if (type == BufferType::Short) {
+        tex_type = GL_SHORT;
+    } else if (type == BufferType::UnsignedShort) {
+        tex_type = GL_UNSIGNED_SHORT;
+    } else if (type == BufferType::Int32) {
+        tex_type = GL_INT;
+    } else if (type == BufferType::UnsignedInt32) {
+        tex_type = GL_UNSIGNED_INT;
     }
+
     if(channels == 1) {
         tex_format = GL_RED;
+    } else if(channels == 2) {
+        tex_format = GL_RG;
     } else if(channels == 3) {
         tex_format = GL_RGB;
+    } else if(channels == 4) {
+        tex_format = GL_RGBA;
     }
 
     int remaining_h = buffer_height_i;
@@ -146,7 +164,7 @@ void Buffer::setup_gl_buffer() {
 
             glPixelStorei(GL_UNPACK_SKIP_ROWS, ty*max_texture_size);
             glPixelStorei(GL_UNPACK_SKIP_PIXELS, tx*max_texture_size);
-            glTexStorage2D( GL_TEXTURE_2D, 1, GL_RGB32F, buff_w, buff_h);
+            glTexStorage2D( GL_TEXTURE_2D, 1, GL_RGBA32F, buff_w, buff_h);
 
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
                             buff_w, buff_h, tex_format, tex_type,

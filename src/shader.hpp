@@ -10,7 +10,7 @@
 
 class ShaderProgram {
 public:
-    enum TexelChannels {Grayscale, RGB};
+    enum TexelChannels {FormatR, FormatRG, FormatRGB, FormatRGBA};
 
     bool create(const char* v_source, const char* f_source, TexelChannels texel_format, const std::vector<std::string>& uniforms);
 

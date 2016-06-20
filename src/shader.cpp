@@ -60,7 +60,11 @@ GLuint ShaderProgram::compile(GLuint type, GLchar const *source) {
     GLuint shader = glCreateShader(type);
     const char* src[] = {
         "#version 400 core\n",
-        texel_format_==Grayscale?"#define GRAYSCALE\n":"",
+        texel_format_== FormatR ?
+          "#define FORMAT_R\n"
+        : texel_format_ == FormatRG ?
+          "#define FORMAT_RG"
+        : "",
         source
     };
     glShaderSource(shader, 3, src, NULL);

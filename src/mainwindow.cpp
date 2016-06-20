@@ -351,13 +351,21 @@ void MainWindow::update_statusbar()
     }
 }
 
-string MainWindow::get_type_label(int type, int channels)
+string MainWindow::get_type_label(Buffer::BufferType type, int channels)
 {
     stringstream result;
-    if(type == 0) {
+    if(type == Buffer::BufferType::Float32) {
         result << "float32";
-    } else if(type == 1) {
+    } else if(type == Buffer::BufferType::UnsignedByte) {
         result << "uint8";
+    } else if(type == Buffer::BufferType::Short) {
+        result << "int16";
+    } else if(type == Buffer::BufferType::UnsignedShort) {
+        result << "uint16";
+    } else if(type == Buffer::BufferType::Int32) {
+        result << "int32";
+    } else if(type == Buffer::BufferType::UnsignedInt32) {
+        result << "uint32";
     }
     result << "x" << channels;
 
