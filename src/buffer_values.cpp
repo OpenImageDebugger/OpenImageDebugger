@@ -149,15 +149,15 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                         sprintf(pix_label, "%d", fpix);
                     }
                     else if(type == Buffer::BufferType::UnsignedShort) {
-                        short fpix = reinterpret_cast<unsigned short*>(buffer)[pos];
+                        unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos];
                         sprintf(pix_label, "%d", fpix);
                     }
                     else if(type == Buffer::BufferType::Int32) {
-                        short fpix = reinterpret_cast<int*>(buffer)[pos];
+                        int fpix = reinterpret_cast<int*>(buffer)[pos];
                         sprintf(pix_label, "%d", fpix);
                     }
                     else if(type == Buffer::BufferType::UnsignedInt32) {
-                        short fpix = reinterpret_cast<unsigned int*>(buffer)[pos];
+                        unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos];
                         sprintf(pix_label, "%d", fpix);
                     }
 
@@ -180,17 +180,17 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedShort) {
-                            short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
+                            unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::Int32) {
-                            short fpix = reinterpret_cast<int*>(buffer)[pos+c];
+                            int fpix = reinterpret_cast<int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedInt32) {
-                            short fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
+                            unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }
@@ -213,17 +213,17 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedShort) {
-                            short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
+                            unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::Int32) {
-                            short fpix = reinterpret_cast<int*>(buffer)[pos+c];
+                            int fpix = reinterpret_cast<int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedInt32) {
-                            short fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
+                            unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }
@@ -246,17 +246,17 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedShort) {
-                            short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
+                            unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::Int32) {
-                            short fpix = reinterpret_cast<int*>(buffer)[pos+c];
+                            int fpix = reinterpret_cast<int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedInt32) {
-                            short fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
+                            unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, pix_label, x, y, y_off);
                         }

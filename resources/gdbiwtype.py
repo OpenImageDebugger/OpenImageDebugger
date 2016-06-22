@@ -1,20 +1,22 @@
-import gdb
-
-GIW_TYPES_FLOAT32 = 0
-GIW_TYPES_UINT8 = 1
+GIW_TYPES_UINT8 = 0
+GIW_TYPES_UINT16 = 2
+GIW_TYPES_INT16 = 3
+GIW_TYPES_INT32 = 4
+GIW_TYPES_FLOAT32 = 5
+GIW_TYPES_UINT32 = 6
 
 ##
 # Default values created for OpenCV Mat structures. Change it according to your
 # needs.
 def get_buffer_info(picked_obj):
+    import gdb
+
     # OpenCV constants
     CV_CN_MAX = 512
     CV_CN_SHIFT = 3
     CV_MAT_CN_MASK = ((CV_CN_MAX - 1) << CV_CN_SHIFT)
     CV_DEPTH_MAX = (1 << CV_CN_SHIFT)
     CV_MAT_TYPE_MASK = (CV_DEPTH_MAX*CV_CN_MAX - 1)
-    CV_8U = 0
-    CV_32F = 5
 
     char_type = gdb.lookup_type("char")
     char_pointer_type = char_type.pointer()
@@ -27,17 +29,19 @@ def get_buffer_info(picked_obj):
     flags = int(picked_obj['flags'])
 
     channels = ((((flags) & CV_MAT_CN_MASK) >> CV_CN_SHIFT) + 1)
-    print('channels!!',channels)
     step = int(int(picked_obj['step']['buf'][0])/channels)
 
     cvtype = ((flags) & CV_MAT_TYPE_MASK)
 
-    if (cvtype&7) == CV_8U:
-        type = GIW_TYPES_UINT8
-    elif (cvtype&7) == (CV_32F):
-        type = GIW_TYPES_FLOAT32
-        step = int(step/4)
-        pass
+    type = (cvtype&7)
+
+    if type == GIW_TYPES_UINT16 or \
+       type == GIW_TYPES_INT16:
+        step = int(step / 2)
+    elif type == GIW_TYPES_INT32 or \
+         type == GIW_TYPES_UINT32 or \
+         type == GIW_TYPES_FLOAT32:
+        step = int(step / 4)
 
     return (buffer, width, height, channels, type, step)
 

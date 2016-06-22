@@ -81,6 +81,8 @@ def initialize_window():
         pass
     pass
 
+import gdbiwtype
+
 ##
 # Test application
 if len(sys.argv)==2 and sys.argv[1] == '--test':
@@ -109,8 +111,8 @@ if len(sys.argv)==2 and sys.argv[1] == '--test':
     mem = memoryview(tex_arr)
     mem2 = memoryview(tex_arr2)
     step = width
-    lib.plot_binary(mem, 'python_test', width, height, channels, 1, step)
-    lib.plot_binary(mem2, 'python_test2', width, height, channels, 1, step)
+    lib.plot_binary(mem, 'python_test', width, height, channels, gdbiwtype.GIW_TYPES_UINT8, step)
+    lib.plot_binary(mem2, 'python_test2', width, height, channels, gdbiwtype.GIW_TYPES_UINT8, step)
 
     lib.update_available_variables(['test', 'sample', 'variable', 'hello_world'])
 
@@ -122,17 +124,19 @@ if len(sys.argv)==2 and sys.argv[1] == '--test':
     pass
 
 import gdb
-import gdbiwtype
 
 def get_buffer_size(width, height, channels, type, step):
-    texel_size = channels
-    if type==0:
-        texel_size *= 4 # float type
-    elif type==1:
-        texel_size *= 1 # uint8_t type
+    channel_size = 1
+    if type == gdbiwtype.GIW_TYPES_UINT16 or \
+       type == gdbiwtype.GIW_TYPES_INT16:
+        channel_size = 2 # 2 bytes per element
+    elif type == gdbiwtype.GIW_TYPES_INT32 or \
+         type == gdbiwtype.GIW_TYPES_UINT32 or \
+         type == gdbiwtype.GIW_TYPES_FLOAT32:
+        channel_size = 4 # 4 bytes per element
         pass
 
-    return texel_size * step*height
+    return channel_size * channels * step*height
 
 class PlotterCommand(gdb.Command):
     def __init__(self):

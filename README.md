@@ -16,8 +16,8 @@ An OpenGL based advanced buffer visualization tool for GDB.
 * Link views together, moving all watched buffers when a single buffer is moved
   on the screen
 * GPU accelerated
-* Supported buffer types: uint8_t and float
-* Supported buffer channels: Grayscale and RGB
+* Supported buffer types: uint8_t, int16_t, uint16_t, int32_t, uint32_t and float
+* Supported buffer channels: Grayscale, two-channels, RGB and RGBA
 * Supports big buffers whose dimensions exceed GL_MAX_TEXTURE_SIZE.
 * Supports data structures that map to a ROI of a bigger buffer.
 
@@ -28,15 +28,8 @@ An OpenGL based advanced buffer visualization tool for GDB.
 
 ## Roadmap
 
-* QtCreator integration.
-* Show all available buffers of the user type from the current context.
-* Support more data types: Short, int and double
-* Support buffers with 2 channels
-* Special plot types:
-  * 3D topologies.
-  * Histograms.
-* Rotate visualized buffers
 * Allow dumping buffers to a file
+* Rotate/flip visualized buffers
 
 ## Installation
 
@@ -78,10 +71,10 @@ Now edit the `~/.gdbinit` file and append the following line:
 
 
 
-### Configure plugin
+### Advanced configuration
 
-By default, the plugin assumes that your buffer data structure has the
-following signature:
+By default, the plugin works with OpenCV `Mat` structures, i.e. it assumes that
+your buffer data structure has the following signature:
 
 ```cpp
 struct Buffer {
@@ -96,10 +89,10 @@ struct Buffer {
 };
 ```
 
-This is the signature found in the `Mat` type from OpenCV. If you use a
-different buffer type, you need to adapt the file `resources/gdbiwtype.py` to
-your needs. This is actually pretty simple and only involves editing the
-functions `get_buffer_info()` and `is_symbol_observable()`.
+If you use a different buffer type, you need to adapt the file
+`resources/gdbiwtype.py` to your needs. This is actually pretty simple and only
+involves editing the functions `get_buffer_info()` and
+`is_symbol_observable()`.
 
 The function `get_buffer_info()` must return a tuple with the following fields,
 in order:
@@ -111,14 +104,23 @@ in order:
    supported)
  * **type** Identifier for the type of the underlying buffer. The supported
    values are:
-   * 0 for `float`
-   * 1 for `uint8_t`
+   * `GIW_TYPES_UINT8` = 0
+   * `GIW_TYPES_UINT16` = 2
+   * `GIW_TYPES_INT16` = 3
+   * `GIW_TYPES_INT32` = 4
+   * `GIW_TYPES_FLOAT32` = 5
+   * `GIW_TYPES_UINT32` = 6
+
  * **step** Width, in pixels, of the underlying containing buffer. If the ROI
    is the total buffer size, this is the same of the buffer width.
 
 The function `is_symbol_observable()` receives a gdb symbol and only returns
 `True` if that symbol is of the observable type (the buffer you are dealing
 with). By default, it works well with the `cv::Mat` type.
+
+#### Using multiple buffer types
+
+If you have multiple buffer types that you'd like to be able to watch (for instance, OpenCV's Mat and a custom buffer type), ... TODO explain how
 
 ### Using plugin
 
