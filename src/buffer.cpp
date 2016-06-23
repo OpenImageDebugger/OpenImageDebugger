@@ -5,12 +5,163 @@
 
 using namespace std;
 
-constexpr float Buffer::no_ac_params[6] = {1.0, 1.0, 1.0, 0, 0, 0};
+constexpr float Buffer::no_ac_params[8] = {1.0, 1.0, 1.0, 1.0, 0, 0, 0, 0};
 
 Buffer::~Buffer() {
     int num_textures = num_textures_x*num_textures_y;
     glDeleteTextures(num_textures, buff_tex.data());
     glDeleteBuffers(1, &vbo);
+}
+
+bool Buffer::buffer_update() {
+    int num_textures = num_textures_x*num_textures_y;
+    glDeleteTextures(num_textures, buff_tex.data());
+
+    setup_gl_buffer();
+    return true;
+}
+
+void Buffer::recomputeMinColorValues() {
+    int buffer_width_i = static_cast<int>(buffer_width_f);
+    int buffer_height_i = static_cast<int>(buffer_height_f);
+
+    float *lowest = min_buffer_values();
+    for(int i = 0; i < 4; ++i)
+        lowest[i] = std::numeric_limits<float>::max();
+
+    for(int y = 0; y < buffer_height_i; ++y) {
+        for(int x = 0; x < buffer_width_i; ++x) {
+            int i = y*step + x;
+            for(int c = 0; c < channels; ++c) {
+                if(type == BufferType::Float32)
+                    lowest[c] = std::min(lowest[c],
+                                         reinterpret_cast<float*>(buffer)[channels*i + c]);
+                else if(type == BufferType::UnsignedByte)
+                    lowest[c] = std::min(lowest[c],
+                                         static_cast<float>(buffer[channels*i + c]));
+                else if(type == BufferType::Short)
+                    lowest[c] = std::min(lowest[c],
+                                         static_cast<float>(reinterpret_cast<short*>(buffer)[channels*i + c]));
+                else if(type == BufferType::UnsignedShort)
+                    lowest[c] = std::min(lowest[c],
+                                         static_cast<float>(reinterpret_cast<unsigned short*>(buffer)[channels*i + c]));
+                else if(type == BufferType::Int32)
+                    lowest[c] = std::min(lowest[c],
+                                         static_cast<float>(reinterpret_cast<int*>(buffer)[channels*i + c]));
+                else if(type == BufferType::UnsignedInt32)
+                    lowest[c] = std::min(lowest[c],
+                                         static_cast<float>(reinterpret_cast<unsigned int*>(buffer)[channels*i + c]));
+            }
+        }
+    }
+
+    // For single channel buffers: fill with 0
+    for(int c = channels; c < 4; ++c)
+        lowest[c] = 0.0;
+}
+
+void Buffer::recomputeMaxColorValues() {
+    int buffer_width_i = static_cast<int>(buffer_width_f);
+    int buffer_height_i = static_cast<int>(buffer_height_f);
+
+    float *upper = max_buffer_values();
+    for(int i = 0; i < 4; ++i)
+        upper[i] = std::numeric_limits<float>::lowest();
+
+    for(int y = 0; y < buffer_height_i; ++y) {
+        for(int x = 0; x < buffer_width_i; ++x) {
+            int i = y*step + x;
+            for(int c = 0; c < channels; ++c) {
+                if(type == BufferType::Float32)
+                    upper[c] = std::max(upper[c],
+                                        reinterpret_cast<float*>(buffer)[channels*i + c]);
+                else if(type == BufferType::UnsignedByte)
+                    upper[c] = std::max(upper[c],
+                                        static_cast<float>(buffer[channels*i + c]));
+                else if(type == BufferType::Short)
+                    upper[c] = std::max(upper[c],
+                                        static_cast<float>(reinterpret_cast<short*>(buffer)[channels*i + c]));
+                else if(type == BufferType::UnsignedShort)
+                    upper[c] = std::max(upper[c],
+                                        static_cast<float>(reinterpret_cast<unsigned short*>(buffer)[channels*i + c]));
+                else if(type == BufferType::Int32)
+                    upper[c] = std::max(upper[c],
+                                        static_cast<float>(reinterpret_cast<int*>(buffer)[channels*i + c]));
+                else if(type == BufferType::UnsignedInt32)
+                    upper[c] = std::max(upper[c],
+                                        static_cast<float>(reinterpret_cast<unsigned int*>(buffer)[channels*i + c]));
+            }
+        }
+    }
+
+    // For single channel buffers: fill with 0
+    for(int c = channels; c < 4; ++c)
+        upper[c] = 0.0;
+}
+
+void Buffer::resetContrastBrightnessParameters() {
+    recomputeMinColorValues();
+    recomputeMaxColorValues();
+
+    computeContrastBrightnessParameters();
+}
+
+void Buffer::computeContrastBrightnessParameters() {
+    float *lowest = min_buffer_values();
+    float *upper = max_buffer_values();
+
+    float* auto_buffer_contrast = auto_buffer_contrast_brightness_;
+    float* auto_buffer_brightness = auto_buffer_contrast_brightness_+4;
+
+    for(int c = 0; c < channels; ++c) {
+        float maxIntensity = 1.0f;
+        if(type == BufferType::UnsignedByte)
+            maxIntensity = 255.0f;
+        else if(type == BufferType::Short)// All non-real values have max color 255
+            maxIntensity = std::numeric_limits<short>::max();
+        else if(type == BufferType::UnsignedShort)
+            maxIntensity = std::numeric_limits<unsigned short>::max();
+        else if(type == BufferType::Int32)
+            maxIntensity = std::numeric_limits<int>::max();
+        else if(type == BufferType::UnsignedInt32)
+            maxIntensity = std::numeric_limits<unsigned int>::max();
+        else if(type == BufferType::Float32)
+            maxIntensity = 1.0f;
+
+        float upp_minus_low = upper[c]-lowest[c];
+
+        if(upp_minus_low == 0)
+            upp_minus_low = 1.0;
+
+        auto_buffer_contrast[c] = maxIntensity/upp_minus_low;
+        auto_buffer_brightness[c] = -lowest[c]/maxIntensity*auto_buffer_contrast[c];
+    }
+    for(int c = channels; c < 4; ++c) {
+        auto_buffer_contrast[c] = auto_buffer_contrast[0];
+        auto_buffer_brightness[c] = auto_buffer_brightness[0];
+    }
+}
+
+int Buffer::sub_texture_id_at_coord(int x, int y) {
+    int tx = x/max_texture_size;
+    int ty = y/max_texture_size;
+    return buff_tex[ty*num_textures_x + tx];
+}
+
+float Buffer::tile_coord_x(int x) {
+    int buffer_width_i = static_cast<int>(buffer_width_f);
+    int last_width = buffer_width_i%max_texture_size;
+    float tile_width = (x > (buffer_width_i-last_width))
+            ? last_width : max_texture_size;
+    return static_cast<float>(x%max_texture_size)/static_cast<float>(tile_width-1);
+}
+
+float Buffer::tile_coord_y(int y) {
+    int buffer_height_i = static_cast<int>(buffer_height_f);
+    int last_height = buffer_height_i%max_texture_size;
+    int tile_height =  (y > (buffer_height_i-last_height))
+            ? last_height : max_texture_size;
+    return static_cast<float>(y%max_texture_size)/static_cast<float>(tile_height-1);
 }
 
 void Buffer::update() {
@@ -67,9 +218,9 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
     glActiveTexture(GL_TEXTURE0);
     buff_prog.uniform1i("sampler", 0);
     if(stage->contrast_enabled) {
-        buff_prog.uniform3fv("brightness_contrast", 2, auto_buffer_contrast_brightness_);
+        buff_prog.uniform4fv("brightness_contrast", 2, auto_buffer_contrast_brightness_);
     } else {
-        buff_prog.uniform3fv("brightness_contrast", 2, no_ac_params);
+        buff_prog.uniform4fv("brightness_contrast", 2, no_ac_params);
     }
 
     int buffer_width_i = static_cast<int>(buffer_width_f);
@@ -99,6 +250,18 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
     }
+}
+
+float *Buffer::min_buffer_values() {
+    return min_buffer_values_;
+}
+
+float *Buffer::max_buffer_values() {
+    return max_buffer_values_;
+}
+
+float *Buffer::auto_buffer_contrast_brightness() {
+    return auto_buffer_contrast_brightness_;
 }
 
 void Buffer::setup_gl_buffer() {
