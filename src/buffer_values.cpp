@@ -298,7 +298,7 @@ void BufferValues::draw_text(const mat4& projection, const mat4& viewInv,
             buffer_component->tile_coord_x(x),
             buffer_component->tile_coord_y(y));
 
-    text_prog.uniform3fv("brightness_contrast", 2,
+    text_prog.uniform4fv("brightness_contrast", 2,
             auto_buffer_contrast_brightness);
 
     // Compute text box size

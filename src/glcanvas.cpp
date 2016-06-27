@@ -36,6 +36,13 @@ void GLCanvas::mouseReleaseEvent(QMouseEvent *ev) {
         mouseDown_[1] = false;
 }
 
+void listExtensions() {
+    GLint num_exts = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &num_exts);
+
+    cout << "Supported extensions:" << glGetString(GL_EXTENSIONS) << endl;
+}
+
 void GLCanvas::initializeGL() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

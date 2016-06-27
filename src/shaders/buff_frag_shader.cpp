@@ -16,7 +16,7 @@ void main()
 #if defined(FORMAT_R)
     // Output color = grayscale
     color = texture(sampler, uv).rrra;
-    color.r = color.r * brightness_contrast[0].x + brightness_contrast[1].x;
+    color.rgb = color.rgb * brightness_contrast[0].xxx + brightness_contrast[1].xxx;
 #elif defined(FORMAT_RG)
     // Output color = two channels
     color = texture(sampler, uv);
@@ -41,7 +41,7 @@ void main()
         float y_ = fract(buffer_position.y);
         float vertical_border = clamp(abs(-1.0/alpha * x_ + 0.5/alpha) - (0.5/alpha-1.0), 0.0, 1.0);
         float horizontal_border = clamp(abs(-1.0/alpha * y_ + 0.5/alpha) - (0.5/alpha-1.0), 0.0, 1.0);
-        color.rgb += vec3(vertical_border+horizontal_border);
+        color.rgb += vec3(vertical_border+horizontal_border) * 10.0;
     }
 }
 

@@ -167,6 +167,8 @@ float Buffer::tile_coord_y(int y) {
 void Buffer::update() {
     Camera* camera = stage->getComponent<Camera>("camera_component");
     float zoom = camera->zoom;
+
+    buff_prog.use();
     if(zoom > 40) {
         buff_prog.uniform1i("enable_borders", 1);
     } else {
