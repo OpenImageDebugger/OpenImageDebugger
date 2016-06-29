@@ -35,10 +35,10 @@ An OpenGL based advanced buffer visualization tool for GDB.
 
 ### Dependencies
 
-GDB-ImageWatch requires python 3+, Qt SDK, GLEW, GLFW, Qt 4.8+ and GDB 7.10+
+GDB-ImageWatch requires python 3+, lib freetype 2, Qt SDK, GLEW, GLFW, Qt 4.8+ and GDB 7.10+
 (which must be compiled with python 3 support). On Ubuntu:
 
-    sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip qt-sdk texinfo
+    sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip qt-sdk texinfo libfreetype6-dev
     sudo pip3 install pysigset
 
 Download and install the latest GDB (if you already don't have it):

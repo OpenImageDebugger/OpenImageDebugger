@@ -262,7 +262,7 @@ float *Buffer::max_buffer_values() {
     return max_buffer_values_;
 }
 
-float *Buffer::auto_buffer_contrast_brightness() {
+const float *Buffer::auto_buffer_contrast_brightness() const {
     return auto_buffer_contrast_brightness_;
 }
 

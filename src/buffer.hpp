@@ -51,7 +51,7 @@ public:
 
     float* max_buffer_values();
 
-    float* auto_buffer_contrast_brightness();
+    const float* auto_buffer_contrast_brightness() const;
 
     void set_min_buffer_values();
     void set_max_buffer_values();

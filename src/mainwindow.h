@@ -57,6 +57,8 @@ public:
     void set_plot_callback(int(*plot_cbk)(const char*));
 
 public Q_SLOTS:
+    void show_context_menu(const QPoint &pos);
+
     void loop();
     void buffer_selected(QListWidgetItem * item);
 
@@ -83,6 +85,8 @@ public Q_SLOTS:
     void on_symbol_selected();
 
     void on_symbol_completed(QString str);
+
+    void export_buffer();
 
 private:
     QTimer update_timer_;

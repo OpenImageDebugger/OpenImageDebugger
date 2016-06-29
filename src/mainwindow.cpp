@@ -2,9 +2,12 @@
 #include <iomanip>
 
 #include <QShortcut>
+#include <QAction>
+#include <QFileDialog>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "buffer_exporter.hpp"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -60,6 +63,9 @@ MainWindow::MainWindow(QWidget *parent) :
     status_bar->setAlignment(Qt::AlignRight);
     setStyleSheet("QStatusBar::item { border: 0px solid black };");
     statusBar()->addWidget(status_bar, 1);
+
+    ui_->imageList->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui_->imageList, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(show_context_menu(const QPoint&)));
 }
 
 MainWindow::~MainWindow()
@@ -469,6 +475,59 @@ void MainWindow::on_symbol_completed(QString str) {
     ui_->symbolList->clearFocus();
 }
 
+void MainWindow::export_buffer()
+{
+    auto sender_action(static_cast<QAction*>(sender()));
+
+    auto stage = stages_.find(sender_action->data().toString().toStdString())->second;
+    Buffer* component = stage->getComponent<Buffer>("buffer_component");
+
+    QFileDialog fileDialog(this);
+    fileDialog.setAcceptMode(QFileDialog::AcceptSave);
+    fileDialog.setFileMode(QFileDialog::AnyFile);
+
+    QHash<QString, BufferExporter::OutputType> outputExtensions;
+    outputExtensions[tr("Image File (*.png)")] = BufferExporter::OutputType::Bitmap;
+    outputExtensions[tr("Octave matrix (*.oct)")] = BufferExporter::OutputType::Bitmap;
+
+    QHashIterator<QString, BufferExporter::OutputType> it(outputExtensions);
+    QString saveMessage;
+    while (it.hasNext())
+    {
+      it.next();
+      saveMessage += it.key();
+      if (it.hasNext())
+        saveMessage += ";;";
+    }
+
+    fileDialog.setNameFilter(saveMessage);
+
+    if (fileDialog.exec() == QDialog::Accepted) {
+      string fileName = fileDialog.selectedFiles()[0].toStdString();
+
+      BufferExporter::export_buffer(component, fileName, outputExtensions[fileDialog.selectedNameFilter()]);
+    }
+
+
+    //BufferExporter::export_buffer(component, path, type);
+}
+
 void MainWindow::set_plot_callback(int (*plot_cbk)(const char *)) {
     plot_callback_ = plot_cbk;
+}
+
+void MainWindow::show_context_menu(const QPoint& pos)
+{
+    // Handle global position
+    QPoint globalPos = ui_->imageList->mapToGlobal(pos);
+
+    // Create menu and insert context actions
+    QMenu myMenu(this);
+
+    QAction *exportAction = myMenu.addAction("Export buffer", this, SLOT(export_buffer()));
+    // Add parameter to action: buffer name
+    exportAction->setData(ui_->imageList->itemAt(pos)->data(Qt::UserRole));
+
+    // Show context menu at handling position
+    myMenu.exec(globalPos);
 }
