@@ -488,7 +488,7 @@ void MainWindow::export_buffer()
 
     QHash<QString, BufferExporter::OutputType> outputExtensions;
     outputExtensions[tr("Image File (*.png)")] = BufferExporter::OutputType::Bitmap;
-    outputExtensions[tr("Octave matrix (*.oct)")] = BufferExporter::OutputType::Bitmap;
+    outputExtensions[tr("Octave matrix (*.oct)")] = BufferExporter::OutputType::OctaveMatrix;
 
     QHashIterator<QString, BufferExporter::OutputType> it(outputExtensions);
     QString saveMessage;

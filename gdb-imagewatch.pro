@@ -23,7 +23,8 @@ required_resources.path = $$OUT_PWD
 required_resources.files = resources/serif.ttf \
                            resources/gdb-imagewatch.py \
                            resources/gdbiwtype.py \
-                           resources/__init__.py
+                           resources/__init__.py \
+                           resources/giw_load.m
 
 INSTALLS += required_resources
 

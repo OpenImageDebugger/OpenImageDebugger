@@ -20,6 +20,8 @@ An OpenGL based advanced buffer visualization tool for GDB.
 * Supported buffer channels: Grayscale, two-channels, RGB and RGBA
 * Supports big buffers whose dimensions exceed GL_MAX_TEXTURE_SIZE.
 * Supports data structures that map to a ROI of a bigger buffer.
+* Exports buffers as png images (with auto contrast) or octave matrix files
+  (unprocessed)
 
 ## Requirements
 
@@ -71,7 +73,7 @@ Now edit the `~/.gdbinit` file and append the following line:
 
 
 
-### Advanced configuration
+## Advanced configuration
 
 By default, the plugin works with OpenCV `Mat` structures, i.e. it assumes that
 your buffer data structure has the following signature:
@@ -118,11 +120,11 @@ The function `is_symbol_observable()` receives a gdb symbol and only returns
 `True` if that symbol is of the observable type (the buffer you are dealing
 with). By default, it works well with the `cv::Mat` type.
 
-#### Using multiple buffer types
+### Using multiple buffer types
 
 If you have multiple buffer types that you'd like to be able to watch (for instance, OpenCV's Mat and a custom buffer type), ... TODO explain how
 
-### Using plugin
+## Using plugin
 
 When GDB hits a breakpoint, the imagewatch window will be opened. You only need
 to type the name of the buffer to be watched in the "add symbols" input, and
@@ -133,10 +135,15 @@ following command:
 
     plot variable_name
 
-#### Configure your IDE to use GDB 7.10
+### Loading Octave/Matlab buffers
+Buffers exported in the `Octave matrix` format can be loaded with the function
+`giw_load.m`, which is installed in the binary folder. To use it, add this
+folder to Octave/Matlab `path` variable and call `giw_load('/path/to/buffer')`.
+
+### Configure your IDE to use GDB 7.10
 
 If you're not using gdb from the command line, make sure that your IDE is
-correctly configured to use GDB 7.10.
+correctly configured to use GDB 7.10. TODO explain qtcreator
 
 
 [1]: http://www.glfw.org/
