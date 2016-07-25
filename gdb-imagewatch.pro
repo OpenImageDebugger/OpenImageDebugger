@@ -17,7 +17,8 @@ SOURCES += src/camera.cpp\
            src/mainwindow.cpp \
            src/glcanvas.cpp \
            src/stage.cpp \
-    src/buffer_exporter.cpp
+    src/buffer_exporter.cpp \
+    src/math.cpp
 
 required_resources.path = $$OUT_PWD
 required_resources.files = resources/serif.ttf \

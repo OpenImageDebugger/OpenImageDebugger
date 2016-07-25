@@ -244,7 +244,7 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
             tile_model.setFromST(buff_w, buff_h, 1.0,
                                  posX()+tx*max_texture_size,
                                  posY()+ty*max_texture_size, 0.0f);
-            buff_prog.uniformMatrix4fv("mvp", 1, GL_FALSE, (projection * viewInv * tile_model).data);
+            buff_prog.uniformMatrix4fv("mvp", 1, GL_FALSE, (projection * viewInv * tile_model).data());
             buff_prog.uniform2f("buffer_dimension", buff_w, buff_h);
 
             glBindBuffer(GL_ARRAY_BUFFER, vbo);

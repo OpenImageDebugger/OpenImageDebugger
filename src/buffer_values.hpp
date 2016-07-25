@@ -34,7 +34,7 @@ private:
 
     void generate_glyphs_texture();
 
-    void draw_text(const mat4& projection, const mat4& viewInv,
+    void draw_text(const mat4& projection, const mat4& viewInv, const mat4 &camRot,
             const char* text, float x, float y, float y_offset, float scale = 1.0f);
 };
 

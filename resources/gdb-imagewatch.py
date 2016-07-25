@@ -101,7 +101,7 @@ if len(sys.argv)==2 and sys.argv[1] == '--test':
             for c in range(0, channels):
                 tex[y*channels*width+channels*x+c] = math.cos(x/width*math.pi+
                                                    c/channels*math.pi/4.0)*255
-                tex2[y*channels*width+channels*x+c] = 10*x+10*y
+                tex2[y*channels*width+channels*x+c] = 10*x+y
                 pass
             pass
         pass

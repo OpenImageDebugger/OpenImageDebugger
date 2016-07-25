@@ -88,6 +88,10 @@ public Q_SLOTS:
 
     void export_buffer();
 
+    void rotate_90_cw();
+
+    void rotate_90_ccw();
+
 private:
     QTimer update_timer_;
 

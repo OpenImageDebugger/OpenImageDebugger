@@ -107,9 +107,14 @@ void BufferValues::generate_glyphs_texture() {
 }
 
 void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
-    float zoom = (stage->getComponent<Camera>("camera_component"))->zoom;
+    Camera* camera = stage->getComponent<Camera>("camera_component");
+    float zoom = camera->zoom;
 
     if(zoom > 40) {
+        mat4 camRot = mat4::rotation(camera->get_angle());
+        mat4 camRotInv = mat4::rotation(-camera->get_angle()); // Undo camera rotation
+        mat4 unrotatedViewInv = camRotInv.inv()*viewInv;
+
         Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
         float buffer_width_f = buffer_component->buffer_width_f;
         float buffer_height_f = buffer_component->buffer_height_f;
@@ -120,15 +125,15 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
 
         vec4 tl_ndc(-1,1,0,1);
         vec4 br_ndc(1,-1,0,1);
-        mat4 vpInv = (projection*viewInv).inv();
+        mat4 vpInv = (projection*unrotatedViewInv).inv();
         vec4 tl = vpInv*tl_ndc;
         vec4 br = vpInv*br_ndc;
 
-        int lower_x = clamp(truncf(tl.x), 0.f, buffer_width_f-1.f);
-        int upper_x = clamp(ceilf(br.x)+1.f, 1.f, buffer_width_f);
+        int lower_x = clamp(truncf(tl.x()), 0.f, buffer_width_f-1.f);
+        int upper_x = clamp(ceilf(br.x())+1.f, 1.f, buffer_width_f);
 
-        int lower_y = clamp(truncf(tl.y), 0.f, buffer_height_f-1.0f);
-        int upper_y = clamp(ceilf(br.y)+1.f, 1.f, buffer_height_f);
+        int lower_y = clamp(truncf(tl.y()), 0.f, buffer_height_f-1.0f);
+        int upper_y = clamp(ceilf(br.y())+1.f, 1.f, buffer_height_f);
 
         char pix_label[30];
         for(int y = lower_y; y < upper_y; ++y) {
@@ -161,38 +166,38 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                         sprintf(pix_label, "%d", fpix);
                     }
 
-                    draw_text(projection, viewInv, pix_label, x, y, 0.0);
+                    draw_text(projection, viewInv, camRot, pix_label, x, y, 0.0);
                 } else if(channels==2) {
                     for(int c = 0; c < 2; ++c) {
                         float y_off = ((float)-c+0.5f)/3.0;
                         if(type == Buffer::BufferType::Float32) {
                             sprintf(pix_label, "%.4f",
                                     reinterpret_cast<float*>(buffer)[pos+c]);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedByte) {
                             sprintf(pix_label, "%d", buffer[pos+c]);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off, 0.5f);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off, 0.5f);
                         }
                         else if(type == Buffer::BufferType::Short) {
                             short fpix = reinterpret_cast<short*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedShort) {
                             unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::Int32) {
                             int fpix = reinterpret_cast<int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedInt32) {
                             unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                     }
                 } else if(channels==3) {
@@ -201,31 +206,31 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                         if(type == Buffer::BufferType::Float32) {
                             sprintf(pix_label, "%.4f",
                                     reinterpret_cast<float*>(buffer)[pos+c]);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedByte) {
                             sprintf(pix_label, "%d", buffer[pos+c]);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off, 0.5f);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off, 0.5f);
                         }
                         else if(type == Buffer::BufferType::Short) {
                             short fpix = reinterpret_cast<short*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedShort) {
                             unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::Int32) {
                             int fpix = reinterpret_cast<int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedInt32) {
                             unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                     }
                 } else if(channels==4) {
@@ -234,31 +239,31 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                         if(type == Buffer::BufferType::Float32) {
                             sprintf(pix_label, "%.4f",
                                     reinterpret_cast<float*>(buffer)[pos+c]);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedByte) {
                             sprintf(pix_label, "%d", buffer[pos+c]);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off, 0.5f);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off, 0.5f);
                         }
                         else if(type == Buffer::BufferType::Short) {
                             short fpix = reinterpret_cast<short*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedShort) {
                             unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::Int32) {
                             int fpix = reinterpret_cast<int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                         else if(type == Buffer::BufferType::UnsignedInt32) {
                             unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
                             sprintf(pix_label, "%d", fpix);
-                            draw_text(projection, viewInv, pix_label, x, y, y_off);
+                            draw_text(projection, viewInv, camRot, pix_label, x, y, y_off);
                         }
                     }
                 }
@@ -267,7 +272,7 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
     }
 }
 
-void BufferValues::draw_text(const mat4& projection, const mat4& viewInv,
+void BufferValues::draw_text(const mat4& projection, const mat4& viewInv, const mat4& camRot,
         const char* text, float x, float y, float y_offset, float scale) {
     Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
     const float* auto_buffer_contrast_brightness;
@@ -293,7 +298,7 @@ void BufferValues::draw_text(const mat4& projection, const mat4& viewInv,
     text_prog.uniform1i("text_sampler", 1);
 
     text_prog.uniformMatrix4fv("mvp", 1, GL_FALSE,
-            (projection*viewInv).data);
+            (projection*viewInv).data());
     text_prog.uniform2f("pix_coord",
             buffer_component->tile_coord_x(x),
             buffer_component->tile_coord_y(y));
@@ -312,8 +317,11 @@ void BufferValues::draw_text(const mat4& projection, const mat4& viewInv,
     float sx = 1.0/text_pixel_scale;
     float sy = 1.0/text_pixel_scale;
 
-    y += 0.5 + boxH/2.0*sy - y_offset;
-    x += 0.5 - boxW/2.0*sx;
+    vec4 channel_offset(0, y_offset, 0, 0);
+    channel_offset = camRot * channel_offset;
+
+    y += 0.5 + boxH/2.0*sy - channel_offset.y();
+    x += 0.5 - boxW/2.0*sx - channel_offset.x();
 
     for(const unsigned char* p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
         float x2 = x + text_texture_tls[*p][0] * sx;
@@ -329,6 +337,9 @@ void BufferValues::draw_text(const mat4& projection, const mat4& viewInv,
         float tex_upper_x = tex_lower_x + ((float)tex_wid-1.0f)/text_texture_width;
         float tex_upper_y = tex_lower_y + ((float)tex_hei-1.0f)/text_texture_height;
 
+        /*
+         * box format: <pixel coord x, pixel coord y, texture coord x, texture coord y>
+         */
         GLfloat box[4][4] = {
             {x2,     y2    , tex_lower_x, tex_lower_y},
             {x2 + w, y2    , tex_upper_x, tex_lower_y},
@@ -336,10 +347,22 @@ void BufferValues::draw_text(const mat4& projection, const mat4& viewInv,
             {x2 + w, y2 + h, tex_upper_x, tex_upper_y},
         };
 
+        vec4 avgPos(x2+w/2.0, y2+h/2.0, 0, 0);
+
+        for(int i = 0; i < 4; ++i) {
+            vec4 centeredCoord(box[i][0]-avgPos.x(), box[i][1]-avgPos.y(), 0,1);
+            centeredCoord = camRot * centeredCoord;
+            box[i][0] = centeredCoord.x() + avgPos.x();
+            box[i][1] = centeredCoord.y() + avgPos.y();
+        }
+
         glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-        x += text_texture_advances[*p][0] * sx;
-        y += text_texture_advances[*p][1] * sy;
+        vec4 char_step_direction(text_texture_advances[*p][0] * sx, text_texture_advances[*p][1] * sy, 0.0, 1.0);
+        char_step_direction = camRot * char_step_direction;
+
+        x += char_step_direction.x();
+        y += char_step_direction.y();
     }
 }

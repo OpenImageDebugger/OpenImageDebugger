@@ -59,6 +59,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui_->linkViewsToggle, SIGNAL(clicked()), this, SLOT(link_views_toggle()));
 
+    connect(ui_->rotate_90_cw, SIGNAL(clicked()), this, SLOT(rotate_90_cw()));
+    connect(ui_->rotate_90_ccw, SIGNAL(clicked()), this, SLOT(rotate_90_ccw()));
+
     status_bar = new QLabel();
     status_bar->setAlignment(Qt::AlignRight);
     setStyleSheet("QStatusBar::item { border: 0px solid black };");
@@ -351,7 +354,7 @@ void MainWindow::update_statusbar()
         vec4 mouse_pos = vp_inv * mouse_pos_ndc;
 
         message << std::fixed << std::setprecision(1) <<
-                   "(" << floorf(mouse_pos.x) << "," << floorf(mouse_pos.y) << ")\t" <<
+                   "(" << floorf(mouse_pos.x()) << "," << floorf(mouse_pos.y()) << ")\t" <<
                    cam->zoom * 100.0 << "%";
         status_bar->setText(message.str().c_str());
     }
@@ -435,6 +438,22 @@ void MainWindow::recenter_buffer()
 void MainWindow::link_views_toggle()
 {
     link_views_enabled_ = !link_views_enabled_;
+}
+
+void MainWindow::rotate_90_cw()
+{
+   if(currently_selected_stage_ != nullptr) {
+       Camera* cam = currently_selected_stage_->getComponent<Camera>("camera_component");
+       cam->rotate_90cw();
+   }
+}
+
+void MainWindow::rotate_90_ccw()
+{
+   if(currently_selected_stage_ != nullptr) {
+       Camera* cam = currently_selected_stage_->getComponent<Camera>("camera_component");
+       cam->rotate_90ccw();
+   }
 }
 
 void MainWindow::remove_selected_buffer()

@@ -21,17 +21,13 @@ An OpenGL based advanced buffer visualization tool for GDB.
 * Supports big buffers whose dimensions exceed GL_MAX_TEXTURE_SIZE.
 * Supports data structures that map to a ROI of a bigger buffer.
 * Exports buffers as png images (with auto contrast) or octave matrix files
-  (unprocessed)
+  (unprocessed).
+* Rotate buffers 90&deg; clockwise or counterclockwise.
 
 ## Requirements
 
  * An OpenGL 4.0+ compliant GPU
  * A C++11 compliant compiler (gcc-4.9 or later is recommended)
-
-## Roadmap
-
-* Allow dumping buffers to a file
-* Rotate/flip visualized buffers
 
 ## Installation
 

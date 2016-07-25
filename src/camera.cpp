@@ -40,7 +40,8 @@ bool Camera::post_initialize() {
 }
 
 void Camera::set_model_matrix() {
-    model.setFromST(1.0/zoom, 1.0/zoom, 1.0,
+    model.setFromSRT(1.0/zoom, 1.0/zoom, 1.0,
+                     angle_,
             -camera_pos_x_-buffer_origin_x_,
             -camera_pos_y_-buffer_origin_y_, 0.f);
 }
@@ -81,6 +82,16 @@ void Camera::recenter_camera()
     set_initial_zoom();
 }
 
+void Camera::rotate_90cw() {
+    angle_ -= 90.f * M_PI / 180.f;
+    set_model_matrix();
+}
+
+void Camera::rotate_90ccw() {
+    angle_ += 90.f * M_PI / 180.f;
+    set_model_matrix();
+}
+
 void Camera::mouse_drag_event(int mouseX, int mouseY)
 {
     // Mouse is down. Update camera_pos_x_/camera_pos_y_
@@ -88,6 +99,10 @@ void Camera::mouse_drag_event(int mouseX, int mouseY)
     camera_pos_y_ += mouseY/zoom;
 
     set_model_matrix();
+}
+
+float Camera::get_angle() {
+    return angle_;
 }
 
 bool Camera::post_buffer_update() {

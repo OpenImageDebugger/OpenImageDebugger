@@ -23,6 +23,10 @@ public:
 
     void mouse_drag_event(int mouse_x, int mouse_y);
 
+    float get_angle();
+
+    void rotate_90cw();
+    void rotate_90ccw();
 private:
     void reset_buffer_origin();
     void set_model_matrix();
@@ -33,5 +37,6 @@ private:
     float camera_pos_y_ = 0.0;
     int canvas_width_;
     int canvas_height_;
+    float angle_ = 0.f;
 };
 
