@@ -12,22 +12,30 @@ void Camera::window_resized(int w, int h) {
 
 void Camera::scroll_callback(float delta) {
     zoom_power_ += delta;
-    zoom = pow(zoom_factor, zoom_power_);
-    set_model_matrix();
+    float zoom = 1.0/pow(zoom_factor, zoom_power_);
+    game_object->scale = {zoom, zoom, 1.0, 0.0};
 }
 
 void Camera::update() {
 }
 
 void Camera::reset_buffer_origin() {
-    Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
+    GameObject* buffer_obj = game_object->stage->getGameObject("buffer");
+    Buffer* buffer_component = buffer_obj->getComponent<Buffer>("buffer_component");
 
     buffer_origin_x_ = -buffer_component->buffer_width_f/2.0
-                       - buffer_component->posX()/2.0;
+                       -buffer_obj->position.x()/2.0;
     buffer_origin_y_ = -buffer_component->buffer_height_f/2.0
-                       - buffer_component->posY()/2.0;
+                       -buffer_obj->position.y()/2.0;
 
-    set_model_matrix();
+    update_object_pose();
+
+}
+
+void Camera::update_object_pose() {
+    game_object->position = {-camera_pos_x_-buffer_origin_x_,
+                             -camera_pos_y_-buffer_origin_y_,
+                             0, 1.0f};
 }
 
 bool Camera::post_initialize() {
@@ -39,15 +47,9 @@ bool Camera::post_initialize() {
     return true;
 }
 
-void Camera::set_model_matrix() {
-    model.setFromSRT(1.0/zoom, 1.0/zoom, 1.0,
-                     angle_,
-            -camera_pos_x_-buffer_origin_x_,
-            -camera_pos_y_-buffer_origin_y_, 0.f);
-}
-
 void Camera::set_initial_zoom() {
-    Buffer* buff = stage->getComponent<Buffer>("buffer_component");
+    GameObject* buffer_obj = game_object->stage->getGameObject("buffer");
+    Buffer* buff = buffer_obj->getComponent<Buffer>("buffer_component");
     float buf_w = buff->buffer_width_f;
     float buf_h = buff->buffer_height_f;
     zoom_power_ = 0.0;
@@ -71,8 +73,8 @@ void Camera::set_initial_zoom() {
         }
     }
 
-    zoom = pow(zoom_factor, zoom_power_);
-    set_model_matrix();
+    float zoom = 1.0/pow(zoom_factor, zoom_power_);
+    game_object->scale = {zoom, zoom, 1.0, 0.0};
 }
 
 void Camera::recenter_camera()
@@ -82,27 +84,19 @@ void Camera::recenter_camera()
     set_initial_zoom();
 }
 
-void Camera::rotate_90cw() {
-    angle_ -= 90.f * M_PI / 180.f;
-    set_model_matrix();
-}
-
-void Camera::rotate_90ccw() {
-    angle_ += 90.f * M_PI / 180.f;
-    set_model_matrix();
-}
-
 void Camera::mouse_drag_event(int mouseX, int mouseY)
 {
     // Mouse is down. Update camera_pos_x_/camera_pos_y_
-    camera_pos_x_ += mouseX/zoom;
-    camera_pos_y_ += mouseY/zoom;
+    float zoom = 1.0/pow(zoom_factor, zoom_power_);
 
-    set_model_matrix();
+    camera_pos_x_ += mouseX*zoom;
+    camera_pos_y_ += mouseY*zoom;
+
+    update_object_pose();
 }
 
-float Camera::get_angle() {
-    return angle_;
+float Camera::get_zoom() {
+    return 1.0f/game_object->scale.x();
 }
 
 bool Camera::post_buffer_update() {

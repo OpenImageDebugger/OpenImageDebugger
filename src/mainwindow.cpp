@@ -123,7 +123,8 @@ void MainWindow::get_observed_variables(PyObject *observed_set)
 
 void MainWindow::reset_ac_min_labels()
 {
-    Buffer* buffer = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+    GameObject* buffer_obj = currently_selected_stage_->getGameObject("buffer");
+    Buffer* buffer = buffer_obj->getComponent<Buffer>("buffer_component");
     float* ac_min = buffer->min_buffer_values();
 
     ui_->ac_red_min->setText(QString::number(ac_min[0]));
@@ -143,7 +144,8 @@ void MainWindow::reset_ac_min_labels()
 
 void MainWindow::reset_ac_max_labels()
 {
-    Buffer* buffer = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+    GameObject* buffer_obj = currently_selected_stage_->getGameObject("buffer");
+    Buffer* buffer = buffer_obj->getComponent<Buffer>("buffer_component");
     float* ac_max = buffer->max_buffer_values();
 
     ui_->ac_red_max->setText(QString::number(ac_max[0]));
@@ -322,7 +324,8 @@ void MainWindow::ac_blue_min_update()
 void MainWindow::set_ac_min_value(int idx, float value)
 {
    if(currently_selected_stage_ != nullptr) {
-       Buffer* buff = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+       GameObject* buffer_obj = currently_selected_stage_->getGameObject("buffer");
+       Buffer* buff = buffer_obj->getComponent<Buffer>("buffer_component");
        buff->min_buffer_values()[idx] = value;
        buff->computeContrastBrightnessParameters();
    }
@@ -331,7 +334,8 @@ void MainWindow::set_ac_min_value(int idx, float value)
 void MainWindow::set_ac_max_value(int idx, float value)
 {
    if(currently_selected_stage_ != nullptr) {
-       Buffer* buff = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+       GameObject* buffer_obj = currently_selected_stage_->getGameObject("buffer");
+       Buffer* buff = buffer_obj->getComponent<Buffer>("buffer_component");
        buff->max_buffer_values()[idx] = value;
        buff->computeContrastBrightnessParameters();
    }
@@ -341,21 +345,23 @@ void MainWindow::update_statusbar()
 {
     if(currently_selected_stage_ != nullptr) {
         stringstream message;
-        Camera* cam = currently_selected_stage_->getComponent<Camera>("camera_component");
+        GameObject* cam_obj = currently_selected_stage_->getGameObject("camera");
+        Camera* cam = cam_obj->getComponent<Camera>("camera_component");
+        float zoom = cam_obj->scale.x();
 
         float mouseX = ui_->bufferPreview->mouseX();
         float mouseY = ui_->bufferPreview->mouseY();
         float winW = ui_->bufferPreview->width();
         float winH = ui_->bufferPreview->height();
         vec4 mouse_pos_ndc( 2.0*(mouseX-winW/2)/winW, -2.0*(mouseY-winH/2)/winH, 0,1);
-        mat4 view = cam->model.inv();
+        mat4 view = cam_obj->get_pose().inv();
         mat4 vp_inv = (cam->projection*view).inv();
 
         vec4 mouse_pos = vp_inv * mouse_pos_ndc;
 
         message << std::fixed << std::setprecision(1) <<
                    "(" << floorf(mouse_pos.x()) << "," << floorf(mouse_pos.y()) << ")\t" <<
-                   cam->zoom * 100.0 << "%";
+                   cam->get_zoom() * 100.0 << "%";
         status_bar->setText(message.str().c_str());
     }
 }
@@ -399,7 +405,8 @@ void MainWindow::ac_blue_max_update()
 void MainWindow::ac_min_reset()
 {
    if(currently_selected_stage_ != nullptr) {
-       Buffer* buff = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+       GameObject* buffer_obj = currently_selected_stage_->getGameObject("buffer");
+       Buffer* buff = buffer_obj->getComponent<Buffer>("buffer_component");
        buff->recomputeMinColorValues();
        buff->computeContrastBrightnessParameters();
 
@@ -411,7 +418,8 @@ void MainWindow::ac_min_reset()
 void MainWindow::ac_max_reset()
 {
    if(currently_selected_stage_ != nullptr) {
-       Buffer* buff = currently_selected_stage_->getComponent<Buffer>("buffer_component");
+       GameObject* buffer_obj = currently_selected_stage_->getGameObject("buffer");
+       Buffer* buff = buffer_obj->getComponent<Buffer>("buffer_component");
        buff->recomputeMaxColorValues();
        buff->computeContrastBrightnessParameters();
 
@@ -430,7 +438,8 @@ void MainWindow::ac_toggle()
 void MainWindow::recenter_buffer()
 {
    if(currently_selected_stage_ != nullptr) {
-       Camera* cam = currently_selected_stage_->getComponent<Camera>("camera_component");
+       GameObject* cam_obj = currently_selected_stage_->getGameObject("camera");
+       Camera* cam = cam_obj->getComponent<Camera>("camera_component");
        cam->recenter_camera();
    }
 }
@@ -442,18 +451,19 @@ void MainWindow::link_views_toggle()
 
 void MainWindow::rotate_90_cw()
 {
-   if(currently_selected_stage_ != nullptr) {
-       Camera* cam = currently_selected_stage_->getComponent<Camera>("camera_component");
-       cam->rotate_90cw();
-   }
+    // TODO make all these events available to components
+    if(currently_selected_stage_ != nullptr) {
+        GameObject* buff_obj = currently_selected_stage_->getGameObject("buffer");
+        buff_obj->angle -= 90.f * M_PI / 180.f;
+    }
 }
 
 void MainWindow::rotate_90_ccw()
 {
-   if(currently_selected_stage_ != nullptr) {
-       Camera* cam = currently_selected_stage_->getComponent<Camera>("camera_component");
-       cam->rotate_90ccw();
-   }
+    if(currently_selected_stage_ != nullptr) {
+        GameObject* buff_obj = currently_selected_stage_->getGameObject("buffer");
+        buff_obj->angle += 90.f * M_PI / 180.f;
+    }
 }
 
 void MainWindow::remove_selected_buffer()
@@ -499,7 +509,8 @@ void MainWindow::export_buffer()
     auto sender_action(static_cast<QAction*>(sender()));
 
     auto stage = stages_.find(sender_action->data().toString().toStdString())->second;
-    Buffer* component = stage->getComponent<Buffer>("buffer_component");
+    GameObject* buffer_obj = stage->getGameObject("buffer");
+    Buffer* component = buffer_obj->getComponent<Buffer>("buffer_component");
 
     QFileDialog fileDialog(this);
     fileDialog.setAcceptMode(QFileDialog::AcceptSave);

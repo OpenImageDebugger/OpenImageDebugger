@@ -18,7 +18,8 @@ SOURCES += src/camera.cpp\
            src/glcanvas.cpp \
            src/stage.cpp \
     src/buffer_exporter.cpp \
-    src/math.cpp
+    src/math.cpp \
+    src/game_object.cpp
 
 required_resources.path = $$OUT_PWD
 required_resources.files = resources/serif.ttf \
@@ -51,6 +52,7 @@ HEADERS  += src/buffer.hpp \
             src/shaders/imagewatch_shaders.hpp \
             src/mainwindow.h \
             src/stage.hpp \
-    src/buffer_exporter.hpp
+    src/buffer_exporter.hpp \
+    src/game_object.h
 
 FORMS    += ui/mainwindow.ui

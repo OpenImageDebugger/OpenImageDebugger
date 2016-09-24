@@ -1,14 +1,13 @@
 #pragma once
 #include "math.hpp"
 
-class Stage;
+class GameObject;
 class GLCanvas;
 class Component {
 public:
-    Stage* stage;
+    GameObject* game_object;
     GLCanvas* gl_canvas;
 
-    mat4 model;
     virtual bool initialize() {
         return true;
     }
@@ -28,12 +27,6 @@ public:
     }
     virtual void update() = 0;
     virtual void draw(const mat4& projection, const mat4& viewInv) = 0;
-    float posX() {
-        return model.data()[12];
-    }
-    float posY() {
-        return model.data()[13];
-    }
     virtual ~Component(){}
 };
 

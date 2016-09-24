@@ -107,15 +107,15 @@ void BufferValues::generate_glyphs_texture() {
 }
 
 void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
-    Camera* camera = stage->getComponent<Camera>("camera_component");
-    float zoom = camera->zoom;
+    GameObject* cam_obj = game_object->stage->getGameObject("camera");
+    Camera* camera = cam_obj->getComponent<Camera>("camera_component");
+    float zoom = camera->get_zoom();
+    mat4 model = game_object->get_pose();
 
     if(zoom > 40) {
-        mat4 camRot = mat4::rotation(camera->get_angle());
-        mat4 camRotInv = mat4::rotation(-camera->get_angle()); // Undo camera rotation
-        mat4 unrotatedViewInv = camRotInv.inv()*viewInv;
+        mat4 camRot = mat4::rotation(game_object->angle);
 
-        Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
+        Buffer* buffer_component = game_object->getComponent<Buffer>("buffer_component");
         float buffer_width_f = buffer_component->buffer_width_f;
         float buffer_height_f = buffer_component->buffer_height_f;
         int step = buffer_component->step;
@@ -125,7 +125,7 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
 
         vec4 tl_ndc(-1,1,0,1);
         vec4 br_ndc(1,-1,0,1);
-        mat4 vpInv = (projection*unrotatedViewInv).inv();
+        mat4 vpInv = (projection*viewInv).inv();
         vec4 tl = vpInv*tl_ndc;
         vec4 br = vpInv*br_ndc;
 
@@ -274,9 +274,9 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
 
 void BufferValues::draw_text(const mat4& projection, const mat4& viewInv, const mat4& camRot,
         const char* text, float x, float y, float y_offset, float scale) {
-    Buffer* buffer_component = stage->getComponent<Buffer>("buffer_component");
+    Buffer* buffer_component = game_object->getComponent<Buffer>("buffer_component");
     const float* auto_buffer_contrast_brightness;
-    if(stage->contrast_enabled) {
+    if(game_object->stage->contrast_enabled) {
         auto_buffer_contrast_brightness =
                 buffer_component->auto_buffer_contrast_brightness();
     } else {

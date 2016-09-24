@@ -7,6 +7,7 @@
 #include "buffer.hpp"
 #include "camera.hpp"
 #include "buffer_values.hpp"
+#include "stage.hpp"
 
 class MainWindow;
 class GLCanvas : public QGLWidget {

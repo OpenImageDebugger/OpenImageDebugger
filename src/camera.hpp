@@ -5,7 +5,6 @@
 class Camera : public Component {
 public:
     static constexpr float zoom_factor = 1.1;
-    float zoom = 1.0;
     mat4 projection;
 
     void update();
@@ -23,13 +22,12 @@ public:
 
     void mouse_drag_event(int mouse_x, int mouse_y);
 
-    float get_angle();
+    float get_zoom();
 
-    void rotate_90cw();
-    void rotate_90ccw();
 private:
     void reset_buffer_origin();
-    void set_model_matrix();
+    void update_object_pose();
+
     float zoom_power_ = 0.0;
     float buffer_origin_x_ = 0.0;
     float buffer_origin_y_ = 0.0;

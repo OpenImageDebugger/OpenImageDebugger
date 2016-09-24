@@ -165,8 +165,9 @@ float Buffer::tile_coord_y(int y) {
 }
 
 void Buffer::update() {
-    Camera* camera = stage->getComponent<Camera>("camera_component");
-    float zoom = camera->zoom;
+    GameObject* cam_obj = game_object->stage->getGameObject("camera");
+    Camera* camera = cam_obj->getComponent<Camera>("camera_component");
+    float zoom = camera->get_zoom();
 
     buff_prog.use();
     if(zoom > 40) {
@@ -216,10 +217,13 @@ bool Buffer::initialize() {
 
 void Buffer::draw(const mat4& projection, const mat4& viewInv) {
     buff_prog.use();
+    mat4 model = game_object->get_pose();
+    mat4 mvp = projection * viewInv * model;
+
     glEnableVertexAttribArray(0);
     glActiveTexture(GL_TEXTURE0);
     buff_prog.uniform1i("sampler", 0);
-    if(stage->contrast_enabled) {
+    if(game_object->stage->contrast_enabled) {
         buff_prog.uniform4fv("brightness_contrast", 2, auto_buffer_contrast_brightness_);
     } else {
         buff_prog.uniform4fv("brightness_contrast", 2, no_ac_params);
@@ -242,9 +246,9 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
 
             mat4 tile_model;
             tile_model.setFromST(buff_w, buff_h, 1.0,
-                                 posX()+tx*max_texture_size,
-                                 posY()+ty*max_texture_size, 0.0f);
-            buff_prog.uniformMatrix4fv("mvp", 1, GL_FALSE, (projection * viewInv * tile_model).data());
+                                 game_object->position.x()+tx*max_texture_size,
+                                 game_object->position.y()+ty*max_texture_size, 0.0f);
+            buff_prog.uniformMatrix4fv("mvp", 1, GL_FALSE, (mvp * tile_model).data());
             buff_prog.uniform2f("buffer_dimension", buff_w, buff_h);
 
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -270,7 +274,11 @@ void Buffer::setup_gl_buffer() {
     int buffer_width_i = static_cast<int>(buffer_width_f);
     int buffer_height_i = static_cast<int>(buffer_height_f);
 
-    model.setFromST(buffer_width_i, buffer_height_i, 1.0, 0.0, 0.0, 0.0f);
+    game_object->scale = {1.0,
+                          1.0,
+                          1.0f,
+                          0.0f};
+    game_object->position = {0.f, 0.f, 0.f, 1.f};
 
     // Initialize contrast parameters
     resetContrastBrightnessParameters();

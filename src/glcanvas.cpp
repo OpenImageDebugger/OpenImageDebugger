@@ -87,8 +87,8 @@ void GLCanvas::render_buffer_icon(Stage* stage) {
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, icon_fbo_);
     glViewport(0, 0, icon_width, icon_height);
 
-    Camera* cam = stage->getComponent<Camera>("camera_component");
-    Camera camera_backup(*cam);
+    GameObject* camera = stage->getGameObject("camera");
+    Camera* cam = camera->getComponent<Camera>("camera_component");
 
     // Adapt camera to the thumbnail dimentions
     cam->window_resized(icon_width, icon_height);
@@ -105,7 +105,8 @@ void GLCanvas::render_buffer_icon(Stage* stage) {
     // Reset stage camera
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
     glViewport(0, 0, width(), height());
-    *cam = camera_backup;
+    cam->window_resized(width(), height());
+    cam->recenter_camera();
 }
 
 void GLCanvas::resizeGL(int w, int h) {

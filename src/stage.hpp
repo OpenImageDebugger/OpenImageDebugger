@@ -4,10 +4,7 @@
 #include <memory>
 #include <map>
 
-#include "stage.hpp"
-#include "camera.hpp"
-#include "buffer.hpp"
-#include "buffer_values.hpp"
+#include "game_object.h"
 
 class Stage
 {
@@ -15,18 +12,13 @@ public:
 
     Stage();
 
-    template<typename T>
-    T* getComponent(std::string tag) {
-        if(all_components.find(tag) == all_components.end())
-            return nullptr;
-        return dynamic_cast<T*>(all_components[tag].get());
-    }
-
     bool initialize(GLCanvas* gl_canvas, uint8_t* buffer, int buffer_width_i,
             int buffer_height_i, int channels, Buffer::BufferType type, int step, bool ac_enabled);
 
     bool buffer_update(uint8_t* buffer, int buffer_width_i,
             int buffer_height_i, int channels, Buffer::BufferType type, int step);
+
+    GameObject* getGameObject(std::string tag);
 
     void update();
 
@@ -43,7 +35,7 @@ public:
     std::vector<uint8_t> buffer_icon_;
 
 private:
-    std::map<std::string, std::shared_ptr<Component>> all_components;
+    std::map<std::string, std::shared_ptr<GameObject>> all_game_objects;
 };
 
 #endif // STAGE_HPP
