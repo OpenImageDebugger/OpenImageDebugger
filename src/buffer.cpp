@@ -197,12 +197,12 @@ bool Buffer::initialize() {
 
     // Buffer VBO
     static const GLfloat g_vertex_buffer_data[] = {
-        0.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f,  1.0f,
-        1.0f,  1.0f,
-        0.0f,  1.0f,
-        0.0f, 0.0f,
+        -0.5f, -0.5f,
+        0.5f, -0.5f,
+        0.5f,  0.5f,
+        0.5f,  0.5f,
+        -0.5f,  0.5f,
+        -0.5f, -0.5f,
     };
 
     glGenBuffers(1, &vbo);
@@ -213,7 +213,6 @@ bool Buffer::initialize() {
 
     return true;
 }
-
 
 void Buffer::draw(const mat4& projection, const mat4& viewInv) {
     buff_prog.use();
@@ -233,11 +232,28 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
     int buffer_height_i = static_cast<int>(buffer_height_f);
 
     int remaining_h = buffer_height_i;
+
+    float py = -buffer_height_i/2;
+    if(buffer_height_i % 2 == 1) {
+        py -= 0.5;
+    }
+
     for(int ty = 0; ty < num_textures_y; ++ty) {
         int buff_h = std::min(remaining_h, max_texture_size);
         remaining_h -= buff_h;
 
+        py += buff_h/2;
+        if(buff_h % 2 == 1) {
+            py += 0.5;
+        }
+
         int remaining_w = buffer_width_i;
+
+        float px = -buffer_width_i/2;
+        if(buffer_width_i % 2 == 1) {
+            px -= 0.5;
+        }
+
         for(int tx = 0; tx < num_textures_x; ++tx) {
             int buff_w = std::min(remaining_w, max_texture_size);
             remaining_w -= buff_w;
@@ -245,16 +261,26 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
             glBindTexture(GL_TEXTURE_2D, buff_tex[ty*num_textures_x+tx]);
 
             mat4 tile_model;
+
+            px += buff_w/2;
+            if(buff_w % 2 == 1) {
+                px += 0.5;
+            }
+
             tile_model.setFromST(buff_w, buff_h, 1.0,
-                                 game_object->position.x()+tx*max_texture_size,
-                                 game_object->position.y()+ty*max_texture_size, 0.0f);
+                                 px,
+                                 py, 0.0f);
             buff_prog.uniformMatrix4fv("mvp", 1, GL_FALSE, (mvp * tile_model).data());
             buff_prog.uniform2f("buffer_dimension", buff_w, buff_h);
+
+            px += buff_w/2;
 
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
             glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
+
+        py += buff_h/2;
     }
 }
 

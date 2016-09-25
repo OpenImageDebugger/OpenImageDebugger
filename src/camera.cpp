@@ -20,16 +20,9 @@ void Camera::update() {
 }
 
 void Camera::reset_buffer_origin() {
-    GameObject* buffer_obj = game_object->stage->getGameObject("buffer");
-    Buffer* buffer_component = buffer_obj->getComponent<Buffer>("buffer_component");
-
-    buffer_origin_x_ = -buffer_component->buffer_width_f/2.0
-                       -buffer_obj->position.x()/2.0;
-    buffer_origin_y_ = -buffer_component->buffer_height_f/2.0
-                       -buffer_obj->position.y()/2.0;
+    buffer_origin_x_ = buffer_origin_y_ = 0.0f;
 
     update_object_pose();
-
 }
 
 void Camera::update_object_pose() {

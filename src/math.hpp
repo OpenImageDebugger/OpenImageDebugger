@@ -18,6 +18,7 @@ public:
     vec4();
     void operator=(const vec4& b);
 
+    vec4& operator+=(const vec4& b);
     vec4 operator-(const vec4& b);
 
     vec4(float x, float y, float z, float w);

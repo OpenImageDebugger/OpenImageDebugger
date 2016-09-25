@@ -347,7 +347,9 @@ void MainWindow::update_statusbar()
         stringstream message;
         GameObject* cam_obj = currently_selected_stage_->getGameObject("camera");
         Camera* cam = cam_obj->getComponent<Camera>("camera_component");
-        float zoom = cam_obj->scale.x();
+
+        GameObject* buffer_obj = currently_selected_stage_->getGameObject("buffer");
+        Buffer* buffer = buffer_obj->getComponent<Buffer>("buffer_component");
 
         float mouseX = ui_->bufferPreview->mouseX();
         float mouseY = ui_->bufferPreview->mouseY();
@@ -355,9 +357,12 @@ void MainWindow::update_statusbar()
         float winH = ui_->bufferPreview->height();
         vec4 mouse_pos_ndc( 2.0*(mouseX-winW/2)/winW, -2.0*(mouseY-winH/2)/winH, 0,1);
         mat4 view = cam_obj->get_pose().inv();
-        mat4 vp_inv = (cam->projection*view).inv();
+        mat4 buffRot = mat4::rotation(buffer_obj->angle);
+        mat4 vp_inv = (cam->projection*view*buffRot).inv();
 
         vec4 mouse_pos = vp_inv * mouse_pos_ndc;
+        mouse_pos += vec4(buffer->buffer_width_f/2.f,
+                          buffer->buffer_height_f/2.f, 0, 0);
 
         message << std::fixed << std::setprecision(1) <<
                    "(" << floorf(mouse_pos.x()) << "," << floorf(mouse_pos.y()) << ")\t" <<
@@ -437,11 +442,19 @@ void MainWindow::ac_toggle()
 
 void MainWindow::recenter_buffer()
 {
-   if(currently_selected_stage_ != nullptr) {
-       GameObject* cam_obj = currently_selected_stage_->getGameObject("camera");
-       Camera* cam = cam_obj->getComponent<Camera>("camera_component");
-       cam->recenter_camera();
-   }
+    if(link_views_enabled_) {
+        for(auto& stage: stages_) {
+            GameObject* cam_obj = stage.second->getGameObject("camera");
+            Camera* cam = cam_obj->getComponent<Camera>("camera_component");
+            cam->recenter_camera();
+        }
+    } else {
+        if(currently_selected_stage_ != nullptr) {
+            GameObject* cam_obj = currently_selected_stage_->getGameObject("camera");
+            Camera* cam = cam_obj->getComponent<Camera>("camera_component");
+            cam->recenter_camera();
+        }
+    }
 }
 
 void MainWindow::link_views_toggle()
@@ -452,17 +465,31 @@ void MainWindow::link_views_toggle()
 void MainWindow::rotate_90_cw()
 {
     // TODO make all these events available to components
-    if(currently_selected_stage_ != nullptr) {
-        GameObject* buff_obj = currently_selected_stage_->getGameObject("buffer");
-        buff_obj->angle -= 90.f * M_PI / 180.f;
+    if(link_views_enabled_) {
+        for(auto& stage: stages_) {
+            GameObject* buff_obj = stage.second->getGameObject("buffer");
+            buff_obj->angle += 90.f * M_PI / 180.f;
+        }
+    } else {
+        if(currently_selected_stage_ != nullptr) {
+            GameObject* buff_obj = currently_selected_stage_->getGameObject("buffer");
+            buff_obj->angle += 90.f * M_PI / 180.f;
+        }
     }
 }
 
 void MainWindow::rotate_90_ccw()
 {
-    if(currently_selected_stage_ != nullptr) {
-        GameObject* buff_obj = currently_selected_stage_->getGameObject("buffer");
-        buff_obj->angle += 90.f * M_PI / 180.f;
+    if(link_views_enabled_) {
+        for(auto& stage: stages_) {
+            GameObject* buff_obj = stage.second->getGameObject("buffer");
+            buff_obj->angle -= 90.f * M_PI / 180.f;
+        }
+    } else {
+        if(currently_selected_stage_ != nullptr) {
+            GameObject* buff_obj = currently_selected_stage_->getGameObject("buffer");
+            buff_obj->angle -= 90.f * M_PI / 180.f;
+        }
     }
 }
 

@@ -91,8 +91,8 @@ if len(sys.argv)==2 and sys.argv[1] == '--test':
 
     initialize_window()
 
-    width=10
-    height=10
+    width=40
+    height=20
     channels=3
     tex = [None]*width*height*channels
     tex2 = [None]*width*height*channels

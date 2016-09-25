@@ -11,6 +11,13 @@ void vec4::operator=(const vec4 &b) {
     vec = b.vec;
 }
 
+vec4& vec4::operator+=(const vec4 &b)
+{
+    for(int i = 0; i < 4; ++i)
+        vec[i]+=b.vec[i];
+    return *this;
+}
+
 vec4 vec4::operator-(const vec4 &b)
 {
     return vec4(vec[0]-b.vec[0], vec[1]-b.vec[1], vec[2]-b.vec[2], vec[3]-b.vec[3]);
