@@ -64,3 +64,6 @@ OTHER_FILES += \
     resources/icons/link.png \
     resources/icons/contrast.png \
     resources/icons/arrow-shrink.png
+
+RESOURCES += \
+    resources/resources.qrc

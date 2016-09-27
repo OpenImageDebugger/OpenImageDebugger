@@ -169,8 +169,8 @@
               <string/>
              </property>
              <property name="icon">
-              <iconset>
-               <normaloff>../resources/icons/contrast.png</normaloff>../resources/icons/contrast.png</iconset>
+              <iconset resource="../resources/resources.qrc">
+               <normaloff>:/resources/icons/contrast.png</normaloff>:/resources/icons/contrast.png</iconset>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -198,8 +198,8 @@
               <string>Toggle min and max intensity editor</string>
              </property>
              <property name="icon">
-              <iconset>
-               <normaloff>../resources/icons/arrow-down-b.png</normaloff>../resources/icons/arrow-down-b.png</iconset>
+              <iconset resource="../resources/resources.qrc">
+               <normaloff>:/resources/icons/arrow-down-b.png</normaloff>:/resources/icons/arrow-down-b.png</iconset>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -224,8 +224,8 @@
               <string/>
              </property>
              <property name="icon">
-              <iconset>
-               <normaloff>../resources/icons/arrow-shrink.png</normaloff>../resources/icons/arrow-shrink.png</iconset>
+              <iconset resource="../resources/resources.qrc">
+               <normaloff>:/resources/icons/arrow-shrink.png</normaloff>:/resources/icons/arrow-shrink.png</iconset>
              </property>
             </widget>
             <widget class="QToolButton" name="linkViewsToggle">
@@ -241,8 +241,8 @@
               <string>Move all buffers simultaneously</string>
              </property>
              <property name="icon">
-              <iconset>
-               <normaloff>../resources/icons/link.png</normaloff>../resources/icons/link.png</iconset>
+              <iconset resource="../resources/resources.qrc">
+               <normaloff>:/resources/icons/link.png</normaloff>:/resources/icons/link.png</iconset>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -261,8 +261,8 @@
               <string>Rotate 90° clockwise</string>
              </property>
              <property name="icon">
-              <iconset>
-               <normaloff>../resources/icons/rotate-cw.png</normaloff>../resources/icons/rotate-cw.png</iconset>
+              <iconset resource="../resources/resources.qrc">
+               <normaloff>:/resources/icons/rotate-cw.png</normaloff>:/resources/icons/rotate-cw.png</iconset>
              </property>
             </widget>
             <widget class="QToolButton" name="rotate_90_ccw">
@@ -278,8 +278,8 @@
               <string>Rotate 90° counterclockwise</string>
              </property>
              <property name="icon">
-              <iconset>
-               <normaloff>../resources/icons/rotate-ccw.png</normaloff>../resources/icons/rotate-ccw.png</iconset>
+              <iconset resource="../resources/resources.qrc">
+               <normaloff>:/resources/icons/rotate-ccw.png</normaloff>:/resources/icons/rotate-ccw.png</iconset>
              </property>
             </widget>
            </widget>
@@ -489,7 +489,9 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../resources/resources.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>acEdit</sender>
