@@ -156,9 +156,9 @@
             <widget class="QToolButton" name="acToggle">
              <property name="geometry">
               <rect>
-               <x>150</x>
+               <x>49</x>
                <y>11</y>
-               <width>120</width>
+               <width>35</width>
                <height>24</height>
               </rect>
              </property>
@@ -168,8 +168,9 @@
              <property name="accessibleDescription">
               <string/>
              </property>
-             <property name="text">
-              <string>autocontrast</string>
+             <property name="icon">
+              <iconset>
+               <normaloff>../resources/icons/contrast.png</normaloff>../resources/icons/contrast.png</iconset>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -183,15 +184,22 @@
               <rect>
                <x>10</x>
                <y>11</y>
-               <width>140</width>
+               <width>35</width>
                <height>24</height>
               </rect>
+             </property>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
              </property>
              <property name="toolTip">
               <string>Toggle min and max intensity editor</string>
              </property>
-             <property name="text">
-              <string>min/max values</string>
+             <property name="icon">
+              <iconset>
+               <normaloff>../resources/icons/arrow-down-b.png</normaloff>../resources/icons/arrow-down-b.png</iconset>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -203,30 +211,38 @@
             <widget class="QToolButton" name="reposition_buffer">
              <property name="geometry">
               <rect>
-               <x>270</x>
+               <x>88</x>
                <y>11</y>
-               <width>100</width>
+               <width>35</width>
                <height>24</height>
               </rect>
              </property>
              <property name="toolTip">
-              <string extracomment="Reposition buffer on center"/>
+              <string extracomment="Reposition buffer on center">Reposition buffer to fit window</string>
              </property>
              <property name="text">
-              <string>reposition</string>
+              <string/>
+             </property>
+             <property name="icon">
+              <iconset>
+               <normaloff>../resources/icons/arrow-shrink.png</normaloff>../resources/icons/arrow-shrink.png</iconset>
              </property>
             </widget>
             <widget class="QToolButton" name="linkViewsToggle">
              <property name="geometry">
               <rect>
-               <x>370</x>
+               <x>127</x>
                <y>11</y>
-               <width>90</width>
+               <width>35</width>
                <height>24</height>
               </rect>
              </property>
-             <property name="text">
-              <string>link views</string>
+             <property name="toolTip">
+              <string>Move all buffers simultaneously</string>
+             </property>
+             <property name="icon">
+              <iconset>
+               <normaloff>../resources/icons/link.png</normaloff>../resources/icons/link.png</iconset>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -235,27 +251,35 @@
             <widget class="QToolButton" name="rotate_90_cw">
              <property name="geometry">
               <rect>
-               <x>460</x>
+               <x>166</x>
                <y>11</y>
-               <width>91</width>
+               <width>35</width>
                <height>24</height>
               </rect>
              </property>
-             <property name="text">
-              <string>Rotate 90CW</string>
+             <property name="toolTip">
+              <string>Rotate 90° clockwise</string>
+             </property>
+             <property name="icon">
+              <iconset>
+               <normaloff>../resources/icons/rotate-cw.png</normaloff>../resources/icons/rotate-cw.png</iconset>
              </property>
             </widget>
             <widget class="QToolButton" name="rotate_90_ccw">
              <property name="geometry">
               <rect>
-               <x>550</x>
+               <x>205</x>
                <y>11</y>
-               <width>101</width>
+               <width>35</width>
                <height>24</height>
               </rect>
              </property>
-             <property name="text">
-              <string>Rotate 90CCW</string>
+             <property name="toolTip">
+              <string>Rotate 90° counterclockwise</string>
+             </property>
+             <property name="icon">
+              <iconset>
+               <normaloff>../resources/icons/rotate-ccw.png</normaloff>../resources/icons/rotate-ccw.png</iconset>
              </property>
             </widget>
            </widget>
@@ -451,7 +475,7 @@
      <x>0</x>
      <y>0</y>
      <width>1024</width>
-     <height>20</height>
+     <height>29</height>
     </rect>
    </property>
   </widget>

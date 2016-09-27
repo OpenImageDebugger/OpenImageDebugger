@@ -56,3 +56,11 @@ HEADERS  += src/buffer.hpp \
     src/game_object.h
 
 FORMS    += ui/mainwindow.ui
+
+OTHER_FILES += \
+    resources/icons/arrow-down-b.png \
+    resources/icons/rotate-cw.png \
+    resources/icons/rotate-ccw.png \
+    resources/icons/link.png \
+    resources/icons/contrast.png \
+    resources/icons/arrow-shrink.png
