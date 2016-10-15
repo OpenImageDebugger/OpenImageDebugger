@@ -116,9 +116,8 @@ The function `is_symbol_observable()` receives a gdb symbol and only returns
 `True` if that symbol is of the observable type (the buffer you are dealing
 with). By default, it works well with the `cv::Mat` type.
 
-### Using multiple buffer types
-
-If you have multiple buffer types that you'd like to be able to watch (for instance, OpenCV's Mat and a custom buffer type), ... TODO explain how
+For more information on how to customize this file, check out this [more
+detailed blog post](https://csantosbh.wordpress.com/2016/10/15/configuring-gdb-imagewatch-to-visualize-custom-buffer-types/).
 
 ## Using plugin
 
@@ -139,7 +138,9 @@ folder to Octave/Matlab `path` variable and call `giw_load('/path/to/buffer')`.
 ### Configure your IDE to use GDB 7.10
 
 If you're not using gdb from the command line, make sure that your IDE is
-correctly configured to use GDB 7.10. TODO explain qtcreator
+correctly configured to use GDB 7.10. On QtCreator, go to
+`Tools`->`Options`->`Build & Run`->`Debuggers` and make sure that the
+configured path references a compatible GDB version.
 
 
 [1]: http://www.glfw.org/
