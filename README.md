@@ -1,4 +1,4 @@
-# gdb-imagewatch
+# Advanced GDB ImageWatch
 An OpenGL based advanced buffer visualization tool for GDB.
 
 ![](https://raw.githubusercontent.com/csantosbh/gdb-imagewatch/master/doc/sample_window.png)
@@ -36,10 +36,10 @@ An OpenGL based advanced buffer visualization tool for GDB.
 GDB-ImageWatch requires python 3+, lib freetype 2, Qt SDK, GLEW, GLFW, Qt 4.8+ and GDB 7.10+
 (which must be compiled with python 3 support). On Ubuntu:
 
-    sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip qt-sdk texinfo libfreetype6-dev
+    sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip qt-sdk texinfo libfreetype6-dev libeigen3-dev
     sudo pip3 install pysigset
 
-Download and install the latest GDB (if you already don't have it):
+Download and install the latest version of GDB (if you already don't have it):
 
     wget http://ftp.gnu.org/gnu/gdb/gdb-7.10.tar.gz
     tar -zxvf gdb-7.10.tar.gz
@@ -48,12 +48,17 @@ Download and install the latest GDB (if you already don't have it):
     make -j8
     sudo make install
 
-Finally, download and install [GLFW3][1].
+Notice that if you already have an older version of GDB, you will need to either reconfigure your environment running `update-alternatives` or reconfigure your IDE to use the updated version (which, by default, will be installed on `/usr/local/bin/gdb`).
+
+After the installation, you can remove both the file `gdb-7.10.tar.gz` and the folder `gdb-7.10`.
+
+Finally, clone the GDB ImageWatch plugin to any folder you prefer:
+
+    git clone https://github.com/csantosbh/gdb-imagewatch
 
 ### Build plugin and configure GDB
 
-To build this plugin, create a `build` folder, open a terminal window inside it
-and run:
+To build this plugin, create a `build` folder, open a terminal window inside it and run:
 
     qmake ..
     make -j4
@@ -141,6 +146,3 @@ If you're not using gdb from the command line, make sure that your IDE is
 correctly configured to use GDB 7.10. On QtCreator, go to
 `Tools`->`Options`->`Build & Run`->`Debuggers` and make sure that the
 configured path references a compatible GDB version.
-
-
-[1]: http://www.glfw.org/
