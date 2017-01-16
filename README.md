@@ -73,6 +73,15 @@ Now edit the `~/.gdbinit` file and append the following line:
     source /path/to/gdb-imagewatch/build/gdb-imagewatch.py
 
 
+## Testing your installation
+
+After compiling the plugin, you can test the plugin by opening a console in the installation folder and running the following command:
+
+    python3 gdb-imagewatch.py --test
+
+If the installation was succesful, you should see the imagewatch window with the following gradient buffers:
+
+![](https://raw.githubusercontent.com/csantosbh/gdb-imagewatch/master/doc/test_window.png)
 
 ## Advanced configuration
 
