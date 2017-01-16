@@ -63,7 +63,7 @@ ShaderProgram::~ShaderProgram() {
 GLuint ShaderProgram::compile(GLuint type, GLchar const *source) {
     GLuint shader = glCreateShader(type);
     const char* src[] = {
-        "#version 400 core\n",
+        "#version 120\n",
         texel_format_== FormatR ?
           "#define FORMAT_R\n"
         : texel_format_ == FormatRG ?

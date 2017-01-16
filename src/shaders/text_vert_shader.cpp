@@ -2,8 +2,8 @@ namespace shader {
 
 const char* text_vert_shader = R"(
 
-in vec4 inputPosition;
-out vec2 uv;
+attribute vec4 inputPosition;
+varying vec2 uv;
 
 uniform mat4 mvp;
 

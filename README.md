@@ -26,7 +26,7 @@ An OpenGL based advanced buffer visualization tool for GDB.
 
 ## Requirements
 
- * An OpenGL 4.0+ compliant GPU
+ * An OpenGL 2.0+ compliant GPU
  * A C++11 compliant compiler (gcc-4.9 or later is recommended)
 
 ## Installation

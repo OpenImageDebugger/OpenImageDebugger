@@ -2,8 +2,8 @@ namespace shader {
 
 const char* buff_vert_shader = R"(
 
-in vec2 inputPosition;
-out vec2 uv;
+attribute vec2 inputPosition;
+varying vec2 uv;
 
 uniform mat4 mvp;
 
