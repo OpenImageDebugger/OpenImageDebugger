@@ -10,6 +10,10 @@ uniform vec4 brightness_contrast[2];
 // Ouput data
 varying vec2 uv;
 
+float roundFloat(float f) {
+    return float(int(f+0.5));
+}
+
 void main()
 {
     vec4 color;
@@ -18,7 +22,7 @@ void main()
     buff_color = buff_color*brightness_contrast[0].x + brightness_contrast[1].x;
 
     float text_color = texture2D(text_sampler, uv).r;
-    float pix_intensity = round(1.0-buff_color);
+    float pix_intensity = roundFloat(1.0-buff_color);
 
     color = vec4(vec3(pix_intensity), text_color);
 

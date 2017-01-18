@@ -10,6 +10,11 @@ uniform int enable_borders;
 // Ouput data
 varying vec2 uv;
 
+vec2 roundVec2(vec2 f) {
+    return vec2(float(int(f.x+0.5)),
+                float(int(f.y+0.5)));
+}
+
 void main()
 {
     vec4 color;
@@ -33,7 +38,7 @@ void main()
 #endif
 
     vec2 buffer_position = uv*buffer_dimension;
-    vec2 err = round(buffer_position)-buffer_position;
+    vec2 err = roundVec2(buffer_position)-buffer_position;
 
     if(enable_borders==1) {
         const float alpha = 0.01;
