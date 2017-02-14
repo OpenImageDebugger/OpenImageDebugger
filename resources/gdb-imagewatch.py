@@ -61,8 +61,11 @@ class MainThreadPlotVariableRunner():
     pass
 
 def plot_variable_cbk(requested_symbol):
-    variable = requested_symbol.decode('utf-8')
-    gdb.post_event(MainThreadPlotVariableRunner(variable))
+    try:
+        variable = requested_symbol.decode('utf-8')
+        gdb.post_event(MainThreadPlotVariableRunner(variable))
+    except:
+        pass
 
     return 0
 
