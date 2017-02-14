@@ -4,6 +4,26 @@
 #include "stage.hpp"
 #include "mainwindow.h"
 
+Camera& Camera::operator=(const Camera& cam) {
+    zoom_power_ = cam.zoom_power_;
+    buffer_origin_x_ = cam.buffer_origin_x_;
+    buffer_origin_y_ = cam.buffer_origin_y_;
+    camera_pos_x_ = cam.camera_pos_x_;
+    camera_pos_y_ = cam.camera_pos_y_;
+    canvas_width_ = cam.canvas_width_;
+    canvas_height_ = cam.canvas_height_;
+    angle_ = cam.angle_;
+
+    if(game_object != nullptr) {
+        update_object_pose();
+
+        float zoom = 1.0/pow(zoom_factor, zoom_power_);
+        game_object->scale = {zoom, zoom, 1.0, 0.0};
+    }
+
+    return *this;
+}
+
 void Camera::window_resized(int w, int h) {
     projection.setOrthoProjection(w/2.0, h/2.0, -1.0f, 1.0f);
     canvas_width_ = w;

@@ -57,18 +57,19 @@ bool Stage::buffer_update(uint8_t *buffer, int buffer_width_i, int buffer_height
         GameObject* game_obj = game_obj_it.second.get();
         game_obj->stage = this;
         for(auto& comp: game_obj->all_components) {
-          if(!comp.second->buffer_update()) {
-            return false;
-          }
+            if(!comp.second->buffer_update()) {
+                return false;
+            }
         }
     }
 
     for(auto& game_obj_it: all_game_objects) {
-      GameObject* game_obj = game_obj_it.second.get();
-      for(auto comp: game_obj->all_components) {
-        if(!comp.second->post_buffer_update())
-          return false;
-      }
+        GameObject* game_obj = game_obj_it.second.get();
+        for(auto comp: game_obj->all_components) {
+            if(!comp.second->post_buffer_update()) {
+                return false;
+            }
+        }
     }
 
     return true;

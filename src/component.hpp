@@ -5,8 +5,8 @@ class GameObject;
 class GLCanvas;
 class Component {
 public:
-    GameObject* game_object;
-    GLCanvas* gl_canvas;
+    GameObject* game_object = nullptr;
+    GLCanvas* gl_canvas = nullptr;
 
     virtual bool initialize() {
         return true;

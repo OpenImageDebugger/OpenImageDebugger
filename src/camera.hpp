@@ -4,6 +4,8 @@
 
 class Camera : public Component {
 public:
+    Camera& operator=(const Camera& cam);
+
     static constexpr float zoom_factor = 1.1;
     mat4 projection;
 

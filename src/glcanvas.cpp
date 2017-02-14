@@ -90,6 +90,9 @@ void GLCanvas::render_buffer_icon(Stage* stage) {
     GameObject* camera = stage->getGameObject("camera");
     Camera* cam = camera->getComponent<Camera>("camera_component");
 
+    // Save original camera pose
+    Camera originalPose = *cam;
+
     // Adapt camera to the thumbnail dimentions
     cam->window_resized(icon_width, icon_height);
     // Flips the projected image along the horizontal axis
@@ -105,8 +108,8 @@ void GLCanvas::render_buffer_icon(Stage* stage) {
     // Reset stage camera
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
     glViewport(0, 0, width(), height());
+    *cam = originalPose;
     cam->window_resized(width(), height());
-    cam->recenter_camera();
 }
 
 void GLCanvas::resizeGL(int w, int h) {
