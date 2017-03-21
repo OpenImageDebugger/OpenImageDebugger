@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <sstream>
 #include "shader.hpp"
 #include "component.hpp"
 
@@ -56,6 +57,7 @@ public:
     void set_min_buffer_values();
     void set_max_buffer_values();
 
+    void getPixelInfo(stringstream& output, int x, int y);
 private:
     void setup_gl_buffer();
     float min_buffer_values_[4];
