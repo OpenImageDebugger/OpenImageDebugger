@@ -22,7 +22,11 @@ bool Buffer::buffer_update() {
 }
 
 void Buffer::getPixelInfo(stringstream& message, int x, int y) {
-    int pos = y*step + x;
+    if (x < 0 || x >= buffer_width_f || y < 0 || y >= buffer_height_f) {
+      message << "[out of bounds]";
+      return;
+    }
+    int pos = channels * ( y*step + x );
     message << "[";
     for(int c = 0; c < channels; ++c) {
         if(type == Buffer::BufferType::Float32) {
@@ -30,7 +34,8 @@ void Buffer::getPixelInfo(stringstream& message, int x, int y) {
             message << fpix;
         }
         else if(type == Buffer::BufferType::UnsignedByte) {
-            message << buffer[pos+c];
+            short fpix = buffer[pos+c]; 
+            message << fpix;
         }
         else if(type == Buffer::BufferType::Short) {
             short fpix = reinterpret_cast<short*>(buffer)[pos+c];
