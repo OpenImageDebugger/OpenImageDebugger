@@ -21,6 +21,45 @@ bool Buffer::buffer_update() {
     return true;
 }
 
+void Buffer::getPixelInfo(stringstream& message, int x, int y) {
+    if (x < 0 || x >= buffer_width_f || y < 0 || y >= buffer_height_f) {
+      message << "[out of bounds]";
+      return;
+    }
+    int pos = channels * ( y*step + x );
+    message << "[";
+    for(int c = 0; c < channels; ++c) {
+        if(type == Buffer::BufferType::Float32) {
+            float fpix = reinterpret_cast<float*>(buffer)[pos+c];
+            message << fpix;
+        }
+        else if(type == Buffer::BufferType::UnsignedByte) {
+            short fpix = buffer[pos+c]; 
+            message << fpix;
+        }
+        else if(type == Buffer::BufferType::Short) {
+            short fpix = reinterpret_cast<short*>(buffer)[pos+c];
+            message << fpix;
+        }
+        else if(type == Buffer::BufferType::UnsignedShort) {
+            unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
+            message << fpix;
+        }
+        else if(type == Buffer::BufferType::Int32) {
+            int fpix = reinterpret_cast<int*>(buffer)[pos+c];
+            message << fpix;
+        }
+        else if(type == Buffer::BufferType::UnsignedInt32) {
+            unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
+            message << fpix;
+        }
+        if (c<channels-1) {
+            message << " ";
+        }
+    }
+    message << "]";
+}
+
 void Buffer::recomputeMinColorValues() {
     int buffer_width_i = static_cast<int>(buffer_width_f);
     int buffer_height_i = static_cast<int>(buffer_height_f);
