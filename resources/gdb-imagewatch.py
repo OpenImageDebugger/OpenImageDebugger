@@ -109,13 +109,13 @@ if len(sys.argv)==2 and sys.argv[1] == '--test':
             pass
         pass
 
-    tex_arr = numpy.asarray(tex, numpy.uint8)
-    tex_arr2 = numpy.asarray(tex2, numpy.uint8)
+    tex_arr = numpy.asarray(tex, numpy.float64)
+    tex_arr2 = numpy.asarray(tex2, numpy.float64)
     mem = memoryview(tex_arr)
     mem2 = memoryview(tex_arr2)
     step = width
-    lib.plot_binary(mem, 'python_test', width, height, channels, gdbiwtype.GIW_TYPES_UINT8, step)
-    lib.plot_binary(mem2, 'python_test2', width, height, channels, gdbiwtype.GIW_TYPES_UINT8, step)
+    lib.plot_binary(mem, 'python_test', width, height, channels, gdbiwtype.GIW_TYPES_FLOAT64, step)
+    lib.plot_binary(mem2, 'python_test2', width, height, channels, gdbiwtype.GIW_TYPES_FLOAT64, step)
 
     lib.update_available_variables(['test', 'sample', 'variable', 'hello_world'])
 
@@ -134,9 +134,10 @@ def get_buffer_size(width, height, channels, type, step):
        type == gdbiwtype.GIW_TYPES_INT16:
         channel_size = 2 # 2 bytes per element
     elif type == gdbiwtype.GIW_TYPES_INT32 or \
-         type == gdbiwtype.GIW_TYPES_UINT32 or \
          type == gdbiwtype.GIW_TYPES_FLOAT32:
         channel_size = 4 # 4 bytes per element
+    elif type == gdbiwtype.GIW_TYPES_FLOAT64:
+        channel_size = 8 # 8 bytes per element
         pass
 
     return channel_size * channels * step*height

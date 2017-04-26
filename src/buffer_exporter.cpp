@@ -93,11 +93,6 @@ const char* get_type_descriptor<float>() {
     return "float";
 }
 
-template<>
-const char* get_type_descriptor<uint32_t>() {
-    return "uint32";
-}
-
 template<typename T>
 void export_binary(const char *fname, const Buffer *buffer, int channels)
 {
@@ -135,10 +130,8 @@ void BufferExporter::export_buffer(const Buffer *buffer, const std::string &path
           export_bitmap<int32_t>(path.c_str(), buffer, buffer->channels);
             break;
         case Buffer::BufferType::Float32:
+        case Buffer::BufferType::Float64:
           export_bitmap<float>(path.c_str(), buffer, buffer->channels);
-            break;
-        case Buffer::BufferType::UnsignedInt32:
-          export_bitmap<uint32_t>(path.c_str(), buffer, buffer->channels);
             break;
         }
     } else {
@@ -157,10 +150,8 @@ void BufferExporter::export_buffer(const Buffer *buffer, const std::string &path
           export_binary<int32_t>(path.c_str(), buffer, buffer->channels);
             break;
         case Buffer::BufferType::Float32:
+        case Buffer::BufferType::Float64:
           export_binary<float>(path.c_str(), buffer, buffer->channels);
-            break;
-        case Buffer::BufferType::UnsignedInt32:
-          export_binary<uint32_t>(path.c_str(), buffer, buffer->channels);
             break;
         }
     }

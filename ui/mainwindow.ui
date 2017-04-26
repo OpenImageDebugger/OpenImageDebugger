@@ -436,19 +436,39 @@
                 </property>
                </widget>
               </item>
-              <item row="0" column="7">
+              <item row="0" column="9">
                <widget class="QToolButton" name="ac_reset_min">
                 <property name="text">
                  <string>Reset</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="7">
+              <item row="1" column="9">
                <widget class="QToolButton" name="ac_reset_max">
                 <property name="text">
                  <string>Reset</string>
                 </property>
                </widget>
+              </item>
+              <item row="1" column="7">
+               <widget class="QLabel" name="label_alpha_max">
+                <property name="text">
+                 <string>Alpha</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="7">
+               <widget class="QLabel" name="label_alpha_min">
+                <property name="text">
+                 <string>Alpha</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="8">
+               <widget class="QLineEdit" name="ac_alpha_min"/>
+              </item>
+              <item row="1" column="8">
+               <widget class="QLineEdit" name="ac_alpha_max"/>
               </item>
              </layout>
             </widget>
@@ -475,7 +495,7 @@
      <x>0</x>
      <y>0</y>
      <width>1024</width>
-     <height>29</height>
+     <height>25</height>
     </rect>
    </property>
   </widget>

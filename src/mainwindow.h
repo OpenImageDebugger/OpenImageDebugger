@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <memory>
 #include <QMainWindow>
 #include <Python.h>
 #include <mutex>
@@ -68,6 +69,8 @@ public Q_SLOTS:
     void ac_green_max_update();
     void ac_blue_min_update();
     void ac_blue_max_update();
+    void ac_alpha_min_update();
+    void ac_alpha_max_update();
 
     void ac_min_reset();
     void ac_max_reset();
@@ -96,7 +99,7 @@ private:
     QTimer update_timer_;
 
     Stage* currently_selected_stage_;
-    std::map<std::string, PyObject*> held_buffers_;
+    std::map<std::string, std::shared_ptr<uint8_t>> held_buffers_;
     std::mutex mtx_;
     std::deque<BufferRequestMessage> pending_updates_;
 

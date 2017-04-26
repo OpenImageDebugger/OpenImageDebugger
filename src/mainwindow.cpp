@@ -8,6 +8,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "buffer_exporter.hpp"
+#include "managed_pointer.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -49,6 +50,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui_->ac_green_max, SIGNAL(editingFinished()), this, SLOT(ac_green_max_update()));
     connect(ui_->ac_blue_min, SIGNAL(editingFinished()), this, SLOT(ac_blue_min_update()));
     connect(ui_->ac_blue_max, SIGNAL(editingFinished()), this, SLOT(ac_blue_max_update()));
+    connect(ui_->ac_alpha_min, SIGNAL(editingFinished()), this, SLOT(ac_alpha_min_update()));
+    connect(ui_->ac_alpha_max, SIGNAL(editingFinished()), this, SLOT(ac_alpha_max_update()));
 
     connect(ui_->ac_reset_min, SIGNAL(clicked()), this, SLOT(ac_min_reset()));
     connect(ui_->ac_reset_max, SIGNAL(clicked()), this, SLOT(ac_max_reset()));
@@ -73,8 +76,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
-    for(auto& held_buffer: held_buffers_)
-        Py_DECREF(held_buffer.second);
+    held_buffers_.clear();
 
     delete ui_;
 }
@@ -129,16 +131,26 @@ void MainWindow::reset_ac_min_labels()
 
     ui_->ac_red_min->setText(QString::number(ac_min[0]));
 
-    if(buffer->channels == 3) {
-        if(!ui_->ac_green_min->isEnabled()) {
-            ui_->ac_green_min->setEnabled(true);
-            ui_->ac_blue_min->setEnabled(true);
-        }
+    if(buffer->channels == 4) {
+        ui_->ac_green_min->setEnabled(true);
+        ui_->ac_blue_min->setEnabled(true);
+        ui_->ac_alpha_min->setEnabled(true);
+
+        ui_->ac_green_min->setText(QString::number(ac_min[1]));
+        ui_->ac_blue_min->setText(QString::number(ac_min[2]));
+        ui_->ac_alpha_min->setText(QString::number(ac_min[3]));
+    }
+    else if(buffer->channels == 3) {
+        ui_->ac_green_min->setEnabled(true);
+        ui_->ac_blue_min->setEnabled(true);
+        ui_->ac_alpha_min->setEnabled(false);
+
         ui_->ac_green_min->setText(QString::number(ac_min[1]));
         ui_->ac_blue_min->setText(QString::number(ac_min[2]));
     } else {
         ui_->ac_green_min->setEnabled(false);
         ui_->ac_blue_min->setEnabled(false);
+        ui_->ac_alpha_min->setEnabled(false);
     }
 }
 
@@ -149,16 +161,26 @@ void MainWindow::reset_ac_max_labels()
     float* ac_max = buffer->max_buffer_values();
 
     ui_->ac_red_max->setText(QString::number(ac_max[0]));
-    if(buffer->channels == 3) {
-        if(!ui_->ac_green_max->isEnabled()) {
-            ui_->ac_green_max->setEnabled(true);
-            ui_->ac_blue_max->setEnabled(true);
-        }
+    if(buffer->channels == 4) {
+        ui_->ac_green_max->setEnabled(true);
+        ui_->ac_blue_max->setEnabled(true);
+        ui_->ac_alpha_max->setEnabled(true);
+
+        ui_->ac_green_max->setText(QString::number(ac_max[1]));
+        ui_->ac_blue_max->setText(QString::number(ac_max[2]));
+        ui_->ac_alpha_max->setText(QString::number(ac_max[3]));
+    }
+    else if(buffer->channels == 3) {
+        ui_->ac_green_max->setEnabled(true);
+        ui_->ac_blue_max->setEnabled(true);
+        ui_->ac_alpha_max->setEnabled(false);
+
         ui_->ac_green_max->setText(QString::number(ac_max[1]));
         ui_->ac_blue_max->setText(QString::number(ac_max[2]));
     } else {
         ui_->ac_green_max->setEnabled(false);
         ui_->ac_blue_max->setEnabled(false);
+        ui_->ac_alpha_max->setEnabled(false);
     }
 }
 
@@ -199,14 +221,23 @@ void MainWindow::loop() {
     while(!pending_updates_.empty()) {
         BufferRequestMessage request = pending_updates_.front();
 
-        uint8_t* buffer = reinterpret_cast<uint8_t*>(
-                    PyMemoryView_GET_BUFFER(request.py_buffer)->buf);
+        uint8_t* srcBuffer;
+        shared_ptr<uint8_t> managedBuffer;
+        if(request.type == Buffer::BufferType::Float64) {
+            managedBuffer = makeFloatBufferFromDouble(reinterpret_cast<double*>(PyMemoryView_GET_BUFFER(request.py_buffer)->buf),
+                                                      request.width_i * request.height_i * request.channels);
+            srcBuffer = managedBuffer.get();
+        } else {
+            managedBuffer = makeSharedPyObject(request.py_buffer);
+            srcBuffer = reinterpret_cast<uint8_t*>(PyMemoryView_GET_BUFFER(request.py_buffer)->buf);
+        }
+
         auto buffer_stage = stages_.find(request.var_name_str);
         if(buffer_stage == stages_.end()) {
             // New buffer request
-            held_buffers_[request.var_name_str] = request.py_buffer;
+            held_buffers_[request.var_name_str] = managedBuffer;
             shared_ptr<Stage> stage = make_shared<Stage>();
-            if(!stage->initialize(ui_->bufferPreview, buffer, request.width_i, request.height_i,
+            if(!stage->initialize(ui_->bufferPreview, srcBuffer, request.width_i, request.height_i,
                                   request.channels, request.type, request.step, ac_enabled_)) {
                 cerr << "[error] Could not initialize opengl canvas!"<<endl;
             }
@@ -233,9 +264,8 @@ void MainWindow::loop() {
             item->setTextAlignment(Qt::AlignHCenter);
             ui_->imageList->addItem(item);
         } else {
-            Py_DECREF(held_buffers_[request.var_name_str]);
-            held_buffers_[request.var_name_str] = request.py_buffer;
-            buffer_stage->second->buffer_update(buffer, request.width_i, request.height_i,
+            held_buffers_[request.var_name_str] = managedBuffer;
+            buffer_stage->second->buffer_update(srcBuffer, request.width_i, request.height_i,
                                                 request.channels, request.type,
                                                 request.step);
             // Update buffer icon
@@ -321,6 +351,11 @@ void MainWindow::ac_blue_min_update()
     set_ac_min_value(2, ui_->ac_blue_min->text().toFloat());
 }
 
+void MainWindow::ac_alpha_min_update()
+{
+    set_ac_min_value(3, ui_->ac_alpha_min->text().toFloat());
+}
+
 void MainWindow::set_ac_min_value(int idx, float value)
 {
    if(currently_selected_stage_ != nullptr) {
@@ -386,8 +421,8 @@ string MainWindow::get_type_label(Buffer::BufferType type, int channels)
         result << "uint16";
     } else if(type == Buffer::BufferType::Int32) {
         result << "int32";
-    } else if(type == Buffer::BufferType::UnsignedInt32) {
-        result << "uint32";
+    } else if(type == Buffer::BufferType::Float64) {
+        result << "float64";
     }
     result << "x" << channels;
 
@@ -407,6 +442,11 @@ void MainWindow::ac_green_max_update()
 void MainWindow::ac_blue_max_update()
 {
     set_ac_max_value(2, ui_->ac_blue_max->text().toFloat());
+}
+
+void MainWindow::ac_alpha_max_update()
+{
+    set_ac_max_value(3, ui_->ac_alpha_max->text().toFloat());
 }
 
 void MainWindow::ac_min_reset()

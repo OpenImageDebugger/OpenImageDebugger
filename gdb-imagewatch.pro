@@ -19,7 +19,8 @@ SOURCES += src/camera.cpp\
            src/stage.cpp \
     src/buffer_exporter.cpp \
     src/math.cpp \
-    src/game_object.cpp
+    src/game_object.cpp \
+    src/managed_pointer.cpp
 
 required_resources.path = $$OUT_PWD
 required_resources.files = resources/serif.ttf \
@@ -53,7 +54,8 @@ HEADERS  += src/buffer.hpp \
             src/mainwindow.h \
             src/stage.hpp \
     src/buffer_exporter.hpp \
-    src/game_object.h
+    src/game_object.h \
+    src/managed_pointer.h
 
 FORMS    += ui/mainwindow.ui
 

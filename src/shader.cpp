@@ -68,6 +68,8 @@ GLuint ShaderProgram::compile(GLuint type, GLchar const *source) {
           "#define FORMAT_R\n"
         : texel_format_ == FormatRG ?
           "#define FORMAT_RG"
+        : texel_format_ == FormatRGB ?
+          "#define FORMAT_RGB"
         : "",
         source
     };
