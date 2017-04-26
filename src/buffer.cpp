@@ -49,8 +49,8 @@ void Buffer::getPixelInfo(stringstream& message, int x, int y) {
             int fpix = reinterpret_cast<int*>(buffer)[pos+c];
             message << fpix;
         }
-        else if(type == Buffer::BufferType::UnsignedInt32) {
-            unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
+        else if(type == Buffer::BufferType::Float64) {
+            double fpix = reinterpret_cast<double*>(buffer)[pos+c];
             message << fpix;
         }
         if (c<channels-1) {
@@ -87,9 +87,9 @@ void Buffer::recomputeMinColorValues() {
                 else if(type == BufferType::Int32)
                     lowest[c] = std::min(lowest[c],
                                          static_cast<float>(reinterpret_cast<int*>(buffer)[channels*i + c]));
-                else if(type == BufferType::UnsignedInt32)
+                else if(type == BufferType::Float64)
                     lowest[c] = std::min(lowest[c],
-                                         static_cast<float>(reinterpret_cast<unsigned int*>(buffer)[channels*i + c]));
+                                         static_cast<float>(reinterpret_cast<double*>(buffer)[channels*i + c]));
             }
         }
     }
@@ -126,9 +126,9 @@ void Buffer::recomputeMaxColorValues() {
                 else if(type == BufferType::Int32)
                     upper[c] = std::max(upper[c],
                                         static_cast<float>(reinterpret_cast<int*>(buffer)[channels*i + c]));
-                else if(type == BufferType::UnsignedInt32)
+                else if(type == BufferType::Float64)
                     upper[c] = std::max(upper[c],
-                                        static_cast<float>(reinterpret_cast<unsigned int*>(buffer)[channels*i + c]));
+                                        static_cast<float>(reinterpret_cast<double*>(buffer)[channels*i + c]));
             }
         }
     }
@@ -162,8 +162,9 @@ void Buffer::computeContrastBrightnessParameters() {
             maxIntensity = std::numeric_limits<unsigned short>::max();
         else if(type == BufferType::Int32)
             maxIntensity = std::numeric_limits<int>::max();
-        else if(type == BufferType::UnsignedInt32)
+        else if(type == BufferType::Float64)
             maxIntensity = std::numeric_limits<unsigned int>::max();
+//            maxIntensity = std::numeric_limits<double>::max();
         else if(type == BufferType::Float32)
             maxIntensity = 1.0f;
 
@@ -369,8 +370,9 @@ void Buffer::setup_gl_buffer() {
         tex_type = GL_UNSIGNED_SHORT;
     } else if (type == BufferType::Int32) {
         tex_type = GL_INT;
-    } else if (type == BufferType::UnsignedInt32) {
-        tex_type = GL_UNSIGNED_INT;
+    } else if (type == BufferType::Float64) {
+//        tex_type = GL_UNSIGNED_INT;
+        tex_type = GL_DOUBLE;
     }
 
     if(channels == 1) {

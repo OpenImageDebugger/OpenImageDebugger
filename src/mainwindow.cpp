@@ -386,8 +386,8 @@ string MainWindow::get_type_label(Buffer::BufferType type, int channels)
         result << "uint16";
     } else if(type == Buffer::BufferType::Int32) {
         result << "int32";
-    } else if(type == Buffer::BufferType::UnsignedInt32) {
-        result << "uint32";
+    } else if(type == Buffer::BufferType::Float64) {
+        result << "float64";
     }
     result << "x" << channels;
 

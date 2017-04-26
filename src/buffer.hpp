@@ -13,7 +13,7 @@ public:
     std::vector<GLuint> buff_tex;
     static const float no_ac_params[8];
 
-    enum class BufferType { UnsignedByte = 0, UnsignedShort = 2, Short = 3, Int32 = 4, Float32 = 5, UnsignedInt32 = 6 };
+    enum class BufferType { UnsignedByte = 0, UnsignedShort = 2, Short = 3, Int32 = 4, Float32 = 5, Float64 = 6 };
 
     ~Buffer();
 
