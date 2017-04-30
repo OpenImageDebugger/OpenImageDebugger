@@ -31,10 +31,17 @@ private:
     int text_texture_advances[256][2];
     int text_texture_sizes[256][2];
     int text_texture_tls[256][2];
+    static float constexpr padding = 0.125f; // Must be smaller than 0.5
 
     void generate_glyphs_texture();
 
-    void draw_text(const mat4& projection, const mat4& viewInv, const mat4 &camRot,
-            const char* text, float x, float y, float y_offset, float scale = 1.0f);
+    void draw_text(const mat4& projection,
+                   const mat4& viewInv,
+                   const mat4 &camRot,
+                   const char* text,
+                   float x,
+                   float y,
+                   float y_offset,
+                   float channels);
 };
 

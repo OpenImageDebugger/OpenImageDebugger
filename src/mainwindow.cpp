@@ -123,6 +123,19 @@ void MainWindow::get_observed_variables(PyObject *observed_set)
     }
 }
 
+void enableInputs(const initializer_list<QLineEdit*>& inputs) {
+    for(auto& input: inputs) {
+        input->setEnabled(true);
+    }
+}
+
+void disableInputs(const initializer_list<QLineEdit*>& inputs) {
+    for(auto& input: inputs) {
+        input->setEnabled(false);
+        input->setText("");
+    }
+}
+
 void MainWindow::reset_ac_min_labels()
 {
     GameObject* buffer_obj = currently_selected_stage_->getGameObject("buffer");
@@ -132,25 +145,26 @@ void MainWindow::reset_ac_min_labels()
     ui_->ac_red_min->setText(QString::number(ac_min[0]));
 
     if(buffer->channels == 4) {
-        ui_->ac_green_min->setEnabled(true);
-        ui_->ac_blue_min->setEnabled(true);
-        ui_->ac_alpha_min->setEnabled(true);
+        enableInputs({ui_->ac_green_min, ui_->ac_blue_min, ui_->ac_alpha_min});
 
         ui_->ac_green_min->setText(QString::number(ac_min[1]));
         ui_->ac_blue_min->setText(QString::number(ac_min[2]));
         ui_->ac_alpha_min->setText(QString::number(ac_min[3]));
     }
     else if(buffer->channels == 3) {
-        ui_->ac_green_min->setEnabled(true);
-        ui_->ac_blue_min->setEnabled(true);
+        enableInputs({ui_->ac_green_min, ui_->ac_blue_min});
         ui_->ac_alpha_min->setEnabled(false);
 
         ui_->ac_green_min->setText(QString::number(ac_min[1]));
         ui_->ac_blue_min->setText(QString::number(ac_min[2]));
+    }
+    else if(buffer->channels == 2) {
+        ui_->ac_green_min->setEnabled(true);
+        disableInputs({ui_->ac_blue_min, ui_->ac_alpha_min});
+
+        ui_->ac_green_min->setText(QString::number(ac_min[1]));
     } else {
-        ui_->ac_green_min->setEnabled(false);
-        ui_->ac_blue_min->setEnabled(false);
-        ui_->ac_alpha_min->setEnabled(false);
+        disableInputs({ui_->ac_green_min, ui_->ac_blue_min, ui_->ac_alpha_min});
     }
 }
 
@@ -162,25 +176,26 @@ void MainWindow::reset_ac_max_labels()
 
     ui_->ac_red_max->setText(QString::number(ac_max[0]));
     if(buffer->channels == 4) {
-        ui_->ac_green_max->setEnabled(true);
-        ui_->ac_blue_max->setEnabled(true);
-        ui_->ac_alpha_max->setEnabled(true);
+        enableInputs({ui_->ac_green_max, ui_->ac_blue_max, ui_->ac_alpha_max});
 
         ui_->ac_green_max->setText(QString::number(ac_max[1]));
         ui_->ac_blue_max->setText(QString::number(ac_max[2]));
         ui_->ac_alpha_max->setText(QString::number(ac_max[3]));
     }
     else if(buffer->channels == 3) {
-        ui_->ac_green_max->setEnabled(true);
-        ui_->ac_blue_max->setEnabled(true);
+        enableInputs({ui_->ac_green_max, ui_->ac_blue_max});
         ui_->ac_alpha_max->setEnabled(false);
 
         ui_->ac_green_max->setText(QString::number(ac_max[1]));
         ui_->ac_blue_max->setText(QString::number(ac_max[2]));
+    }
+    else if(buffer->channels == 2) {
+        ui_->ac_green_max->setEnabled(true);
+        disableInputs({ui_->ac_blue_max, ui_->ac_alpha_max});
+
+        ui_->ac_green_max->setText(QString::number(ac_max[1]));
     } else {
-        ui_->ac_green_max->setEnabled(false);
-        ui_->ac_blue_max->setEnabled(false);
-        ui_->ac_alpha_max->setEnabled(false);
+        disableInputs({ui_->ac_green_max, ui_->ac_blue_max, ui_->ac_alpha_max});
     }
 }
 
