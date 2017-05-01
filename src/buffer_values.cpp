@@ -110,6 +110,37 @@ void BufferValues::generate_glyphs_texture() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
 }
 
+inline void pix2str(const Buffer::BufferType& type,
+                    char* pix_label,
+                    const uint8_t* buffer,
+                    int& pos,
+                    const int& c) {
+    if(type == Buffer::BufferType::Float32 ||
+       type == Buffer::BufferType::Float64) {
+        float fpix = reinterpret_cast<const float*>(buffer)[pos + c];
+        sprintf(pix_label, "%.3f", fpix);
+        if(strlen(pix_label) > 7)
+            sprintf(pix_label, "%.3e", fpix);
+    }
+    else if(type == Buffer::BufferType::UnsignedByte) {
+        sprintf(pix_label, "%d", buffer[pos + c]);
+    }
+    else if(type == Buffer::BufferType::Short) {
+        short fpix = reinterpret_cast<const short*>(buffer)[pos + c];
+        sprintf(pix_label, "%d", fpix);
+    }
+    else if(type == Buffer::BufferType::UnsignedShort) {
+        unsigned short fpix = reinterpret_cast<const unsigned short*>(buffer)[pos + c];
+        sprintf(pix_label, "%d", fpix);
+    }
+    else if(type == Buffer::BufferType::Int32) {
+        int fpix = reinterpret_cast<const int*>(buffer)[pos + c];
+        sprintf(pix_label, "%d", fpix);
+        if(strlen(pix_label) > 7)
+            sprintf(pix_label, "%.3e", static_cast<float>(fpix));
+    }
+}
+
 void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
     GameObject* cam_obj = game_object->stage->getGameObject("camera");
     Camera* camera = cam_obj->getComponent<Camera>("camera_component");
@@ -149,125 +180,44 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
         int pos_center_y = -buffer_height_f/2;
 
         char pix_label[30];
+
+        int pos;
+        float y_off;
+
+        // Offset for vertical channel position to account for padding
+        array<float, 4> recenterFactors;
+        if(channels == 1) {
+            recenterFactors = {0.f, 0.f,
+                               0.f, 0.f};
+        } else if(channels == 2) {
+            float rfUp = padding / 3.0 / channels;
+            recenterFactors = {rfUp,
+                               -rfUp,
+                               0.f, 0.f};
+        } else if(channels == 3) {
+            float rfUp = padding / 2.0 / channels;
+            recenterFactors = {rfUp, 0.f,
+                               -rfUp, 0.f};
+        } else if(channels == 4) {
+            float rfUp = 3.f * padding / 5.f / channels;
+            float rfDown = padding / 5.f / channels;
+            recenterFactors = {rfUp, rfDown,
+                               -rfDown, -rfUp};
+        }
+
         for(int y = lower_y-pos_center_y; y < upper_y-pos_center_y; ++y) {
             for(int x = lower_x-pos_center_x; x < upper_x-pos_center_x; ++x) {
-                int pos = (y*step + x)*channels;
-                if(channels == 1) {
-                    float y_off = 0.f;
+                pos = (y*step + x)*channels;
 
-                    if(type == Buffer::BufferType::Float32 ||
-                       type == Buffer::BufferType::Float64) {
-                        float fpix = reinterpret_cast<float*>(buffer)[pos];
-                        sprintf(pix_label, "%.3f", fpix);
-                        if(strlen(pix_label)>7)
-                            sprintf(pix_label, "%.2e", fpix);
-                    }
-                    else if(type == Buffer::BufferType::UnsignedByte) {
-                        sprintf(pix_label, "%d", buffer[pos]);
-                    }
-                    else if(type == Buffer::BufferType::Short) {
-                        short fpix = reinterpret_cast<short*>(buffer)[pos];
-                        sprintf(pix_label, "%d", fpix);
-                    }
-                    else if(type == Buffer::BufferType::UnsignedShort) {
-                        unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos];
-                        sprintf(pix_label, "%d", fpix);
-                    }
-                    else if(type == Buffer::BufferType::Int32) {
-                        int fpix = reinterpret_cast<int*>(buffer)[pos];
-                        sprintf(pix_label, "%d", fpix);
-                    }
+                for(int c = 0; c < channels; ++c) {
+                    y_off = (0.5f * (channels - 1) - c) / channels
+                            - recenterFactors[c];
 
-                    draw_text(projection, viewInv, camRot, pix_label, x + pos_center_x, y + pos_center_y, y_off, channels);
-                } else if(channels==2) {
-                    // Recenter to account for padding
-                    float recenterFactor = padding / 3.0 / channels;
-
-                    for(int c = 0; c < 2; ++c) {
-                        float y_off = ((float)-c+0.5f)/2.0;
-                        y_off -= sgn(y_off) * recenterFactor;
-
-                        if(type == Buffer::BufferType::Float32 ||
-                           type == Buffer::BufferType::Float64) {
-                            sprintf(pix_label, "%.4f", reinterpret_cast<float*>(buffer)[pos+c]);
-                        }
-                        else if(type == Buffer::BufferType::UnsignedByte) {
-                            sprintf(pix_label, "%d", buffer[pos+c]);
-                        }
-                        else if(type == Buffer::BufferType::Short) {
-                            short fpix = reinterpret_cast<short*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
-                        }
-                        else if(type == Buffer::BufferType::UnsignedShort) {
-                            unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
-                        }
-                        else if(type == Buffer::BufferType::Int32) {
-                            int fpix = reinterpret_cast<int*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
-                        }
-                        draw_text(projection, viewInv, camRot, pix_label, x + pos_center_x, y + pos_center_y, y_off, channels);
-                    }
-                } else if(channels==3) {
-                    float recenterFactor = padding / 2.0 / channels;
-
-                    for(int c = 0; c < 3; ++c) {
-                        float y_off = ((float)-c+1.0f) / 3.0;
-                        // Recenter to account for padding
-                        y_off -= sgn(y_off) * recenterFactor;
-
-                        if(type == Buffer::BufferType::Float32 ||
-                           type == Buffer::BufferType::Float64) {
-                            sprintf(pix_label, "%.4f", reinterpret_cast<float*>(buffer)[pos+c]);
-                        }
-                        else if(type == Buffer::BufferType::UnsignedByte) {
-                            sprintf(pix_label, "%d", buffer[pos+c]);
-                        }
-                        else if(type == Buffer::BufferType::Short) {
-                            short fpix = reinterpret_cast<short*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
-                        }
-                        else if(type == Buffer::BufferType::UnsignedShort) {
-                            unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
-                        }
-                        else if(type == Buffer::BufferType::Int32) {
-                            int fpix = reinterpret_cast<int*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
-                        }
-                        draw_text(projection, viewInv, camRot, pix_label, x + pos_center_x, y + pos_center_y, y_off, channels);
-                    }
-                } else if(channels==4) {
-                    float rfUp = 3.f * padding / 5.f / channels;
-                    float rfDown = padding / 5.f / channels;
-                    float recenterFactors[] = {rfUp, rfDown, -rfDown, -rfUp};
-
-                    for(int c = 0; c < 4; ++c) {
-                        float y_off = ((float)-c+1.5f)/4.0;
-                        y_off -= recenterFactors[c];
-
-                        if(type == Buffer::BufferType::Float32 ||
-                           type == Buffer::BufferType::Float64) {
-                            sprintf(pix_label, "%.4f", reinterpret_cast<float*>(buffer)[pos+c]);
-                        }
-                        else if(type == Buffer::BufferType::UnsignedByte) {
-                            sprintf(pix_label, "%d", buffer[pos+c]);
-                        }
-                        else if(type == Buffer::BufferType::Short) {
-                            short fpix = reinterpret_cast<short*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
-                        }
-                        else if(type == Buffer::BufferType::UnsignedShort) {
-                            unsigned short fpix = reinterpret_cast<unsigned short*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
-                        }
-                        else if(type == Buffer::BufferType::Int32) {
-                            int fpix = reinterpret_cast<int*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
-                        }
-
-                        draw_text(projection, viewInv, camRot, pix_label, x + pos_center_x, y + pos_center_y, y_off, channels);
-                    }
+                    pix2str(type, pix_label, buffer, pos, c);
+                    draw_text(projection, viewInv, camRot,
+                              pix_label,
+                              x + pos_center_x, y + pos_center_y,
+                              y_off, channels);
                 }
             }
         }
@@ -322,8 +272,9 @@ void BufferValues::draw_text(const mat4& projection,
         boxH = max(boxH, (float)text_texture_sizes[*p][1]);
     }
 
+    float paddingScale = 1.f/(1.f-2.f*padding);
     text_pixel_scale = max(text_pixel_scale,
-                           max(boxW, boxH)*(1.f/(1.f-2.f*padding)) * channels);
+                           max(boxW, boxH) * paddingScale * channels);
     float sx = 1.0/text_pixel_scale;
     float sy = 1.0/text_pixel_scale;
 

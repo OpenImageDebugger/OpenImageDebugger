@@ -16,7 +16,8 @@ An OpenGL based advanced buffer visualization tool for GDB.
 * Link views together, moving all watched buffers when a single buffer is moved
   on the screen
 * GPU accelerated
-* Supported buffer types: uint8_t, int16_t, uint16_t, int32_t, uint32_t and float
+* Supported buffer types: uint8_t, int16_t, uint16_t, int32_t, uint32_t and
+  float
 * Supported buffer channels: Grayscale, two-channels, RGB and RGBA
 * Supports big buffers whose dimensions exceed GL_MAX_TEXTURE_SIZE.
 * Supports data structures that map to a ROI of a bigger buffer.
@@ -27,19 +28,21 @@ An OpenGL based advanced buffer visualization tool for GDB.
 ## Requirements
 
  * An OpenGL 2.0+ compliant GPU
- * A C++11 compliant compiler (gcc-4.9 or later is recommended)
+ * A C++11 compliant compiler (gcc-5 or later is recommended)
 
 ## Installation
 
 ### Dependencies
 
-GDB-ImageWatch requires python 3+, lib freetype 2, Qt SDK, GLEW, GLFW, Qt 5+ and GDB 7.10+
-(which must be compiled with python 3 support). On Ubuntu:
+GDB-ImageWatch requires python 3+, lib freetype 2, Qt SDK, GLEW, GLFW, Qt 5+
+and GDB 7.10+ (which must be compiled with python 3 support). On Ubuntu, you
+can install these packages with the following command:
 
     sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip qt-sdk texinfo libfreetype6-dev libeigen3-dev
     sudo pip3 install pysigset
 
-Download and install the latest version of GDB (if you already don't have it):
+Download and install the latest version of GDB with python3 support (if you
+already don't have it):
 
     wget http://ftp.gnu.org/gnu/gdb/gdb-7.10.tar.gz
     tar -zxvf gdb-7.10.tar.gz
@@ -48,9 +51,13 @@ Download and install the latest version of GDB (if you already don't have it):
     make -j8
     sudo make install
 
-Notice that if you already have an older version of GDB, you will need to either reconfigure your environment running `update-alternatives` or reconfigure your IDE to use the updated version (which, by default, will be installed on `/usr/local/bin/gdb`).
+Notice that if you already have an older version of GDB, you will need to
+either reconfigure your environment running `update-alternatives` or
+reconfigure your IDE to use the updated version (which, by default, will be
+installed on `/usr/local/bin/gdb`).
 
-After the installation, you can remove both the file `gdb-7.10.tar.gz` and the folder `gdb-7.10`.
+After the installation, you can remove both the file `gdb-7.10.tar.gz` and the
+folder `gdb-7.10`.
 
 Finally, clone the GDB ImageWatch plugin to any folder you prefer:
 
@@ -58,11 +65,17 @@ Finally, clone the GDB ImageWatch plugin to any folder you prefer:
 
 ### Ubuntu 16.04
 
-Ubuntu 16.04 comes with qt4, which is not compatible with gdb-imagewatch. In order to compile it, you need to install qt5 and use its corresponding qmake during the compilation step.
+Ubuntu 16.04 comes with qt4, which is not compatible with gdb-imagewatch. In
+order to compile it, you need to install qt5 and use its corresponding qmake
+during the compilation step.
+
+If you are using QtCreator, this can be done by going to Tools->Options->Build
+& Run->Kits and set Qt version to any Qt version >= 5.
 
 ### Build plugin and configure GDB
 
-To build this plugin, create a `build` folder, open a terminal window inside it and run:
+To build this plugin, create a `build` folder, open a terminal window inside it
+and run:
 
     qmake ..
     make -j4
@@ -72,20 +85,22 @@ The `make install` step is absolutely required, and will only copy the
 dependencies to the build folder (thus, it doesn't require any special user
 privileges).
 
-Now edit the `~/.gdbinit` file and append the following line: 
+Now edit the `~/.gdbinit` file (create it if it doesn't exist) and append the
+following line:
 
     source /path/to/gdb-imagewatch/build/gdb-imagewatch.py
 
 
 ## Testing your installation
 
-After compiling the plugin, you can test the plugin by opening a console in the installation folder and running the following command:
+After compiling the plugin, you can test it by opening a console in the
+installation folder and running the following command:
 
     python3 gdb-imagewatch.py --test
 
-If the installation was succesful, you should see the imagewatch window with the following gradient buffers:
-
-![](https://raw.githubusercontent.com/csantosbh/gdb-imagewatch/master/doc/test_window.png)
+If the installation was succesful, you should see the imagewatch window with
+the same python_test and python_test2 buffers from the image on the header of
+this page.
 
 ## Advanced configuration
 
@@ -143,12 +158,37 @@ When GDB hits a breakpoint, the imagewatch window will be opened. You only need
 to type the name of the buffer to be watched in the "add symbols" input, and
 press `<enter>`.
 
-Alternatively, you can also invoke the imagewatch window from GDB with the
-following command:
+Alternatively, you can also invoke the imagewatch window directly from GDB with
+the following command:
 
     plot variable_name
 
+### Auto-contrast and manual contrast
+
+The (min) and (max) fields on top of the buffer view can be changed to control
+autocontrast settings. By default, imagewatch will automatically fill these
+fields with the mininum and maximum values inside the entire buffer, and the
+channel values will be normalized from these values to the range [0, 1] inside
+the renderer.
+
+Sometimes, your buffer may contain trash, uninitialized values that are either
+too big or too small, making the entire image look flat because of this
+normalization. If you know the expected range for your image, you can manually
+change the (min) and (max) values to focus on the range that you are
+interested.
+
+### Exporting bufers
+
+Sometimes you may want to export your buffers to be able to process them in an
+external tool. In order to do that, right click the thumbnail corresponding to
+the buffer you wish to export on the left pane and select "export buffer".
+
+GDB ImageWatch supports two export modes. You can save your buffer as a PNG
+(which may result in loss of data if your buffer type is not `uint8_t`) or as a
+binary file that can be opened with any tool.
+
 ### Loading Octave/Matlab buffers
+
 Buffers exported in the `Octave matrix` format can be loaded with the function
 `giw_load.m`, which is installed in the binary folder. To use it, add this
 folder to Octave/Matlab `path` variable and call `giw_load('/path/to/buffer')`.
@@ -159,3 +199,13 @@ If you're not using gdb from the command line, make sure that your IDE is
 correctly configured to use GDB 7.10. On QtCreator, go to
 `Tools`->`Options`->`Build & Run`->`Debuggers` and make sure that the
 configured path references a compatible GDB version.
+
+## Features for the Future & Known issues
+
+* Automatically add the buffers that were being visualized in the previous
+  session
+* Update internal variable list everytime the current stack location changes
+  after a breakpoint is hit
+* Buffers are currently exported preserving the auto-contrast settings; they
+  should not preserve auto-contrast (when saving in octave format) or only do
+  it if auto-contrast is enabled (png)
