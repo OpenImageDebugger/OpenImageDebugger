@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <memory>
+#include <set>
 #include <QMainWindow>
 #include <Python.h>
 #include <mutex>
@@ -100,6 +101,7 @@ private:
 
     Stage* currently_selected_stage_;
     std::map<std::string, std::shared_ptr<uint8_t>> held_buffers_;
+    std::set<std::string> previous_session_buffers_;
     std::mutex mtx_;
     std::deque<BufferRequestMessage> pending_updates_;
 
@@ -124,6 +126,8 @@ private:
     void update_statusbar();
 
     std::string get_type_label(Buffer::BufferType type, int channels);
+    void load_previous_session_symbols();
+    void update_session_settings();
 };
 
 #endif // MAINWINDOW_H

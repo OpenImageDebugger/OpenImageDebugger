@@ -27,7 +27,6 @@ lib.update_plot.argtypes = [ctypes.py_object, # Buffer ptr
                             ctypes.c_int, # Number of channels
                             ctypes.c_int, # Type (0=float32, 1=uint8)
                             ctypes.c_int] # Step size (in pixels)
-lib.get_observed_variables.argtypes = [ctypes.py_object] # Observed variables
                                                          # set
 FETCH_BUFFER_CBK_TYPE = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_char_p)
 lib.initialize_window.argtypes = [
@@ -50,6 +49,17 @@ def request_buffer_update(variable):
 
     lib.update_plot(mem, variable, width, height, channels, type, step)
     pass
+
+def get_buffer_metadata(variable):
+    picked_obj = gdb.parse_and_eval(variable)
+
+    buffer, width, height, channels, type, step = gdbiwtype.get_buffer_info(picked_obj)
+
+    bytes = get_buffer_size(width, height, channels, type, step)
+    inferior = gdb.selected_inferior()
+    mem = inferior.read_memory(buffer, bytes)
+
+    return [mem, width, height, channels, type, step]
 
 class MainThreadPlotVariableRunner():
     def __init__(self, variable):
@@ -125,7 +135,6 @@ if len(sys.argv)==2 and sys.argv[1] == '--test':
     lib.plot_binary(mem, 'python_test', width, height, channels1, gdbiwtype.GIW_TYPES_UINT8, step)
     lib.plot_binary(mem2, 'python_test2', width, height, channels2, gdbiwtype.GIW_TYPES_FLOAT32, step)
 
-    lib.update_available_variables(['test', 'sample', 'variable', 'hello_world'])
 
     while lib.is_running():
         time.sleep(0.5)
@@ -174,10 +183,10 @@ class PlotterCommand(gdb.Command):
 
     pass
 
-def update_observable_suggestions():
+def push_visible_symbols():
     frame = gdb.selected_frame()
     block = frame.block()
-    observable_symbols = list()
+    observable_symbols = dict()
     while not block is None:
         for symbol in block:
             if (symbol.is_argument or symbol.is_variable):
@@ -189,9 +198,9 @@ def update_observable_suggestions():
                     this_type = gdb.parse_and_eval(symbol.name).dereference().type
                     for field_name, field_val in this_type.iteritems():
                         if (not field_name in observable_symbols) and (gdbiwtype.is_symbol_observable(field_val)):
-                            observable_symbols.append(field_name)
+                            observable_symbols[field_name] = get_buffer_metadata(field_name)
                 elif (not name in observable_symbols) and (gdbiwtype.is_symbol_observable(symbol)):
-                    observable_symbols.append(name)
+                    observable_symbols[name] = get_buffer_metadata(name)
                     pass
                 pass
             pass
@@ -211,18 +220,8 @@ def stop_event_handler(event):
         while not lib.is_running():
             time.sleep(0.1)
             pass
-        pass
 
-    update_observable_suggestions()
-
-    observed_variables = set()
-    lib.get_observed_variables(observed_variables)
-    for variable in observed_variables:
-        try:
-            request_buffer_update(variable)
-        except:
-            pass
-        pass
+    push_visible_symbols()
     pass
 
 ##

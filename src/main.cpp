@@ -25,11 +25,10 @@ extern "C" {
     void terminate();
     bool is_running();
     void update_available_variables(PyObject* available_set);
-    void get_observed_variables(PyObject* observed_set);
-    void plot_binary( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
-            int buffer_height_i, int channels, int type, int step);
-    void update_plot( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
-            int buffer_height_i, int channels, int type, int step);
+    void plot_binary(PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
+                     int buffer_height_i, int channels, int type, int step);
+    void update_plot(PyObject* pybuffer, PyObject* var_name, int buffer_width_i,
+                     int buffer_height_i, int channels, int type, int step);
 }
 
 MainWindow* wnd = nullptr;
@@ -41,12 +40,6 @@ bool is_running() {
 
 void update_available_variables(PyObject* available_set) {
     wnd->update_available_variables(available_set);
-}
-
-void get_observed_variables(PyObject* observed_set) {
-    if(wnd != nullptr) {
-        wnd->get_observed_variables(observed_set);
-    }
 }
 
 void update_plot( PyObject* pybuffer, PyObject* var_name, int buffer_width_i,

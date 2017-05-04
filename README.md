@@ -24,6 +24,7 @@ An OpenGL based advanced buffer visualization tool for GDB.
 * Exports buffers as png images (with auto contrast) or octave matrix files
   (unprocessed).
 * Rotate buffers 90&deg; clockwise or counterclockwise.
+* Auto-load buffers being visualized in the previous debug session
 
 ## Requirements
 
@@ -202,8 +203,6 @@ configured path references a compatible GDB version.
 
 ## Features for the Future & Known issues
 
-* Automatically add the buffers that were being visualized in the previous
-  session
 * Update internal variable list everytime the current stack location changes
   after a breakpoint is hit
 * Buffers are currently exported preserving the auto-contrast settings; they

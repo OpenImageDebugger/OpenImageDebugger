@@ -4,11 +4,15 @@
 #include <QShortcut>
 #include <QAction>
 #include <QFileDialog>
+#include <QSettings>
+#include <QStandardPaths>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "buffer_exporter.hpp"
 #include "managed_pointer.h"
+
+Q_DECLARE_METATYPE(QList<QString>)
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -72,6 +76,33 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui_->imageList->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui_->imageList, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(show_context_menu(const QPoint&)));
+
+    load_previous_session_symbols();
+}
+
+void MainWindow::load_previous_session_symbols() {
+    qRegisterMetaTypeStreamOperators<QList<QString> >("QList<QString>");
+
+    QSettings settings("gdbimagewatch.cfg", QSettings::NativeFormat);
+
+    QList<QString> buffers = settings.value("PreviousSession/buffers").value<QList<QString> >();
+    for(const auto& i: buffers) {
+        previous_session_buffers_.insert(i.toStdString());
+    }
+}
+
+void MainWindow::update_session_settings() {
+    QSettings settings("gdbimagewatch.cfg", QSettings::NativeFormat);
+    QList<QString> currentSessionBuffers;
+
+    for(const auto& held_buffer: held_buffers_) {
+        currentSessionBuffers.append(held_buffer.first.c_str());
+    }
+
+    settings.setValue("PreviousSession/buffers",
+                      QVariant::fromValue(currentSessionBuffers));
+    settings.sync();
+
 }
 
 MainWindow::~MainWindow()
@@ -278,6 +309,8 @@ void MainWindow::loop() {
             item->setSizeHint(QSize(205,bufferIcon.height() + 90));
             item->setTextAlignment(Qt::AlignHCenter);
             ui_->imageList->addItem(item);
+
+            update_session_settings();
         } else {
             held_buffers_[request.var_name_str] = managedBuffer;
             buffer_stage->second->buffer_update(srcBuffer, request.width_i, request.height_i,
@@ -554,21 +587,53 @@ void MainWindow::remove_selected_buffer()
 {
     if(ui_->imageList->count() > 0 && currently_selected_stage_ != nullptr) {
         QListWidgetItem* removedItem = ui_->imageList->takeItem(ui_->imageList->currentRow());
-        stages_.erase(removedItem->data(Qt::UserRole).toString().toStdString());
+        string bufferName = removedItem->data(Qt::UserRole).toString().toStdString();
+        stages_.erase(bufferName);
+        held_buffers_.erase(bufferName);
 
         if(stages_.size() == 0)
             currently_selected_stage_ = nullptr;
+
+        update_session_settings();
     }
 }
 
 void MainWindow::update_available_variables(PyObject *available_set)
 {
-    int count = PyList_Size(available_set);
     available_vars_.clear();
-    for(int i = 0; i < count; ++i) {
-        PyObject *var_name_bytes = PyUnicode_AsEncodedString(PyList_GetItem(available_set, i), "ASCII", "strict");
+
+    PyObject* key;
+    PyObject* symbol_metadata;
+    Py_ssize_t pos = 0;
+
+    while (PyDict_Next(available_set, &pos, &key, &symbol_metadata)) {
+        int count = PyList_Size(symbol_metadata);
+
+        assert(count == 6);
+
+        PyObject *var_name_bytes = PyUnicode_AsEncodedString(key, "ASCII", "strict");
         string var_name_str = PyBytes_AS_STRING(var_name_bytes);
         available_vars_.push_back(var_name_str.c_str());
+
+        if(previous_session_buffers_.find(var_name_str) != previous_session_buffers_.end()) {
+            PyObject *pybuffer = PyList_GetItem(symbol_metadata, 0);
+            int buffer_width_i = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 1));
+            int buffer_height_i = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 2));
+            int channels = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 3));
+            int type = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 4));
+            int step = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 5));
+
+            BufferRequestMessage request;
+            request.var_name_str = var_name_str;
+            request.py_buffer = pybuffer;
+            request.width_i = buffer_width_i;
+            request.height_i = buffer_height_i;
+            request.channels = channels;
+            request.type = static_cast<Buffer::BufferType>(type);
+            request.step = step;
+
+            plot_buffer(request);
+        }
     }
 
     completer_updated_ = true;
