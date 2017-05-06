@@ -41,12 +41,12 @@ void main()
     vec2 err = roundVec2(buffer_position)-buffer_position;
 
     if(enable_borders==1) {
-        const float alpha = 0.01;
+        float alpha = dFdx(buffer_position.x);
         float x_ = fract(buffer_position.x);
         float y_ = fract(buffer_position.y);
         float vertical_border = clamp(abs(-1.0/alpha * x_ + 0.5/alpha) - (0.5/alpha-1.0), 0.0, 1.0);
         float horizontal_border = clamp(abs(-1.0/alpha * y_ + 0.5/alpha) - (0.5/alpha-1.0), 0.0, 1.0);
-        color.rgb += vec3(vertical_border+horizontal_border) * 10.0;
+        color.rgb += vec3(vertical_border+horizontal_border);
         color.a = 1.0;
     }
 
