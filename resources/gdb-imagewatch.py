@@ -38,28 +38,26 @@ lib.update_available_variables.argtypes = [
                               ctypes.py_object # List of available variables in
                               ]                # the current context
 
-def request_buffer_update(variable):
-    picked_obj = gdb.parse_and_eval(variable)
-
-    buffer, width, height, channels, type, step = gdbiwtype.get_buffer_info(picked_obj)
-
-    bytes = get_buffer_size(width, height, channels, type, step)
-    inferior = gdb.selected_inferior()
-    mem = inferior.read_memory(buffer, bytes)
-
-    lib.update_plot(mem, variable, width, height, channels, type, step)
-    pass
-
 def get_buffer_metadata(variable):
     picked_obj = gdb.parse_and_eval(variable)
 
     buffer, width, height, channels, type, step = gdbiwtype.get_buffer_info(picked_obj)
 
     bytes = get_buffer_size(width, height, channels, type, step)
+
+    # Check if buffer is valid. If it isn't, this function will throw an exception
+    gdb.execute('x '+str(int(buffer)))
+
     inferior = gdb.selected_inferior()
     mem = inferior.read_memory(buffer, bytes)
 
     return [mem, width, height, channels, type, step]
+
+def request_buffer_update(variable):
+    mem, width, height, channels, type, step = get_buffer_metadata(variable)
+
+    lib.update_plot(mem, variable, width, height, channels, type, step)
+    pass
 
 class MainThreadPlotVariableRunner():
     def __init__(self, variable):
@@ -170,14 +168,8 @@ class PlotterCommand(gdb.Command):
         args = gdb.string_to_argv(arg)
         var_name = str(args[0])
 
-        picked_obj = gdb.parse_and_eval(args[0])
-
-        buffer, width, height, channels, type, step = gdbiwtype.get_buffer_info(picked_obj)
+        mem, width, height, channels, type, step = get_buffer_metadata(var_name)
       
-        bytes = get_buffer_size(width, height, channels, type, step)
-        inferior = gdb.selected_inferior()
-        mem = inferior.read_memory(buffer, bytes)
-
         lib.plot_binary(mem, var_name, width, height, channels, type, step)
         pass
 
@@ -198,9 +190,16 @@ def push_visible_symbols():
                     this_type = gdb.parse_and_eval(symbol.name).dereference().type
                     for field_name, field_val in this_type.iteritems():
                         if (not field_name in observable_symbols) and (gdbiwtype.is_symbol_observable(field_val)):
-                            observable_symbols[field_name] = get_buffer_metadata(field_name)
+                            try:
+                                observable_symbols[field_name] = get_buffer_metadata(field_name)
+                            except:
+                                print('Warning: Field "' + field_name + '" is not observable')
+                                pass
                 elif (not name in observable_symbols) and (gdbiwtype.is_symbol_observable(symbol)):
-                    observable_symbols[name] = get_buffer_metadata(name)
+                    try:
+                        observable_symbols[name] = get_buffer_metadata(name)
+                    except Exception as err:
+                        print('Warning: Field "' + name + '" is not observable')
                     pass
                 pass
             pass

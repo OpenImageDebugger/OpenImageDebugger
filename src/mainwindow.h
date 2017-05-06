@@ -37,7 +37,7 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = 0);
-    void plot_buffer(BufferRequestMessage& buff);
+    void plot_buffer(const BufferRequestMessage& buff);
     ~MainWindow();
 
     void show();

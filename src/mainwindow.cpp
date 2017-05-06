@@ -245,7 +245,7 @@ void MainWindow::mouse_move_event(int, int)
     update_statusbar();
 }
 
-void MainWindow::plot_buffer(BufferRequestMessage &buff)
+void MainWindow::plot_buffer(const BufferRequestMessage &buff)
 {
     BufferRequestMessage new_buffer;
     Py_INCREF(buff.py_buffer);
@@ -256,6 +256,7 @@ void MainWindow::plot_buffer(BufferRequestMessage &buff)
     new_buffer.channels = buff.channels;
     new_buffer.type = buff.type;
     new_buffer.step = buff.step;
+
     {
         std::unique_lock<std::mutex> lock(mtx_);
         pending_updates_.push_back(new_buffer);
@@ -615,7 +616,8 @@ void MainWindow::update_available_variables(PyObject *available_set)
         string var_name_str = PyBytes_AS_STRING(var_name_bytes);
         available_vars_.push_back(var_name_str.c_str());
 
-        if(previous_session_buffers_.find(var_name_str) != previous_session_buffers_.end()) {
+        if(previous_session_buffers_.find(var_name_str) != previous_session_buffers_.end() ||
+           held_buffers_.find(var_name_str) != held_buffers_.find(var_name_str)) {
             PyObject *pybuffer = PyList_GetItem(symbol_metadata, 0);
             int buffer_width_i = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 1));
             int buffer_height_i = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 2));

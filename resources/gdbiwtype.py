@@ -39,10 +39,10 @@ def get_buffer_info(picked_obj):
        type == GIW_TYPES_INT16:
         step = int(step / 2)
     elif type == GIW_TYPES_INT32 or \
-         type == GIW_TYPES_FLOAT32 or \
-         type == GIW_TYPES_FLOAT64:
-        # Double textures are converted to float by the tool
+         type == GIW_TYPES_FLOAT32:
         step = int(step / 4)
+    elif type == GIW_TYPES_FLOAT64:
+        step = int(step / 8)
 
     return (buffer, width, height, channels, type, step)
 
@@ -51,6 +51,10 @@ def get_buffer_info(picked_obj):
 # buffer you are working with). Make sure to check for pointers of your type as
 # well
 def is_symbol_observable(symbol):
+    import gdb
+    # Check if symbol type is the expected buffer
     symbol_type = str(symbol.type)
-    return symbol_type == 'cv::Mat' or symbol_type == 'cv::Mat *'
+    type_check = (symbol_type == 'cv::Mat' or symbol_type == 'cv::Mat *')
+
+    return type_check
 
