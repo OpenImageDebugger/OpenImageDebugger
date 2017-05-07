@@ -358,6 +358,7 @@ void MainWindow::loop() {
         }
 
         symbol_completer_ = shared_ptr<QCompleter>(new QCompleter(available_vars_));
+        symbol_completer_->setCaseSensitivity(Qt::CaseSensitivity::CaseInsensitive);
         ui_->symbolList->setCompleter(symbol_completer_.get());
 
         connect(ui_->symbolList->completer(), SIGNAL(activated(QString)), this, SLOT(on_symbol_completed(QString)));
@@ -688,9 +689,6 @@ void MainWindow::export_buffer()
 
       BufferExporter::export_buffer(component, fileName, outputExtensions[fileDialog.selectedNameFilter()]);
     }
-
-
-    //BufferExporter::export_buffer(component, path, type);
 }
 
 void MainWindow::set_plot_callback(int (*plot_cbk)(const char *)) {
