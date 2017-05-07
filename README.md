@@ -35,7 +35,7 @@ An OpenGL based advanced buffer visualization tool for GDB.
 
 ### Dependencies
 
-GDB-ImageWatch requires python 3+, lib freetype 2, Qt SDK, GLEW, GLFW, Qt 5+
+GDB ImageWatch requires python 3+, lib freetype 2, Qt SDK, GLEW, GLFW, Qt 5+
 and GDB 7.10+ (which must be compiled with python 3 support). On Ubuntu, you
 can install these packages with the following command:
 
@@ -66,7 +66,7 @@ Finally, clone the GDB ImageWatch plugin to any folder you prefer:
 
 ### Ubuntu 16.04
 
-Ubuntu 16.04 comes with qt4, which is not compatible with gdb-imagewatch. In
+Ubuntu 16.04 comes with qt4, which is not compatible with GDB ImageWatch. In
 order to compile it, you need to install qt5 and use its corresponding qmake
 during the compilation step.
 
@@ -86,11 +86,27 @@ The `make install` step is absolutely required, and will only copy the
 dependencies to the build folder (thus, it doesn't require any special user
 privileges).
 
-Now edit the `~/.gdbinit` file (create it if it doesn't exist) and append the
-following line:
+#### Loading plugin: QtCreator
+
+If you use QtCreator, the best way to integrate GDB ImageWatch into your
+workflow is by using it as an *extra debugging helper*. This can be achieved by
+going to the menu `Tools`->`Options`->`Debugger` and adding the file
+`/path/to/gdb-imagewatch/build/gdb-imagewatch.py` in the option
+`Extra debugging Helpers`.
+
+This will automatically load the plugin for every debug session, and will
+reload the local variables when switching between threads/stack level when the
+debugger is paused.
+
+#### Loading pugin: GDB/Other IDEs
+
+If you are not using QtCreator, simply edit the `~/.gdbinit` file (create it if
+it doesn't exist) and append the following line:
 
     source /path/to/gdb-imagewatch/build/gdb-imagewatch.py
 
+This way, GDB will automatically load the GDB imagewatch plugin every time it
+starts.
 
 ## Testing your installation
 
@@ -99,9 +115,70 @@ installation folder and running the following command:
 
     python3 gdb-imagewatch.py --test
 
-If the installation was succesful, you should see the imagewatch window with
-the same python_test and python_test2 buffers from the image on the header of
-this page.
+If the installation was succesful, you should see the GDB ImageWatch window
+with the same python_test and python_test2 buffers from the image on the header
+of this page.
+
+## Using plugin
+
+When GDB hits a breakpoint, the GDB ImageWatch window will be opened. You only
+need to type the name of the buffer to be watched in the "add symbols" input,
+and press `<enter>`.
+
+Alternatively, you can also invoke the GDB ImageWatch window directly from GDB
+with the following command:
+
+    plot variable_name
+
+### Auto-contrast and manual contrast
+
+The (min) and (max) fields on top of the buffer view can be changed to control
+autocontrast settings. By default, GDB ImageWatch will automatically fill these
+fields with the mininum and maximum values inside the entire buffer, and the
+channel values will be normalized from these values to the range [0, 1] inside
+the renderer.
+
+Sometimes, your buffer may contain trash, uninitialized values that are either
+too big or too small, making the entire image look flat because of this
+normalization. If you know the expected range for your image, you can manually
+change the (min) and (max) values to focus on the range that you are
+interested.
+
+### Locking buffers
+
+Sometimes you want to compare two buffers being visualized, and need to zoom in
+different places of these buffers. If they are large enough, this can become a
+very hard task, especially if you are comparing pixel values. This task is made
+easier by the `lock buffers` tool (which is toggled by the button with a chain
+icon).
+
+When it is activated, all buffers are moved/zoomed simultaneously by the same
+amount. This means you only need to align the buffers being compared once;
+after activating the `lock buffers` mode, you can zoom in anywhere you wish in
+one buffer that all other buffers will be zoomed in the same location.
+
+### Exporting bufers
+
+Sometimes you may want to export your buffers to be able to process them in an
+external tool. In order to do that, right click the thumbnail corresponding to
+the buffer you wish to export on the left pane and select "export buffer".
+
+GDB ImageWatch supports two export modes. You can save your buffer as a PNG
+(which may result in loss of data if your buffer type is not `uint8_t`) or as a
+binary file that can be opened with any tool.
+
+### Loading Octave/Matlab buffers
+
+Buffers exported in the `Octave matrix` format can be loaded with the function
+`giw_load.m`, which is installed in the binary folder. To use it, add this
+folder to Octave/Matlab `path` variable and call `giw_load('/path/to/buffer')`.
+
+### Configure your IDE to use GDB 7.10
+
+If you're not using gdb from the command line, make sure that your IDE is
+correctly configured to use GDB 7.10. On QtCreator, go to
+`Tools`->`Options`->`Build & Run`->`Debuggers` and make sure that the
+configured path references a compatible GDB version.
 
 ## Advanced configuration
 
@@ -153,58 +230,8 @@ with). By default, it works well with the `cv::Mat` type.
 For more information on how to customize this file, check out this [more
 detailed blog post](https://csantosbh.wordpress.com/2016/10/15/configuring-gdb-imagewatch-to-visualize-custom-buffer-types/).
 
-## Using plugin
-
-When GDB hits a breakpoint, the imagewatch window will be opened. You only need
-to type the name of the buffer to be watched in the "add symbols" input, and
-press `<enter>`.
-
-Alternatively, you can also invoke the imagewatch window directly from GDB with
-the following command:
-
-    plot variable_name
-
-### Auto-contrast and manual contrast
-
-The (min) and (max) fields on top of the buffer view can be changed to control
-autocontrast settings. By default, imagewatch will automatically fill these
-fields with the mininum and maximum values inside the entire buffer, and the
-channel values will be normalized from these values to the range [0, 1] inside
-the renderer.
-
-Sometimes, your buffer may contain trash, uninitialized values that are either
-too big or too small, making the entire image look flat because of this
-normalization. If you know the expected range for your image, you can manually
-change the (min) and (max) values to focus on the range that you are
-interested.
-
-### Exporting bufers
-
-Sometimes you may want to export your buffers to be able to process them in an
-external tool. In order to do that, right click the thumbnail corresponding to
-the buffer you wish to export on the left pane and select "export buffer".
-
-GDB ImageWatch supports two export modes. You can save your buffer as a PNG
-(which may result in loss of data if your buffer type is not `uint8_t`) or as a
-binary file that can be opened with any tool.
-
-### Loading Octave/Matlab buffers
-
-Buffers exported in the `Octave matrix` format can be loaded with the function
-`giw_load.m`, which is installed in the binary folder. To use it, add this
-folder to Octave/Matlab `path` variable and call `giw_load('/path/to/buffer')`.
-
-### Configure your IDE to use GDB 7.10
-
-If you're not using gdb from the command line, make sure that your IDE is
-correctly configured to use GDB 7.10. On QtCreator, go to
-`Tools`->`Options`->`Build & Run`->`Debuggers` and make sure that the
-configured path references a compatible GDB version.
-
 ## Features for the Future & Known issues
 
-* Update internal variable list everytime the current stack location changes
-  after a breakpoint is hit
 * Buffers are currently exported preserving the auto-contrast settings; they
   should not preserve auto-contrast (when saving in octave format) or only do
   it if auto-contrast is enabled (png)

@@ -27,7 +27,8 @@ required_resources.files = resources/serif.ttf \
                            resources/gdb-imagewatch.py \
                            resources/gdbiwtype.py \
                            resources/__init__.py \
-                           resources/giw_load.m
+                           resources/giw_load.m \
+                           resources/qtcreatorintegration.py
 
 INSTALLS += required_resources
 

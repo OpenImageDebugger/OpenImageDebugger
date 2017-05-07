@@ -51,10 +51,9 @@ def get_buffer_info(picked_obj):
 # buffer you are working with). Make sure to check for pointers of your type as
 # well
 def is_symbol_observable(symbol):
-    import gdb
+    import re
     # Check if symbol type is the expected buffer
     symbol_type = str(symbol.type)
-    type_check = (symbol_type == 'cv::Mat' or symbol_type == 'cv::Mat *')
-
-    return type_check
+    type_regex = r'(const\s+)?cv::Mat(\s+?[*&])?'
+    return re.match(type_regex, symbol_type) != None
 

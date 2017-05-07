@@ -38,6 +38,9 @@ lib.update_available_variables.argtypes = [
                               ctypes.py_object # List of available variables in
                               ]                # the current context
 
+import gdbiwtype
+import qtcreatorintegration
+
 def get_buffer_metadata(variable):
     picked_obj = gdb.parse_and_eval(variable)
 
@@ -91,8 +94,6 @@ def initialize_window():
         wnd_thread_instance.start()
         pass
     pass
-
-import gdbiwtype
 
 ##
 # Test application
@@ -226,4 +227,6 @@ def stop_event_handler(event):
 ##
 # Setup GDB interface
 PlotterCommand()
-gdb.events.stop.connect(stop_event_handler)
+if not qtcreatorintegration.registerSymbolFetchHook(stop_event_handler):
+    gdb.events.stop.connect(stop_event_handler)
+
