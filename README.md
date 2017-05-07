@@ -1,7 +1,9 @@
 # Advanced GDB ImageWatch
-An OpenGL based advanced buffer visualization tool for GDB.
+GDB ImageWatch is a tool for visualizing in-memory buffers during debug
+sessions using GDB. It works out of the box with instances of the OpenCV `Mat`
+class, but can also be customized to work with any arbitrary data structure.
 
-![](https://raw.githubusercontent.com/csantosbh/gdb-imagewatch/master/doc/sample_window.png)
+![](doc/sample_window.png)
 
 ## Features
 
@@ -130,7 +132,7 @@ with the following command:
 
     plot variable_name
 
-### Auto-contrast and manual contrast
+### <img src="resources/icons/contrast.png" width="20"/> Auto-contrast and manual contrast
 
 The (min) and (max) fields on top of the buffer view can be changed to control
 autocontrast settings. By default, GDB ImageWatch will automatically fill these
@@ -144,7 +146,7 @@ normalization. If you know the expected range for your image, you can manually
 change the (min) and (max) values to focus on the range that you are
 interested.
 
-### Locking buffers
+### <img src="resources/icons/link.png" width="20"/> Locking buffers
 
 Sometimes you want to compare two buffers being visualized, and need to zoom in
 different places of these buffers. If they are large enough, this can become a
