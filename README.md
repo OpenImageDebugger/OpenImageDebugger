@@ -18,8 +18,8 @@ class, but can also be customized to work with any arbitrary data structure.
 * Link views together, moving all watched buffers when a single buffer is moved
   on the screen
 * GPU accelerated
-* Supported buffer types: uint8_t, int16_t, uint16_t, int32_t, uint32_t and
-  float
+* Supported buffer types: uint8_t, int16_t, uint16_t, int32_t, uint32_t,
+  float and double
 * Supported buffer channels: Grayscale, two-channels, RGB and RGBA
 * Supports big buffers whose dimensions exceed GL_MAX_TEXTURE_SIZE.
 * Supports data structures that map to a ROI of a bigger buffer.

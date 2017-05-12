@@ -1,4 +1,6 @@
+#include <set>
 #include "stage.hpp"
+#include "background.hpp"
 
 Stage::Stage()
 {
@@ -10,6 +12,7 @@ bool Stage::initialize(GLCanvas *gl_canvas, uint8_t *buffer, int buffer_width_i,
     std::shared_ptr<GameObject> camera_obj = std::make_shared<GameObject>();
     camera_obj->stage = this;
     camera_obj->add_component("camera_component", std::make_shared<Camera>());
+    camera_obj->add_component("background_component", std::make_shared<Background>());
     all_game_objects["camera"] = camera_obj;
 
     std::shared_ptr<GameObject> buffer_obj = std::make_shared<GameObject>();
@@ -89,6 +92,13 @@ void Stage::update() {
 void Stage::draw() {
     glClear(GL_COLOR_BUFFER_BIT);
 
+    struct compareRenderOrder {
+        bool operator()(const std::shared_ptr<GameObject> &a, const std::shared_ptr<GameObject> &b) const {
+            return a->get_render_index() < b->get_render_index();
+        }
+    };
+    set<shared_ptr<GameObject>, compareRenderOrder> orderedObjects;
+
     // TODO use camera tags so I can have multiple cameras (useful for drawing GUI)
 
     GameObject* camera_obj = all_game_objects["camera"].get();
@@ -100,7 +110,10 @@ void Stage::draw() {
     mat4 viewInv = camera_obj->get_pose().inv();
 
     for(auto& game_obj: all_game_objects)
-        game_obj.second->draw(camera_component->projection, viewInv);
+        orderedObjects.insert(game_obj.second);
+
+    for(auto& game_obj: orderedObjects)
+        game_obj->draw(camera_component->projection, viewInv);
 }
 
 void Stage::scroll_callback(float delta) {

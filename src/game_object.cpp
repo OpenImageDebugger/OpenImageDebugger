@@ -2,7 +2,8 @@
 
 GameObject::GameObject() : scale(1.0, 1.0, 1.0, 0.0),
                            position(0.0, 0.0, 0.0, 1.0),
-                           angle(0.0)
+                           angle(0.0),
+                           renderIndex_(0)
 {
 }
 
@@ -53,4 +54,12 @@ void GameObject::mouse_drag_event(int mouse_x, int mouse_y) {
     for(auto comp: all_components) {
         comp.second->mouse_drag_event(mouse_x, mouse_y);
     }
+}
+
+void GameObject::set_render_index(int renderIndex) {
+    renderIndex_ = renderIndex;
+}
+
+int GameObject::get_render_index() const {
+    return renderIndex_;
 }

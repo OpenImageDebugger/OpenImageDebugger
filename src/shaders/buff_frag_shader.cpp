@@ -47,7 +47,6 @@ void main()
         float vertical_border = clamp(abs(-1.0/alpha * x_ + 0.5/alpha) - (0.5/alpha-1.0), 0.0, 1.0);
         float horizontal_border = clamp(abs(-1.0/alpha * y_ + 0.5/alpha) - (0.5/alpha-1.0), 0.0, 1.0);
         color.rgb += vec3(vertical_border+horizontal_border);
-        color.a = 1.0;
     }
 
     gl_FragColor = color;

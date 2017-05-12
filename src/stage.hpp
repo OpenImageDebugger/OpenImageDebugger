@@ -35,6 +35,7 @@ public:
     std::vector<uint8_t> buffer_icon_;
 
 private:
+
     std::map<std::string, std::shared_ptr<GameObject>> all_game_objects;
 };
 

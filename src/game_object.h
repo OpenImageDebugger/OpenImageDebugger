@@ -40,12 +40,17 @@ public:
 
     void mouse_drag_event(int mouse_x, int mouse_y);
 
+    void set_render_index(int renderIndex);
+
+    int get_render_index() const;
+
     vec4 scale;
     vec4 position;
     float angle;
 
 private:
     std::map<std::string, std::shared_ptr<Component>> all_components;
+    int renderIndex_;
 };
 
 #endif // GAME_OBJECT_H

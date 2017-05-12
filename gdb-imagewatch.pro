@@ -20,7 +20,10 @@ SOURCES += src/camera.cpp\
     src/buffer_exporter.cpp \
     src/math.cpp \
     src/game_object.cpp \
-    src/managed_pointer.cpp
+    src/managed_pointer.cpp \
+    src/background.cpp \
+    src/shaders/background_frag_shader.cpp \
+    src/shaders/background_vert_shader.cpp
 
 required_resources.path = $$OUT_PWD
 required_resources.files = resources/serif.ttf \
@@ -56,7 +59,8 @@ HEADERS  += src/buffer.hpp \
             src/stage.hpp \
     src/buffer_exporter.hpp \
     src/game_object.h \
-    src/managed_pointer.h
+    src/managed_pointer.h \
+    src/background.hpp
 
 FORMS    += ui/mainwindow.ui
 
