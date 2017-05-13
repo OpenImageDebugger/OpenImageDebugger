@@ -15,8 +15,9 @@ public:
 
     bool initialize();
 
-    void update() {
-    }
+    void update() { }
+
+    int render_index() const;
 
     void draw(const mat4& projection, const mat4& viewInv);
 private:

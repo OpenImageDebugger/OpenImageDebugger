@@ -31,8 +31,6 @@ public:
 
     void update();
 
-    void draw(const mat4& projection, const mat4& viewInv);
-
     void add_component(const std::string& component_name,
                        std::shared_ptr<Component> component);
 
@@ -40,17 +38,14 @@ public:
 
     void mouse_drag_event(int mouse_x, int mouse_y);
 
-    void set_render_index(int renderIndex);
-
-    int get_render_index() const;
-
     vec4 scale;
     vec4 position;
     float angle;
 
+    const std::map<std::string, std::shared_ptr<Component>>& get_components();
+
 private:
     std::map<std::string, std::shared_ptr<Component>> all_components;
-    int renderIndex_;
 };
 
 #endif // GAME_OBJECT_H

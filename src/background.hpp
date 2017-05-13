@@ -15,6 +15,8 @@ public:
 
     void draw(const mat4& projection, const mat4& viewInv);
 
+    int render_index() const;
+
 private:
     ShaderProgram background_prog;
     GLuint background_vbo;

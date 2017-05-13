@@ -44,9 +44,11 @@ bool BufferValues::initialize() {
     glGenBuffers(1, &text_vbo);
     generate_glyphs_texture();
 
-    game_object->set_render_index(50);
-
     return true;
+}
+
+int BufferValues::render_index() const {
+    return 50;
 }
 
 void BufferValues::generate_glyphs_texture() {

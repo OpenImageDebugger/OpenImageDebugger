@@ -2,8 +2,7 @@
 
 GameObject::GameObject() : scale(1.0, 1.0, 1.0, 0.0),
                            position(0.0, 0.0, 0.0, 1.0),
-                           angle(0.0),
-                           renderIndex_(0)
+                           angle(0.0)
 {
 }
 
@@ -32,11 +31,6 @@ void GameObject::update() {
         comp.second->update();
 }
 
-void GameObject::draw(const mat4 &projection, const mat4 &viewInv) {
-    for(auto& comp: all_components)
-        comp.second->draw(projection, viewInv);
-}
-
 void GameObject::add_component(const string &component_name, std::shared_ptr<Component> component) {
     all_components[component_name] = component;
 }
@@ -56,10 +50,6 @@ void GameObject::mouse_drag_event(int mouse_x, int mouse_y) {
     }
 }
 
-void GameObject::set_render_index(int renderIndex) {
-    renderIndex_ = renderIndex;
-}
-
-int GameObject::get_render_index() const {
-    return renderIndex_;
+const std::map<string, std::shared_ptr<Component> >&GameObject::get_components() {
+    return all_components;
 }

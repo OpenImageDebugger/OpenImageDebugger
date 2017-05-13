@@ -2,6 +2,12 @@
 #include "stage.hpp"
 #include "background.hpp"
 
+struct compareRenderOrder {
+    bool operator()(const Component *a, const Component *b) const {
+        return a->render_index() < b->render_index();
+    }
+};
+
 Stage::Stage()
 {
 }
@@ -92,12 +98,7 @@ void Stage::update() {
 void Stage::draw() {
     glClear(GL_COLOR_BUFFER_BIT);
 
-    struct compareRenderOrder {
-        bool operator()(const std::shared_ptr<GameObject> &a, const std::shared_ptr<GameObject> &b) const {
-            return a->get_render_index() < b->get_render_index();
-        }
-    };
-    set<shared_ptr<GameObject>, compareRenderOrder> orderedObjects;
+    set<Component*, compareRenderOrder> orderedComponents;
 
     // TODO use camera tags so I can have multiple cameras (useful for drawing GUI)
 
@@ -109,11 +110,15 @@ void Stage::draw() {
 
     mat4 viewInv = camera_obj->get_pose().inv();
 
-    for(auto& game_obj: all_game_objects)
-        orderedObjects.insert(game_obj.second);
+    for(auto& game_obj: all_game_objects) {
+        for(auto& component: game_obj.second->get_components()) {
+            orderedComponents.insert(component.second.get());
+        }
+    }
 
-    for(auto& game_obj: orderedObjects)
-        game_obj->draw(camera_component->projection, viewInv);
+    for(auto& component: orderedComponents) {
+        component->draw(camera_component->projection, viewInv);
+    }
 }
 
 void Stage::scroll_callback(float delta) {

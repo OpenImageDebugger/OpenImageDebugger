@@ -11,11 +11,17 @@ public:
     virtual bool initialize() {
         return true;
     }
+
     virtual bool buffer_update() {
         return true;
     }
+
     virtual bool post_buffer_update() {
         return true;
+    }
+
+    virtual int render_index() const {
+        return 0;
     }
 
     virtual void mouse_drag_event(int /* mouse_x */,
@@ -25,8 +31,12 @@ public:
     virtual bool post_initialize() {
         return true;
     }
+
     virtual void update() = 0;
-    virtual void draw(const mat4& projection, const mat4& viewInv) = 0;
+
+    virtual void draw(const mat4& projection,
+                      const mat4& viewInv) = 0;
+
     virtual ~Component(){}
 };
 

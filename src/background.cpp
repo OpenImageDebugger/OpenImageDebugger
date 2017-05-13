@@ -25,8 +25,6 @@ bool Background::initialize() {
     glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_buffer_data), vertex_buffer_data, GL_STATIC_DRAW);
 
-    game_object->set_render_index(-100);
-
     return true;
 }
 
@@ -43,4 +41,8 @@ void Background::draw(const mat4& projection, const mat4& viewInv) {
     glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
     glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+int Background::render_index() const {
+    return -100;
 }
