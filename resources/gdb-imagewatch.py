@@ -105,7 +105,7 @@ if len(sys.argv)==2 and sys.argv[1] == '--test':
 
     width=400
     height=200
-    channels1=4
+    channels1=3
     channels2=1
     tex = [None]*width*height*channels1
     tex2 = [None]*width*height*channels2
@@ -115,11 +115,10 @@ if len(sys.argv)==2 and sys.argv[1] == '--test':
 
     for y in range(0,height):
         for x in range(0,width):
-            for c in range(0, channels1):
-                tex[y*channels1*width+channels1*x] = genColor(x, y, 20, 80, math.cos, math.cos)
-                tex[y*channels1*width+channels1*x + 1] = genColor(x, y, 50, 200, math.sin, math.cos)
-                tex[y*channels1*width+channels1*x + 2] = genColor(x, y, 30, 120, math.cos, math.cos)
-                tex[y*channels1*width+channels1*x + 3] = genColor(x, y, 30, 120, math.cos, math.cos)
+            tex[y*channels1*width+channels1*x] = genColor(x, y, 20, 80, math.cos, math.cos)
+            tex[y*channels1*width+channels1*x + 1] = genColor(x, y, 50, 200, math.sin, math.cos)
+            tex[y*channels1*width+channels1*x + 2] = genColor(x, y, 30, 120, math.cos, math.cos)
+
             for c in range(0, channels2):
                 tex2[y*channels2*width+channels2*x+c] = math.exp(math.cos(x/5.0) *
                                                                  math.sin(y/5.0))
@@ -171,7 +170,7 @@ class PlotterCommand(gdb.Command):
         var_name = str(args[0])
 
         mem, width, height, channels, type, step = get_buffer_metadata(var_name)
-      
+
         lib.plot_binary(mem, var_name, width, height, channels, type, step)
         pass
 
