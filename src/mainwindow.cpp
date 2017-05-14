@@ -618,7 +618,7 @@ void MainWindow::update_available_variables(PyObject *available_set)
         available_vars_.push_back(var_name_str.c_str());
 
         if(previous_session_buffers_.find(var_name_str) != previous_session_buffers_.end() ||
-           held_buffers_.find(var_name_str) != held_buffers_.find(var_name_str)) {
+           held_buffers_.find(var_name_str) != held_buffers_.end()) {
             PyObject *pybuffer = PyList_GetItem(symbol_metadata, 0);
             int buffer_width_i = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 1));
             int buffer_height_i = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 2));
