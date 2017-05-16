@@ -359,6 +359,8 @@ void MainWindow::loop() {
 
         symbol_completer_ = shared_ptr<QCompleter>(new QCompleter(available_vars_));
         symbol_completer_->setCaseSensitivity(Qt::CaseSensitivity::CaseInsensitive);
+        symbol_completer_->setCompletionMode(QCompleter::UnfilteredPopupCompletion);
+        symbol_completer_->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
         ui_->symbolList->setCompleter(symbol_completer_.get());
 
         connect(ui_->symbolList->completer(), SIGNAL(activated(QString)), this, SLOT(on_symbol_completed(QString)));
