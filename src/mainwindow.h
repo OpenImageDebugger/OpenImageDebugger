@@ -12,10 +12,10 @@
 #include <QListWidgetItem>
 #include <QLabel>
 #include <QShortcut>
-#include <QCompleter>
 
 #include "glcanvas.hpp"
 #include "stage.hpp"
+#include "symbol_completer.h"
 
 namespace Ui {
 class MainWindow;
@@ -106,7 +106,7 @@ private:
     std::deque<BufferRequestMessage> pending_updates_;
 
     std::shared_ptr<QShortcut> symbol_list_focus_shortcut_;
-    std::shared_ptr<QCompleter> symbol_completer_;
+    std::shared_ptr<SymbolCompleter> symbol_completer_;
     bool completer_updated_;
     QStringList available_vars_;
 

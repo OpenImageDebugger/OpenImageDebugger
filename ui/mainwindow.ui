@@ -37,7 +37,7 @@
            <number>1</number>
           </property>
           <item>
-           <widget class="QLineEdit" name="symbolList">
+           <widget class="SymbolSearchInput" name="symbolList">
             <property name="minimumSize">
              <size>
               <width>210</width>
@@ -507,6 +507,11 @@
    <extends>QWidget</extends>
    <header location="global">src/glcanvas.hpp</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>SymbolSearchInput</class>
+   <extends>QLineEdit</extends>
+   <header>src/symbol_search_input.h</header>
   </customwidget>
  </customwidgets>
  <resources>
