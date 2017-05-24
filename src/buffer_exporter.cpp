@@ -42,7 +42,7 @@ void export_bitmap(const char *fname, const Buffer *buffer, int channels)
         for(int x = width_i - 1; x >= 0; --x) {
             int c;
             for(c = 0; c < channels; ++c)  {
-                float in_val = static_cast<float>(in_ptr[y * channels * width_i + x * channels + c]);
+                float in_val = static_cast<float>(in_ptr[y * channels * buffer->step + x * channels + c]);
                 out_ptr[y * 4 * width_i + x * 4 + c] = static_cast<uint8_t>(
                             clamp((in_val * bc_comp[c] + bc_comp[4 + c]*maxIntensity)*color_scale, 0.f, 255.f));
             }
@@ -108,7 +108,9 @@ void export_binary(const char *fname, const Buffer *buffer, int channels)
       fwrite(&height_i, sizeof(int), 1, fhandle);
       fwrite(&width_i, sizeof(int), 1, fhandle);
       fwrite(&channels, sizeof(int), 1, fhandle);
-      fwrite(in_ptr, sizeof(T), height_i * width_i * channels, fhandle);
+      for(int y = 0; y < height_i; ++y) {
+          fwrite(in_ptr + y * buffer->step * channels, sizeof(T), width_i * channels, fhandle);
+      }
       fclose(fhandle);
     }
 }
