@@ -39,6 +39,14 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui_->bufferPreview->set_main_window(this);
 
+    // Configure symbol completer
+    symbol_completer_ = shared_ptr<SymbolCompleter>(new SymbolCompleter());
+    symbol_completer_->setCaseSensitivity(Qt::CaseSensitivity::CaseInsensitive);
+    symbol_completer_->setCompletionMode(QCompleter::PopupCompletion);
+    symbol_completer_->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
+    ui_->symbolList->setCompleter(symbol_completer_.get());
+    connect(ui_->symbolList->completer(), SIGNAL(activated(QString)), this, SLOT(on_symbol_completed(QString)));
+
     // Configure auto contrast inputs
     ui_->ac_red_min->setValidator(   new QDoubleValidator() );
     ui_->ac_green_min->setValidator( new QDoubleValidator() );
@@ -352,19 +360,7 @@ void MainWindow::loop() {
     }
 
     if(completer_updated_) {
-        if(ui_->symbolList->completer() != nullptr) {
-            disconnect(ui_->symbolList->completer(), SIGNAL(activated(QString)),
-                       this, SLOT(on_symbol_completed(QString)));
-        }
-
-        symbol_completer_ = shared_ptr<SymbolCompleter>(new SymbolCompleter(available_vars_, this));
-        symbol_completer_->setCaseSensitivity(Qt::CaseSensitivity::CaseInsensitive);
-        symbol_completer_->setCompletionMode(QCompleter::PopupCompletion);
-        symbol_completer_->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
-        ui_->symbolList->setCompleter(symbol_completer_.get());
-
-        connect(ui_->symbolList->completer(), SIGNAL(activated(QString)), this, SLOT(on_symbol_completed(QString)));
-
+        symbol_completer_->updateSymbolList(available_vars_);
         completer_updated_ = false;
     }
 

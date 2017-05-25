@@ -10,10 +10,11 @@ class SymbolCompleter : public QCompleter
     Q_OBJECT
 
 public:
-    SymbolCompleter(const QStringList& words,
-                    QObject * parent);
+    SymbolCompleter(QObject * parent = nullptr);
 
     void update(QString word);
+
+    void updateSymbolList(QStringList &symbols);
 
     QString word();
 

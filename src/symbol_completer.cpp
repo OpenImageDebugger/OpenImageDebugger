@@ -1,9 +1,8 @@
 #include "symbol_completer.h"
 
 
-SymbolCompleter::SymbolCompleter(const QStringList& words,
-                                 QObject* parent) :
-    QCompleter(parent), m_list(words), m_model()
+SymbolCompleter::SymbolCompleter(QObject* parent) :
+    QCompleter(parent), m_list(), m_model()
 {
     setModel(&m_model);
 }
@@ -14,6 +13,10 @@ void SymbolCompleter::update(QString word)
     m_model.setStringList(filtered);
     m_word = word;
     complete();
+}
+
+void SymbolCompleter::updateSymbolList(QStringList& symbols) {
+    m_list = symbols;
 }
 
 QString SymbolCompleter::word()
