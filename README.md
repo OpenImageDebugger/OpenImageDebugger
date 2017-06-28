@@ -66,7 +66,7 @@ Finally, clone the GDB ImageWatch plugin to any folder you prefer:
 
     git clone https://github.com/csantosbh/gdb-imagewatch
 
-### Ubuntu 16.04
+### Ubuntu 16.04 manual installation with QtCreator
 
 Ubuntu 16.04 comes with qt4, which is not compatible with GDB ImageWatch. In
 order to compile it, you need to install qt5 and use its corresponding qmake
@@ -109,6 +109,16 @@ it doesn't exist) and append the following line:
 
 This way, GDB will automatically load the GDB imagewatch plugin every time it
 starts.
+
+### Ubuntu 16.04 Automated Installation without QtCreator
+
+If you are not using QtCreator, we provide the script `configure_ubuntu_16.sh`
+which handles the Qt version issue and automates the installation of GDB ImageWatch
+on Ubuntu 16.04. From the root directory of this project, execute the following:
+
+    bash configure_ubuntu_16.sh
+    
+Follow this step with the instructions below in the section `Testing your installation`.
 
 ## Testing your installation
 
