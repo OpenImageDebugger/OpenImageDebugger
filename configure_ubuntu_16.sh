@@ -10,7 +10,7 @@ cd build
 export QT_SELECT=5
 qmake ..
 make -j$(nproc)
-sudo make install
+make install
 cd ..
 echo "source $(pwd)/build/gdb-imagewatch.py" > ~/.gdbinit
 echo "Completed configuration of GDB ImageWatch."
