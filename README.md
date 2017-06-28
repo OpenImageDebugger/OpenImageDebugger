@@ -123,9 +123,9 @@ Follow this step with the instructions below in the section `Testing your instal
 ## Testing your installation
 
 After compiling the plugin, you can test it by opening a console in the
-installation folder and running the following command:
+installation folder and running the following command from the root project directory:
 
-    python3 gdb-imagewatch.py --test
+    python3 build/gdb-imagewatch.py --test
 
 If the installation was succesful, you should see the GDB ImageWatch window
 with the same python_test and python_test2 buffers from the image on the header
