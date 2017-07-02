@@ -38,4 +38,6 @@ private:
     GLuint compile(GLuint type, GLchar const *source);
 
     std::string getShaderType(GLuint type);
+    bool shaderIsOutdated(TexelChannels texel_format,
+                          const std::vector<std::string>& uniforms);
 };

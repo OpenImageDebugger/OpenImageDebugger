@@ -1,8 +1,36 @@
 #include <GL/glew.h>
 #include "shader.hpp"
 
-bool ShaderProgram::create(const char* v_source, const char* f_source, TexelChannels texel_format, const std::vector<std::string>& uniforms) {
+bool ShaderProgram::shaderIsOutdated(TexelChannels texel_format,
+                                     const std::vector<std::string>& uniforms) {
+    // If the texel format or the uniform container size changed,
+    // the program must be created again
+    if(texel_format != texel_format_ ||
+       uniforms.size() != uniforms_.size()) {
+        return true;
+    }
+
+    // The program must also be created again if an uniform name
+    // changed
+    for(const auto& uniformName: uniforms) {
+        if(uniforms_.find(uniformName) == uniforms_.end()) {
+            return true;
+        }
+    }
+
+    // Otherwise, it must not change
+    return false;
+}
+
+bool ShaderProgram::create(const char* v_source,
+                           const char* f_source,
+                           TexelChannels texel_format,
+                           const std::vector<std::string>& uniforms) {
     if(program_ != 0) {
+        // Check if the program needs to be recompiled
+        if(!shaderIsOutdated(texel_format, uniforms)) {
+            return true;
+        }
         // Delete old program
         glDeleteProgram(program_);
     }
@@ -11,8 +39,9 @@ bool ShaderProgram::create(const char* v_source, const char* f_source, TexelChan
     GLuint vertex_shader = compile(GL_VERTEX_SHADER, v_source);
     GLuint fragment_shader = compile(GL_FRAGMENT_SHADER, f_source);
 
-    if(vertex_shader == 0 || fragment_shader == 0)
+    if(vertex_shader == 0 || fragment_shader == 0) {
         return false;
+    }
 
     program_ = glCreateProgram();
     glAttachShader(program_, vertex_shader);

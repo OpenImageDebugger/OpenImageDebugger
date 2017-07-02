@@ -59,7 +59,9 @@ public:
 
     void getPixelInfo(stringstream& output, int x, int y);
 private:
+    void create_shader_program();
     void setup_gl_buffer();
+
     float min_buffer_values_[4];
     float max_buffer_values_[4];
     float auto_buffer_contrast_brightness_[8] = {1.0,1.0,1.0,1.0, 0.0,0.0,0.0,0.0};
