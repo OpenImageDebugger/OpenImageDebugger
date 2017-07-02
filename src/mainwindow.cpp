@@ -288,9 +288,9 @@ void MainWindow::loop() {
         }
 
         auto buffer_stage = stages_.find(request.var_name_str);
+        held_buffers_[request.var_name_str] = managedBuffer;
         if(buffer_stage == stages_.end()) {
             // New buffer request
-            held_buffers_[request.var_name_str] = managedBuffer;
             shared_ptr<Stage> stage = make_shared<Stage>();
             if(!stage->initialize(ui_->bufferPreview, srcBuffer, request.width_i, request.height_i,
                                   request.channels, request.type, request.step, ac_enabled_)) {
@@ -321,10 +321,13 @@ void MainWindow::loop() {
 
             update_session_settings();
         } else {
-            held_buffers_[request.var_name_str] = managedBuffer;
-            buffer_stage->second->buffer_update(srcBuffer, request.width_i, request.height_i,
-                                                request.channels, request.type,
-                                                request.step);
+            buffer_stage->second->buffer_update(srcBuffer,
+                                                request.width_i,
+                                                request.height_i,
+                                                request.channels,
+                                                request.type,
+                                                request.step,
+                                                request.pixel_format);
             // Update buffer icon
             Stage* stage = stages_[request.var_name_str].get();
             ui_->bufferPreview->render_buffer_icon(stage);

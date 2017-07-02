@@ -17,6 +17,7 @@ bool Buffer::buffer_update() {
     int num_textures = num_textures_x*num_textures_y;
     glDeleteTextures(num_textures, buff_tex.data());
 
+    create_shader_program();
     setup_gl_buffer();
     return true;
 }
@@ -208,7 +209,7 @@ void Buffer::update() {
     }
 }
 
-bool Buffer::initialize() {
+void Buffer::create_shader_program() {
     // Buffer Shaders
     ShaderProgram::TexelChannels channelType;
     if(channels == 1)
@@ -225,6 +226,10 @@ bool Buffer::initialize() {
                      channelType, { "mvp",
                                     "sampler", "brightness_contrast",
                                     "buffer_dimension", "enable_borders"});
+}
+
+bool Buffer::initialize() {
+    create_shader_program();
 
     // Buffer VBO
     static const GLfloat g_vertex_buffer_data[] = {
