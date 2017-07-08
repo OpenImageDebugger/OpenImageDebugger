@@ -29,7 +29,8 @@ bool BufferValues::initialize() {
 
     text_prog.create(shader::text_vert_shader,
                      shader::text_frag_shader,
-                     ShaderProgram::FormatR, {
+                     ShaderProgram::FormatR,
+                     "rgba", {
                          "mvp",
                          "buff_sampler",
                          "text_sampler",

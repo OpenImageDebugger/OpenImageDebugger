@@ -16,8 +16,11 @@ using namespace std;
 
 namespace cv {
 struct Mat {
-    void* data;
+private:
     shared_ptr<void> dataMgr;
+
+public:
+    void* data;
     int cols; // Width
     int rows; // Height
     int flags; // OpenCV flags
@@ -77,6 +80,12 @@ struct Mat {
             delete[] buf;
         });
         data = dataMgr.get();
+    }
+
+    void release() {
+        // Intentionally, "data" is not changed so we are left with an invalid pointer.
+        dataMgr.reset();
+        data = (void*)rand();
     }
 
     template<typename T>
@@ -264,12 +273,13 @@ private:
 
     void nest() {
         // Breakpoints should go here!
-        int W = 9;
-        int H = 1;
+        int W = 1024;
+        int H = 1024;
         int C = 3;
         Mat::Iterator<uint8_t> i(Teste);
         ones<uint8_t>(W, H, 1, Teste);
         i(0,0,0) = 255;
+        Teste.release();
         ones<uint8_t>(W, H, C, Teste);
         i(0,0,0) = 255;
         i(0,0,1) = 0;

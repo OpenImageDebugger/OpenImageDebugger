@@ -5,7 +5,7 @@
 
 using namespace std;
 
-constexpr float Buffer::no_ac_params[8] = {1.0, 1.0, 1.0, 1.0, 0, 0, 0, 0};
+const float Buffer::no_ac_params[8] = {1.0, 1.0, 1.0, 1.0, 0, 0, 0, 0};
 
 Buffer::~Buffer() {
     int num_textures = num_textures_x*num_textures_y;
@@ -223,9 +223,10 @@ void Buffer::create_shader_program() {
 
     buff_prog.create(shader::buff_vert_shader,
                      shader::buff_frag_shader,
-                     channelType, { "mvp",
-                                    "sampler", "brightness_contrast",
-                                    "buffer_dimension", "enable_borders"});
+                     channelType,
+                     pixel_format_, { "mvp",
+                                      "sampler", "brightness_contrast",
+                                      "buffer_dimension", "enable_borders"});
 }
 
 bool Buffer::initialize() {

@@ -19,14 +19,16 @@ lib.plot_binary.argtypes = [ctypes.py_object, # Buffer ptr
                             ctypes.c_int, # Buffer height
                             ctypes.c_int, # Number of channels
                             ctypes.c_int, # Type (0=float32, 1=uint8)
-                            ctypes.c_int] # Step size (in pixels)
+                            ctypes.c_int, # Step size (in pixels)
+                            ctypes.py_object] # Pixel format
 lib.update_plot.argtypes = [ctypes.py_object, # Buffer ptr
                             ctypes.py_object, # Variable name
                             ctypes.c_int, # Buffer width
                             ctypes.c_int, # Buffer height
                             ctypes.c_int, # Number of channels
                             ctypes.c_int, # Type (0=float32, 1=uint8)
-                            ctypes.c_int] # Step size (in pixels)
+                            ctypes.c_int, # Step size (in pixels)
+                            ctypes.py_object] # Pixel format
                                                          # set
 FETCH_BUFFER_CBK_TYPE = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_char_p)
 lib.initialize_window.argtypes = [
@@ -44,7 +46,7 @@ import qtcreatorintegration
 def get_buffer_metadata(variable):
     picked_obj = gdb.parse_and_eval(variable)
 
-    buffer, width, height, channels, type, step = gdbiwtype.get_buffer_info(picked_obj)
+    buffer, width, height, channels, type, step, pixel_format = gdbiwtype.get_buffer_info(picked_obj)
 
     bytes = get_buffer_size(width, height, channels, type, step)
 
@@ -54,12 +56,12 @@ def get_buffer_metadata(variable):
     inferior = gdb.selected_inferior()
     mem = inferior.read_memory(buffer, bytes)
 
-    return [mem, width, height, channels, type, step]
+    return [mem, width, height, channels, type, step, pixel_format]
 
 def request_buffer_update(variable):
-    mem, width, height, channels, type, step = get_buffer_metadata(variable)
+    mem, width, height, channels, type, step, pixel_format = get_buffer_metadata(variable)
 
-    lib.update_plot(mem, variable, width, height, channels, type, step)
+    lib.update_plot(mem, variable, width, height, channels, type, step, pixel_format)
     pass
 
 class MainThreadPlotVariableRunner():
@@ -131,8 +133,8 @@ if len(sys.argv)==2 and sys.argv[1] == '--test':
     mem = memoryview(tex_arr)
     mem2 = memoryview(tex_arr2)
     step = width
-    lib.plot_binary(mem, 'python_test', width, height, channels1, gdbiwtype.GIW_TYPES_UINT8, step)
-    lib.plot_binary(mem2, 'python_test2', width, height, channels2, gdbiwtype.GIW_TYPES_FLOAT32, step)
+    lib.plot_binary(mem, 'python_test', width, height, channels1, gdbiwtype.GIW_TYPES_UINT8, step, 'rgba')
+    lib.plot_binary(mem2, 'python_test2', width, height, channels2, gdbiwtype.GIW_TYPES_FLOAT32, step, 'rgba')
 
 
     while lib.is_running():
@@ -169,9 +171,9 @@ class PlotterCommand(gdb.Command):
         args = gdb.string_to_argv(arg)
         var_name = str(args[0])
 
-        mem, width, height, channels, type, step = get_buffer_metadata(var_name)
+        mem, width, height, channels, type, step, pixel_format = get_buffer_metadata(var_name)
 
-        lib.plot_binary(mem, var_name, width, height, channels, type, step)
+        lib.plot_binary(mem, var_name, width, height, channels, type, step, pixel_format)
         pass
 
     pass

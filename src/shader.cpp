@@ -1,8 +1,10 @@
+#include <cstring>
 #include <GL/glew.h>
 #include "shader.hpp"
 
 bool ShaderProgram::shaderIsOutdated(TexelChannels texel_format,
-                                     const std::vector<std::string>& uniforms) {
+                                     const std::vector<std::string>& uniforms,
+                                     const char* pixel_format) {
     // If the texel format or the uniform container size changed,
     // the program must be created again
     if(texel_format != texel_format_ ||
@@ -18,6 +20,12 @@ bool ShaderProgram::shaderIsOutdated(TexelChannels texel_format,
         }
     }
 
+    for(int i = 0; i < 4; ++i) {
+        if(pixel_format[i] != pixel_format_[i]) {
+            return true;
+        }
+    }
+
     // Otherwise, it must not change
     return false;
 }
@@ -25,17 +33,20 @@ bool ShaderProgram::shaderIsOutdated(TexelChannels texel_format,
 bool ShaderProgram::create(const char* v_source,
                            const char* f_source,
                            TexelChannels texel_format,
+                           const char* pixel_format,
                            const std::vector<std::string>& uniforms) {
     if(program_ != 0) {
         // Check if the program needs to be recompiled
-        if(!shaderIsOutdated(texel_format, uniforms)) {
+        if(!shaderIsOutdated(texel_format, uniforms, pixel_format)) {
             return true;
         }
         // Delete old program
         glDeleteProgram(program_);
     }
 
-    this->texel_format_ = texel_format;
+    texel_format_ = texel_format;
+    memcpy(pixel_format_, pixel_format, 4);
+    pixel_format_[4] = '\0';
     GLuint vertex_shader = compile(GL_VERTEX_SHADER, v_source);
     GLuint fragment_shader = compile(GL_FRAGMENT_SHADER, f_source);
 
@@ -93,16 +104,21 @@ GLuint ShaderProgram::compile(GLuint type, GLchar const *source) {
     GLuint shader = glCreateShader(type);
     const char* src[] = {
         "#version 120\n",
+
         texel_format_== FormatR ?
           "#define FORMAT_R\n"
         : texel_format_ == FormatRG ?
-          "#define FORMAT_RG"
+          "#define FORMAT_RG\n"
         : texel_format_ == FormatRGB ?
-          "#define FORMAT_RGB"
+          "#define FORMAT_RGB\n"
         : "",
+
+        "#define PIXEL_FORMAT ",
+        pixel_format_,
+
         source
     };
-    glShaderSource(shader, 3, src, NULL);
+    glShaderSource(shader, 5, src, NULL);
     glCompileShader(shader);
     GLint compiled;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);

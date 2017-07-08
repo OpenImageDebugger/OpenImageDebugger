@@ -9,7 +9,8 @@ Background::~Background() {
 bool Background::initialize() {
     background_prog.create(shader::background_vert_shader,
                            shader::background_frag_shader,
-                           ShaderProgram::FormatR, {});
+                           ShaderProgram::FormatR,
+                           "rgba", {});
 
     // Generate square VBO
     static const GLfloat vertex_buffer_data[] = {
