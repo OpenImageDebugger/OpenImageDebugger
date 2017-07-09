@@ -8,5 +8,7 @@ public:
         Bitmap, OctaveMatrix
     };
 
-    static void export_buffer(const Buffer* buffer, const std::string& path, OutputType type);
+    static void export_buffer(const Buffer* buffer,
+                              const std::string& path,
+                              OutputType type);
 };

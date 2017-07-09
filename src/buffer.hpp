@@ -43,37 +43,9 @@ public:
 
     int sub_texture_id_at_coord(int x, int y);
 
-    void set_pixel_format(const std::string& pixel_format) {
-        ///
-        // Make sure the provided pixel_format is valid
-        if(pixel_format.size() != 4) {
-            return;
-        }
-        const char valid_characters[] = {
-            'r', 'g', 'b', 'a'
-        };
-        const int num_valid_chars = sizeof(valid_characters) /
-                                    sizeof(valid_characters[0]);
+    void set_pixel_layout(const std::string& pixel_layout);
 
-        for(int i = 0; i < static_cast<int>(pixel_format.size()); ++i) {
-            bool is_character_valid = false;
-            for(int j = 0; j < num_valid_chars; ++j) {
-                if(pixel_format[i] == valid_characters[j]) {
-                    is_character_valid = true;
-                    break;
-                }
-            }
-            if(!is_character_valid) {
-                return;
-            }
-        }
-
-        ///
-        // Copy the pixel format
-        for(int i = 0; i < static_cast<int>(pixel_format.size()); ++i) {
-            pixel_format_[i] = pixel_format[i];
-        }
-    }
+    const char* get_pixel_layout() const;
 
     float tile_coord_x(int x);
     float tile_coord_y(int y);
@@ -103,7 +75,7 @@ private:
 
     float min_buffer_values_[4];
     float max_buffer_values_[4];
-    char  pixel_format_[5] = "rgba";
+    char  pixel_layout_[4] = {'r', 'g', 'b', 'a'};
     float auto_buffer_contrast_brightness_[8] = {1.0,1.0,1.0,1.0, 0.0,0.0,0.0,0.0};
 
     ShaderProgram buff_prog;

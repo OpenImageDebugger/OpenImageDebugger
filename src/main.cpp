@@ -32,7 +32,7 @@ extern "C" {
                      int channels,
                      int type,
                      int step,
-                     PyObject* pixel_format);
+                     PyObject* pixel_layout);
     void update_plot(PyObject* pybuffer,
                      PyObject* var_name,
                      int buffer_width_i,
@@ -40,7 +40,7 @@ extern "C" {
                      int channels,
                      int type,
                      int step,
-                     PyObject* pixel_format);
+                     PyObject* pixel_layout);
 }
 
 MainWindow* wnd = nullptr;
@@ -61,7 +61,7 @@ void update_plot(PyObject* pybuffer,
                  int channels,
                  int type,
                  int step,
-                 PyObject* pixel_format)
+                 PyObject* pixel_layout)
 {
     plot_binary(pybuffer,
                 var_name,
@@ -70,7 +70,7 @@ void update_plot(PyObject* pybuffer,
                 channels,
                 type,
                 step,
-                pixel_format);
+                pixel_layout);
 }
 
 void plot_binary(PyObject* pybuffer,
@@ -80,12 +80,12 @@ void plot_binary(PyObject* pybuffer,
                  int channels,
                  int type,
                  int step,
-                 PyObject* pixel_format)
+                 PyObject* pixel_layout)
 {
     PyObject *var_name_bytes = PyUnicode_AsEncodedString(var_name,
                                                          "ASCII",
                                                          "strict");
-    PyObject *pixel_format_bytes = PyUnicode_AsEncodedString(pixel_format,
+    PyObject *pixel_layout_bytes = PyUnicode_AsEncodedString(pixel_layout,
                                                              "ASCII",
                                                              "strict");
 
@@ -97,7 +97,7 @@ void plot_binary(PyObject* pybuffer,
     request.channels = channels;
     request.type = static_cast<Buffer::BufferType>(type);
     request.step = step;
-    request.pixel_format = PyBytes_AS_STRING(pixel_format_bytes);
+    request.pixel_layout = PyBytes_AS_STRING(pixel_layout_bytes);
 
     while(wnd == nullptr) {
         usleep(1e6 / 30);

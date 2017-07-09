@@ -4,7 +4,7 @@
 
 bool ShaderProgram::shaderIsOutdated(TexelChannels texel_format,
                                      const std::vector<std::string>& uniforms,
-                                     const char* pixel_format) {
+                                     const char* pixel_layout) {
     // If the texel format or the uniform container size changed,
     // the program must be created again
     if(texel_format != texel_format_ ||
@@ -21,7 +21,7 @@ bool ShaderProgram::shaderIsOutdated(TexelChannels texel_format,
     }
 
     for(int i = 0; i < 4; ++i) {
-        if(pixel_format[i] != pixel_format_[i]) {
+        if(pixel_layout[i] != pixel_layout_[i]) {
             return true;
         }
     }
@@ -33,11 +33,11 @@ bool ShaderProgram::shaderIsOutdated(TexelChannels texel_format,
 bool ShaderProgram::create(const char* v_source,
                            const char* f_source,
                            TexelChannels texel_format,
-                           const char* pixel_format,
+                           const char* pixel_layout,
                            const std::vector<std::string>& uniforms) {
     if(program_ != 0) {
         // Check if the program needs to be recompiled
-        if(!shaderIsOutdated(texel_format, uniforms, pixel_format)) {
+        if(!shaderIsOutdated(texel_format, uniforms, pixel_layout)) {
             return true;
         }
         // Delete old program
@@ -45,8 +45,8 @@ bool ShaderProgram::create(const char* v_source,
     }
 
     texel_format_ = texel_format;
-    memcpy(pixel_format_, pixel_format, 4);
-    pixel_format_[4] = '\0';
+    memcpy(pixel_layout_, pixel_layout, 4);
+    pixel_layout_[4] = '\0';
     GLuint vertex_shader = compile(GL_VERTEX_SHADER, v_source);
     GLuint fragment_shader = compile(GL_FRAGMENT_SHADER, f_source);
 
@@ -113,8 +113,8 @@ GLuint ShaderProgram::compile(GLuint type, GLchar const *source) {
           "#define FORMAT_RGB\n"
         : "",
 
-        "#define PIXEL_FORMAT ",
-        pixel_format_,
+        "#define PIXEL_LAYOUT ",
+        pixel_layout_,
 
         source
     };

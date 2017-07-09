@@ -180,11 +180,47 @@ int Buffer::sub_texture_id_at_coord(int x, int y) {
     return buff_tex[ty*num_textures_x + tx];
 }
 
+void Buffer::set_pixel_layout(const string& pixel_layout) {
+    ///
+    // Make sure the provided pixel_layout is valid
+    if(pixel_layout.size() != 4) {
+        return;
+    }
+    const char valid_characters[] = {
+        'r', 'g', 'b', 'a'
+    };
+    const int num_valid_chars = sizeof(valid_characters) /
+                                sizeof(valid_characters[0]);
+
+    for(int i = 0; i < static_cast<int>(pixel_layout.size()); ++i) {
+        bool is_character_valid = false;
+        for(int j = 0; j < num_valid_chars; ++j) {
+            if(pixel_layout[i] == valid_characters[j]) {
+                is_character_valid = true;
+                break;
+            }
+        }
+        if(!is_character_valid) {
+            return;
+        }
+    }
+
+    ///
+    // Copy the pixel format
+    for(int i = 0; i < static_cast<int>(pixel_layout.size()); ++i) {
+        pixel_layout_[i] = pixel_layout[i];
+    }
+}
+
+const char* Buffer::get_pixel_layout() const {
+    return pixel_layout_;
+}
+
 float Buffer::tile_coord_x(int x) {
     int buffer_width_i = static_cast<int>(buffer_width_f);
     int last_width = buffer_width_i%max_texture_size;
     float tile_width = (x > (buffer_width_i-last_width))
-            ? last_width : max_texture_size;
+                       ? last_width : max_texture_size;
     return static_cast<float>(x%max_texture_size)/static_cast<float>(tile_width-1);
 }
 
@@ -192,7 +228,7 @@ float Buffer::tile_coord_y(int y) {
     int buffer_height_i = static_cast<int>(buffer_height_f);
     int last_height = buffer_height_i%max_texture_size;
     int tile_height =  (y > (buffer_height_i-last_height))
-            ? last_height : max_texture_size;
+                       ? last_height : max_texture_size;
     return static_cast<float>(y%max_texture_size)/static_cast<float>(tile_height-1);
 }
 
@@ -224,7 +260,7 @@ void Buffer::create_shader_program() {
     buff_prog.create(shader::buff_vert_shader,
                      shader::buff_frag_shader,
                      channelType,
-                     pixel_format_, { "mvp",
+                     pixel_layout_, { "mvp",
                                       "sampler", "brightness_contrast",
                                       "buffer_dimension", "enable_borders"});
 }

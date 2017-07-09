@@ -264,7 +264,7 @@ void MainWindow::plot_buffer(const BufferRequestMessage &buff)
     new_buffer.channels = buff.channels;
     new_buffer.type = buff.type;
     new_buffer.step = buff.step;
-    new_buffer.pixel_format = buff.pixel_format;
+    new_buffer.pixel_layout = buff.pixel_layout;
 
     {
         std::unique_lock<std::mutex> lock(mtx_);
@@ -300,7 +300,7 @@ void MainWindow::loop() {
                                   request.channels,
                                   request.type,
                                   request.step,
-                                  request.pixel_format,
+                                  request.pixel_layout,
                                   ac_enabled_)) {
                 cerr << "[error] Could not initialize opengl canvas!"<<endl;
             }
@@ -335,7 +335,7 @@ void MainWindow::loop() {
                                                 request.channels,
                                                 request.type,
                                                 request.step,
-                                                request.pixel_format);
+                                                request.pixel_layout);
             // Update buffer icon
             Stage* stage = stages_[request.var_name_str].get();
             ui_->bufferPreview->render_buffer_icon(stage);
@@ -643,7 +643,7 @@ void MainWindow::update_available_variables(PyObject *available_set)
                                    PyList_GetItem(symbol_metadata, 4)));
             request.step = PyLong_AS_LONG(
                                PyList_GetItem(symbol_metadata, 5));
-            request.pixel_format = PyBytes_AS_STRING(
+            request.pixel_layout = PyBytes_AS_STRING(
                                        PyList_GetItem(symbol_metadata, 6));
 
             plot_buffer(request);
@@ -681,7 +681,7 @@ void MainWindow::export_buffer()
 
     QHash<QString, BufferExporter::OutputType> outputExtensions;
     outputExtensions[tr("Image File (*.png)")] = BufferExporter::OutputType::Bitmap;
-    outputExtensions[tr("Octave matrix (*.oct)")] = BufferExporter::OutputType::OctaveMatrix;
+    outputExtensions[tr("Octave Raw Matrix (*.oct)")] = BufferExporter::OutputType::OctaveMatrix;
 
     QHashIterator<QString, BufferExporter::OutputType> it(outputExtensions);
     QString saveMessage;

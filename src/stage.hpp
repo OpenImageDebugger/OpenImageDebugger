@@ -19,7 +19,7 @@ public:
                     int channels,
                     Buffer::BufferType type,
                     int step,
-                    const string& pixel_format,
+                    const string& pixel_layout,
                     bool ac_enabled);
 
     bool buffer_update(uint8_t* buffer,
@@ -28,7 +28,7 @@ public:
                        int channels,
                        Buffer::BufferType type,
                        int step,
-                       const string& pixel_format);
+                       const string& pixel_layout);
 
     GameObject* getGameObject(std::string tag);
 
