@@ -31,6 +31,11 @@ def get_buffer_info(picked_obj):
     channels = ((((flags) & CV_MAT_CN_MASK) >> CV_CN_SHIFT) + 1)
     step = int(int(picked_obj['step']['buf'][0])/channels)
 
+    if channels >= 3:
+        pixel_layout = 'bgra'
+    else:
+        pixel_layout = 'rgba'
+
     cvtype = ((flags) & CV_MAT_TYPE_MASK)
 
     type = (cvtype&7)
@@ -44,7 +49,7 @@ def get_buffer_info(picked_obj):
     elif type == GIW_TYPES_FLOAT64:
         step = int(step / 8)
 
-    return (buffer, width, height, channels, type, step)
+    return (buffer, width, height, channels, type, step, pixel_layout)
 
 ##
 # Returns true if the given symbol is of observable type (the type of the

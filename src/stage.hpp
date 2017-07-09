@@ -12,11 +12,23 @@ public:
 
     Stage();
 
-    bool initialize(GLCanvas* gl_canvas, uint8_t* buffer, int buffer_width_i,
-            int buffer_height_i, int channels, Buffer::BufferType type, int step, bool ac_enabled);
+    bool initialize(GLCanvas* gl_canvas,
+                    uint8_t* buffer,
+                    int buffer_width_i,
+                    int buffer_height_i,
+                    int channels,
+                    Buffer::BufferType type,
+                    int step,
+                    const string& pixel_layout,
+                    bool ac_enabled);
 
-    bool buffer_update(uint8_t* buffer, int buffer_width_i,
-            int buffer_height_i, int channels, Buffer::BufferType type, int step);
+    bool buffer_update(uint8_t* buffer,
+                       int buffer_width_i,
+                       int buffer_height_i,
+                       int channels,
+                       Buffer::BufferType type,
+                       int step,
+                       const string& pixel_layout);
 
     GameObject* getGameObject(std::string tag);
 

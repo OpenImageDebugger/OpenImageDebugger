@@ -49,7 +49,7 @@ void main()
         color.rgb += vec3(vertical_border+horizontal_border);
     }
 
-    gl_FragColor = color;
+    gl_FragColor = color.PIXEL_LAYOUT;
 }
 
 )";

@@ -216,11 +216,11 @@ involves editing the functions `get_buffer_info()` and
 `is_symbol_observable()`.
 
 The function `get_buffer_info()` must return a tuple with the following fields,
-in order:
+in this order:
 
  * **buffer** Pointer to the buffer
  * **width**  Width of the ROI
- * **height** Height of the ROI 
+ * **height** Height of the ROI
  * **channels** Number of color channels (currently, only 1 and 3 are
    supported)
  * **type** Identifier for the type of the underlying buffer. The supported
@@ -234,6 +234,11 @@ in order:
 
  * **step** Width, in pixels, of the underlying containing buffer. If the ROI
    is the total buffer size, this is the same of the buffer width.
+ * **pixel_layout** String describing how internal channels should be ordered
+   for display purposes. The default value for buffers of 3 and 4 channels is
+   `'bgra'`, and `'rgba'` for images of 1 and 2 channels. This string must
+   contain exactly four characters, and each one must be one of `'r'`, `'g'`,
+   `'b'` or `'a'`.  Repeated channels, such as 'rrgg' are also valid.
 
 The function `is_symbol_observable()` receives a gdb symbol and only returns
 `True` if that symbol is of the observable type (the buffer you are dealing

@@ -29,6 +29,7 @@ struct BufferRequestMessage {
     int channels;
     Buffer::BufferType type;
     int step;
+    std::string pixel_layout;
 };
 
 class MainWindow : public QMainWindow

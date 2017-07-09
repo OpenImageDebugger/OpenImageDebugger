@@ -12,7 +12,15 @@ Stage::Stage()
 {
 }
 
-bool Stage::initialize(GLCanvas *gl_canvas, uint8_t *buffer, int buffer_width_i, int buffer_height_i, int channels, Buffer::BufferType type, int step, bool ac_enabled) {
+bool Stage::initialize(GLCanvas *gl_canvas,
+                       uint8_t *buffer,
+                       int buffer_width_i,
+                       int buffer_height_i,
+                       int channels,
+                       Buffer::BufferType type,
+                       int step,
+                       const string& pixel_layout,
+                       bool ac_enabled) {
     contrast_enabled = ac_enabled;
 
     std::shared_ptr<GameObject> camera_obj = std::make_shared<GameObject>();
@@ -32,6 +40,7 @@ bool Stage::initialize(GLCanvas *gl_canvas, uint8_t *buffer, int buffer_width_i,
     buffer_component->buffer_width_f = static_cast<float>(buffer_width_i);
     buffer_component->buffer_height_f = static_cast<float>(buffer_height_i);
     buffer_component->step = step;
+    buffer_component->set_pixel_layout(pixel_layout);
     buffer_obj->add_component("buffer_component", buffer_component);
 
     all_game_objects["buffer"] = buffer_obj;
@@ -51,7 +60,13 @@ bool Stage::initialize(GLCanvas *gl_canvas, uint8_t *buffer, int buffer_width_i,
     return true;
 }
 
-bool Stage::buffer_update(uint8_t *buffer, int buffer_width_i, int buffer_height_i, int channels, Buffer::BufferType type, int step) {
+bool Stage::buffer_update(uint8_t *buffer,
+                          int buffer_width_i,
+                          int buffer_height_i,
+                          int channels,
+                          Buffer::BufferType type,
+                          int step,
+                          const string& pixel_layout) {
     GameObject* buffer_obj = all_game_objects["buffer"].get();
     Buffer* buffer_component = buffer_obj->getComponent<Buffer>("buffer_component");
 
@@ -61,6 +76,7 @@ bool Stage::buffer_update(uint8_t *buffer, int buffer_width_i, int buffer_height
     buffer_component->buffer_width_f = static_cast<float>(buffer_width_i);
     buffer_component->buffer_height_f = static_cast<float>(buffer_height_i);
     buffer_component->step = step;
+    buffer_component->set_pixel_layout(pixel_layout);
 
     for(auto& game_obj_it: all_game_objects) {
         GameObject* game_obj = game_obj_it.second.get();

@@ -12,7 +12,11 @@ class ShaderProgram {
 public:
     enum TexelChannels {FormatR, FormatRG, FormatRGB, FormatRGBA};
 
-    bool create(const char* v_source, const char* f_source, TexelChannels texel_format, const std::vector<std::string>& uniforms);
+    bool create(const char* v_source,
+                const char* f_source,
+                TexelChannels texel_format,
+                const char* pixel_layout,
+                const std::vector<std::string>& uniforms);
 
     // Uniform handlers
     void uniform1i(const std::string& name, int value);
@@ -34,10 +38,12 @@ private:
     GLuint program_ = 0;
     TexelChannels texel_format_;
     std::map<std::string, GLuint> uniforms_;
+    char pixel_layout_[5];
 
     GLuint compile(GLuint type, GLchar const *source);
 
     std::string getShaderType(GLuint type);
     bool shaderIsOutdated(TexelChannels texel_format,
-                          const std::vector<std::string>& uniforms);
+                          const std::vector<std::string>& uniforms,
+                          const char* pixel_layout);
 };

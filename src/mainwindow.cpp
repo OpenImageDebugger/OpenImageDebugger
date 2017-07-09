@@ -264,6 +264,7 @@ void MainWindow::plot_buffer(const BufferRequestMessage &buff)
     new_buffer.channels = buff.channels;
     new_buffer.type = buff.type;
     new_buffer.step = buff.step;
+    new_buffer.pixel_layout = buff.pixel_layout;
 
     {
         std::unique_lock<std::mutex> lock(mtx_);
@@ -292,8 +293,15 @@ void MainWindow::loop() {
         if(buffer_stage == stages_.end()) {
             // New buffer request
             shared_ptr<Stage> stage = make_shared<Stage>();
-            if(!stage->initialize(ui_->bufferPreview, srcBuffer, request.width_i, request.height_i,
-                                  request.channels, request.type, request.step, ac_enabled_)) {
+            if(!stage->initialize(ui_->bufferPreview,
+                                  srcBuffer,
+                                  request.width_i,
+                                  request.height_i,
+                                  request.channels,
+                                  request.type,
+                                  request.step,
+                                  request.pixel_layout,
+                                  ac_enabled_)) {
                 cerr << "[error] Could not initialize opengl canvas!"<<endl;
             }
             stages_[request.var_name_str] = stage;
@@ -321,9 +329,13 @@ void MainWindow::loop() {
 
             update_session_settings();
         } else {
-            buffer_stage->second->buffer_update(srcBuffer, request.width_i, request.height_i,
-                                                request.channels, request.type,
-                                                request.step);
+            buffer_stage->second->buffer_update(srcBuffer,
+                                                request.width_i,
+                                                request.height_i,
+                                                request.channels,
+                                                request.type,
+                                                request.step,
+                                                request.pixel_layout);
             // Update buffer icon
             Stage* stage = stages_[request.var_name_str].get();
             ui_->bufferPreview->render_buffer_icon(stage);
@@ -616,21 +628,23 @@ void MainWindow::update_available_variables(PyObject *available_set)
 
         if(previous_session_buffers_.find(var_name_str) != previous_session_buffers_.end() ||
            held_buffers_.find(var_name_str) != held_buffers_.end()) {
-            PyObject *pybuffer = PyList_GetItem(symbol_metadata, 0);
-            int buffer_width_i = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 1));
-            int buffer_height_i = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 2));
-            int channels = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 3));
-            int type = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 4));
-            int step = PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 5));
-
             BufferRequestMessage request;
+
             request.var_name_str = var_name_str;
-            request.py_buffer = pybuffer;
-            request.width_i = buffer_width_i;
-            request.height_i = buffer_height_i;
-            request.channels = channels;
-            request.type = static_cast<Buffer::BufferType>(type);
-            request.step = step;
+            request.py_buffer = PyList_GetItem(symbol_metadata, 0);
+            request.width_i = PyLong_AS_LONG(
+                                  PyList_GetItem(symbol_metadata, 1));
+            request.height_i = PyLong_AS_LONG(
+                                   PyList_GetItem(symbol_metadata, 2));
+            request.channels = PyLong_AS_LONG(
+                                   PyList_GetItem(symbol_metadata, 3));
+            request.type = static_cast<Buffer::BufferType>(
+                               PyLong_AS_LONG(
+                                   PyList_GetItem(symbol_metadata, 4)));
+            request.step = PyLong_AS_LONG(
+                               PyList_GetItem(symbol_metadata, 5));
+            request.pixel_layout = PyBytes_AS_STRING(
+                                       PyList_GetItem(symbol_metadata, 6));
 
             plot_buffer(request);
         }
@@ -667,7 +681,7 @@ void MainWindow::export_buffer()
 
     QHash<QString, BufferExporter::OutputType> outputExtensions;
     outputExtensions[tr("Image File (*.png)")] = BufferExporter::OutputType::Bitmap;
-    outputExtensions[tr("Octave matrix (*.oct)")] = BufferExporter::OutputType::OctaveMatrix;
+    outputExtensions[tr("Octave Raw Matrix (*.oct)")] = BufferExporter::OutputType::OctaveMatrix;
 
     QHashIterator<QString, BufferExporter::OutputType> it(outputExtensions);
     QString saveMessage;
