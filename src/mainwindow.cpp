@@ -620,7 +620,7 @@ void MainWindow::update_available_variables(PyObject *available_set)
     while (PyDict_Next(available_set, &pos, &key, &symbol_metadata)) {
         int count = PyList_Size(symbol_metadata);
 
-        assert(count == 6);
+        assert(count == 7);
 
         PyObject *var_name_bytes = PyUnicode_AsEncodedString(key, "ASCII", "strict");
         string var_name_str = PyBytes_AS_STRING(var_name_bytes);
