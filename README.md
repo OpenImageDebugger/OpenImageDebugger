@@ -41,7 +41,7 @@ GDB ImageWatch requires python 3+, lib freetype 2, Qt SDK, GLEW, GLFW, Qt 5+
 and GDB 7.10+ (which must be compiled with python 3 support). On Ubuntu, you
 can install these packages with the following command:
 
-    sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip qt-sdk texinfo libfreetype6-dev libeigen3-dev
+    sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip qt-sdk texinfo libfreetype6-dev libeigen3-dev libqt5opengl5-dev
     sudo pip3 install pysigset
 
 Download and install the latest version of GDB with python3 support (if you
