@@ -79,6 +79,7 @@ void GLCanvas::initializeGL() {
         break;
     }
 
+    setAutoBufferSwap(false);
 }
 
 void GLCanvas::render_buffer_icon(Stage* stage) {
