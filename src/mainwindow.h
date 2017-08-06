@@ -59,6 +59,10 @@ public:
 
     void set_plot_callback(int(*plot_cbk)(const char*));
 
+    // Window change events - only called after the event is finished
+    void resizeEvent(QResizeEvent*);
+    void moveEvent(QMoveEvent*);
+
 public Q_SLOTS:
     void show_context_menu(const QPoint &pos);
 
@@ -129,8 +133,8 @@ private:
     void update_statusbar();
 
     std::string get_type_label(Buffer::BufferType type, int channels);
-    void load_previous_session_symbols();
-    void update_session_settings();
+    void load_settings();
+    void persist_settings();
 
     void set_currently_selected_stage(Stage* stage);
 };

@@ -86,10 +86,10 @@ MainWindow::MainWindow(QWidget *parent) :
     ui_->imageList->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui_->imageList, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(show_context_menu(const QPoint&)));
 
-    load_previous_session_symbols();
+    load_settings();
 }
 
-void MainWindow::load_previous_session_symbols() {
+void MainWindow::load_settings() {
     qRegisterMetaTypeStreamOperators<QList<QString> >("QList<QString>");
 
     QSettings settings(QSettings::Format::IniFormat,
@@ -97,20 +97,30 @@ void MainWindow::load_previous_session_symbols() {
                        "gdbimagewatch");
 
     settings.sync();
-    QList<QString> buffers = settings.value("PreviousSession/buffers").value<QList<QString> >();
 
     // Load maximum framerate
-    render_framerate_ = settings.value("Rendering/maximum_framerate", 60).value<double>();
+    render_framerate_ = settings.value("Rendering/maximum_framerate", 60)
+                                .value<double>();
     if(render_framerate_ <= 0.f) {
         render_framerate_ = 1.0;
     }
 
+    // Load previous session symbols
+    QList<QString> buffers = settings.value("PreviousSession/buffers")
+                                     .value<QList<QString> >();
+
     for(const auto& i: buffers) {
         previous_session_buffers_.insert(i.toStdString());
     }
+
+    // Load window position/size
+    settings.beginGroup("MainWindow");
+    resize(settings.value("size", size()).toSize());
+    move(settings.value("pos", pos()).toPoint());
+    settings.endGroup();
 }
 
-void MainWindow::update_session_settings() {
+void MainWindow::persist_settings() {
     QSettings settings(QSettings::Format::IniFormat,
                        QSettings::Scope::UserScope,
                        "gdbimagewatch");
@@ -121,12 +131,21 @@ void MainWindow::update_session_settings() {
         currentSessionBuffers.append(held_buffer.first.c_str());
     }
 
-    settings.setValue("PreviousSession/buffers",
-                      QVariant::fromValue(currentSessionBuffers));
+    // Write maximum framerate
     settings.setValue("Rendering/maximum_framerate",
                       render_framerate_);
-    settings.sync();
 
+    // Write previous session symbols
+    settings.setValue("PreviousSession/buffers",
+                      QVariant::fromValue(currentSessionBuffers));
+
+    // Write window position/size
+    settings.beginGroup("MainWindow");
+    settings.setValue("size", size());
+    settings.setValue("pos", pos());
+    settings.endGroup();
+
+    settings.sync();
 }
 
 MainWindow::~MainWindow()
@@ -347,7 +366,7 @@ void MainWindow::loop() {
             item->setTextAlignment(Qt::AlignHCenter);
             ui_->imageList->addItem(item);
 
-            update_session_settings();
+            persist_settings();
         } else {
             buffer_stage->second->buffer_update(srcBuffer,
                                                 request.width_i,
@@ -648,7 +667,7 @@ void MainWindow::remove_selected_buffer()
             set_currently_selected_stage(nullptr);
         }
 
-        update_session_settings();
+        persist_settings();
     }
 }
 
@@ -749,6 +768,14 @@ void MainWindow::export_buffer()
 
 void MainWindow::set_plot_callback(int (*plot_cbk)(const char *)) {
     plot_callback_ = plot_cbk;
+}
+
+void MainWindow::resizeEvent(QResizeEvent*) {
+    persist_settings();
+}
+
+void MainWindow::moveEvent(QMoveEvent*) {
+    persist_settings();
 }
 
 void MainWindow::show_context_menu(const QPoint& pos)
