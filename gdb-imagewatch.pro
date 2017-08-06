@@ -25,7 +25,8 @@ SOURCES += src/camera.cpp\
            src/shaders/background_frag_shader.cpp \
            src/shaders/background_vert_shader.cpp \
            src/symbol_search_input.cpp \
-           src/symbol_completer.cpp
+           src/symbol_completer.cpp \
+           src/bufferrequestmessage.cpp
 
 required_resources.path = $$OUT_PWD
 required_resources.files = resources/serif.ttf \
@@ -64,7 +65,8 @@ HEADERS  += src/buffer.hpp \
     src/managed_pointer.h \
     src/background.hpp \
     src/symbol_completer.h \
-    src/symbol_search_input.h
+    src/symbol_search_input.h \
+    src/bufferrequestmessage.h
 
 FORMS    += ui/mainwindow.ui
 

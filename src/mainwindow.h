@@ -4,7 +4,6 @@
 #include <memory>
 #include <set>
 #include <QMainWindow>
-#include <Python.h>
 #include <mutex>
 #include <deque>
 #include <string>
@@ -12,25 +11,16 @@
 #include <QListWidgetItem>
 #include <QLabel>
 #include <QShortcut>
+#include <Python.h>
 
 #include "glcanvas.hpp"
 #include "stage.hpp"
 #include "symbol_completer.h"
+#include "bufferrequestmessage.h"
 
 namespace Ui {
 class MainWindow;
 }
-
-struct BufferRequestMessage {
-    std::string var_name_str;
-    PyObject* py_buffer;
-    int width_i;
-    int height_i;
-    int channels;
-    Buffer::BufferType type;
-    int step;
-    std::string pixel_layout;
-};
 
 class MainWindow : public QMainWindow
 {
@@ -48,8 +38,6 @@ public:
     void resize_callback(int w, int h);
 
     void scroll_callback(float delta);
-
-    void get_observed_variables(PyObject* observed_set);
 
     void reset_ac_min_labels();
     void reset_ac_max_labels();
@@ -101,7 +89,11 @@ public Q_SLOTS:
 
     void rotate_90_ccw();
 
+private Q_SLOTS:
+    void persist_settings_impl();
+
 private:
+    QTimer settings_persist_timer_;
     QTimer update_timer_;
     double render_framerate_;
     bool request_render_update_;

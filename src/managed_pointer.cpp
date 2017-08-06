@@ -4,6 +4,8 @@
 using namespace std;
 
 shared_ptr<uint8_t> makeSharedPyObject(PyObject* obj) {
+    Py_INCREF(obj);
+
     return shared_ptr<uint8_t>(reinterpret_cast<uint8_t*>(obj),
                                [](uint8_t* obj) {
         Py_DECREF(reinterpret_cast<PyObject*>(obj));

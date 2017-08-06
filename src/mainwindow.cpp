@@ -27,6 +27,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui_->setupUi(this);
     ui_->splitter->setSizes({210, 100000000});
 
+    connect(&settings_persist_timer_, SIGNAL(timeout()), this, SLOT(persist_settings_impl()));
+    settings_persist_timer_.setSingleShot(true);
     connect(&update_timer_, SIGNAL(timeout()), this, SLOT(loop()));
 
     symbol_list_focus_shortcut_ = shared_ptr<QShortcut>(new QShortcut(QKeySequence(Qt::CTRL|Qt::Key_K), this));
@@ -120,7 +122,7 @@ void MainWindow::load_settings() {
     settings.endGroup();
 }
 
-void MainWindow::persist_settings() {
+void MainWindow::persist_settings_impl() {
     QSettings settings(QSettings::Format::IniFormat,
                        QSettings::Scope::UserScope,
                        "gdbimagewatch");
@@ -146,6 +148,10 @@ void MainWindow::persist_settings() {
     settings.endGroup();
 
     settings.sync();
+}
+
+void MainWindow::persist_settings() {
+    settings_persist_timer_.start(100);
 }
 
 MainWindow::~MainWindow()
@@ -186,17 +192,6 @@ void MainWindow::scroll_callback(float delta)
     update_statusbar();
 
     request_render_update_ = true;
-}
-
-void MainWindow::get_observed_variables(PyObject *observed_set)
-{
-    for(const auto& stage: stages_) {
-#if PY_MAJOR_VERSION >= 3
-        PySet_Add(observed_set, PyUnicode_FromString(stage.first.c_str()));
-#else
-        PySet_Add(observed_set, PyString_FromString(stage.first.c_str()));
-#endif
-    }
 }
 
 void enableInputs(const initializer_list<QLineEdit*>& inputs) {
@@ -294,27 +289,16 @@ void MainWindow::mouse_move_event(int, int)
 
 void MainWindow::plot_buffer(const BufferRequestMessage &buff)
 {
-    BufferRequestMessage new_buffer;
-    Py_INCREF(buff.py_buffer);
-    new_buffer.var_name_str = buff.var_name_str;
-    new_buffer.py_buffer = buff.py_buffer;
-    new_buffer.width_i = buff.width_i;
-    new_buffer.height_i = buff.height_i;
-    new_buffer.channels = buff.channels;
-    new_buffer.type = buff.type;
-    new_buffer.step = buff.step;
-    new_buffer.pixel_layout = buff.pixel_layout;
-
     {
         std::unique_lock<std::mutex> lock(mtx_);
-        pending_updates_.push_back(new_buffer);
+        pending_updates_.push_back(buff);
     }
 
 }
 
 void MainWindow::loop() {
     while(!pending_updates_.empty()) {
-        BufferRequestMessage request = pending_updates_.front();
+        const BufferRequestMessage& request = pending_updates_.front();
 
         uint8_t* srcBuffer;
         shared_ptr<uint8_t> managedBuffer;
@@ -384,7 +368,7 @@ void MainWindow::loop() {
             const int icon_height = 100;
             const int bytes_per_line = icon_width * 3;
             QImage bufferIcon(stage->buffer_icon_.data(), icon_width,
-                                icon_height, bytes_per_line, QImage::Format_RGB888);
+                              icon_height, bytes_per_line, QImage::Format_RGB888);
             stringstream label;
             label << request.var_name_str << "\n[" << request.width_i << "x" <<
                      request.height_i << "]\n" <<
@@ -671,6 +655,7 @@ void MainWindow::remove_selected_buffer()
     }
 }
 
+// TODO remove python dependency by receiving an STL container instead
 void MainWindow::update_available_variables(PyObject *available_set)
 {
     available_vars_.clear();
@@ -682,33 +667,26 @@ void MainWindow::update_available_variables(PyObject *available_set)
     while (PyDict_Next(available_set, &pos, &key, &symbol_metadata)) {
         int count = PyList_Size(symbol_metadata);
 
+        // TODO use a dict instead of a list
         assert(count == 7);
 
-        PyObject *var_name_bytes = PyUnicode_AsEncodedString(key, "ASCII", "strict");
-        string var_name_str = PyBytes_AS_STRING(var_name_bytes);
+        string var_name_str;
+        copyPyString(var_name_str, key);
         available_vars_.push_back(var_name_str.c_str());
 
-        if(previous_session_buffers_.find(var_name_str) != previous_session_buffers_.end() ||
+        if(previous_session_buffers_.find(var_name_str) !=
+           previous_session_buffers_.end() ||
            held_buffers_.find(var_name_str) != held_buffers_.end()) {
-            BufferRequestMessage request;
-
-            request.var_name_str = var_name_str;
-            request.py_buffer = PyList_GetItem(symbol_metadata, 0);
-            request.width_i = PyLong_AS_LONG(
-                                  PyList_GetItem(symbol_metadata, 1));
-            request.height_i = PyLong_AS_LONG(
-                                   PyList_GetItem(symbol_metadata, 2));
-            request.channels = PyLong_AS_LONG(
-                                   PyList_GetItem(symbol_metadata, 3));
-            request.type = static_cast<Buffer::BufferType>(
-                               PyLong_AS_LONG(
-                                   PyList_GetItem(symbol_metadata, 4)));
-            request.step = PyLong_AS_LONG(
-                               PyList_GetItem(symbol_metadata, 5));
-            PyObject *pixel_layout_bytes = PyUnicode_AsEncodedString(PyList_GetItem(symbol_metadata, 6),
-                                                                     "ASCII",
-                                                                     "strict");
-            request.pixel_layout = PyBytes_AS_STRING(pixel_layout_bytes);
+            BufferRequestMessage request(
+                        PyList_GetItem(symbol_metadata, 0),
+                        key,
+                        PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 1)),
+                        PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 2)),
+                        PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 3)),
+                        PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 4)),
+                        PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 5)),
+                        PyList_GetItem(symbol_metadata, 6)
+            );
 
             plot_buffer(request);
         }
