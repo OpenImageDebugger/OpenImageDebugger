@@ -192,6 +192,15 @@ correctly configured to use GDB 7.10. On QtCreator, go to
 `Tools`->`Options`->`Build & Run`->`Debuggers` and make sure that the
 configured path references a compatible GDB version.
 
+## Basic configuration
+
+The settings file for the plugin can be located under
+`$HOME/.config/gdbimagewatch.ini`. You can change the following settings:
+
+ * **Rendering**
+    * *maximum_framerate* Determines the maximum framerate for the buffer
+    rendering backend. Must be greater than 0.
+
 ## Advanced configuration
 
 By default, the plugin works with OpenCV `Mat` structures, i.e. it assumes that

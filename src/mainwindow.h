@@ -99,6 +99,8 @@ public Q_SLOTS:
 
 private:
     QTimer update_timer_;
+    double render_framerate_;
+    bool request_render_update_;
 
     Stage* currently_selected_stage_;
     std::map<std::string, std::shared_ptr<uint8_t>> held_buffers_;
@@ -129,6 +131,8 @@ private:
     std::string get_type_label(Buffer::BufferType type, int channels);
     void load_previous_session_symbols();
     void update_session_settings();
+
+    void set_currently_selected_stage(Stage* stage);
 };
 
 #endif // MAINWINDOW_H

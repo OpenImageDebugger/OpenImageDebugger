@@ -16,6 +16,7 @@ Q_DECLARE_METATYPE(QList<QString>)
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
+    request_render_update_(true),
     currently_selected_stage_(nullptr),
     completer_updated_(false),
     ui_(new Ui::MainWindow),
@@ -91,16 +92,29 @@ MainWindow::MainWindow(QWidget *parent) :
 void MainWindow::load_previous_session_symbols() {
     qRegisterMetaTypeStreamOperators<QList<QString> >("QList<QString>");
 
-    QSettings settings("gdbimagewatch.cfg", QSettings::NativeFormat);
+    QSettings settings(QSettings::Format::IniFormat,
+                       QSettings::Scope::UserScope,
+                       "gdbimagewatch");
 
+    settings.sync();
     QList<QString> buffers = settings.value("PreviousSession/buffers").value<QList<QString> >();
+
+    // Load maximum framerate
+    render_framerate_ = settings.value("Rendering/maximum_framerate", 60).value<double>();
+    if(render_framerate_ <= 0.f) {
+        render_framerate_ = 1.0;
+    }
+
     for(const auto& i: buffers) {
         previous_session_buffers_.insert(i.toStdString());
     }
 }
 
 void MainWindow::update_session_settings() {
-    QSettings settings("gdbimagewatch.cfg", QSettings::NativeFormat);
+    QSettings settings(QSettings::Format::IniFormat,
+                       QSettings::Scope::UserScope,
+                       "gdbimagewatch");
+
     QList<QString> currentSessionBuffers;
 
     for(const auto& held_buffer: held_buffers_) {
@@ -109,6 +123,8 @@ void MainWindow::update_session_settings() {
 
     settings.setValue("PreviousSession/buffers",
                       QVariant::fromValue(currentSessionBuffers));
+    settings.setValue("Rendering/maximum_framerate",
+                      render_framerate_);
     settings.sync();
 
 }
@@ -121,7 +137,7 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::show() {
-    update_timer_.start(16);
+    update_timer_.start(1000.0 / render_framerate_);
     QMainWindow::show();
 }
 
@@ -149,6 +165,8 @@ void MainWindow::scroll_callback(float delta)
     }
 
     update_statusbar();
+
+    request_render_update_ = true;
 }
 
 void MainWindow::get_observed_variables(PyObject *observed_set)
@@ -246,6 +264,8 @@ void MainWindow::mouse_drag_event(int mouse_x, int mouse_y)
     } else if(currently_selected_stage_ != nullptr) {
         currently_selected_stage_->mouse_drag_event(mouse_x, mouse_y);
     }
+
+    request_render_update_ = true;
 }
 
 void MainWindow::mouse_move_event(int, int)
@@ -368,6 +388,7 @@ void MainWindow::loop() {
         }
 
         pending_updates_.pop_front();
+        request_render_update_ = true;
     }
 
     if(completer_updated_) {
@@ -375,9 +396,14 @@ void MainWindow::loop() {
         completer_updated_ = false;
     }
 
-    ui_->bufferPreview->updateGL();
-    if(currently_selected_stage_ != nullptr) {
-        currently_selected_stage_->update();
+    if(request_render_update_) {
+        if(currently_selected_stage_ != nullptr) {
+            currently_selected_stage_->update();
+        }
+
+        ui_->bufferPreview->updateGL();
+
+        request_render_update_ = false;
     }
 }
 
@@ -387,7 +413,7 @@ void MainWindow::buffer_selected(QListWidgetItem * item) {
 
     auto stage = stages_.find(item->data(Qt::UserRole).toString().toStdString());
     if(stage != stages_.end()) {
-        currently_selected_stage_ = stage->second.get();
+        set_currently_selected_stage(stage->second.get());
         reset_ac_min_labels();
         reset_ac_max_labels();
 
@@ -422,6 +448,8 @@ void MainWindow::set_ac_min_value(int idx, float value)
        Buffer* buff = buffer_obj->getComponent<Buffer>("buffer_component");
        buff->min_buffer_values()[idx] = value;
        buff->computeContrastBrightnessParameters();
+
+       request_render_update_ = true;
    }
 }
 
@@ -432,6 +460,8 @@ void MainWindow::set_ac_max_value(int idx, float value)
        Buffer* buff = buffer_obj->getComponent<Buffer>("buffer_component");
        buff->max_buffer_values()[idx] = value;
        buff->computeContrastBrightnessParameters();
+
+       request_render_update_ = true;
    }
 }
 
@@ -556,6 +586,8 @@ void MainWindow::recenter_buffer()
             cam->recenter_camera();
         }
     }
+
+    request_render_update_ = true;
 }
 
 void MainWindow::link_views_toggle()
@@ -577,6 +609,8 @@ void MainWindow::rotate_90_cw()
             buff_obj->angle += 90.f * M_PI / 180.f;
         }
     }
+
+    request_render_update_ = true;
 }
 
 void MainWindow::rotate_90_ccw()
@@ -592,6 +626,14 @@ void MainWindow::rotate_90_ccw()
             buff_obj->angle -= 90.f * M_PI / 180.f;
         }
     }
+
+    request_render_update_ = true;
+}
+
+void MainWindow::set_currently_selected_stage(Stage* stage)
+{
+    currently_selected_stage_ = stage;
+    request_render_update_ = true;
 }
 
 void MainWindow::remove_selected_buffer()
@@ -602,8 +644,9 @@ void MainWindow::remove_selected_buffer()
         stages_.erase(bufferName);
         held_buffers_.erase(bufferName);
 
-        if(stages_.size() == 0)
-            currently_selected_stage_ = nullptr;
+        if(stages_.size() == 0) {
+            set_currently_selected_stage(nullptr);
+        }
 
         update_session_settings();
     }
