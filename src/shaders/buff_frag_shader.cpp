@@ -10,11 +10,6 @@ uniform int enable_borders;
 // Ouput data
 varying vec2 uv;
 
-vec2 roundVec2(vec2 f) {
-    return vec2(float(int(f.x+0.5)),
-                float(int(f.y+0.5)));
-}
-
 void main()
 {
     vec4 color;
@@ -38,15 +33,22 @@ void main()
 #endif
 
     vec2 buffer_position = uv*buffer_dimension;
-    vec2 err = roundVec2(buffer_position)-buffer_position;
 
-    if(enable_borders==1) {
-        float alpha = dFdx(buffer_position.x);
+    if(enable_borders == 1) {
+        float alpha = max(abs(dFdx(buffer_position.x)),
+                          abs(dFdx(buffer_position.y)));
+
         float x_ = fract(buffer_position.x);
         float y_ = fract(buffer_position.y);
-        float vertical_border = clamp(abs(-1.0/alpha * x_ + 0.5/alpha) - (0.5/alpha-1.0), 0.0, 1.0);
-        float horizontal_border = clamp(abs(-1.0/alpha * y_ + 0.5/alpha) - (0.5/alpha-1.0), 0.0, 1.0);
-        color.rgb += vec3(vertical_border+horizontal_border);
+
+        float vertical_border = clamp(abs(-1.0/alpha * x_ + 0.5/alpha) -
+                                      (0.5/alpha-1.0), 0.0, 1.0);
+
+        float horizontal_border = clamp(abs(-1.0/alpha * y_ + 0.5/alpha) -
+                                        (0.5/alpha-1.0), 0.0, 1.0);
+
+        color.rgb += vec3(vertical_border +
+                          horizontal_border);
     }
 
     gl_FragColor = color.PIXEL_LAYOUT;
