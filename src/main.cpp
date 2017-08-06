@@ -33,14 +33,6 @@ extern "C" {
                      int type,
                      int step,
                      PyObject* pixel_layout);
-    void update_plot(PyObject* pybuffer,
-                     PyObject* var_name,
-                     int buffer_width_i,
-                     int buffer_height_i,
-                     int channels,
-                     int type,
-                     int step,
-                     PyObject* pixel_layout);
 }
 
 MainWindow* wnd = nullptr;
@@ -52,25 +44,6 @@ bool is_running() {
 
 void update_available_variables(PyObject* available_set) {
     wnd->update_available_variables(available_set);
-}
-
-void update_plot(PyObject* pybuffer,
-                 PyObject* var_name,
-                 int buffer_width_i,
-                 int buffer_height_i,
-                 int channels,
-                 int type,
-                 int step,
-                 PyObject* pixel_layout)
-{
-    plot_binary(pybuffer,
-                var_name,
-                buffer_width_i,
-                buffer_height_i,
-                channels,
-                type,
-                step,
-                pixel_layout);
 }
 
 void plot_binary(PyObject* pybuffer,

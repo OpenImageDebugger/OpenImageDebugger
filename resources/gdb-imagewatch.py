@@ -21,21 +21,12 @@ lib.plot_binary.argtypes = [ctypes.py_object, # Buffer ptr
                             ctypes.c_int, # Type (0=float32, 1=uint8)
                             ctypes.c_int, # Step size (in pixels)
                             ctypes.py_object] # Pixel format
-lib.update_plot.argtypes = [ctypes.py_object, # Buffer ptr
-                            ctypes.py_object, # Variable name
-                            ctypes.c_int, # Buffer width
-                            ctypes.c_int, # Buffer height
-                            ctypes.c_int, # Number of channels
-                            ctypes.c_int, # Type (0=float32, 1=uint8)
-                            ctypes.c_int, # Step size (in pixels)
-                            ctypes.py_object] # Pixel format
                                                          # set
 FETCH_BUFFER_CBK_TYPE = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_char_p)
 lib.initialize_window.argtypes = [
                               FETCH_BUFFER_CBK_TYPE # Python function to be called
                               ]                # when the user requests a symbol
                                                # name from the viewer interface
-lib.update_plot.rettype = ctypes.c_bool # Buffer ptr
 lib.update_available_variables.argtypes = [
                               ctypes.py_object # List of available variables in
                               ]                # the current context
@@ -61,7 +52,7 @@ def get_buffer_metadata(variable):
 def request_buffer_update(variable):
     mem, width, height, channels, type, step, pixel_layout = get_buffer_metadata(variable)
 
-    lib.update_plot(mem, variable, width, height, channels, type, step, pixel_layout)
+    lib.plot_binary(mem, variable, width, height, channels, type, step, pixel_layout)
     pass
 
 class MainThreadPlotVariableRunner():
