@@ -41,6 +41,12 @@ def get_buffer_metadata(variable):
 
     bytes = get_buffer_size(width, height, channels, type, step)
 
+    # Check if buffer is initialized
+    if buffer == 0x0:
+        raise Exception('Invalid null buffer')
+    if bytes == 0:
+        raise Exception('Invalid buffer of zero bytes')
+
     # Check if buffer is valid. If it isn't, this function will throw an exception
     gdb.execute('x '+str(int(buffer)))
 
