@@ -36,6 +36,10 @@ required_resources.files = resources/serif.ttf \
                            resources/giw_load.m \
                            resources/qtcreatorintegration.py
 
+# Prevent qmake from stripping the required resources, which gives a spurious
+# error message
+QMAKE_STRIP = echo
+
 INSTALLS += required_resources
 
 CONFIG += link_pkgconfig \
