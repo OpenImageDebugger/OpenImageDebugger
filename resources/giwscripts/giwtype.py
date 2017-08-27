@@ -1,16 +1,12 @@
-GIW_TYPES_UINT8 = 0
-GIW_TYPES_UINT16 = 2
-GIW_TYPES_INT16 = 3
-GIW_TYPES_INT32 = 4
-GIW_TYPES_FLOAT32 = 5
-GIW_TYPES_FLOAT64 = 6
+import re
 
-##
-# Default values created for OpenCV Mat structures. Change it according to your
-# needs.
-def get_buffer_info(picked_obj):
-    import gdb
+from giwscripts import symbols
 
+def get_buffer_info(picked_obj, debugger_bridge):
+    """
+    Default values created for OpenCV Mat structures. Change it according to
+    your needs.
+    """
     # OpenCV constants
     CV_CN_MAX = 512
     CV_CN_SHIFT = 3
@@ -18,9 +14,7 @@ def get_buffer_info(picked_obj):
     CV_DEPTH_MAX = (1 << CV_CN_SHIFT)
     CV_MAT_TYPE_MASK = (CV_DEPTH_MAX*CV_CN_MAX - 1)
 
-    char_type = gdb.lookup_type("char")
-    char_pointer_type = char_type.pointer()
-    buffer = picked_obj['data'].cast(char_pointer_type)
+    buffer = debugger_bridge.get_casted_pointer('char', picked_obj['data'])
     if buffer==0x0:
         raise Exception('Received null buffer!')
 
@@ -40,23 +34,24 @@ def get_buffer_info(picked_obj):
 
     type = (cvtype&7)
 
-    if type == GIW_TYPES_UINT16 or \
-       type == GIW_TYPES_INT16:
+    if type == symbols.GIW_TYPES_UINT16 or \
+       type == symbols.GIW_TYPES_INT16:
         step = int(step / 2)
-    elif type == GIW_TYPES_INT32 or \
-         type == GIW_TYPES_FLOAT32:
+    elif type == symbols.GIW_TYPES_INT32 or \
+         type == symbols.GIW_TYPES_FLOAT32:
         step = int(step / 4)
-    elif type == GIW_TYPES_FLOAT64:
+    elif type == symbols.GIW_TYPES_FLOAT64:
         step = int(step / 8)
 
     return (buffer, width, height, channels, type, step, pixel_layout)
 
 ##
-# Returns true if the given symbol is of observable type (the type of the
-# buffer you are working with). Make sure to check for pointers of your type as
-# well
 def is_symbol_observable(symbol):
-    import re
+    """
+    Returns true if the given symbol is of observable type (the type of the
+    buffer you are working with). Make sure to check for pointers of your type
+    as well
+    """
     # Check if symbol type is the expected buffer
     symbol_type = str(symbol.type)
     type_regex = r'(const\s+)?cv::Mat(\s+?[*&])?'

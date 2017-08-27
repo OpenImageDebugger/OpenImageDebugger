@@ -52,7 +52,6 @@ already don't have it):
     cd gdb-7.10
     ./configure --with-python=python3 --disable-werror
     make -j8
-    sudo make install
 
 Notice that if you already have an older version of GDB, you will need to
 either reconfigure your environment running `update-alternatives` or
@@ -220,8 +219,8 @@ struct Buffer {
 ```
 
 If you use a different buffer type, you need to adapt the file
-`resources/gdbiwtype.py` to your needs. This is actually pretty simple and only
-involves editing the functions `get_buffer_info()` and
+`resources/giwscripts/giwtype.py` to your needs. This is actually pretty simple
+and only involves editing the functions `get_buffer_info()` and
 `is_symbol_observable()`.
 
 The function `get_buffer_info()` must return a tuple with the following fields,

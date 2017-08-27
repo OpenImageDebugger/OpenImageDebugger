@@ -279,7 +279,13 @@ private:
         Mat::Iterator<uint8_t> i(Teste);
         ones<uint8_t>(W, H, 1, Teste);
         i(0,0,0) = 255;
-        Teste.release();
+        Mat broken;
+        char tst;
+        broken.data = &tst;
+        broken.cols = 1024;
+        broken.rows = 1024;
+        broken.step.buf[2] = 3;
+        broken.release();
         ones<uint8_t>(W, H, C, Teste);
         i(0,0,0) = 255;
         i(0,0,1) = 0;

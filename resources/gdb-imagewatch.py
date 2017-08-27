@@ -1,238 +1,48 @@
 #!/usr/bin/python3
 
 import sys
-import os
-import ctypes
-from ctypes import cdll
-import pysigset, signal
-import threading
-import time
+import argparse
 
-##
-# Load imagewatch library and set up its API
-script_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(script_path)
-lib = cdll.LoadLibrary(script_path+'/libgdb-imagewatch.so')
-lib.plot_binary.argtypes = [ctypes.py_object, # Buffer ptr
-                            ctypes.py_object, # Variable name
-                            ctypes.c_int, # Buffer width
-                            ctypes.c_int, # Buffer height
-                            ctypes.c_int, # Number of channels
-                            ctypes.c_int, # Type (0=float32, 1=uint8)
-                            ctypes.c_int, # Step size (in pixels)
-                            ctypes.py_object] # Pixel format
-                                                         # set
-FETCH_BUFFER_CBK_TYPE = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_char_p)
-lib.initialize_window.argtypes = [
-                              FETCH_BUFFER_CBK_TYPE # Python function to be called
-                              ]                # when the user requests a symbol
-                                               # name from the viewer interface
-lib.update_available_variables.argtypes = [
-                              ctypes.py_object # List of available variables in
-                              ]                # the current context
+# Add script path to Python PATH so submodules can be found
+import os, sys
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 
-import gdbiwtype
-import qtcreatorintegration
+from giwscripts import events
+from giwscripts import giwtype
+from giwscripts import giwwindow
+from giwscripts import test
+from giwscripts.ides import qtcreator
 
-def get_buffer_metadata(variable):
-    picked_obj = gdb.parse_and_eval(variable)
-
-    buffer, width, height, channels, type, step, pixel_layout = gdbiwtype.get_buffer_info(picked_obj)
-
-    bytes = get_buffer_size(width, height, channels, type, step)
-
-    # Check if buffer is initialized
-    if buffer == 0x0:
-        raise Exception('Invalid null buffer')
-    if bytes == 0:
-        raise Exception('Invalid buffer of zero bytes')
-
-    # Check if buffer is valid. If it isn't, this function will throw an exception
-    gdb.execute('x '+str(int(buffer)))
-
-    inferior = gdb.selected_inferior()
-    mem = inferior.read_memory(buffer, bytes)
-
-    return [mem, width, height, channels, type, step, pixel_layout]
-
-def request_buffer_update(variable):
-    mem, width, height, channels, type, step, pixel_layout = get_buffer_metadata(variable)
-
-    lib.plot_binary(mem, variable, width, height, channels, type, step, pixel_layout)
-    pass
-
-class MainThreadPlotVariableRunner():
-    def __init__(self, variable):
-        self.variable = variable;
-        pass
-    def __call__(self):
-        request_buffer_update(self.variable)
-        pass
-    pass
-
-def plot_variable_cbk(requested_symbol):
+def get_debugger_bridge():
+    # This must be imported here, or the --test mode won't work
+    from giwscripts.debuggers import gdbbridge
     try:
-        variable = requested_symbol.decode('utf-8')
-        gdb.post_event(MainThreadPlotVariableRunner(variable))
-    except:
+        return gdbbridge.GdbBridge(giwtype)
+    except Exception as err:
+        print(err)
         pass
 
-    return 0
+    print('[gdb-imagewatch] Error: Could not instantiate any debugger bridge')
+    exit(1)
 
-def initialize_window():
-    ##
-    # Initialize imagewatch window
-    with pysigset.suspended_signals(signal.SIGCHLD):
-        # By default, my new threads will be the ones receiving the precious
-        # signals from the operating system. These signals should go to GDB so
-        # it could do its thing, and since it doesnt get them, my thread will
-        # make gdb hang. The solution is to configure the new thread to forward
-        # the signal back to the main thread, which is done by pysigset.
-        wnd_thread_instance=threading.Thread(target=lib.initialize_window, args=(FETCH_BUFFER_CBK_TYPE(plot_variable_cbk),))
-        wnd_thread_instance.daemon=True
-        wnd_thread_instance.start()
-        pass
-    pass
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--test',
+                        help='Open a test window with sample buffers',
+                        action='store_true')
+    args = parser.parse_args()
 
-##
-# Test application
-if len(sys.argv)==2 and sys.argv[1] == '--test':
-    import numpy
-    import math
+    if args.test:
+        # Test application
+        test.giwtest()
+    else:
+        # Setup GDB interface
+        debugger = get_debugger_bridge()
+        window = giwwindow.GdbImageWatchWindow(debugger)
+        event_handler = events.GdbImageWatchEvents(window, debugger)
 
-    initialize_window()
+        if not qtcreator.registerSymbolFetchHook(event_handler.stop_handler):
+            debugger.register_event_handlers(event_handler)
 
-    width=400
-    height=200
-    channels1=3
-    channels2=1
-    tex = [None]*width*height*channels1
-    tex2 = [None]*width*height*channels2
-
-    def genColor(x, y, Ka, Kb, Fa, Fb):
-        return ((Fa(x * Fb(y/Ka)/Kb)+1)*255/2)
-
-    for y in range(0,height):
-        for x in range(0,width):
-            tex[y*channels1*width+channels1*x] = genColor(x, y, 20, 80, math.cos, math.cos)
-            tex[y*channels1*width+channels1*x + 1] = genColor(x, y, 50, 200, math.sin, math.cos)
-            tex[y*channels1*width+channels1*x + 2] = genColor(x, y, 30, 120, math.cos, math.cos)
-
-            for c in range(0, channels2):
-                tex2[y*channels2*width+channels2*x+c] = math.exp(math.cos(x/5.0) *
-                                                                 math.sin(y/5.0))
-                pass
-            pass
-        pass
-
-    tex_arr = numpy.asarray(tex, numpy.uint8)
-    tex_arr2 = numpy.asarray(tex2, numpy.float32)
-    mem = memoryview(tex_arr)
-    mem2 = memoryview(tex_arr2)
-    step = width
-    lib.plot_binary(mem, 'python_test', width, height, channels1, gdbiwtype.GIW_TYPES_UINT8, step, 'rgba')
-    lib.plot_binary(mem2, 'python_test2', width, height, channels2, gdbiwtype.GIW_TYPES_FLOAT32, step, 'rgba')
-
-
-    while lib.is_running():
-        time.sleep(0.5)
-
-    lib.terminate()
-    exit()
-    pass
-
-import gdb
-
-def get_buffer_size(width, height, channels, type, step):
-    channel_size = 1
-    if type == gdbiwtype.GIW_TYPES_UINT16 or \
-       type == gdbiwtype.GIW_TYPES_INT16:
-        channel_size = 2 # 2 bytes per element
-    elif type == gdbiwtype.GIW_TYPES_INT32 or \
-         type == gdbiwtype.GIW_TYPES_FLOAT32:
-        channel_size = 4 # 4 bytes per element
-    elif type == gdbiwtype.GIW_TYPES_FLOAT64:
-        channel_size = 8 # 8 bytes per element
-        pass
-
-    return channel_size * channels * step*height
-
-class PlotterCommand(gdb.Command):
-    def __init__(self):
-        super(PlotterCommand, self).__init__("plot",
-                                             gdb.COMMAND_DATA,
-                                             gdb.COMPLETE_SYMBOL)
-        pass
-
-    def invoke(self, arg, from_tty):
-        args = gdb.string_to_argv(arg)
-        var_name = str(args[0])
-
-        mem, width, height, channels, type, step, pixel_layout = get_buffer_metadata(var_name)
-
-        lib.plot_binary(mem, var_name, width, height, channels, type, step, pixel_layout)
-        pass
-
-    pass
-
-def push_visible_symbols():
-    frame = gdb.selected_frame()
-    block = frame.block()
-    observable_symbols = dict()
-
-    def getFieldsFromType(this_type, observable_symbols):
-        for field_name, field_val in this_type.iteritems():
-            if field_val.is_base_class:
-                observable_symbols.update(getFieldsFromType(field_val.type, observable_symbols))
-            elif (not field_name in observable_symbols) and (gdbiwtype.is_symbol_observable(field_val)):
-                try:
-                    observable_symbols[field_name] = get_buffer_metadata(field_name)
-                except:
-                    print('Warning: Member "' + field_name + '" is not observable')
-                    pass
-        return observable_symbols
-
-    while not block is None:
-        for symbol in block:
-            if (symbol.is_argument or symbol.is_variable):
-                name = symbol.name
-                # Get struct/class fields
-                if name == 'this':
-                    # The GDB API is a bit convoluted, so I have to do some contortion in order
-                    # to get the class type from the this object so I can iterate over its fields
-                    this_type = gdb.parse_and_eval(symbol.name).dereference().type
-                    observable_symbols.update(getFieldsFromType(this_type, observable_symbols))
-                elif (not name in observable_symbols) and (gdbiwtype.is_symbol_observable(symbol)):
-                    try:
-                        observable_symbols[name] = get_buffer_metadata(name)
-                    except Exception as err:
-                        print('Warning: Field "' + name + '" is not observable')
-                    pass
-                pass
-            pass
-
-        block = block.superblock
-        pass
-
-    if lib.is_running():
-        lib.update_available_variables(observable_symbols)
-
-    pass
-
-# Update all buffers on each stop event
-def stop_event_handler(event):
-    if not lib.is_running():
-        initialize_window()
-        while not lib.is_running():
-            time.sleep(0.1)
-            pass
-
-    push_visible_symbols()
-    pass
-
-##
-# Setup GDB interface
-PlotterCommand()
-if not qtcreatorintegration.registerSymbolFetchHook(stop_event_handler):
-    gdb.events.stop.connect(stop_event_handler)
-
+if __name__ == "__main__":
+    main()
