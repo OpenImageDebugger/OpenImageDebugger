@@ -1,6 +1,13 @@
+# -*- coding: utf-8 -*-
+
+"""
+Implementation of handlers for events raised by the debugger
+"""
+
 import time
 
 from giwscripts.debuggers.interfaces import BridgeEventHandlerInterface
+
 
 class GdbImageWatchEvents(BridgeEventHandlerInterface):
     """
@@ -20,17 +27,13 @@ class GdbImageWatchEvents(BridgeEventHandlerInterface):
             self._window.initialize_window()
             while not self._window.is_running():
                 time.sleep(0.1)
-                pass
 
         observable_symbols = self._debugger.get_available_symbols()
         if self._window.is_running():
             self._window.update_available_variables(observable_symbols)
-
-        pass
 
     def plot_handler(self, variable_name):
         """
         Command window to plot variable_name if user requests from debugger log
         """
         self._window.plot_variable(variable_name)
-

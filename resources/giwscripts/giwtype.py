@@ -1,21 +1,30 @@
+# -*- coding: utf-8 -*-
+
+"""
+This module is concerned with the analysis of each variable found by the
+debugger, as well as identifying and describing the buffers that should be
+plotted in the ImageWatch window.
+"""
+
 import re
 
 from giwscripts import symbols
+
+
+# OpenCV constants
+CV_CN_MAX = 512
+CV_CN_SHIFT = 3
+CV_MAT_CN_MASK = ((CV_CN_MAX - 1) << CV_CN_SHIFT)
+CV_DEPTH_MAX = (1 << CV_CN_SHIFT)
+CV_MAT_TYPE_MASK = (CV_DEPTH_MAX * CV_CN_MAX - 1)
 
 def get_buffer_info(picked_obj, debugger_bridge):
     """
     Default values created for OpenCV Mat structures. Change it according to
     your needs.
     """
-    # OpenCV constants
-    CV_CN_MAX = 512
-    CV_CN_SHIFT = 3
-    CV_MAT_CN_MASK = ((CV_CN_MAX - 1) << CV_CN_SHIFT)
-    CV_DEPTH_MAX = (1 << CV_CN_SHIFT)
-    CV_MAT_TYPE_MASK = (CV_DEPTH_MAX*CV_CN_MAX - 1)
-
     buffer = debugger_bridge.get_casted_pointer('char', picked_obj['data'])
-    if buffer==0x0:
+    if buffer == 0x0:
         raise Exception('Received null buffer!')
 
     width = int(picked_obj['cols'])
@@ -32,20 +41,20 @@ def get_buffer_info(picked_obj, debugger_bridge):
 
     cvtype = ((flags) & CV_MAT_TYPE_MASK)
 
-    type = (cvtype&7)
+    typevalue = (cvtype & 7)
 
-    if type == symbols.GIW_TYPES_UINT16 or \
-       type == symbols.GIW_TYPES_INT16:
+    if (typevalue == symbols.GIW_TYPES_UINT16 or
+        typevalue == symbols.GIW_TYPES_INT16):
         step = int(step / 2)
-    elif type == symbols.GIW_TYPES_INT32 or \
-         type == symbols.GIW_TYPES_FLOAT32:
+    elif (typevalue == symbols.GIW_TYPES_INT32 or
+          typevalue == symbols.GIW_TYPES_FLOAT32):
         step = int(step / 4)
-    elif type == symbols.GIW_TYPES_FLOAT64:
+    elif typevalue == symbols.GIW_TYPES_FLOAT64:
         step = int(step / 8)
 
-    return (buffer, width, height, channels, type, step, pixel_layout)
+    return (buffer, width, height, channels, typevalue, step, pixel_layout)
 
-##
+
 def is_symbol_observable(symbol):
     """
     Returns true if the given symbol is of observable type (the type of the
@@ -55,5 +64,4 @@ def is_symbol_observable(symbol):
     # Check if symbol type is the expected buffer
     symbol_type = str(symbol.type)
     type_regex = r'(const\s+)?cv::Mat(\s+?[*&])?'
-    return re.match(type_regex, symbol_type) != None
-
+    return re.match(type_regex, symbol_type) is not None

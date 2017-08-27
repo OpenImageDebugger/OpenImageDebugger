@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+
+"""
+Interfaces to be implemented by code that shall interact with the debugger
+"""
+
+
 class BridgeInterface():
     """
     This interface defines the methods to be implemented by a debugger bridge
@@ -42,6 +49,7 @@ class BridgeInterface():
         Get all visible symbols in the current context of debugging.
         """
         raise NotImplementedError("Method is not implemented")
+
 
 class BridgeEventHandlerInterface():
     """

@@ -1,27 +1,39 @@
-# QtCreator integration module.
+# -*- coding: utf-8 -*-
 
 """
-Hacks into Dumper and changes its fetchVariables method to a wrapper that calls
-stop_event_handler. This allows us to retrieve the list of locals every time
-the user changes the local stack frame during a debug session from QtCreator
-interface.
+QtCreator integration module.
 """
-def registerSymbolFetchHook(retrieveSymbolsCallback):
+
+
+def register_symbol_fetch_hook(retrieve_symbols_callback):
+    """
+    Hacks into Dumper and changes its fetchVariables method to a wrapper that
+    calls stop_event_handler. This allows us to retrieve the list of locals
+    every time the user changes the local stack frame during a debug session
+    from QtCreator interface.
+    """
     try:
         imp = __import__('gdbbridge')
 
-        originalFetchVariables = None
-        def fetchVariablesWrapper(self, args):
-            ret = originalFetchVariables(self, args)
+        original_fetch_variables = None
 
-            retrieveSymbolsCallback(None)
+        def fetch_variables_wrapper(self, args):
+            """
+            Acts as a proxy to QTCreator 'fetchVariables' method, calling the
+            event handler 'stop' method everytime 'fetchVariables' is called.
+            """
+            ret = original_fetch_variables(self, args)
+
+            retrieve_symbols_callback(None)
 
             return ret
 
-        originalFetchVariables = imp.Dumper.fetchVariables
-        imp.Dumper.fetchVariables = fetchVariablesWrapper
+        original_fetch_variables = imp.Dumper.fetchVariables
+        imp.Dumper.fetchVariables = fetch_variables_wrapper
         return True
 
     except Exception as err:
+        print('[gdb-imagewatch] Error: Exception thrown in qtcreator'
+              ' integration module')
         print(err)
         return False

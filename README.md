@@ -232,16 +232,18 @@ in this order:
  * **channels** Number of color channels (currently, only 1 and 3 are
    supported)
  * **type** Identifier for the type of the underlying buffer. The supported
-   values are:
+   values, defined under `resources/giwscripts/symbols.py`, are:
    * `GIW_TYPES_UINT8` = 0
    * `GIW_TYPES_UINT16` = 2
    * `GIW_TYPES_INT16` = 3
    * `GIW_TYPES_INT32` = 4
    * `GIW_TYPES_FLOAT32` = 5
-   * `GIW_TYPES_UINT32` = 6
+   * `GIW_TYPES_FLOAT64` = 6
 
- * **step** Width, in pixels, of the underlying containing buffer. If the ROI
-   is the total buffer size, this is the same of the buffer width.
+ * **stride** Number of pixels you have to skip in order to reach the pixel
+   right below any arbitrary pixel. In other words, this can be thought of as
+   the width, in pixels, of the underlying containing buffer. If the ROI is the
+   total buffer size, this is the same of the buffer width.
  * **pixel_layout** String describing how internal channels should be ordered
    for display purposes. The default value for buffers of 3 and 4 channels is
    `'bgra'`, and `'rgba'` for images of 1 and 2 channels. This string must

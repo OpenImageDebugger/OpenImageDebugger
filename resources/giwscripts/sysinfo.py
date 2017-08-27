@@ -1,4 +1,11 @@
+# -*- coding: utf-8 -*-
+
+"""
+System and memory related methods
+"""
+
 from giwscripts import symbols
+
 
 def get_memory_usage():
     """
@@ -17,20 +24,19 @@ def get_memory_usage():
         ret['used'] = int(ret['total']) - int(ret['free'])
     return ret
 
-def get_buffer_size(width, height, channels, type, step):
+
+def get_buffer_size(height, channels, typevalue, rowstride):
     """
     Compute the buffer size in bytes
     """
     channel_size = 1
-    if type == symbols.GIW_TYPES_UINT16 or \
-       type == symbols.GIW_TYPES_INT16:
-        channel_size = 2 # 2 bytes per element
-    elif type == symbols.GIW_TYPES_INT32 or \
-         type == symbols.GIW_TYPES_FLOAT32:
-        channel_size = 4 # 4 bytes per element
-    elif type == symbols.GIW_TYPES_FLOAT64:
-        channel_size = 8 # 8 bytes per element
-        pass
+    if (typevalue == symbols.GIW_TYPES_UINT16 or
+        typevalue == symbols.GIW_TYPES_INT16):
+        channel_size = 2  # 2 bytes per element
+    elif (typevalue == symbols.GIW_TYPES_INT32 or
+          typevalue == symbols.GIW_TYPES_FLOAT32):
+        channel_size = 4  # 4 bytes per element
+    elif typevalue == symbols.GIW_TYPES_FLOAT64:
+        channel_size = 8  # 8 bytes per element
 
-    return channel_size * channels * step * height
-
+    return channel_size * channels * rowstride * height
