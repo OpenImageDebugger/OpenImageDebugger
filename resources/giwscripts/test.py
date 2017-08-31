@@ -87,20 +87,26 @@ def gen_buffers(width, height):
     rowstride = width
 
     return {
-        'sample_buffer_1': [
-            mem1,
-            width, height, channels[0],
-            types[0]['giw'],
-            rowstride,
-            'rgba'
-        ],
-        'sample_buffer_2': [
-            mem2,
-            width, height, channels[1],
-            types[1]['giw'],
-            rowstride,
-            'rgba'
-        ]
+        'sample_buffer_1': {
+            'display_name': 'uint8* sample_buffer_1',
+            'pointer': mem1,
+            'width': width,
+            'height': height,
+            'channels': channels[0],
+            'type': types[0]['giw'],
+            'row_stride': rowstride,
+            'pixel_layout': 'rgba'
+        },
+        'sample_buffer_2': {
+            'display_name': 'float* sample_buffer_2',
+            'pointer': mem2,
+            'width': width,
+            'height': height,
+            'channels': channels[1],
+            'type': types[1]['giw'],
+            'row_stride': rowstride,
+            'pixel_layout': 'rgba'
+        }
     }
 
 
@@ -136,9 +142,10 @@ class DummyDebugger(BridgeInterface):
         """
         Search in the list of available buffers and return the requested one
         """
-        for buffer in self._buffers:
-            if buffer == var_name:
-                return self._buffers[buffer]
+        if var_name in self._buffers:
+            return self._buffers[var_name]
+
+        return None
 
     def queue_request(self, callable_request):
         callable_request()

@@ -14,6 +14,7 @@ import pysigset
 FETCH_BUFFER_CBK_TYPE = ctypes.CFUNCTYPE(ctypes.c_int,
                                          ctypes.c_char_p)
 
+
 class GdbImageWatchWindow():
     """
     Python interface for the imagewatch window, which is implemented as a
@@ -25,24 +26,22 @@ class GdbImageWatchWindow():
         # Load imagewatch library and set up its API
         self._lib = ctypes.cdll.LoadLibrary(
             script_path + '/libgdb-imagewatch.so')
+
+        # plot_binary argument
+        #
+        # Python dictionary with the following elements:
+        # - [pointer     ] PyMemoryView object wrapping the target buffer
+        # - [display_name] Variable name as it shall be displayed
+        # - [width       ] Buffer width, in pixels
+        # - [height      ] Buffer height, in pixels
+        # - [channels    ] Number of channels (1 to 4)
+        # - [type        ] Buffer type (see symbols.py for details)
+        # - [row_stride  ] Row stride, in pixels
+        # - [pixel_layout] String defining pixel channel layout (e.g. 'rgba')
         self._lib.plot_binary.argtypes = [
-            # Buffer pointer
-            ctypes.py_object,
-            # Variable name string
-            ctypes.py_object,
-            # Buffer width
-            ctypes.c_int,
-            # Buffer height
-            ctypes.c_int,
-            # Number of channels
-            ctypes.c_int,
-            # Type (see symbols.py for details)
-            ctypes.c_int,
-            # Buffer row stride size (in pixels)
-            ctypes.c_int,
-            # Pixel format string (e.g. 'rgba')
             ctypes.py_object
         ]
+
         self._lib.initialize_window.argtypes = [
             # Python function to be called when the user requests a symbol name
             # from the viewer interface
@@ -78,6 +77,7 @@ class GdbImageWatchWindow():
                                                     self._lib,
                                                     self._bridge)
             self._bridge.queue_request(plot_callable)
+            return 1
         except Exception as err:
             print('[gdb-imagewatch] Error: Could not plot variable')
             print(err)
@@ -140,9 +140,10 @@ class DeferredVariablePlotter():
 
     def __call__(self):
         try:
-            mem, width, height, channels, typevalue, step, pixel_layout = self._bridge.get_buffer_metadata(self._variable)
+            buffer_metadata = self._bridge.get_buffer_metadata(self._variable)
 
-            self._lib.plot_binary(mem, self._variable, width, height, channels, typevalue, step, pixel_layout)
+            if buffer_metadata is not None:
+                self._lib.plot_binary(buffer_metadata)
         except Exception as err:
             import traceback
             print('[gdb-imagewatch] Error: Could not plot variable')

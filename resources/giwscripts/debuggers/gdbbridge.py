@@ -25,27 +25,33 @@ class GdbBridge(BridgeInterface):
     def get_buffer_metadata(self, variable):
         picked_obj = gdb.parse_and_eval(variable)
 
-        buffer, width, height, channels, typevalue, rowstride, pixel_layout = self._type_inspector.get_buffer_info(picked_obj, self)
+        buffer_metadata = self._type_inspector.get_buffer_metadata(
+            variable, picked_obj, self)
 
         bufsize = sysinfo.get_buffer_size(
-            height, channels, typevalue, rowstride)
+            buffer_metadata['height'],
+            buffer_metadata['channels'],
+            buffer_metadata['type'],
+            buffer_metadata['row_stride']
+        )
 
         # Check if buffer is initialized
-        if buffer == 0x0:
-            raise Exception('Invalid null buffer')
+        if buffer_metadata['pointer'] == 0x0:
+            raise Exception('Invalid null buffer pointer')
         if bufsize == 0:
             raise Exception('Invalid buffer of zero bytes')
-        elif bufsize >= sysinfo.get_memory_usage()['free']:
+        elif bufsize >= sysinfo.get_memory_usage()['free'] / 10:
             raise Exception('Invalid buffer size larger than available memory')
 
         # Check if buffer is valid. If it isn't, this function will throw an
         # exception
-        gdb.execute('x '+str(int(buffer)))
+        gdb.execute('x '+str(int(buffer_metadata['pointer'])))
 
         inferior = gdb.selected_inferior()
-        mem = inferior.read_memory(buffer, bufsize)
+        buffer_metadata['pointer'] = inferior.read_memory(
+            buffer_metadata['pointer'], bufsize)
 
-        return [mem, width, height, channels, typevalue, rowstride, pixel_layout]
+        return buffer_metadata
 
     def register_event_handlers(self, event_handler):
         gdb.events.stop.connect(event_handler.stop_handler)

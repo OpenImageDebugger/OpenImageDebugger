@@ -28,14 +28,7 @@ extern "C" {
     void terminate();
     int is_running();
     void update_available_variables(PyObject* available_set);
-    void plot_binary(PyObject* pybuffer,
-                     PyObject* var_name,
-                     int buffer_width_i,
-                     int buffer_height_i,
-                     int channels,
-                     int type,
-                     int step,
-                     PyObject* pixel_layout);
+    void plot_binary(PyObject* bufffer_metadata);
 }
 
 MainWindow* wnd = nullptr;
@@ -49,33 +42,18 @@ void update_available_variables(PyObject* available_set) {
     wnd->update_available_variables(available_set);
 }
 
-void plot_binary(PyObject* pybuffer,
-                 PyObject* var_name,
-                 int buffer_width_i,
-                 int buffer_height_i,
-                 int channels,
-                 int type,
-                 int step,
-                 PyObject* pixel_layout)
+void plot_binary(PyObject* buffer_metadata)
 {
-
-    BufferRequestMessage request (pybuffer,
-                                  var_name,
-                                  buffer_width_i,
-                                  buffer_height_i,
-                                  channels,
-                                  type,
-                                  step,
-                                  pixel_layout);
-
-    while(wnd == nullptr) {
+    int attempt_counter = 30;
+    while(wnd == nullptr &&
+          attempt_counter-- > 0 ) {
         usleep(1e6 / 30);
     }
 
-    wnd->plot_buffer(request);
+    wnd->plot_buffer(buffer_metadata);
 }
 
-void signalHandler( int signum )
+void signalHandler(int signum )
 {
 #ifndef NDEBUG
     cout << "[gdb-imagewatch] SIGNAL (" << signum << ") received.\n";

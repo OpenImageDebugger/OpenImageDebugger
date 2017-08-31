@@ -254,7 +254,7 @@ void computeSumTable(int W, int H, int C, Mat& matrix) {
 
 class TestFather {
 protected:
-    Mat Teste;
+    Mat TestField;
 };
 
 class Test : public TestFather {
@@ -276,23 +276,24 @@ private:
         int W = 1024;
         int H = 1024;
         int C = 3;
-        Mat::Iterator<uint8_t> i(Teste);
-        ones<uint8_t>(W, H, 1, Teste);
+        Mat::Iterator<uint8_t> i(TestField);
+        ones<uint8_t>(W, H, 1, TestField);
         i(0,0,0) = 255;
         Mat broken;
+        Mat* pointer = &TestField;
         char tst;
         broken.data = &tst;
         broken.cols = 1024;
         broken.rows = 1024;
         broken.step.buf[2] = 3;
         broken.release();
-        ones<uint8_t>(W, H, C, Teste);
+        ones<uint8_t>(W, H, C, TestField);
         i(0,0,0) = 255;
         i(0,0,1) = 0;
         i(0,0,2) = 0;
-        ones<uint8_t>(W, H, 1, Teste);
+        ones<uint8_t>(W, H, 1, TestField);
         i(0,0,0) = 255;
-        computeSumTable<uint8_t>(W, H, C, Teste);
+        computeSumTable<uint8_t>(W, H, C, TestField);
     }
 };
 

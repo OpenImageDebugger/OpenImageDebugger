@@ -3,8 +3,11 @@
 
 #include <string>
 
+#include <Python.h>
+
 #include "buffer.hpp"
 
+// TODO move to PNI.h
 void copyPyString(std::string& dst,
                   PyObject* src);
 

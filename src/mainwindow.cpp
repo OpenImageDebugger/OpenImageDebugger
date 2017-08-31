@@ -287,11 +287,104 @@ void MainWindow::mouse_move_event(int, int)
     update_statusbar();
 }
 
-void MainWindow::plot_buffer(const BufferRequestMessage &buff)
+// TODO move to PNI.h
+#define RAISE_PY_EXCEPTION(exception_type, msg) \
+    PyGILState_STATE gstate = PyGILState_Ensure(); \
+    PyErr_SetString(exception_type, msg); \
+    PyGILState_Release(gstate);
+
+// TODO move to PNI.h
+#define CHECK_FIELD_PROVIDED(name) \
+    if(py_##name == nullptr) { \
+        RAISE_PY_EXCEPTION(PyExc_KeyError, \
+                           "Missing key in dictionary provided to " \
+                           "plot_binary: Was expecting <" #name "> key"); \
+        return; \
+    }
+
+// TODO move to PNI.h
+#define CHECK_FIELD_TYPE(name, type_checker_funct) \
+    if(type_checker_funct(py_##name) == 0) { \
+        RAISE_PY_EXCEPTION(PyExc_TypeError, \
+                           "Key " #name " provided to plot_binary does not " \
+                           "have the expected type (" #type_checker_funct \
+                           " failed)"); \
+        return; \
+    }
+
+// TODO move to PNI.h
+int getPyInt(PyObject* obj)
 {
+    return PyLong_AS_LONG(obj);
+}
+
+int checkPyStringType(PyObject* obj)
+{
+    return PyUnicode_Check(obj) == 1 ? 1 : PyBytes_Check(obj);
+}
+
+void MainWindow::plot_buffer(PyObject* buffer_metadata)
+{
+    if(!PyDict_Check(buffer_metadata)) {
+        RAISE_PY_EXCEPTION(PyExc_TypeError,
+                           "Invalid object given to plot_binary (was expecting"
+                           " a dict).");
+        return;
+    }
+
+    PyObject* py_display_name = PyDict_GetItemString(buffer_metadata,
+                                                  "display_name");
+    PyObject* py_pointer = PyDict_GetItemString(buffer_metadata, "pointer");
+    PyObject* py_width = PyDict_GetItemString(buffer_metadata, "width");
+    PyObject* py_height = PyDict_GetItemString(buffer_metadata, "height");
+    PyObject* py_channels = PyDict_GetItemString(buffer_metadata, "channels");
+    PyObject* py_type = PyDict_GetItemString(buffer_metadata, "type");
+    PyObject* py_row_stride = PyDict_GetItemString(buffer_metadata,
+                                                   "row_stride");
+    PyObject* py_pixel_layout = PyDict_GetItemString(buffer_metadata,
+                                                     "pixel_layout");
+
+    /*
+     * Check if expected fields were provided
+     */
+    CHECK_FIELD_PROVIDED(display_name);
+    CHECK_FIELD_PROVIDED(pointer);
+    CHECK_FIELD_PROVIDED(width);
+    CHECK_FIELD_PROVIDED(height);
+    CHECK_FIELD_PROVIDED(channels);
+    CHECK_FIELD_PROVIDED(type);
+    CHECK_FIELD_PROVIDED(row_stride);
+    CHECK_FIELD_PROVIDED(pixel_layout);
+
+    /*
+     * Check if expected fields have the correct types
+     */
+    CHECK_FIELD_TYPE(display_name, checkPyStringType);
+    CHECK_FIELD_TYPE(pointer, PyMemoryView_Check);
+    CHECK_FIELD_TYPE(width, PyLong_Check);
+    CHECK_FIELD_TYPE(height, PyLong_Check);
+    CHECK_FIELD_TYPE(channels, PyLong_Check);
+    CHECK_FIELD_TYPE(type, PyLong_Check);
+    CHECK_FIELD_TYPE(row_stride, PyLong_Check);
+    CHECK_FIELD_TYPE(pixel_layout, checkPyStringType);
+
+    /*
+     * Enqueue provided fields so the request can be processed in the main thread
+     */
+    BufferRequestMessage request(
+        py_pointer,
+        py_display_name,
+        getPyInt(py_width),
+        getPyInt(py_height),
+        getPyInt(py_channels),
+        getPyInt(py_type),
+        getPyInt(py_row_stride),
+        py_pixel_layout
+    );
+
     {
         std::unique_lock<std::mutex> lock(mtx_);
-        pending_updates_.push_back(buff);
+        pending_updates_.push_back(request);
     }
 
 }
@@ -551,6 +644,8 @@ void MainWindow::ac_min_reset()
 
        // Update inputs
        reset_ac_min_labels();
+
+       request_render_update_ = true;
    }
 }
 
@@ -564,6 +659,8 @@ void MainWindow::ac_max_reset()
 
        // Update inputs
        reset_ac_max_labels();
+
+       request_render_update_ = true;
    }
 }
 
@@ -572,6 +669,8 @@ void MainWindow::ac_toggle()
     ac_enabled_ = !ac_enabled_;
     for(auto& stage: stages_)
         stage.second->contrast_enabled = ac_enabled_;
+
+    request_render_update_ = true;
 }
 
 void MainWindow::recenter_buffer()
@@ -665,30 +764,21 @@ void MainWindow::update_available_variables(PyObject *available_set)
     Py_ssize_t pos = 0;
 
     while (PyDict_Next(available_set, &pos, &key, &symbol_metadata)) {
-        int count = PyList_Size(symbol_metadata);
-
-        // TODO use a dict instead of a list
-        assert(count == 7);
-
+        /*
+         * Add symbol name to autocomplete list
+         */
         string var_name_str;
         copyPyString(var_name_str, key);
         available_vars_.push_back(var_name_str.c_str());
 
+        /*
+         * Update buffer
+         */
         if(previous_session_buffers_.find(var_name_str) !=
            previous_session_buffers_.end() ||
            held_buffers_.find(var_name_str) != held_buffers_.end()) {
-            BufferRequestMessage request(
-                        PyList_GetItem(symbol_metadata, 0),
-                        key,
-                        PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 1)),
-                        PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 2)),
-                        PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 3)),
-                        PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 4)),
-                        PyLong_AS_LONG(PyList_GetItem(symbol_metadata, 5)),
-                        PyList_GetItem(symbol_metadata, 6)
-            );
 
-            plot_buffer(request);
+            plot_buffer(symbol_metadata);
         }
     }
 
@@ -697,16 +787,20 @@ void MainWindow::update_available_variables(PyObject *available_set)
 
 void MainWindow::on_symbol_selected() {
     const char* symbol_name = ui_->symbolList->text().toLocal8Bit().constData();
-    plot_callback_(symbol_name);
-    // Clear symbol input
-    ui_->symbolList->setText("");
+    if(ui_->symbolList->text().length() > 0) {
+        plot_callback_(symbol_name);
+        // Clear symbol input
+        ui_->symbolList->setText("");
+    }
 }
 
 void MainWindow::on_symbol_completed(QString str) {
-    plot_callback_(str.toLocal8Bit().constData());
-    // Clear symbol input
-    ui_->symbolList->setText("");
-    ui_->symbolList->clearFocus();
+    if(str.length() > 0) {
+        plot_callback_(str.toLocal8Bit().constData());
+        // Clear symbol input
+        ui_->symbolList->setText("");
+        ui_->symbolList->clearFocus();
+    }
 }
 
 void MainWindow::export_buffer()

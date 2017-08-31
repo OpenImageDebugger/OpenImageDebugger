@@ -1,5 +1,3 @@
-#include <Python.h>
-
 #include "bufferrequestmessage.h"
 
 void copyPyString(std::string& dst,

@@ -223,14 +223,16 @@ If you use a different buffer type, you need to adapt the file
 and only involves editing the functions `get_buffer_info()` and
 `is_symbol_observable()`.
 
-The function `get_buffer_info()` must return a tuple with the following fields,
-in this order:
+The function `get_buffer_info()` must return a dictionary with the following
+fields:
 
- * **buffer** Pointer to the buffer
+ * **display_name** Name of the buffer as it must appear in the ImageWatch
+   window. Can be customized to also show its typename, for instance.
+ * **pointer** Pointer to the buffer
  * **width**  Width of the ROI
  * **height** Height of the ROI
- * **channels** Number of color channels (currently, only 1 and 3 are
-   supported)
+ * **channels** Number of color channels (Must be in the range `1 <= channels
+   <= 3`)
  * **type** Identifier for the type of the underlying buffer. The supported
    values, defined under `resources/giwscripts/symbols.py`, are:
    * `GIW_TYPES_UINT8` = 0
@@ -240,7 +242,7 @@ in this order:
    * `GIW_TYPES_FLOAT32` = 5
    * `GIW_TYPES_FLOAT64` = 6
 
- * **stride** Number of pixels you have to skip in order to reach the pixel
+ * **row_stride** Number of pixels you have to skip in order to reach the pixel
    right below any arbitrary pixel. In other words, this can be thought of as
    the width, in pixels, of the underlying containing buffer. If the ROI is the
    total buffer size, this is the same of the buffer width.

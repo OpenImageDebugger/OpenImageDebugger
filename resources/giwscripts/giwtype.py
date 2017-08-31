@@ -18,7 +18,8 @@ CV_MAT_CN_MASK = ((CV_CN_MAX - 1) << CV_CN_SHIFT)
 CV_DEPTH_MAX = (1 << CV_CN_SHIFT)
 CV_MAT_TYPE_MASK = (CV_DEPTH_MAX * CV_CN_MAX - 1)
 
-def get_buffer_info(picked_obj, debugger_bridge):
+
+def get_buffer_metadata(obj_name, picked_obj, debugger_bridge):
     """
     Default values created for OpenCV Mat structures. Change it according to
     your needs.
@@ -32,7 +33,7 @@ def get_buffer_info(picked_obj, debugger_bridge):
     flags = int(picked_obj['flags'])
 
     channels = ((((flags) & CV_MAT_CN_MASK) >> CV_CN_SHIFT) + 1)
-    step = int(int(picked_obj['step']['buf'][0])/channels)
+    row_stride = int(int(picked_obj['step']['buf'][0])/channels)
 
     if channels >= 3:
         pixel_layout = 'bgra'
@@ -41,18 +42,27 @@ def get_buffer_info(picked_obj, debugger_bridge):
 
     cvtype = ((flags) & CV_MAT_TYPE_MASK)
 
-    typevalue = (cvtype & 7)
+    type_value = (cvtype & 7)
 
-    if (typevalue == symbols.GIW_TYPES_UINT16 or
-        typevalue == symbols.GIW_TYPES_INT16):
-        step = int(step / 2)
-    elif (typevalue == symbols.GIW_TYPES_INT32 or
-          typevalue == symbols.GIW_TYPES_FLOAT32):
-        step = int(step / 4)
-    elif typevalue == symbols.GIW_TYPES_FLOAT64:
-        step = int(step / 8)
+    if (type_value == symbols.GIW_TYPES_UINT16 or
+        type_value == symbols.GIW_TYPES_INT16):
+        row_stride = int(row_stride / 2)
+    elif (type_value == symbols.GIW_TYPES_INT32 or
+          type_value == symbols.GIW_TYPES_FLOAT32):
+        row_stride = int(row_stride / 4)
+    elif type_value == symbols.GIW_TYPES_FLOAT64:
+        row_stride = int(row_stride / 8)
 
-    return (buffer, width, height, channels, typevalue, step, pixel_layout)
+    return {
+        'display_name': str(picked_obj.type) + ' ' + obj_name,
+        'pointer': buffer,
+        'width': width,
+        'height': height,
+        'channels': channels,
+        'type': type_value,
+        'row_stride': row_stride,
+        'pixel_layout': pixel_layout
+    }
 
 
 def is_symbol_observable(symbol):
