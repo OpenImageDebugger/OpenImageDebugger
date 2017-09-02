@@ -1,4 +1,3 @@
-// Standard headers
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits>
@@ -6,18 +5,11 @@
 #include <unistd.h>
 #include <csignal>
 
-// Qt headers
 #include <QApplication>
 
-// OpenGL related headers
 #include <GL/glew.h>
 
-// Internal headers
-#include "math.hpp"
-#include "shader.hpp"
-#include "mainwindow.h"
-
-using namespace std;
+#include "ui/main_window.h"
 
 // TODO move to PNI.h
 #define FALSE 0

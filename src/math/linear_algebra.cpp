@@ -1,11 +1,8 @@
-#include "math.hpp"
-
 #include <iostream>
-using namespace Eigen;
-using namespace std;
+
+#include "linear_algebra.h"
 
 vec4::vec4(){}
-
 
 void vec4::operator=(const vec4 &b) {
     vec = b.vec;
@@ -79,21 +76,13 @@ void mat4::setFromST(float scaleX, float scaleY, float scaleZ, float x, float y,
 }
 
 void mat4::setFromSRT(float scaleX, float scaleY, float scaleZ, float rZ, float x, float y, float z) {
+    using Eigen::Affine3f;
+    using Eigen::AngleAxisf;
+    using Eigen::Vector3f;
+
     Affine3f t = Affine3f::Identity();
     t.translate(Vector3f(x,y,z)).rotate(AngleAxisf(rZ, Vector3f(0,0,1))).scale(Vector3f(scaleX,scaleY,scaleZ));
     this->mat = t.matrix();
-
-    /*
-    float* data = this->data();
-
-    data[0] = scaleX, data[5] = scaleY, data[10] = scaleZ;
-    data[12]=x, data[13]=y, data[14]=z;
-
-    data[1] = data[2] = data[3] = data[4] = 0.0;
-    data[6] = data[7] = data[8] = data[9] = 0.0;
-    data[11] = 0.0;
-    data[15] = 1.0;
-    */
 }
 
 float *mat4::data() {
@@ -101,6 +90,10 @@ float *mat4::data() {
 }
 
 mat4 mat4::rotation(float angle) {
+    using Eigen::Affine3f;
+    using Eigen::AngleAxisf;
+    using Eigen::Vector3f;
+
     mat4 result;
     Affine3f t = Affine3f::Identity();
     t.rotate(AngleAxisf(angle, Vector3f(0,0,1)));

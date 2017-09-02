@@ -1,16 +1,19 @@
-#include <sstream>
 #include <iomanip>
+#include <sstream>
 
-#include <QShortcut>
 #include <QAction>
 #include <QFileDialog>
 #include <QSettings>
+#include <QShortcut>
 #include <QStandardPaths>
 
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
-#include "buffer_exporter.hpp"
-#include "managed_pointer.h"
+#include "main_window.h"
+
+#include "ui_main_window.h"
+#include "debuggerinterface/managed_pointer.h"
+#include "io/buffer_exporter.h"
+#include "visualization/game_object.h"
+#include "visualization/components/camera.h"
 
 Q_DECLARE_METATYPE(QList<QString>)
 

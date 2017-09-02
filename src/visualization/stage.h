@@ -1,10 +1,12 @@
 #ifndef STAGE_HPP
 #define STAGE_HPP
 
-#include <memory>
 #include <map>
+#include <memory>
 
-#include "game_object.h"
+#include "visualization/components/buffer.h"
+
+class GameObject;
 
 class Stage
 {

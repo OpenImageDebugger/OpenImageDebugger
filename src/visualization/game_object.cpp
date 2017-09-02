@@ -1,5 +1,7 @@
 #include "game_object.h"
 
+#include "visualization/components/component.h"
+
 GameObject::GameObject() : scale(1.0, 1.0, 1.0, 0.0),
                            position(0.0, 0.0, 0.0, 1.0),
                            angle(0.0)
@@ -31,7 +33,7 @@ void GameObject::update() {
         comp.second->update();
 }
 
-void GameObject::add_component(const string &component_name, std::shared_ptr<Component> component) {
+void GameObject::add_component(const std::string &component_name, std::shared_ptr<Component> component) {
     all_components[component_name] = component;
 }
 
@@ -50,6 +52,6 @@ void GameObject::mouse_drag_event(int mouse_x, int mouse_y) {
     }
 }
 
-const std::map<string, std::shared_ptr<Component> >&GameObject::get_components() {
+const std::map<std::string, std::shared_ptr<Component> >&GameObject::get_components() {
     return all_components;
 }

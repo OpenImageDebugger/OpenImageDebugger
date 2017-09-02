@@ -1,6 +1,6 @@
 #pragma once
 
-#include "buffer.hpp"
+#include "visualization/components/buffer.h"
 
 class BufferExporter {
 public:

@@ -1,15 +1,11 @@
 #pragma once
 
-#include <memory>
 #include <QGLWidget>
 #include <QMouseEvent>
 
-#include "buffer.hpp"
-#include "camera.hpp"
-#include "buffer_values.hpp"
-#include "stage.hpp"
-
 class MainWindow;
+class Stage;
+
 class GLCanvas : public QGLWidget {
     Q_OBJECT
 public:

@@ -1,11 +1,12 @@
 #pragma once
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
 #include <iostream>
 
-#include "shader.hpp"
-#include "component.hpp"
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+#include "visualization/shader.h"
+#include "component.h"
 
 class BufferValues : public Component {
 public:

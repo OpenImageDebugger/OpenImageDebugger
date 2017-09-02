@@ -1,7 +1,13 @@
+#include <limits>
+
 #include <GL/glew.h>
 
-#include "buffer.hpp"
-#include "stage.hpp"
+#include "buffer.h"
+
+#include "camera.h"
+#include "visualization/game_object.h"
+#include "visualization/shaders/giw_shaders.h"
+#include "visualization/stage.h"
 
 using namespace std;
 
@@ -248,14 +254,19 @@ void Buffer::update() {
 void Buffer::create_shader_program() {
     // Buffer Shaders
     ShaderProgram::TexelChannels channelType;
-    if(channels == 1)
+    if(channels == 1) {
         channelType = ShaderProgram::FormatR;
-    else if(channels == 2)
+    }
+    else if(channels == 2) {
         channelType = ShaderProgram::FormatRG;
-    else if(channels == 3)
+    }
+    else if(channels == 3) {
         channelType = ShaderProgram::FormatRGB;
-    else if(channels == 4)
+    }
+    else {
+        assert(channels == 4);
         channelType = ShaderProgram::FormatRGBA;
+    }
 
     buff_prog.create(shader::buff_vert_shader,
                      shader::buff_frag_shader,

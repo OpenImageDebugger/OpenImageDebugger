@@ -5,7 +5,8 @@
 
 #include <Python.h>
 
-#include "buffer.hpp"
+// TODO acho que eu nao deveria de precisar disso aqui... acho que tenho q inverter a ordem, BufferType deveria fazer parte do debugger_interface e ser utilizado dentro do component
+#include "visualization/components/buffer.h"
 
 // TODO move to PNI.h
 void copyPyString(std::string& dst,

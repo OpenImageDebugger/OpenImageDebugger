@@ -2,7 +2,8 @@
 #define SYMBOL_SEARCH_INPUT_H
 
 #include <QLineEdit>
-#include "src/symbol_completer.h"
+
+#include "ui/symbol_completer.h"
 
 class SymbolSearchInput : public QLineEdit
 {

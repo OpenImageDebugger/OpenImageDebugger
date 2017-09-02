@@ -2,13 +2,8 @@
 
 #include <cstring>
 #include <iostream>
-#include <algorithm> // std::max,min
-#include <eigen3/Eigen/Eigen>
 
-template<typename T>
-int clamp(T value, T lower, T upper) {
-    return std::min(std::max(value, lower), upper);
-}
+#include <eigen3/Eigen/Eigen>
 
 class mat4;
 

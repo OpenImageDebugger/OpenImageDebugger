@@ -1,13 +1,15 @@
 #include <GL/glew.h>
 
-#include "buffer_values.hpp"
-#include "stage.hpp"
+#include "buffer_values.h"
+
+#include "buffer.h"
+#include "camera.h"
+#include "math/assorted.h"
+#include "visualization/game_object.h"
+#include "visualization/stage.h"
+#include "visualization/shaders/giw_shaders.h"
 
 using namespace std;
-
-template <typename T> int sgn(T val) {
-    return (T(0) < val) - (val < T(0));
-}
 
 BufferValues::~BufferValues() {
     glDeleteTextures(1, &text_tex);

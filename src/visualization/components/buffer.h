@@ -2,8 +2,9 @@
 
 #include <vector>
 #include <sstream>
-#include "shader.hpp"
-#include "component.hpp"
+
+#include "visualization/shader.h"
+#include "component.h"
 
 using namespace std;
 class Buffer : public Component {

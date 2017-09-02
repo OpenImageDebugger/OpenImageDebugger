@@ -1,8 +1,12 @@
+#include <cmath>
+
 #include <GL/glew.h>
 
-#include "camera.hpp"
-#include "stage.hpp"
-#include "mainwindow.h"
+#include "camera.h"
+
+#include "ui/gl_canvas.h"
+#include "visualization/game_object.h"
+#include "visualization/stage.h"
 
 Camera& Camera::operator=(const Camera& cam) {
     zoom_power_ = cam.zoom_power_;
@@ -17,7 +21,7 @@ Camera& Camera::operator=(const Camera& cam) {
     if(game_object != nullptr) {
         update_object_pose();
 
-        float zoom = 1.0/pow(zoom_factor, zoom_power_);
+        float zoom = 1.0/std::pow(zoom_factor, zoom_power_);
         game_object->scale = {zoom, zoom, 1.0, 0.0};
     }
 
@@ -32,7 +36,7 @@ void Camera::window_resized(int w, int h) {
 
 void Camera::scroll_callback(float delta) {
     zoom_power_ += delta;
-    float zoom = 1.0/pow(zoom_factor, zoom_power_);
+    float zoom = 1.0/std::pow(zoom_factor, zoom_power_);
     game_object->scale = {zoom, zoom, 1.0, 0.0};
 }
 
@@ -61,6 +65,8 @@ bool Camera::post_initialize() {
 }
 
 void Camera::set_initial_zoom() {
+    using std::pow;
+
     GameObject* buffer_obj = game_object->stage->getGameObject("buffer");
     Buffer* buff = buffer_obj->getComponent<Buffer>("buffer_component");
     float buf_w = buff->buffer_width_f;
@@ -100,7 +106,7 @@ void Camera::recenter_camera()
 void Camera::mouse_drag_event(int mouseX, int mouseY)
 {
     // Mouse is down. Update camera_pos_x_/camera_pos_y_
-    float zoom = 1.0/pow(zoom_factor, zoom_power_);
+    float zoom = 1.0/std::pow(zoom_factor, zoom_power_);
 
     camera_pos_x_ += mouseX*zoom;
     camera_pos_y_ += mouseY*zoom;

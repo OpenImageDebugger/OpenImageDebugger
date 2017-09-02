@@ -1,6 +1,11 @@
 #include <set>
-#include "stage.hpp"
-#include "background.hpp"
+
+#include "stage.h"
+
+#include "game_object.h"
+#include "visualization/components/buffer_values.h"
+#include "visualization/components/background.h"
+#include "visualization/components/camera.h"
 
 struct compareRenderOrder {
     bool operator()(const Component *a, const Component *b) const {

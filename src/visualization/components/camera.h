@@ -1,6 +1,7 @@
 #pragma once
 
-#include "component.hpp"
+#include "component.h"
+#include "math/linear_algebra.h"
 
 class Camera : public Component {
 public:

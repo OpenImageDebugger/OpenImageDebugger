@@ -1,35 +1,42 @@
 # TODO config as release by default (so the user will know how to change to debug)
-QT += core gui opengl widgets gui
+QT += \
+  core \
+  gui \
+  opengl \
+  widgets \
+  gui
 
-TARGET = gdb-imagewatch
+TARGET = giwwindow
 TEMPLATE = lib
 
-QMAKE_CXXFLAGS += -fPIC -pthread
+QMAKE_CXXFLAGS += \
+  -fPIC \
+  -pthread
 
-# TODO sort alphabetically
 SOURCES += \
-  src/camera.cpp\
-  src/main.cpp \
-  src/buffer_values.cpp \
-  src/buffer.cpp \
-  src/shaders/buff_frag_shader.cpp \
-  src/shaders/buff_vert_shader.cpp \
-  src/shaders/text_frag_shader.cpp \
-  src/shaders/text_vert_shader.cpp \
-  src/shader.cpp \
-  src/mainwindow.cpp \
-  src/glcanvas.cpp \
-  src/stage.cpp \
-  src/buffer_exporter.cpp \
-  src/math.cpp \
-  src/game_object.cpp \
-  src/managed_pointer.cpp \
-  src/background.cpp \
-  src/shaders/background_frag_shader.cpp \
-  src/shaders/background_vert_shader.cpp \
-  src/symbol_search_input.cpp \
-  src/symbol_completer.cpp \
-  src/bufferrequestmessage.cpp
+  src/giw_window.cpp \
+  src/debuggerinterface/buffer_request_message.cpp \
+  src/debuggerinterface/managed_pointer.cpp \
+  src/visualization/shader.cpp \
+  src/visualization/components/background.cpp \
+  src/visualization/components/buffer.cpp \
+  src/visualization/components/buffer_values.cpp \
+  src/visualization/components/camera.cpp\
+  src/visualization/shaders/background_fs.cpp \
+  src/visualization/shaders/background_vs.cpp \
+  src/visualization/shaders/buffer_fs.cpp \
+  src/visualization/shaders/buffer_vs.cpp \
+  src/visualization/shaders/text_fs.cpp \
+  src/visualization/shaders/text_vs.cpp \
+  src/io/buffer_exporter.cpp \
+  src/math/assorted.cpp \
+  src/math/linear_algebra.cpp \
+  src/ui/gl_canvas.cpp \
+  src/ui/main_window.cpp \
+  src/ui/symbol_completer.cpp \
+  src/ui/symbol_search_input.cpp \
+  src/visualization/game_object.cpp \
+  src/visualization/stage.cpp
 
 # TODO gerar .os em outro lugar (ou limpar eles no caso do make install)
 
@@ -50,6 +57,8 @@ export(first.depends)
 export(copydata.commands)
 QMAKE_EXTRA_TARGETS += first copydata
 
+INCLUDEPATH += $$PWD/src
+
 CONFIG += \
   link_pkgconfig \
   c++11 \
@@ -65,26 +74,7 @@ PKGCONFIG += \
   python3 \
   glew
 
-HEADERS  += \
-  src/background.hpp \
-  src/buffer.hpp \
-  src/buffer_exporter.hpp \
-  src/buffer_values.hpp \
-  src/bufferrequestmessage.h \
-  src/camera.hpp \
-  src/component.hpp \
-  src/game_object.h \
-  src/glcanvas.hpp \
-  src/mainwindow.h \
-  src/managed_pointer.h \
-  src/math.hpp \
-  src/shader.hpp \
-  src/stage.hpp \
-  src/symbol_completer.h \
-  src/symbol_search_input.h \
-  src/shaders/imagewatch_shaders.hpp
-
-FORMS += ui/mainwindow.ui
+FORMS += ui/main_window.ui
 
 OTHER_FILES += \
   resources/icons/arrow-down-b.png \

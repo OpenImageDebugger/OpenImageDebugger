@@ -3,12 +3,11 @@
 
 #include <memory>
 
-#include "math.hpp"
-#include "camera.hpp"
-#include "buffer.hpp"
-#include "buffer_values.hpp"
+#include "math/linear_algebra.h"
 
+class GLCanvas;
 class Stage;
+class Component;
 
 class GameObject
 {

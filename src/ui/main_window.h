@@ -1,22 +1,24 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <memory>
-#include <set>
-#include <QMainWindow>
-#include <mutex>
 #include <deque>
+#include <memory>
+#include <mutex>
+#include <set>
 #include <string>
-#include <QTimer>
-#include <QListWidgetItem>
+
 #include <QLabel>
+#include <QListWidgetItem>
+#include <QMainWindow>
 #include <QShortcut>
+#include <QTimer>
+
 #include <Python.h>
 
-#include "glcanvas.hpp"
-#include "stage.hpp"
+#include "gl_canvas.h"
 #include "symbol_completer.h"
-#include "bufferrequestmessage.h"
+#include "debuggerinterface/buffer_request_message.h"
+#include "visualization/stage.h"
 
 namespace Ui {
 class MainWindow;

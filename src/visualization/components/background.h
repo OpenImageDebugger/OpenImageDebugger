@@ -1,8 +1,8 @@
 #ifndef BACKGROUND_HPP
 #define BACKGROUND_HPP
 
-#include "shader.hpp"
-#include "component.hpp"
+#include "component.h"
+#include "visualization/shader.h"
 
 class Background : public Component
 {

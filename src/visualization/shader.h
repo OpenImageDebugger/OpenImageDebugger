@@ -6,8 +6,6 @@
 #include <vector>
 #include <GL/gl.h>
 
-#include "shaders/imagewatch_shaders.hpp"
-
 class ShaderProgram {
 public:
     enum TexelChannels {FormatR, FormatRG, FormatRGB, FormatRGBA};
