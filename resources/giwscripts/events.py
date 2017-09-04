@@ -23,13 +23,13 @@ class GdbImageWatchEvents(BridgeEventHandlerInterface):
         available buffers and pass it to the imagewatch window.
         """
         # Block until the window is up and running
-        if not self._window.is_running():
+        if not self._window.is_ready():
             self._window.initialize_window()
-            while not self._window.is_running():
+            while not self._window.is_ready():
                 time.sleep(0.1)
 
         observable_symbols = self._debugger.get_available_symbols()
-        if self._window.is_running():
+        if self._window.is_ready():
             self._window.update_available_variables(observable_symbols)
 
     def plot_handler(self, variable_name):

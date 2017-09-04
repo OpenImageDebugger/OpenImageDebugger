@@ -1,79 +1,165 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <limits>
-#include <memory>
-#include <unistd.h>
+/*
+ * Copyright (c) 2015-2017 Claudio dos Santos Fernandes
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+
 #include <csignal>
 
 #include <QApplication>
 
-#include <GL/glew.h>
+#include "giw_window.h"
 
+#include "debuggerinterface/python_native_interface.h"
 #include "ui/main_window.h"
 
 // TODO move to PNI.h
-#define FALSE 0
-#define TRUE (!FALSE)
+#define RAISE_PY_EXCEPTION(exception_type, msg) \
+    PyGILState_STATE gstate = PyGILState_Ensure(); \
+    PyErr_SetString(exception_type, msg); \
+    PyGILState_Release(gstate);
 
-extern "C" {
-    void initialize_window(int(*plot_callback)(const char*));
-    void terminate();
-    int is_running();
-    void update_available_variables(PyObject* available_set);
-    void plot_binary(PyObject* bufffer_metadata);
-}
+static char giw_app_argv0[] = "GDB ImageWatch";
+static char *giw_app_argv[] = { giw_app_argv0, nullptr };
+static int giw_app_argc = 1;
 
-MainWindow* wnd = nullptr;
-int is_running_ = FALSE;
-
-int is_running() {
-    return is_running_;
-}
-
-void update_available_variables(PyObject* available_set) {
-    wnd->update_available_variables(available_set);
-}
-
-void plot_binary(PyObject* buffer_metadata)
-{
-    int attempt_counter = 30;
-    while(wnd == nullptr &&
-          attempt_counter-- > 0 ) {
-        usleep(1e6 / 30);
-    }
-
-    wnd->plot_buffer(buffer_metadata);
-}
-
-void signalHandler(int signum )
-{
+void dummy_sgn_handler(int signum ) {
 #ifndef NDEBUG
     cout << "[gdb-imagewatch] SIGNAL (" << signum << ") received.\n";
 #endif
 }
 
-void initialize_window(int(*plot_callback)(const char*)) {
+AppHandler giw_initialize() {
+    sighandler_t gdb_sigchld_handler = std::signal(SIGCHLD,
+                                                   dummy_sgn_handler);
 
-    const char* argv[] = { "GDB ImageWatch", NULL };
-    int argc = 1;
-    sighandler_t gdb_sigchld_handler = std::signal(SIGCHLD, signalHandler);
-
-    QApplication app(argc, const_cast<char**>(&argv[0]));
-    MainWindow window;
-    window.show();
-    window.set_plot_callback(plot_callback);
-    wnd = &window;
-    is_running_ = TRUE;
+    QApplication* app = new QApplication(giw_app_argc,
+                                         static_cast<char**>(giw_app_argv));
 
     // Restore GDB SIGCHLD handler
     std::signal(SIGCHLD, gdb_sigchld_handler);
 
-    app.exec();
-
-    wnd = nullptr;
-    is_running_ = FALSE;
+    return static_cast<AppHandler>(app);
 }
 
-void terminate() {
+void giw_terminate(AppHandler handler) {
+    QApplication* app = static_cast<QApplication*>(handler);
+
+    if(app == nullptr) {
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
+                           "giw_terminate received null application handler");
+        return;
+    }
+
     QApplication::exit();
+    delete app;
+}
+
+void giw_exec(AppHandler handler) {
+    QApplication* app = static_cast<QApplication*>(handler);
+
+    if(app == nullptr) {
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
+                           "giw_exec received null application handler");
+        return;
+    }
+
+    app->exec();
+}
+
+WindowHandler giw_create_window(int(*plot_callback)(const char*)) {
+    MainWindow* window = new MainWindow();
+    window->show();
+    window->set_plot_callback(plot_callback);
+
+    return window;
+}
+
+int giw_is_window_ready(WindowHandler handler) {
+    MainWindow* window = static_cast<MainWindow*>(handler);
+
+    return window != nullptr && (window->is_window_ready());
+}
+
+void giw_destroy_window(WindowHandler handler) {
+    MainWindow* window = static_cast<MainWindow*>(handler);
+
+    if(window == nullptr) {
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
+                           "giw_destroy_window received null window handler");
+        return;
+    }
+
+    window->shutdown();
+}
+
+PyObject* giw_get_observed_buffers(WindowHandler handler) {
+    MainWindow* window = static_cast<MainWindow*>(handler);
+
+    if(window == nullptr) {
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
+                           "giw_get_observed_buffers received null window "
+                           "handler");
+        return nullptr;
+    }
+
+    auto observed_symbols = window->get_observed_symbols();
+    PyObject* py_observed_symbols = PyList_New(0);
+
+    int observed_symbols_sentinel = static_cast<int>(observed_symbols.size());
+    for(int i = 0; i < observed_symbols_sentinel; ++i) {
+        string symbol_name = observed_symbols[i];
+        PyObject *py_symbol_name = PyBytes_FromString(symbol_name.c_str());
+
+        if(py_symbol_name == nullptr) {
+            Py_DECREF(py_observed_symbols);
+            return nullptr;
+        }
+
+        PyList_SetItem(py_observed_symbols, i, py_symbol_name);
+    }
+
+    return py_observed_symbols;
+}
+
+void giw_set_available_symbols(WindowHandler handler,
+                               PyObject* available_set) {
+    MainWindow* window = static_cast<MainWindow*>(handler);
+
+    if(window == nullptr) {
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
+                           "giw_set_available_symbols received null window "
+                           "handler");
+        return;
+    }
+
+    window->set_available_symbols(available_set);
+}
+
+void giw_plot_buffer(WindowHandler handler,
+                     PyObject* buffer_metadata) {
+    MainWindow* window = static_cast<MainWindow*>(handler);
+
+    if(window == nullptr) {
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
+                           "giw_plot_buffer received null window handler");
+        return;
+    }
+
+    window->plot_buffer(buffer_metadata);
 }

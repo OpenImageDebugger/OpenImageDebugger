@@ -25,33 +25,44 @@ class GdbImageWatchWindow():
 
         # Load imagewatch library and set up its API
         self._lib = ctypes.cdll.LoadLibrary(
-            script_path + '/libgdb-imagewatch.so')
+            script_path + '/libgiwwindow.so')
 
-        # plot_binary argument
-        #
-        # Python dictionary with the following elements:
-        # - [pointer     ] PyMemoryView object wrapping the target buffer
-        # - [display_name] Variable name as it shall be displayed
-        # - [width       ] Buffer width, in pixels
-        # - [height      ] Buffer height, in pixels
-        # - [channels    ] Number of channels (1 to 4)
-        # - [type        ] Buffer type (see symbols.py for details)
-        # - [row_stride  ] Row stride, in pixels
-        # - [pixel_layout] String defining pixel channel layout (e.g. 'rgba')
-        self._lib.plot_binary.argtypes = [
+        # libgiw API
+        self._lib.giw_initialize.argtypes = []
+        self._lib.giw_initialize.restype = ctypes.c_void_p
+
+        self._lib.giw_terminate.argtypes = [ctypes.c_void_p]
+        self._lib.giw_terminate.restype = None
+
+        self._lib.giw_exec.argtypes = [ctypes.c_void_p]
+        self._lib.giw_exec.restype = None
+
+        self._lib.giw_create_window.argtypes = [ FETCH_BUFFER_CBK_TYPE ]
+        self._lib.giw_create_window.restype = ctypes.c_void_p
+
+        self._lib.giw_destroy_window.argtypes = [ ctypes.c_void_p ]
+        self._lib.giw_destroy_window.restype = ctypes.c_int
+
+        self._lib.giw_is_window_ready.argtypes = [ ctypes.c_void_p ]
+        self._lib.giw_is_window_ready.restype = ctypes.c_bool
+
+        self._lib.giw_get_observed_buffers.argtypes = [ ctypes.c_void_p ]
+        self._lib.giw_get_observed_buffers.restype = ctypes.py_object
+
+        self._lib.giw_set_available_symbols.argtypes = [
+            ctypes.c_void_p,
             ctypes.py_object
         ]
+        self._lib.giw_set_available_symbols.restype = ctypes.c_int
 
-        self._lib.initialize_window.argtypes = [
-            # Python function to be called when the user requests a symbol name
-            # from the viewer interface
-            FETCH_BUFFER_CBK_TYPE
-        ]
-
-        self._lib.update_available_variables.argtypes = [
-            # List of available variables in the current context
+        self._lib.giw_plot_buffer.argtypes = [
+            ctypes.c_void_p,
             ctypes.py_object
         ]
+        self._lib.giw_plot_buffer.restype = None
+
+        # UI handler
+        self._window_handler = None
 
     def plot_variable(self, requested_symbol):
         """
@@ -75,7 +86,8 @@ class GdbImageWatchWindow():
 
             plot_callable = DeferredVariablePlotter(variable,
                                                     self._lib,
-                                                    self._bridge)
+                                                    self._bridge,
+                                                    self._window_handler)
             self._bridge.queue_request(plot_callable)
             return 1
         except Exception as err:
@@ -84,27 +96,42 @@ class GdbImageWatchWindow():
 
         return 0
 
-    def is_running(self):
+    def is_ready(self):
         """
-        Returns True if the ImageWatch window is running; False otherwise.
+        Returns True if the ImageWatch window has been loaded; False otherwise.
         """
-        return self._lib.is_running()
+        if self._window_handler is None:
+            return False
+
+        return self._lib.giw_is_window_ready(self._window_handler)
 
     def terminate(self):
         """
         Clean up and close window
         """
-        return self._lib.terminate()
+        self._lib.giw_destroy_window(self._window_handler)
 
-    def update_available_variables(self, observable_symbols):
+    def set_available_symbols(self, observable_symbols):
         """
-        Given a dict containing buffers that were fetched by the debugger
-        bridge and considered as 'plottable' buffers by the giwtype.py script,
-        this function will provide these elements to the ImageWatch window so
-        that it can update the buffers being visualized, as well as populate
-        its internal autocomplete list.
+        Set the autocomplete list of symbols with the list of string
+        'observable_symbols'
         """
-        self._lib.update_available_variables(observable_symbols)
+        self._lib.giw_set_available_symbols(
+            self._window_handler,
+            observable_symbols)
+
+    def get_observed_buffers(self):
+        """
+        Get a list with the currently observed symbols in the giw window
+        """
+        return self._lib.get_observed_buffers(self._window_handler)
+
+    def _ui_thread(self, plot_callback):
+        app_handler = self._lib.giw_initialize()
+        self._window_handler = self._lib.giw_create_window(
+            FETCH_BUFFER_CBK_TYPE(plot_callback))
+        self._lib.giw_exec(app_handler)
+        self._lib.giw_terminate(app_handler)
 
     def initialize_window(self):
         """
@@ -120,7 +147,7 @@ class GdbImageWatchWindow():
             # new thread to forward the signal back to the main thread, which
             # is done by pysigset.
             wnd_thread_instance = threading.Thread(
-                target=self._lib.initialize_window,
+                target=self._ui_thread,
                 args=(FETCH_BUFFER_CBK_TYPE(self.plot_variable),)
             )
             wnd_thread_instance.daemon = True
@@ -133,17 +160,20 @@ class DeferredVariablePlotter():
     a buffer plot command. Useful for deferring the plot command to a safe
     thread.
     """
-    def __init__(self, variable, lib, bridge):
+    def __init__(self, variable, lib, bridge, window_handler):
         self._variable = variable
         self._lib = lib
         self._bridge = bridge
+        self._window_handler = window_handler
 
     def __call__(self):
         try:
             buffer_metadata = self._bridge.get_buffer_metadata(self._variable)
 
             if buffer_metadata is not None:
-                self._lib.plot_binary(buffer_metadata)
+                self._lib.giw_plot_buffer(
+                    self._window_handler,
+                    buffer_metadata)
         except Exception as err:
             import traceback
             print('[gdb-imagewatch] Error: Could not plot variable')

@@ -24,20 +24,21 @@ def giwtest(script_path):
     window = giwwindow.GdbImageWatchWindow(script_path, dummy_debugger)
     window.initialize_window()
 
-    # Wait for window to initialize
-    while not window.is_running():
-        time.sleep(0.5)
+    try:
+        # Wait for window to initialize
+        while not window.is_ready():
+            time.sleep(0.1)
 
-    window.update_available_variables(dummy_debugger.get_available_symbols())
+        window.set_available_symbols(dummy_debugger.get_available_symbols())
 
-    for buffer in dummy_debugger.get_available_symbols():
-        window.plot_variable(buffer)
+        for buffer in dummy_debugger.get_available_symbols():
+            window.plot_variable(buffer)
 
-    while window.is_running():
-        time.sleep(0.5)
-
-    window.terminate()
-    exit(0)
+        while window.is_ready():
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        window.terminate()
+        exit(0)
 
 
 def gen_color(pos, k, f_a, f_b):
@@ -119,6 +120,7 @@ class DummyDebugger(BridgeInterface):
         width = 400
         height = 200
         self._buffers = gen_buffers(width, height)
+        self._buffer_names = [name for name in self._buffers]
 
     def get_casted_pointer(self, typename, debugger_object):
         """
@@ -136,7 +138,7 @@ class DummyDebugger(BridgeInterface):
         """
         Return the names of the available sample buffers
         """
-        return self._buffers
+        return self._buffer_names
 
     def get_buffer_metadata(self, var_name):
         """

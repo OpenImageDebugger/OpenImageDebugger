@@ -11,23 +11,17 @@ TEMPLATE = lib
 
 QMAKE_CXXFLAGS += \
   -fPIC \
+  -fvisibility=hidden \
   -pthread
+
+QMAKE_LFLAGS += \
+  -Wl,--exclude-libs,ALL
 
 SOURCES += \
   src/giw_window.cpp \
   src/debuggerinterface/buffer_request_message.cpp \
   src/debuggerinterface/managed_pointer.cpp \
-  src/visualization/shader.cpp \
-  src/visualization/components/background.cpp \
-  src/visualization/components/buffer.cpp \
-  src/visualization/components/buffer_values.cpp \
-  src/visualization/components/camera.cpp\
-  src/visualization/shaders/background_fs.cpp \
-  src/visualization/shaders/background_vs.cpp \
-  src/visualization/shaders/buffer_fs.cpp \
-  src/visualization/shaders/buffer_vs.cpp \
-  src/visualization/shaders/text_fs.cpp \
-  src/visualization/shaders/text_vs.cpp \
+  src/debuggerinterface/python_native_interface.cpp \
   src/io/buffer_exporter.cpp \
   src/math/assorted.cpp \
   src/math/linear_algebra.cpp \
@@ -36,13 +30,28 @@ SOURCES += \
   src/ui/symbol_completer.cpp \
   src/ui/symbol_search_input.cpp \
   src/visualization/game_object.cpp \
-  src/visualization/stage.cpp
+  src/visualization/shader.cpp \
+  src/visualization/stage.cpp \
+  src/visualization/components/background.cpp \
+  src/visualization/components/buffer.cpp \
+  src/visualization/components/buffer_values.cpp \
+  src/visualization/components/camera.cpp\
+  src/visualization/components/component.cpp\
+  src/visualization/shaders/background_fs.cpp \
+  src/visualization/shaders/background_vs.cpp \
+  src/visualization/shaders/buffer_fs.cpp \
+  src/visualization/shaders/buffer_vs.cpp \
+  src/visualization/shaders/text_fs.cpp \
+  src/visualization/shaders/text_vs.cpp
+
+# Qt related headers
+HEADERS += \
+  src/ui/gl_canvas.h \
+  src/ui/main_window.h \
+  src/ui/symbol_completer.h \
+  src/ui/symbol_search_input.h
 
 # TODO gerar .os em outro lugar (ou limpar eles no caso do make install)
-
-# Prevent qmake from stripping the required resources, which gives a spurious
-# error message
-QMAKE_STRIP = echo
 
 # Copy resource files to build folder
 copydata.commands = \

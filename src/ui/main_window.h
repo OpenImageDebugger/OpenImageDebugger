@@ -1,11 +1,13 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
+#include <unistd.h>
 
 #include <deque>
 #include <memory>
 #include <mutex>
 #include <set>
 #include <string>
+#include <condition_variable>
 
 #include <QLabel>
 #include <QListWidgetItem>
@@ -21,8 +23,31 @@
 #include "visualization/stage.h"
 
 namespace Ui {
-class MainWindow;
+class MainWindowUi;
 }
+
+class ShutdownChannel
+{
+public:
+    void request_shutdown() {
+        shutdown_requested_ = true;
+        std::unique_lock<std::mutex> lock(mutex_);
+        cv_.wait(lock);
+    }
+
+    bool was_shutdown_requested() {
+        return shutdown_requested_;
+    }
+
+    void shutdown_finished() {
+        cv_.notify_all();
+    }
+
+private:
+    bool shutdown_requested_;
+    std::condition_variable cv_;
+    std::mutex mutex_;
+};
 
 class MainWindow : public QMainWindow
 {
@@ -30,8 +55,10 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = 0);
-    void plot_buffer(PyObject* buffer_metadata);
+
     ~MainWindow();
+
+    void shutdown();
 
     void show();
 
@@ -47,11 +74,17 @@ public:
     void mouse_drag_event(int mouse_x, int mouse_y);
     void mouse_move_event(int mouse_x, int mouse_y);
 
-    void set_plot_callback(int(*plot_cbk)(const char*));
-
     // Window change events - only called after the event is finished
     void resizeEvent(QResizeEvent*);
     void moveEvent(QMoveEvent*);
+
+    void closeEvent(QCloseEvent*);
+
+    // External interface
+    void set_plot_callback(int(*plot_cbk)(const char*));
+    void plot_buffer(PyObject* buffer_metadata);
+    std::deque<std::string> get_observed_symbols();
+    bool is_window_ready();
 
 public Q_SLOTS:
     void show_context_menu(const QPoint &pos);
@@ -79,11 +112,11 @@ public Q_SLOTS:
 
     void remove_selected_buffer();
 
-    void update_available_variables(PyObject* available_set);
+    void set_available_symbols(PyObject* available_set);
 
-    void on_symbol_selected();
+    void symbol_selected();
 
-    void on_symbol_completed(QString str);
+    void symbol_completed(QString str);
 
     void export_buffer();
 
@@ -95,6 +128,9 @@ private Q_SLOTS:
     void persist_settings_impl();
 
 private:
+    bool is_window_ready_;
+    ShutdownChannel shutdown_channel_;
+
     QTimer settings_persist_timer_;
     QTimer update_timer_;
     double render_framerate_;
@@ -103,7 +139,7 @@ private:
     Stage* currently_selected_stage_;
     std::map<std::string, std::shared_ptr<uint8_t>> held_buffers_;
     std::set<std::string> previous_session_buffers_;
-    std::mutex mtx_;
+    std::mutex ui_mutex_;
     std::deque<BufferRequestMessage> pending_updates_;
 
     std::shared_ptr<QShortcut> symbol_list_focus_shortcut_;
@@ -111,7 +147,7 @@ private:
     bool completer_updated_;
     QStringList available_vars_;
 
-    Ui::MainWindow *ui_;
+    Ui::MainWindowUi *ui_;
     bool ac_enabled_;
     bool link_views_enabled_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;

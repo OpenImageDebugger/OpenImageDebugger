@@ -19,10 +19,11 @@ Q_DECLARE_METATYPE(QList<QString>)
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
+    is_window_ready_(false),
     request_render_update_(true),
     currently_selected_stage_(nullptr),
     completer_updated_(false),
-    ui_(new Ui::MainWindow),
+    ui_(new Ui::MainWindowUi),
     ac_enabled_(true),
     link_views_enabled_(false),
     plot_callback_(nullptr)
@@ -41,7 +42,7 @@ MainWindow::MainWindow(QWidget *parent) :
     buffer_removal_shortcut_ = shared_ptr<QShortcut>(new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList));
     connect(buffer_removal_shortcut_.get(), SIGNAL(activated()), this, SLOT(remove_selected_buffer()));
 
-    connect(ui_->symbolList, SIGNAL(editingFinished()), this, SLOT(on_symbol_selected()));
+    connect(ui_->symbolList, SIGNAL(editingFinished()), this, SLOT(symbol_selected()));
 
     ui_->bufferPreview->set_main_window(this);
 
@@ -51,7 +52,7 @@ MainWindow::MainWindow(QWidget *parent) :
     symbol_completer_->setCompletionMode(QCompleter::PopupCompletion);
     symbol_completer_->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
     ui_->symbolList->setCompleter(symbol_completer_.get());
-    connect(ui_->symbolList->completer(), SIGNAL(activated(QString)), this, SLOT(on_symbol_completed(QString)));
+    connect(ui_->symbolList->completer(), SIGNAL(activated(QString)), this, SLOT(symbol_completed(QString)));
 
     // Configure auto contrast inputs
     ui_->ac_red_min->setValidator(   new QDoubleValidator() );
@@ -92,6 +93,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui_->imageList, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(show_context_menu(const QPoint&)));
 
     load_settings();
+
+    is_window_ready_ = true;
 }
 
 void MainWindow::load_settings() {
@@ -160,8 +163,13 @@ void MainWindow::persist_settings() {
 MainWindow::~MainWindow()
 {
     held_buffers_.clear();
+    is_window_ready_ = false;
 
     delete ui_;
+}
+
+void MainWindow::shutdown() {
+    shutdown_channel_.request_shutdown();
 }
 
 void MainWindow::show() {
@@ -386,7 +394,7 @@ void MainWindow::plot_buffer(PyObject* buffer_metadata)
     );
 
     {
-        std::unique_lock<std::mutex> lock(mtx_);
+        std::unique_lock<std::mutex> lock(ui_mutex_);
         pending_updates_.push_back(request);
     }
 
@@ -503,6 +511,15 @@ void MainWindow::loop() {
         ui_->bufferPreview->updateGL();
 
         request_render_update_ = false;
+    }
+
+    if(shutdown_channel_.was_shutdown_requested()) {
+        close();
+        shutdown_channel_.shutdown_finished();
+
+        // Since the window could have been closed by another thread, this is
+        // the only safe place where I can free this object memory
+        delete this;
     }
 }
 
@@ -758,37 +775,26 @@ void MainWindow::remove_selected_buffer()
 }
 
 // TODO remove python dependency by receiving an STL container instead
-void MainWindow::update_available_variables(PyObject *available_set)
+void MainWindow::set_available_symbols(PyObject *available_set)
 {
+    std::unique_lock<std::mutex> lock(ui_mutex_);
+
     available_vars_.clear();
 
-    PyObject* key;
-    PyObject* symbol_metadata;
-    Py_ssize_t pos = 0;
-
-    while (PyDict_Next(available_set, &pos, &key, &symbol_metadata)) {
+    for(Py_ssize_t pos = 0; pos < PyList_Size(available_set); ++pos) {
         /*
          * Add symbol name to autocomplete list
          */
         string var_name_str;
-        copyPyString(var_name_str, key);
+        PyObject* listItem = PyList_GetItem(available_set, pos);
+        copyPyString(var_name_str, listItem);
         available_vars_.push_back(var_name_str.c_str());
-
-        /*
-         * Update buffer
-         */
-        if(previous_session_buffers_.find(var_name_str) !=
-           previous_session_buffers_.end() ||
-           held_buffers_.find(var_name_str) != held_buffers_.end()) {
-
-            plot_buffer(symbol_metadata);
-        }
     }
 
     completer_updated_ = true;
 }
 
-void MainWindow::on_symbol_selected() {
+void MainWindow::symbol_selected() {
     const char* symbol_name = ui_->symbolList->text().toLocal8Bit().constData();
     if(ui_->symbolList->text().length() > 0) {
         plot_callback_(symbol_name);
@@ -797,7 +803,7 @@ void MainWindow::on_symbol_selected() {
     }
 }
 
-void MainWindow::on_symbol_completed(QString str) {
+void MainWindow::symbol_completed(QString str) {
     if(str.length() > 0) {
         plot_callback_(str.toLocal8Bit().constData());
         // Clear symbol input
@@ -851,6 +857,25 @@ void MainWindow::resizeEvent(QResizeEvent*) {
 
 void MainWindow::moveEvent(QMoveEvent*) {
     persist_settings();
+}
+
+void MainWindow::closeEvent(QCloseEvent*) {
+    is_window_ready_ = false;
+    persist_settings();
+}
+
+deque<string> MainWindow::get_observed_symbols() {
+    deque<string> observed_names;
+
+    for(const auto& name: held_buffers_) {
+        observed_names.push_back(name.first);
+    }
+
+    return observed_names;
+}
+
+bool MainWindow::is_window_ready() {
+    return is_window_ready_;
 }
 
 void MainWindow::show_context_menu(const QPoint& pos)

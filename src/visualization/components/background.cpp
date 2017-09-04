@@ -1,6 +1,12 @@
 #include <GL/glew.h>
-#include "background.hpp"
-#include "stage.hpp"
+
+#include "background.h"
+
+#include "visualization/game_object.h"
+#include "visualization/shader.h"
+#include "visualization/stage.h"
+#include "math/linear_algebra.h"
+#include "visualization/shaders/giw_shaders.h"
 
 Background::~Background() {
     glDeleteBuffers(1, &background_vbo);

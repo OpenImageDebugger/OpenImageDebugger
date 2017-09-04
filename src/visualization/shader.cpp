@@ -1,6 +1,7 @@
 #include <cstring>
 #include <GL/glew.h>
-#include "shader.hpp"
+
+#include "shader.h"
 
 bool ShaderProgram::shaderIsOutdated(TexelChannels texel_format,
                                      const std::vector<std::string>& uniforms,

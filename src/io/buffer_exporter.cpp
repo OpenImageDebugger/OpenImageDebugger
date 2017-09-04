@@ -1,7 +1,9 @@
 #include <memory>
 #include <QPixmap>
 
-#include "buffer_exporter.hpp"
+#include "buffer_exporter.h"
+
+#include "math/assorted.h"
 
 template<typename T> float get_multiplier() {
     return 255.f/static_cast<float>(std::numeric_limits<T>::max());

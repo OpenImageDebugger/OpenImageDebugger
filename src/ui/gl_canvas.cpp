@@ -6,7 +6,7 @@
 #include "visualization/game_object.h"
 #include "visualization/components/camera.h"
 
-GLCanvas::GLCanvas(QWidget *parent) : QGLWidget(parent) {
+GLCanvas::GLCanvas(QWidget* parent) : QGLWidget(parent) {
     mouseDown_[0] = mouseDown_[1] = false;
 }
 
