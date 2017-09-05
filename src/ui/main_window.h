@@ -26,29 +26,6 @@ namespace Ui {
 class MainWindowUi;
 }
 
-class ShutdownChannel
-{
-public:
-    void request_shutdown() {
-        shutdown_requested_ = true;
-        std::unique_lock<std::mutex> lock(mutex_);
-        cv_.wait(lock);
-    }
-
-    bool was_shutdown_requested() {
-        return shutdown_requested_;
-    }
-
-    void shutdown_finished() {
-        cv_.notify_all();
-    }
-
-private:
-    bool shutdown_requested_;
-    std::condition_variable cv_;
-    std::mutex mutex_;
-};
-
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -57,8 +34,6 @@ public:
     explicit MainWindow(QWidget *parent = 0);
 
     ~MainWindow();
-
-    void shutdown();
 
     void show();
 
@@ -129,7 +104,6 @@ private Q_SLOTS:
 
 private:
     bool is_window_ready_;
-    ShutdownChannel shutdown_channel_;
 
     QTimer settings_persist_timer_;
     QTimer update_timer_;

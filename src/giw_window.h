@@ -31,7 +31,10 @@ GIW_API
 AppHandler giw_initialize();
 
 GIW_API
-void giw_terminate(AppHandler handler);
+void giw_cleanup(AppHandler handler);
+
+GIW_API
+void giw_terminate();
 
 /**
  * Execute GUI loop

@@ -31,7 +31,10 @@ class GdbImageWatchWindow():
         self._lib.giw_initialize.argtypes = []
         self._lib.giw_initialize.restype = ctypes.c_void_p
 
-        self._lib.giw_terminate.argtypes = [ctypes.c_void_p]
+        self._lib.giw_cleanup.argtypes = [ctypes.c_void_p]
+        self._lib.giw_cleanup.restype = None
+
+        self._lib.giw_terminate.argtypes = []
         self._lib.giw_terminate.restype = None
 
         self._lib.giw_exec.argtypes = [ctypes.c_void_p]
@@ -107,9 +110,9 @@ class GdbImageWatchWindow():
 
     def terminate(self):
         """
-        Clean up and close window
+        Request GIW to terminate application and close all windows
         """
-        self._lib.giw_destroy_window(self._window_handler)
+        self._lib.giw_terminate()
 
     def set_available_symbols(self, observable_symbols):
         """
@@ -127,11 +130,15 @@ class GdbImageWatchWindow():
         return self._lib.get_observed_buffers(self._window_handler)
 
     def _ui_thread(self, plot_callback):
+        # Initialize GIW lib
         app_handler = self._lib.giw_initialize()
         self._window_handler = self._lib.giw_create_window(
             FETCH_BUFFER_CBK_TYPE(plot_callback))
+        # Run UI loop
         self._lib.giw_exec(app_handler)
-        self._lib.giw_terminate(app_handler)
+        # Cleanup GIW lib
+        self._lib.giw_destroy_window(self._window_handler)
+        self._lib.giw_cleanup(app_handler)
 
     def initialize_window(self):
         """

@@ -168,10 +168,6 @@ MainWindow::~MainWindow()
     delete ui_;
 }
 
-void MainWindow::shutdown() {
-    shutdown_channel_.request_shutdown();
-}
-
 void MainWindow::show() {
     update_timer_.start(1000.0 / render_framerate_);
     QMainWindow::show();
@@ -511,15 +507,6 @@ void MainWindow::loop() {
         ui_->bufferPreview->updateGL();
 
         request_render_update_ = false;
-    }
-
-    if(shutdown_channel_.was_shutdown_requested()) {
-        close();
-        shutdown_channel_.shutdown_finished();
-
-        // Since the window could have been closed by another thread, this is
-        // the only safe place where I can free this object memory
-        delete this;
     }
 }
 

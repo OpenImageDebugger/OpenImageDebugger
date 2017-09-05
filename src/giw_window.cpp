@@ -57,7 +57,7 @@ AppHandler giw_initialize() {
     return static_cast<AppHandler>(app);
 }
 
-void giw_terminate(AppHandler handler) {
+void giw_cleanup(AppHandler handler) {
     QApplication* app = static_cast<QApplication*>(handler);
 
     if(app == nullptr) {
@@ -68,6 +68,10 @@ void giw_terminate(AppHandler handler) {
 
     QApplication::exit();
     delete app;
+}
+
+void giw_terminate() {
+    QApplication::exit();
 }
 
 void giw_exec(AppHandler handler) {
@@ -105,7 +109,8 @@ void giw_destroy_window(WindowHandler handler) {
         return;
     }
 
-    window->shutdown();
+    window->close();
+    delete window;
 }
 
 PyObject* giw_get_observed_buffers(WindowHandler handler) {
