@@ -17,7 +17,8 @@ void copyPyString(std::string& dst,
 
 BufferRequestMessage::BufferRequestMessage(const BufferRequestMessage& buff) :
     py_buffer(buff.py_buffer),
-    var_name_str(buff.var_name_str),
+    variable_name_str(buff.variable_name_str),
+    display_name_str(buff.display_name_str),
     width_i(buff.width_i),
     height_i(buff.height_i),
     channels(buff.channels),
@@ -29,7 +30,8 @@ BufferRequestMessage::BufferRequestMessage(const BufferRequestMessage& buff) :
 }
 
 BufferRequestMessage::BufferRequestMessage(PyObject* pybuffer,
-                                           PyObject* var_name,
+                                           PyObject* variable_name,
+                                           PyObject* display_name,
                                            int buffer_width_i,
                                            int buffer_height_i,
                                            int channels,
@@ -45,7 +47,8 @@ BufferRequestMessage::BufferRequestMessage(PyObject* pybuffer,
 {
     Py_INCREF(py_buffer);
 
-    copyPyString(this->var_name_str, var_name);
+    copyPyString(this->variable_name_str, variable_name);
+    copyPyString(this->display_name_str, display_name);
     copyPyString(this->pixel_layout, pixel_layout);
 }
 

@@ -60,9 +60,8 @@ def main():
         window = giwwindow.GdbImageWatchWindow(script_path, debugger)
         event_handler = events.GdbImageWatchEvents(window, debugger)
 
-        if not qtcreator.register_symbol_fetch_hook(
-                event_handler.stop_handler):
-            debugger.register_event_handlers(event_handler)
+        qtcreator.register_symbol_fetch_hook(event_handler.refresh_handler)
+        debugger.register_event_handlers(event_handler)
 
 
 if __name__ == "__main__":

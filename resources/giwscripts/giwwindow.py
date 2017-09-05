@@ -127,13 +127,12 @@ class GdbImageWatchWindow():
         """
         Get a list with the currently observed symbols in the giw window
         """
-        return self._lib.get_observed_buffers(self._window_handler)
+        return self._lib.giw_get_observed_buffers(self._window_handler)
 
     def _ui_thread(self, plot_callback):
         # Initialize GIW lib
         app_handler = self._lib.giw_initialize()
-        self._window_handler = self._lib.giw_create_window(
-            FETCH_BUFFER_CBK_TYPE(plot_callback))
+        self._window_handler = self._lib.giw_create_window(plot_callback)
         # Run UI loop
         self._lib.giw_exec(app_handler)
         # Cleanup GIW lib

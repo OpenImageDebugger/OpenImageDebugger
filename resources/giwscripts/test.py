@@ -89,6 +89,7 @@ def gen_buffers(width, height):
 
     return {
         'sample_buffer_1': {
+            'variable_name': 'sample_buffer_1',
             'display_name': 'uint8* sample_buffer_1',
             'pointer': mem1,
             'width': width,
@@ -99,6 +100,7 @@ def gen_buffers(width, height):
             'pixel_layout': 'rgba'
         },
         'sample_buffer_2': {
+            'variable_name': 'sample_buffer_2',
             'display_name': 'float* sample_buffer_2',
             'pointer': mem2,
             'width': width,

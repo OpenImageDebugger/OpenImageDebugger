@@ -48,6 +48,7 @@ class GdbBridge(BridgeInterface):
         gdb.execute('x '+str(int(buffer_metadata['pointer'])))
 
         inferior = gdb.selected_inferior()
+        buffer_metadata['variable_name'] = variable
         buffer_metadata['pointer'] = inferior.read_memory(
             buffer_metadata['pointer'], bufsize)
 
@@ -70,8 +71,7 @@ class GdbBridge(BridgeInterface):
             elif ((field_name not in observable_symbols) and
                   (self._type_inspector.is_symbol_observable(field_val))):
                 try:
-                    observable_symbols[field_name] = \
-                        self.get_buffer_metadata(field_name)
+                    observable_symbols.add(field_name)
                 except Exception:
                     print('[gdb-imagewatch] Info: Member %s is not observable'
                           % field_name)
@@ -85,7 +85,7 @@ class GdbBridge(BridgeInterface):
     def get_available_symbols(self):
         frame = gdb.selected_frame()
         block = frame.block()
-        observable_symbols = dict()
+        observable_symbols = set()
 
         while block is not None:
             for symbol in block:
@@ -105,8 +105,7 @@ class GdbBridge(BridgeInterface):
                     elif ((name not in observable_symbols) and
                           (self._type_inspector.is_symbol_observable(symbol))):
                         try:
-                            observable_symbols[name] = \
-                                self.get_buffer_metadata(name)
+                            observable_symbols.add(name)
                         except Exception:
                             print('[gdb-imagewatch] Info: Field %s is not'
                                   'observable' % name)

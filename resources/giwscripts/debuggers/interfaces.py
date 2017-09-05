@@ -62,6 +62,14 @@ class BridgeEventHandlerInterface():
         """
         raise NotImplementedError("Method is not implemented")
 
+    def refresh_handler(self, event):
+        """
+        Handler to be called by the IDE whenever the user performs some action
+        during a debug session that may require the list of available variables
+        to change (such as changing position in the stack).
+        """
+        raise NotImplementedError("Method is not implemented")
+
     def plot_handler(self, variable_name):
         """
         Handler to be called whenever the user actively calls the 'plot'

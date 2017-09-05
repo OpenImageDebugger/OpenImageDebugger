@@ -17,6 +17,14 @@ class GdbImageWatchEvents(BridgeEventHandlerInterface):
         self._window = window
         self._debugger = debugger
 
+    def set_symbol_complete_list(self):
+        observable_symbols = list(self._debugger.get_available_symbols())
+        if self._window.is_ready():
+            self._window.set_available_symbols(observable_symbols)
+
+    def refresh_handler(self, event):
+        self.set_symbol_complete_list()
+
     def stop_handler(self, event):
         """
         The debugger has stopped (e.g. a breakpoint was hit). We must list all
@@ -28,9 +36,13 @@ class GdbImageWatchEvents(BridgeEventHandlerInterface):
             while not self._window.is_ready():
                 time.sleep(0.1)
 
-        observable_symbols = self._debugger.get_available_symbols()
-        if self._window.is_ready():
-            self._window.update_available_variables(observable_symbols)
+        # Update buffers being visualized
+        observed_buffers = self._window.get_observed_buffers()
+        for buffer_name in observed_buffers:
+            self._window.plot_variable(buffer_name)
+
+        # Set list of available symbols
+        self.set_symbol_complete_list()
 
     def plot_handler(self, variable_name):
         """

@@ -339,8 +339,10 @@ void MainWindow::plot_buffer(PyObject* buffer_metadata)
         return;
     }
 
+    PyObject* py_variable_name = PyDict_GetItemString(buffer_metadata,
+                                                      "variable_name");
     PyObject* py_display_name = PyDict_GetItemString(buffer_metadata,
-                                                  "display_name");
+                                                     "display_name");
     PyObject* py_pointer = PyDict_GetItemString(buffer_metadata, "pointer");
     PyObject* py_width = PyDict_GetItemString(buffer_metadata, "width");
     PyObject* py_height = PyDict_GetItemString(buffer_metadata, "height");
@@ -354,6 +356,7 @@ void MainWindow::plot_buffer(PyObject* buffer_metadata)
     /*
      * Check if expected fields were provided
      */
+    CHECK_FIELD_PROVIDED(variable_name);
     CHECK_FIELD_PROVIDED(display_name);
     CHECK_FIELD_PROVIDED(pointer);
     CHECK_FIELD_PROVIDED(width);
@@ -366,6 +369,7 @@ void MainWindow::plot_buffer(PyObject* buffer_metadata)
     /*
      * Check if expected fields have the correct types
      */
+    CHECK_FIELD_TYPE(variable_name, checkPyStringType);
     CHECK_FIELD_TYPE(display_name, checkPyStringType);
     CHECK_FIELD_TYPE(pointer, PyMemoryView_Check);
     CHECK_FIELD_TYPE(width, PyLong_Check);
@@ -380,6 +384,7 @@ void MainWindow::plot_buffer(PyObject* buffer_metadata)
      */
     BufferRequestMessage request(
         py_pointer,
+        py_variable_name,
         py_display_name,
         getPyInt(py_width),
         getPyInt(py_height),
@@ -411,8 +416,8 @@ void MainWindow::loop() {
             srcBuffer = reinterpret_cast<uint8_t*>(PyMemoryView_GET_BUFFER(request.py_buffer)->buf);
         }
 
-        auto buffer_stage = stages_.find(request.var_name_str);
-        held_buffers_[request.var_name_str] = managedBuffer;
+        auto buffer_stage = stages_.find(request.variable_name_str);
+        held_buffers_[request.variable_name_str] = managedBuffer;
         if(buffer_stage == stages_.end()) {
             // New buffer request
             shared_ptr<Stage> stage = make_shared<Stage>();
@@ -427,7 +432,7 @@ void MainWindow::loop() {
                                   ac_enabled_)) {
                 cerr << "[error] Could not initialize opengl canvas!"<<endl;
             }
-            stages_[request.var_name_str] = stage;
+            stages_[request.variable_name_str] = stage;
 
             QImage bufferIcon;
             ui_->bufferPreview->render_buffer_icon(stage.get());
@@ -439,16 +444,17 @@ void MainWindow::loop() {
                                 icon_height, bytes_per_line, QImage::Format_RGB888);
 
             stringstream label;
-            label << request.var_name_str << "\n[" << request.width_i << "x" <<
+            label << request.display_name_str << "\n[" << request.width_i << "x" <<
                      request.height_i << "]\n" <<
                      get_type_label(request.type, request.channels);
             QListWidgetItem* item = new QListWidgetItem(QPixmap::fromImage(bufferIcon),
                                                         label.str().c_str());
-            item->setData(Qt::UserRole, QString(request.var_name_str.c_str()));
+            item->setData(Qt::UserRole, QString(request.variable_name_str.c_str()));
             item->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
             item->setSizeHint(QSize(205,bufferIcon.height() + 90));
             item->setTextAlignment(Qt::AlignHCenter);
             ui_->imageList->addItem(item);
+            ui_->imageList->setDragDropMode(QAbstractItemView::InternalMove);
 
             persist_settings();
         } else {
@@ -460,7 +466,7 @@ void MainWindow::loop() {
                                                 request.step,
                                                 request.pixel_layout);
             // Update buffer icon
-            Stage* stage = stages_[request.var_name_str].get();
+            Stage* stage = stages_[request.variable_name_str].get();
             ui_->bufferPreview->render_buffer_icon(stage);
 
             // Looking for corresponding item...
@@ -470,13 +476,13 @@ void MainWindow::loop() {
             QImage bufferIcon(stage->buffer_icon_.data(), icon_width,
                               icon_height, bytes_per_line, QImage::Format_RGB888);
             stringstream label;
-            label << request.var_name_str << "\n[" << request.width_i << "x" <<
+            label << request.variable_name_str << "\n[" << request.width_i << "x" <<
                      request.height_i << "]\n" <<
                      get_type_label(request.type, request.channels);
 
             for(int i = 0; i < ui_->imageList->count(); ++i) {
                 QListWidgetItem* item = ui_->imageList->item(i);
-                if(item->data(Qt::UserRole) == request.var_name_str.c_str()) {
+                if(item->data(Qt::UserRole) == request.variable_name_str.c_str()) {
                     item->setIcon(QPixmap::fromImage(bufferIcon));
                     item->setText(label.str().c_str());
                     break;

@@ -117,14 +117,14 @@ PyObject* giw_get_observed_buffers(WindowHandler handler) {
     MainWindow* window = static_cast<MainWindow*>(handler);
 
     if(window == nullptr) {
-        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
+        RAISE_PY_EXCEPTION(PyExc_Exception,
                            "giw_get_observed_buffers received null window "
                            "handler");
         return nullptr;
     }
 
     auto observed_symbols = window->get_observed_symbols();
-    PyObject* py_observed_symbols = PyList_New(0);
+    PyObject* py_observed_symbols = PyList_New(observed_symbols.size());
 
     int observed_symbols_sentinel = static_cast<int>(observed_symbols.size());
     for(int i = 0; i < observed_symbols_sentinel; ++i) {

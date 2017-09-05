@@ -16,7 +16,8 @@ struct BufferRequestMessage {
     BufferRequestMessage(const BufferRequestMessage& buff);
 
     BufferRequestMessage(PyObject* pybuffer,
-                         PyObject* var_name,
+                         PyObject* variable_name,
+                         PyObject* display_name,
                          int buffer_width_i,
                          int buffer_height_i,
                          int channels,
@@ -30,7 +31,8 @@ struct BufferRequestMessage {
     BufferRequestMessage& operator=(const BufferRequestMessage&) = delete;
 
     PyObject* py_buffer;
-    std::string var_name_str;
+    std::string variable_name_str;
+    std::string display_name_str;
     int width_i;
     int height_i;
     int channels;
