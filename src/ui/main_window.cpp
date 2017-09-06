@@ -450,11 +450,8 @@ void MainWindow::loop() {
             QListWidgetItem* item = new QListWidgetItem(QPixmap::fromImage(bufferIcon),
                                                         label.str().c_str());
             item->setData(Qt::UserRole, QString(request.variable_name_str.c_str()));
-            item->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled);
-            item->setSizeHint(QSize(205,bufferIcon.height() + 90));
-            item->setTextAlignment(Qt::AlignHCenter);
+            item->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled|Qt::ItemIsDragEnabled);
             ui_->imageList->addItem(item);
-            ui_->imageList->setDragDropMode(QAbstractItemView::InternalMove);
 
             persist_settings();
         } else {
@@ -787,7 +784,7 @@ void MainWindow::set_available_symbols(PyObject *available_set)
         if(previous_session_buffers_.find(var_name_str) !=
            previous_session_buffers_.end())
         {
-            plot_callback_(var_name_str.c_str());
+            //plot_callback_(var_name_str.c_str());
         }
     }
 

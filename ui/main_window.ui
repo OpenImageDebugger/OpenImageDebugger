@@ -46,7 +46,7 @@
             </property>
             <property name="maximumSize">
              <size>
-              <width>210</width>
+              <width>16777215</width>
               <height>16777215</height>
              </size>
             </property>
@@ -67,7 +67,7 @@
              <bool>true</bool>
             </property>
             <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
@@ -80,7 +80,7 @@
             </property>
             <property name="maximumSize">
              <size>
-              <width>210</width>
+              <width>16777215</width>
               <height>16777215</height>
              </size>
             </property>
@@ -93,26 +93,23 @@
             <property name="sizeAdjustPolicy">
              <enum>QAbstractScrollArea::AdjustIgnored</enum>
             </property>
-            <property name="dragEnabled">
-             <bool>false</bool>
-            </property>
-            <property name="dragDropOverwriteMode">
-             <bool>true</bool>
-            </property>
             <property name="dragDropMode">
-             <enum>QAbstractItemView::DragDrop</enum>
+             <enum>QAbstractItemView::InternalMove</enum>
             </property>
             <property name="iconSize">
              <size>
-              <width>200</width>
-              <height>200</height>
+              <width>100</width>
+              <height>100</height>
              </size>
             </property>
             <property name="resizeMode">
              <enum>QListView::Adjust</enum>
             </property>
+            <property name="spacing">
+             <number>4</number>
+            </property>
             <property name="viewMode">
-             <enum>QListView::IconMode</enum>
+             <enum>QListView::ListMode</enum>
             </property>
            </widget>
           </item>
