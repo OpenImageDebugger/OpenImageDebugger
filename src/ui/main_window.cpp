@@ -782,6 +782,13 @@ void MainWindow::set_available_symbols(PyObject *available_set)
         PyObject* listItem = PyList_GetItem(available_set, pos);
         copyPyString(var_name_str, listItem);
         available_vars_.push_back(var_name_str.c_str());
+
+        // Plot buffer if it was available in the previous session
+        if(previous_session_buffers_.find(var_name_str) !=
+           previous_session_buffers_.end())
+        {
+            plot_callback_(var_name_str.c_str());
+        }
     }
 
     completer_updated_ = true;

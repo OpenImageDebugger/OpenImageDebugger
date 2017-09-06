@@ -112,6 +112,7 @@ private:
 
     Stage* currently_selected_stage_;
     std::map<std::string, std::shared_ptr<uint8_t>> held_buffers_;
+    // TODO use a more sophisticated structure with a TTL per buffer
     std::set<std::string> previous_session_buffers_;
     std::mutex ui_mutex_;
     std::deque<BufferRequestMessage> pending_updates_;
