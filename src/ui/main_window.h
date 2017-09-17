@@ -137,6 +137,10 @@ private:
 
     void update_statusbar();
 
+    void initialize_toolbar_icons();
+
+    qreal get_screen_dpi_scale();
+
     std::string get_type_label(Buffer::BufferType type, int channels);
     void load_settings();
     void persist_settings();

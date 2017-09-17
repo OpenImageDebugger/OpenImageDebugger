@@ -86,10 +86,11 @@ void GLCanvas::initializeGL() {
     setAutoBufferSwap(false);
 }
 
-void GLCanvas::render_buffer_icon(Stage* stage) {
-    const int icon_width = 200;
-    const int icon_height = 100;
+void GLCanvas::render_buffer_icon(Stage* stage,
+                                  int icon_width,
+                                  int icon_height) {
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, icon_fbo_);
+
     glViewport(0, 0, icon_width, icon_height);
 
     GameObject* camera = stage->getGameObject("camera");
@@ -106,7 +107,8 @@ void GLCanvas::render_buffer_icon(Stage* stage) {
     cam->recenter_camera();
 
     stage->draw();
-    stage->buffer_icon_.resize(3*icon_width*icon_height);
+    stage->buffer_icon_.resize(3 * icon_width * icon_height);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, icon_width, icon_height, GL_RGB, GL_UNSIGNED_BYTE,
                  stage->buffer_icon_.data());
 

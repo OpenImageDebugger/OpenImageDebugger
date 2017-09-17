@@ -35,14 +35,10 @@ bool Background::initialize() {
     return true;
 }
 
-void Background::draw(const mat4& projection, const mat4& viewInv) {
+void Background::draw(const mat4&,
+                      const mat4&) {
+    glClear(GL_COLOR_BUFFER_BIT);
     background_prog.use();
-
-    mat4 model = game_object->get_pose();
-    mat4 mvp = projection * viewInv * model;
-
-    background_prog.uniformMatrix4fv("mvp", 1, GL_FALSE, mvp.data());
-    background_prog.uniform2f("screen_dimension", 100, 100);
 
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, background_vbo);

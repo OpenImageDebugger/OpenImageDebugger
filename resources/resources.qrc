@@ -1,10 +1,10 @@
 <RCC>
     <qresource prefix="/resources">
-        <file>icons/rotate-cw.png</file>
-        <file>icons/rotate-ccw.png</file>
-        <file>icons/link.png</file>
-        <file>icons/contrast.png</file>
-        <file>icons/arrow-shrink.png</file>
-        <file>icons/arrow-down-b.png</file>
+        <file>icons/fontello.ttf</file>
+        <file>icons/label_red_channel.svg</file>
+        <file>icons/label_green_channel.svg</file>
+        <file>icons/label_blue_channel.svg</file>
+        <file>icons/label_alpha_channel.svg</file>
+        <file>icons/lower_upper_bound.svg</file>
     </qresource>
 </RCC>

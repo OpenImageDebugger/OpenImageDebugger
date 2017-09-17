@@ -10,11 +10,33 @@
     <height>768</height>
    </rect>
   </property>
+  <property name="font">
+   <font>
+    <pointsize>10</pointsize>
+   </font>
+  </property>
   <property name="windowTitle">
    <string>GDB ImageWatch</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">QFrame#frame { border: 0; }
+QFrame#frame_2 { margin-top: 5px; }
+QStatusBar::item { border: none; };</string>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout">
+    <property name="leftMargin">
+     <number>4</number>
+    </property>
+    <property name="topMargin">
+     <number>4</number>
+    </property>
+    <property name="rightMargin">
+     <number>4</number>
+    </property>
+    <property name="bottomMargin">
+     <number>4</number>
+    </property>
     <item>
      <widget class="QSplitter" name="splitter">
       <property name="enabled">
@@ -30,7 +52,25 @@
        <property name="frameShadow">
         <enum>QFrame::Raised</enum>
        </property>
+       <property name="lineWidth">
+        <number>0</number>
+       </property>
        <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <property name="spacing">
+         <number>6</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>5</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
         <item>
          <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0">
           <property name="spacing">
@@ -40,7 +80,7 @@
            <widget class="SymbolSearchInput" name="symbolList">
             <property name="minimumSize">
              <size>
-              <width>210</width>
+              <width>300</width>
               <height>0</height>
              </size>
             </property>
@@ -49,6 +89,11 @@
               <width>16777215</width>
               <height>16777215</height>
              </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
             </property>
             <property name="statusTip">
              <string/>
@@ -74,7 +119,7 @@
             </property>
             <property name="minimumSize">
              <size>
-              <width>210</width>
+              <width>300</width>
               <height>0</height>
              </size>
             </property>
@@ -84,8 +129,10 @@
               <height>16777215</height>
              </size>
             </property>
-            <property name="styleSheet">
-             <string notr="true">padding: 0px;</string>
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
             </property>
             <property name="horizontalScrollBarPolicy">
              <enum>Qt::ScrollBarAsNeeded</enum>
@@ -130,7 +177,22 @@
        <property name="frameShadow">
         <enum>QFrame::Raised</enum>
        </property>
+       <property name="lineWidth">
+        <number>0</number>
+       </property>
        <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>5</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
         <item>
          <layout class="QVBoxLayout" name="rightPanelLayout">
           <item>
@@ -138,36 +200,26 @@
             <property name="minimumSize">
              <size>
               <width>0</width>
-              <height>40</height>
+              <height>25</height>
              </size>
             </property>
             <property name="maximumSize">
              <size>
               <width>16777215</width>
-              <height>40</height>
+              <height>25</height>
              </size>
-            </property>
-            <property name="styleSheet">
-             <string notr="true"/>
             </property>
             <widget class="QToolButton" name="acToggle">
              <property name="geometry">
               <rect>
-               <x>49</x>
-               <y>11</y>
+               <x>50</x>
+               <y>0</y>
                <width>35</width>
                <height>24</height>
               </rect>
              </property>
              <property name="toolTip">
               <string>Toggle Auto Contrast</string>
-             </property>
-             <property name="accessibleDescription">
-              <string/>
-             </property>
-             <property name="icon">
-              <iconset resource="../resources/resources.qrc">
-               <normaloff>:/resources/icons/contrast.png</normaloff>:/resources/icons/contrast.png</iconset>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -180,7 +232,7 @@
              <property name="geometry">
               <rect>
                <x>10</x>
-               <y>11</y>
+               <y>0</y>
                <width>35</width>
                <height>24</height>
               </rect>
@@ -194,10 +246,6 @@
              <property name="toolTip">
               <string>Toggle min and max intensity editor</string>
              </property>
-             <property name="icon">
-              <iconset resource="../resources/resources.qrc">
-               <normaloff>:/resources/icons/arrow-down-b.png</normaloff>:/resources/icons/arrow-down-b.png</iconset>
-             </property>
              <property name="checkable">
               <bool>true</bool>
              </property>
@@ -208,8 +256,8 @@
             <widget class="QToolButton" name="reposition_buffer">
              <property name="geometry">
               <rect>
-               <x>88</x>
-               <y>11</y>
+               <x>90</x>
+               <y>0</y>
                <width>35</width>
                <height>24</height>
               </rect>
@@ -217,29 +265,18 @@
              <property name="toolTip">
               <string extracomment="Reposition buffer on center">Reposition buffer to fit window</string>
              </property>
-             <property name="text">
-              <string/>
-             </property>
-             <property name="icon">
-              <iconset resource="../resources/resources.qrc">
-               <normaloff>:/resources/icons/arrow-shrink.png</normaloff>:/resources/icons/arrow-shrink.png</iconset>
-             </property>
             </widget>
             <widget class="QToolButton" name="linkViewsToggle">
              <property name="geometry">
               <rect>
-               <x>127</x>
-               <y>11</y>
+               <x>130</x>
+               <y>0</y>
                <width>35</width>
                <height>24</height>
               </rect>
              </property>
              <property name="toolTip">
               <string>Move all buffers simultaneously</string>
-             </property>
-             <property name="icon">
-              <iconset resource="../resources/resources.qrc">
-               <normaloff>:/resources/icons/link.png</normaloff>:/resources/icons/link.png</iconset>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -248,8 +285,8 @@
             <widget class="QToolButton" name="rotate_90_cw">
              <property name="geometry">
               <rect>
-               <x>166</x>
-               <y>11</y>
+               <x>170</x>
+               <y>0</y>
                <width>35</width>
                <height>24</height>
               </rect>
@@ -257,26 +294,18 @@
              <property name="toolTip">
               <string>Rotate 90° clockwise</string>
              </property>
-             <property name="icon">
-              <iconset resource="../resources/resources.qrc">
-               <normaloff>:/resources/icons/rotate-cw.png</normaloff>:/resources/icons/rotate-cw.png</iconset>
-             </property>
             </widget>
             <widget class="QToolButton" name="rotate_90_ccw">
              <property name="geometry">
               <rect>
-               <x>205</x>
-               <y>11</y>
+               <x>210</x>
+               <y>0</y>
                <width>35</width>
                <height>24</height>
               </rect>
              </property>
              <property name="toolTip">
               <string>Rotate 90° counterclockwise</string>
-             </property>
-             <property name="icon">
-              <iconset resource="../resources/resources.qrc">
-               <normaloff>:/resources/icons/rotate-ccw.png</normaloff>:/resources/icons/rotate-ccw.png</iconset>
              </property>
             </widget>
            </widget>
@@ -298,174 +327,303 @@
               <height>85</height>
              </size>
             </property>
-            <property name="styleSheet">
-             <string notr="true"/>
-            </property>
             <widget class="QWidget" name="layoutWidget">
              <property name="geometry">
               <rect>
                <x>0</x>
                <y>0</y>
                <width>540</width>
-               <height>81</height>
+               <height>84</height>
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout">
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_min">
-                <property name="styleSheet">
-                 <string notr="true"/>
+              <property name="leftMargin">
+               <number>10</number>
+              </property>
+              <property name="verticalSpacing">
+               <number>0</number>
+              </property>
+              <item row="0" column="1">
+               <widget class="QLabel" name="label_red_min">
+                <property name="minimumSize">
+                 <size>
+                  <width>20</width>
+                  <height>0</height>
+                 </size>
                 </property>
-                <property name="text">
-                 <string>(min)</string>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="toolTip">
+                 <string>Minimum value for red (first) channel. Smaller values will be clamped at this level when auto contrast is enabled.</string>
                 </property>
                </widget>
               </item>
-              <item row="0" column="1">
-               <widget class="QLabel" name="label_red_min">
-                <property name="styleSheet">
-                 <string notr="true"/>
+              <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignBottom">
+               <widget class="QLabel" name="label_min">
+                <property name="minimumSize">
+                 <size>
+                  <width>20</width>
+                  <height>20</height>
+                 </size>
                 </property>
-                <property name="text">
-                 <string>Red</string>
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>38</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
                 </property>
                </widget>
               </item>
               <item row="0" column="2">
                <widget class="QLineEdit" name="ac_red_min">
-                <property name="styleSheet">
-                 <string notr="true"/>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
                 </property>
                </widget>
               </item>
               <item row="0" column="3">
                <widget class="QLabel" name="label_green_min">
-                <property name="styleSheet">
-                 <string notr="true"/>
+                <property name="minimumSize">
+                 <size>
+                  <width>20</width>
+                  <height>0</height>
+                 </size>
                 </property>
-                <property name="text">
-                 <string>Green</string>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="toolTip">
+                 <string>Minimum value for green (second) channel. Smaller values will be clamped at this level when auto contrast is enabled.</string>
                 </property>
                </widget>
               </item>
               <item row="0" column="4">
                <widget class="QLineEdit" name="ac_green_min">
-                <property name="styleSheet">
-                 <string notr="true"/>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
                 </property>
                </widget>
               </item>
               <item row="0" column="5">
                <widget class="QLabel" name="label_blue_min">
-                <property name="styleSheet">
-                 <string notr="true"/>
+                <property name="minimumSize">
+                 <size>
+                  <width>20</width>
+                  <height>0</height>
+                 </size>
                 </property>
-                <property name="text">
-                 <string>Blue</string>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="toolTip">
+                 <string>Minimum value for blue (third) channel. Smaller values will be clamped at this level when auto contrast is enabled.</string>
                 </property>
                </widget>
               </item>
               <item row="0" column="6">
                <widget class="QLineEdit" name="ac_blue_min">
-                <property name="styleSheet">
-                 <string notr="true"/>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
                 </property>
                </widget>
               </item>
-              <item row="1" column="0">
+              <item row="1" column="0" alignment="Qt::AlignHCenter|Qt::AlignTop">
                <widget class="QLabel" name="label_max">
-                <property name="styleSheet">
-                 <string notr="true"/>
+                <property name="minimumSize">
+                 <size>
+                  <width>20</width>
+                  <height>20</height>
+                 </size>
                 </property>
-                <property name="text">
-                 <string>(max)</string>
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>38</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
                 </property>
                </widget>
               </item>
               <item row="1" column="1">
                <widget class="QLabel" name="label_red_max">
-                <property name="styleSheet">
-                 <string notr="true"/>
+                <property name="minimumSize">
+                 <size>
+                  <width>20</width>
+                  <height>0</height>
+                 </size>
                 </property>
-                <property name="text">
-                 <string>Red</string>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="toolTip">
+                 <string>Maximum value for red (first) channel. Larger values will be clamped at this level when auto contrast is enabled.</string>
                 </property>
                </widget>
               </item>
               <item row="1" column="2">
                <widget class="QLineEdit" name="ac_red_max">
-                <property name="styleSheet">
-                 <string notr="true"/>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
                 </property>
                </widget>
               </item>
               <item row="1" column="3">
                <widget class="QLabel" name="label_green_max">
-                <property name="styleSheet">
-                 <string notr="true"/>
+                <property name="minimumSize">
+                 <size>
+                  <width>20</width>
+                  <height>0</height>
+                 </size>
                 </property>
-                <property name="text">
-                 <string>Green</string>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="toolTip">
+                 <string>Maximum value for green (second) channel. Larger values will be clamped at this level when auto contrast is enabled.</string>
                 </property>
                </widget>
               </item>
               <item row="1" column="6">
                <widget class="QLineEdit" name="ac_blue_max">
-                <property name="styleSheet">
-                 <string notr="true"/>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
                 </property>
                </widget>
               </item>
               <item row="1" column="4">
                <widget class="QLineEdit" name="ac_green_max">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="5">
-               <widget class="QLabel" name="label_blue_max">
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Blue</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="9">
-               <widget class="QToolButton" name="ac_reset_min">
-                <property name="text">
-                 <string>Reset</string>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
                 </property>
                </widget>
               </item>
               <item row="1" column="9">
                <widget class="QToolButton" name="ac_reset_max">
-                <property name="text">
-                 <string>Reset</string>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="toolTip">
+                 <string>Reset maximum auto contrast levels to the largest values found in the buffer.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="5">
+               <widget class="QLabel" name="label_blue_max">
+                <property name="minimumSize">
+                 <size>
+                  <width>20</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="toolTip">
+                 <string>Maximum value for blue (third) channel. Larger values will be clamped at this level when auto contrast is enabled.</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="9">
+               <widget class="QToolButton" name="ac_reset_min">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="toolTip">
+                 <string>Reset minimum auto contrast levels to the lowest values found in the buffer.</string>
                 </property>
                </widget>
               </item>
               <item row="1" column="7">
                <widget class="QLabel" name="label_alpha_max">
-                <property name="text">
-                 <string>Alpha</string>
+                <property name="minimumSize">
+                 <size>
+                  <width>20</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="toolTip">
+                 <string>Maximum value for alpha (fourth) channel. Larger values will be clamped at this level when auto contrast is enabled.</string>
                 </property>
                </widget>
               </item>
               <item row="0" column="7">
                <widget class="QLabel" name="label_alpha_min">
-                <property name="text">
-                 <string>Alpha</string>
+                <property name="minimumSize">
+                 <size>
+                  <width>20</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+                <property name="toolTip">
+                 <string>Minimum value for alpha (fourth) channel. Smaller values will be clamped at this level when auto contrast is enabled.</string>
                 </property>
                </widget>
               </item>
               <item row="0" column="8">
-               <widget class="QLineEdit" name="ac_alpha_min"/>
+               <widget class="QLineEdit" name="ac_alpha_min">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+               </widget>
               </item>
               <item row="1" column="8">
-               <widget class="QLineEdit" name="ac_alpha_max"/>
+               <widget class="QLineEdit" name="ac_alpha_max">
+                <property name="font">
+                 <font>
+                  <pointsize>10</pointsize>
+                 </font>
+                </property>
+               </widget>
               </item>
              </layout>
             </widget>
@@ -492,11 +650,22 @@
      <x>0</x>
      <y>0</y>
      <width>1024</width>
-     <height>25</height>
+     <height>23</height>
     </rect>
    </property>
+   <property name="font">
+    <font>
+     <pointsize>10</pointsize>
+    </font>
+   </property>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar">
+   <property name="font">
+    <font>
+     <pointsize>10</pointsize>
+    </font>
+   </property>
+  </widget>
  </widget>
  <customwidgets>
   <customwidget>
@@ -511,9 +680,7 @@
    <header>src/ui/symbol_search_input.h</header>
   </customwidget>
  </customwidgets>
- <resources>
-  <include location="../resources/resources.qrc"/>
- </resources>
+ <resources/>
  <connections>
   <connection>
    <sender>acEdit</sender>

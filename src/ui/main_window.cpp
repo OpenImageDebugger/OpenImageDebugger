@@ -6,6 +6,9 @@
 #include <QSettings>
 #include <QShortcut>
 #include <QStandardPaths>
+#include <QFontDatabase>
+#include <QDebug>
+#include <QScreen>
 
 #include "main_window.h"
 
@@ -29,7 +32,8 @@ MainWindow::MainWindow(QWidget *parent) :
     plot_callback_(nullptr)
 {
     ui_->setupUi(this);
-    ui_->splitter->setSizes({210, 100000000});
+
+    initialize_toolbar_icons();
 
     connect(&settings_persist_timer_, SIGNAL(timeout()), this, SLOT(persist_settings_impl()));
     settings_persist_timer_.setSingleShot(true);
@@ -86,7 +90,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     status_bar = new QLabel();
     status_bar->setAlignment(Qt::AlignRight);
-    setStyleSheet("QStatusBar::item { border: 0px solid black };");
     statusBar()->addWidget(status_bar, 1);
 
     ui_->imageList->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -279,11 +282,17 @@ void MainWindow::reset_ac_max_labels()
 
 void MainWindow::mouse_drag_event(int mouse_x, int mouse_y)
 {
+    const qreal screen_dpi_scale = get_screen_dpi_scale();
+    const QPoint virtual_motion(mouse_x * screen_dpi_scale,
+                                mouse_y * screen_dpi_scale);
+
     if(link_views_enabled_) {
         for(auto& stage: stages_)
-            stage.second->mouse_drag_event(mouse_x, mouse_y);
+            stage.second->mouse_drag_event(virtual_motion.x(),
+                                           virtual_motion.y());
     } else if(currently_selected_stage_ != nullptr) {
-        currently_selected_stage_->mouse_drag_event(mouse_x, mouse_y);
+        currently_selected_stage_->mouse_drag_event(virtual_motion.x(),
+                                                    virtual_motion.y());
     }
 
     request_render_update_ = true;
@@ -402,6 +411,12 @@ void MainWindow::plot_buffer(PyObject* buffer_metadata)
 }
 
 void MainWindow::loop() {
+    const qreal screen_dpi_scale = get_screen_dpi_scale();
+    // Buffer icon dimensions
+    const int icon_width = 100 * screen_dpi_scale;
+    const int icon_height = 50 * screen_dpi_scale;
+    const int bytes_per_line = icon_width * 3;
+
     while(!pending_updates_.empty()) {
         const BufferRequestMessage& request = pending_updates_.front();
 
@@ -435,11 +450,9 @@ void MainWindow::loop() {
             stages_[request.variable_name_str] = stage;
 
             QImage bufferIcon;
-            ui_->bufferPreview->render_buffer_icon(stage.get());
+            ui_->bufferPreview->render_buffer_icon(stage.get(),
+                                                   icon_width, icon_height);
 
-            const int icon_width = 200;
-            const int icon_height = 100;
-            const int bytes_per_line = icon_width * 3;
             bufferIcon = QImage(stage->buffer_icon_.data(), icon_width,
                                 icon_height, bytes_per_line, QImage::Format_RGB888);
 
@@ -464,12 +477,10 @@ void MainWindow::loop() {
                                                 request.pixel_layout);
             // Update buffer icon
             Stage* stage = stages_[request.variable_name_str].get();
-            ui_->bufferPreview->render_buffer_icon(stage);
+            ui_->bufferPreview->render_buffer_icon(stage,
+                                                   icon_width, icon_height);
 
             // Looking for corresponding item...
-            const int icon_width = 200;
-            const int icon_height = 100;
-            const int bytes_per_line = icon_width * 3;
             QImage bufferIcon(stage->buffer_icon_.data(), icon_width,
                               icon_height, bytes_per_line, QImage::Format_RGB888);
             stringstream label;
@@ -601,6 +612,62 @@ void MainWindow::update_statusbar()
         buffer->getPixelInfo(message, floor(mouse_pos.x()), floor(mouse_pos.y()));
         status_bar->setText(message.str().c_str());
     }
+}
+
+void MainWindow::initialize_toolbar_icons() {
+#define SET_FONT_ICON(ui_element, unicode_id) \
+    ui_element->setFont(icons_font); \
+    ui_element->setText(unicode_id);
+
+#define SET_VECTOR_ICON(ui_element, icon_file_name, width, height) \
+    ui_element->setScaledContents(true); \
+    ui_element->setMinimumWidth(std::round(width)); \
+    ui_element->setMaximumWidth(std::round(width)); \
+    ui_element->setMinimumHeight(std::round(height)); \
+    ui_element->setMaximumHeight(std::round(height)); \
+    ui_element->setPixmap( \
+        QIcon(":/resources/icons/" icon_file_name). \
+            pixmap(QSize(std::round(width * screen_dpi_scale), \
+                         std::round(height * screen_dpi_scale)))); \
+    ui_element->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
+
+    if(QFontDatabase::addApplicationFont(":/resources/icons/fontello.ttf") < 0) {
+        qWarning() << "Could not load ionicons font file!";
+    }
+
+    qreal screen_dpi_scale = get_screen_dpi_scale();
+    QFont icons_font;
+    icons_font.setFamily("fontello");
+    icons_font.setPointSizeF(10.f);
+
+    SET_FONT_ICON(ui_->acEdit, "\ue803");
+    SET_FONT_ICON(ui_->acToggle, "\ue804");
+    SET_FONT_ICON(ui_->reposition_buffer, "\ue800");
+    SET_FONT_ICON(ui_->linkViewsToggle, "\ue805");
+    SET_FONT_ICON(ui_->rotate_90_cw, "\ue801");
+    SET_FONT_ICON(ui_->rotate_90_ccw, "\ue802");
+    SET_FONT_ICON(ui_->ac_reset_min, "\ue808");
+    SET_FONT_ICON(ui_->ac_reset_max, "\ue808");
+
+    SET_FONT_ICON(ui_->label_min, "\ue806");
+    SET_FONT_ICON(ui_->label_max, "\ue807");
+
+    SET_VECTOR_ICON(ui_->label_red_min, "label_red_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_red_max, "label_red_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_green_min, "label_green_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_green_max, "label_green_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_blue_min, "label_blue_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_blue_max, "label_blue_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_alpha_min, "label_alpha_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_alpha_max, "label_alpha_channel.svg", 10, 10);
+
+    QLabel *label_min_max = new QLabel();
+    SET_VECTOR_ICON(label_min_max, "lower_upper_bound.svg", 12.f, 52.f);
+    ui_->gridLayout->addWidget(label_min_max, 0, 0, 2, 1);
+}
+
+qreal MainWindow::get_screen_dpi_scale() {
+    return QGuiApplication::primaryScreen()->devicePixelRatio();
 }
 
 string MainWindow::get_type_label(Buffer::BufferType type, int channels)

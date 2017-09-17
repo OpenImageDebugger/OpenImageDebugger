@@ -155,10 +155,7 @@ void Stage::resize_callback(int w, int h) {
 }
 
 void Stage::mouse_drag_event(int mouse_x, int mouse_y) {
-    // Adapt mouse movement with camera rotation
-    //mat4 camRot = mat4::rotation(camera->get_angle());
     for(auto& game_obj: all_game_objects) {
         game_obj.second->mouse_drag_event(mouse_x, mouse_y);
     }
-
 }

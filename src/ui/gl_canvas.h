@@ -37,7 +37,9 @@ public:
 
     void set_main_window(MainWindow* mw);
 
-    void render_buffer_icon(Stage *stage);
+    void render_buffer_icon(Stage *stage,
+                            int icon_width,
+                            int icon_height);
 
     void wheelEvent(QWheelEvent* ev);
 
