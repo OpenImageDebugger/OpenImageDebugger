@@ -46,6 +46,7 @@ SOURCES += \
 
 # Qt related headers
 HEADERS += \
+  src/pythoninterface/preprocessor_directives.h \
   src/ui/gl_canvas.h \
   src/ui/main_window.h \
   src/ui/symbol_completer.h \
