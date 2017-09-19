@@ -314,7 +314,7 @@ void MainWindow::mouse_move_event(int, int)
     if(py_##name == nullptr) { \
         RAISE_PY_EXCEPTION(PyExc_KeyError, \
                            "Missing key in dictionary provided to " \
-                           "plot_binary: Was expecting <" #name "> key"); \
+                           "plot_buffer: Was expecting <" #name "> key"); \
         return; \
     }
 
@@ -322,7 +322,7 @@ void MainWindow::mouse_move_event(int, int)
 #define CHECK_FIELD_TYPE(name, type_checker_funct) \
     if(type_checker_funct(py_##name) == 0) { \
         RAISE_PY_EXCEPTION(PyExc_TypeError, \
-                           "Key " #name " provided to plot_binary does not " \
+                           "Key " #name " provided to plot_buffer does not " \
                            "have the expected type (" #type_checker_funct \
                            " failed)"); \
         return; \
@@ -343,7 +343,7 @@ void MainWindow::plot_buffer(PyObject* buffer_metadata)
 {
     if(!PyDict_Check(buffer_metadata)) {
         RAISE_PY_EXCEPTION(PyExc_TypeError,
-                           "Invalid object given to plot_binary (was expecting"
+                           "Invalid object given to plot_buffer (was expecting"
                            " a dict).");
         return;
     }
@@ -449,12 +449,11 @@ void MainWindow::loop() {
             }
             stages_[request.variable_name_str] = stage;
 
-            QImage bufferIcon;
             ui_->bufferPreview->render_buffer_icon(stage.get(),
                                                    icon_width, icon_height);
 
-            bufferIcon = QImage(stage->buffer_icon_.data(), icon_width,
-                                icon_height, bytes_per_line, QImage::Format_RGB888);
+            QImage bufferIcon(stage->buffer_icon_.data(), icon_width,
+                              icon_height, bytes_per_line, QImage::Format_RGB888);
 
             stringstream label;
             label << request.display_name_str << "\n[" << request.width_i << "x" <<
@@ -477,15 +476,15 @@ void MainWindow::loop() {
                                                 request.step,
                                                 request.pixel_layout);
             // Update buffer icon
-            Stage* stage = stages_[request.variable_name_str].get();
-            ui_->bufferPreview->render_buffer_icon(stage,
+            shared_ptr<Stage>& stage = stages_[request.variable_name_str];
+            ui_->bufferPreview->render_buffer_icon(stage.get(),
                                                    icon_width, icon_height);
 
             // Looking for corresponding item...
             QImage bufferIcon(stage->buffer_icon_.data(), icon_width,
                               icon_height, bytes_per_line, QImage::Format_RGB888);
             stringstream label;
-            label << request.variable_name_str << "\n[" << request.width_i << "x" <<
+            label << request.display_name_str << "\n[" << request.width_i << "x" <<
                      request.height_i << "]\n" <<
                      get_type_label(request.type, request.channels);
 
