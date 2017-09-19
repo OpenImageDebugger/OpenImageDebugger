@@ -14,6 +14,7 @@ using namespace std;
 BufferValues::~BufferValues() {
     glDeleteTextures(1, &text_tex);
     glDeleteBuffers(1, &text_vbo);
+    FT_Done_FreeType(ft);
 }
 
 bool BufferValues::initialize() {
@@ -46,6 +47,8 @@ bool BufferValues::initialize() {
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glGenBuffers(1, &text_vbo);
     generate_glyphs_texture();
+
+    FT_Done_Face(font);
 
     return true;
 }

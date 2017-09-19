@@ -58,8 +58,8 @@ def gen_buffers(width, height):
     types = [{'numpy': numpy.uint8, 'giw': symbols.GIW_TYPES_UINT8},
              {'numpy': numpy.float32, 'giw': symbols.GIW_TYPES_FLOAT32}]
 
-    tex1 = [None] * width * height * channels[0]
-    tex2 = [None] * width * height * channels[1]
+    tex1 = [0] * width * height * channels[0]
+    tex2 = [0] * width * height * channels[1]
 
     for pos_y in range(0, height):
         for pos_x in range(0, width):

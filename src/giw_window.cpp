@@ -34,8 +34,8 @@
     PyErr_SetString(exception_type, msg); \
     PyGILState_Release(gstate);
 
-static char giw_app_argv0[] = "GDB ImageWatch";
-static char *giw_app_argv[] = { giw_app_argv0, nullptr };
+static char giw_app_argv0[] = "GDB-ImageWatch";
+static char* giw_app_argv[] = { giw_app_argv0 };
 static int giw_app_argc = 1;
 
 void dummy_sgn_handler(int signum ) {
@@ -49,7 +49,7 @@ AppHandler giw_initialize() {
                                                    dummy_sgn_handler);
 
     QApplication* app = new QApplication(giw_app_argc,
-                                         static_cast<char**>(giw_app_argv));
+                                         giw_app_argv);
 
     // Restore GDB SIGCHLD handler
     std::signal(SIGCHLD, gdb_sigchld_handler);
@@ -144,6 +144,8 @@ PyObject* giw_get_observed_buffers(WindowHandler handler) {
 
 void giw_set_available_symbols(WindowHandler handler,
                                PyObject* available_set) {
+    assert(PyList_Check(available_set));
+
     MainWindow* window = static_cast<MainWindow*>(handler);
 
     if(window == nullptr) {

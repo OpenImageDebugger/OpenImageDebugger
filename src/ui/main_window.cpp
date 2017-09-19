@@ -39,33 +39,33 @@ MainWindow::MainWindow(QWidget *parent) :
     settings_persist_timer_.setSingleShot(true);
     connect(&update_timer_, SIGNAL(timeout()), this, SLOT(loop()));
 
-    symbol_list_focus_shortcut_ = shared_ptr<QShortcut>(new QShortcut(QKeySequence(Qt::CTRL|Qt::Key_K), this));
-    connect(symbol_list_focus_shortcut_.get(), SIGNAL(activated()), ui_->symbolList, SLOT(setFocus()));
+    symbol_list_focus_shortcut_ = new QShortcut(QKeySequence(Qt::CTRL|Qt::Key_K), this);
+    connect(symbol_list_focus_shortcut_, SIGNAL(activated()), ui_->symbolList, SLOT(setFocus()));
 
     connect(ui_->imageList, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), this, SLOT(buffer_selected(QListWidgetItem*)));
-    buffer_removal_shortcut_ = shared_ptr<QShortcut>(new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList));
-    connect(buffer_removal_shortcut_.get(), SIGNAL(activated()), this, SLOT(remove_selected_buffer()));
+    buffer_removal_shortcut_ = new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList);
+    connect(buffer_removal_shortcut_, SIGNAL(activated()), this, SLOT(remove_selected_buffer()));
 
     connect(ui_->symbolList, SIGNAL(editingFinished()), this, SLOT(symbol_selected()));
 
     ui_->bufferPreview->set_main_window(this);
 
     // Configure symbol completer
-    symbol_completer_ = shared_ptr<SymbolCompleter>(new SymbolCompleter());
+    symbol_completer_ = new SymbolCompleter(this);
     symbol_completer_->setCaseSensitivity(Qt::CaseSensitivity::CaseInsensitive);
     symbol_completer_->setCompletionMode(QCompleter::PopupCompletion);
     symbol_completer_->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
-    ui_->symbolList->setCompleter(symbol_completer_.get());
+    ui_->symbolList->setCompleter(symbol_completer_);
     connect(ui_->symbolList->completer(), SIGNAL(activated(QString)), this, SLOT(symbol_completed(QString)));
 
     // Configure auto contrast inputs
-    ui_->ac_red_min->setValidator(   new QDoubleValidator() );
-    ui_->ac_green_min->setValidator( new QDoubleValidator() );
-    ui_->ac_blue_min->setValidator(  new QDoubleValidator() );
+    ui_->ac_red_min->setValidator(   new QDoubleValidator(ui_->ac_red_min) );
+    ui_->ac_green_min->setValidator( new QDoubleValidator(ui_->ac_green_min) );
+    ui_->ac_blue_min->setValidator(  new QDoubleValidator(ui_->ac_blue_min) );
 
-    ui_->ac_red_max->setValidator(   new QDoubleValidator() );
-    ui_->ac_green_max->setValidator( new QDoubleValidator() );
-    ui_->ac_blue_max->setValidator(  new QDoubleValidator() );
+    ui_->ac_red_max->setValidator(   new QDoubleValidator(ui_->ac_red_max) );
+    ui_->ac_green_max->setValidator( new QDoubleValidator(ui_->ac_green_max) );
+    ui_->ac_blue_max->setValidator(  new QDoubleValidator(ui_->ac_blue_max) );
 
     connect(ui_->ac_red_min, SIGNAL(editingFinished()), this, SLOT(ac_red_min_update()));
     connect(ui_->ac_red_max, SIGNAL(editingFinished()), this, SLOT(ac_red_max_update()));
@@ -88,9 +88,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui_->rotate_90_cw, SIGNAL(clicked()), this, SLOT(rotate_90_cw()));
     connect(ui_->rotate_90_ccw, SIGNAL(clicked()), this, SLOT(rotate_90_ccw()));
 
-    status_bar = new QLabel();
-    status_bar->setAlignment(Qt::AlignRight);
-    statusBar()->addWidget(status_bar, 1);
+    status_bar_ = new QLabel(this);
+    status_bar_->setAlignment(Qt::AlignRight);
+    statusBar()->addWidget(status_bar_, 1);
 
     ui_->imageList->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui_->imageList, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(show_context_menu(const QPoint&)));
@@ -461,7 +461,8 @@ void MainWindow::loop() {
                      request.height_i << "]\n" <<
                      get_type_label(request.type, request.channels);
             QListWidgetItem* item = new QListWidgetItem(QPixmap::fromImage(bufferIcon),
-                                                        label.str().c_str());
+                                                        label.str().c_str(),
+                                                        ui_->imageList);
             item->setData(Qt::UserRole, QString(request.variable_name_str.c_str()));
             item->setFlags(Qt::ItemIsSelectable|Qt::ItemIsEnabled|Qt::ItemIsDragEnabled);
             ui_->imageList->addItem(item);
@@ -610,7 +611,7 @@ void MainWindow::update_statusbar()
                    cam->get_zoom() * 100.0 << "%";
         message << " val=";
         buffer->getPixelInfo(message, floor(mouse_pos.x()), floor(mouse_pos.y()));
-        status_bar->setText(message.str().c_str());
+        status_bar_->setText(message.str().c_str());
     }
 }
 
@@ -661,7 +662,7 @@ void MainWindow::initialize_toolbar_icons() {
     SET_VECTOR_ICON(ui_->label_alpha_min, "label_alpha_channel.svg", 10, 10);
     SET_VECTOR_ICON(ui_->label_alpha_max, "label_alpha_channel.svg", 10, 10);
 
-    QLabel *label_min_max = new QLabel();
+    QLabel *label_min_max = new QLabel(ui_->minMaxEditor);
     SET_VECTOR_ICON(label_min_max, "lower_upper_bound.svg", 12.f, 52.f);
     ui_->gridLayout->addWidget(label_min_max, 0, 0, 2, 1);
 }
@@ -822,6 +823,7 @@ void MainWindow::remove_selected_buffer()
         string bufferName = removedItem->data(Qt::UserRole).toString().toStdString();
         stages_.erase(bufferName);
         held_buffers_.erase(bufferName);
+        delete removedItem;
 
         if(stages_.size() == 0) {
             set_currently_selected_stage(nullptr);
@@ -859,7 +861,8 @@ void MainWindow::set_available_symbols(PyObject *available_set)
 }
 
 void MainWindow::symbol_selected() {
-    const char* symbol_name = ui_->symbolList->text().toLocal8Bit().constData();
+    QByteArray symbol_name_qba = ui_->symbolList->text().toLocal8Bit();
+    const char* symbol_name = symbol_name_qba.constData();
     if(ui_->symbolList->text().length() > 0) {
         plot_callback_(symbol_name);
         // Clear symbol input
@@ -869,7 +872,8 @@ void MainWindow::symbol_selected() {
 
 void MainWindow::symbol_completed(QString str) {
     if(str.length() > 0) {
-        plot_callback_(str.toLocal8Bit().constData());
+        QByteArray symbol_name_qba = str.toLocal8Bit();
+        plot_callback_(symbol_name_qba.constData());
         // Clear symbol input
         ui_->symbolList->setText("");
         ui_->symbolList->clearFocus();

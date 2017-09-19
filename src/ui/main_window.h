@@ -117,8 +117,8 @@ private:
     std::mutex ui_mutex_;
     std::deque<BufferRequestMessage> pending_updates_;
 
-    std::shared_ptr<QShortcut> symbol_list_focus_shortcut_;
-    std::shared_ptr<SymbolCompleter> symbol_completer_;
+    QShortcut* symbol_list_focus_shortcut_;
+    SymbolCompleter* symbol_completer_;
     bool completer_updated_;
     QStringList available_vars_;
 
@@ -126,8 +126,8 @@ private:
     bool ac_enabled_;
     bool link_views_enabled_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
-    QLabel *status_bar;
-    std::shared_ptr<QShortcut> buffer_removal_shortcut_;
+    QLabel* status_bar_;
+    QShortcut* buffer_removal_shortcut_;
 
     QListWidgetItem* generateListItem(BufferRequestMessage&);
     void set_ac_min_value(int idx, float value);

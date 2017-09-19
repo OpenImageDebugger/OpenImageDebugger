@@ -56,7 +56,7 @@ class GdbImageWatchWindow():
             ctypes.c_void_p,
             ctypes.py_object
         ]
-        self._lib.giw_set_available_symbols.restype = ctypes.c_int
+        self._lib.giw_set_available_symbols.restype = None
 
         self._lib.giw_plot_buffer.argtypes = [
             ctypes.c_void_p,
