@@ -84,6 +84,8 @@ void GLCanvas::initializeGL() {
     }
 
     setAutoBufferSwap(false);
+
+    glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
 }
 
 void GLCanvas::render_buffer_icon(Stage* stage,

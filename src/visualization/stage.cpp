@@ -117,8 +117,6 @@ void Stage::update() {
 }
 
 void Stage::draw() {
-    glClear(GL_COLOR_BUFFER_BIT);
-
     set<Component*, compareRenderOrder> orderedComponents;
 
     // TODO use camera tags so I can have multiple cameras (useful for drawing GUI)

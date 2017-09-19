@@ -37,7 +37,6 @@ bool Background::initialize() {
 
 void Background::draw(const mat4&,
                       const mat4&) {
-    glClear(GL_COLOR_BUFFER_BIT);
     background_prog.use();
 
     glEnableVertexAttribArray(0);
