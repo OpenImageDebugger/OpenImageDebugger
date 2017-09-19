@@ -154,7 +154,8 @@ PyObject* giw_get_observed_buffers(WindowHandler handler);
  *     of all available symbols in the current context.
  */
 GIW_API
-void giw_set_available_symbols(WindowHandler handler, PyObject* available_set);
+void giw_set_available_symbols(WindowHandler handler,
+                               PyObject* available_vars);
 
 
 /**

@@ -12,6 +12,7 @@
 
 #include "main_window.h"
 
+#include "debuggerinterface/python_native_interface.h"
 #include "ui_main_window.h"
 #include "debuggerinterface/managed_pointer.h"
 #include "io/buffer_exporter.h"
@@ -303,111 +304,10 @@ void MainWindow::mouse_move_event(int, int)
     update_statusbar();
 }
 
-// TODO move to PNI.h
-#define RAISE_PY_EXCEPTION(exception_type, msg) \
-    PyGILState_STATE gstate = PyGILState_Ensure(); \
-    PyErr_SetString(exception_type, msg); \
-    PyGILState_Release(gstate);
-
-// TODO move to PNI.h
-#define CHECK_FIELD_PROVIDED(name) \
-    if(py_##name == nullptr) { \
-        RAISE_PY_EXCEPTION(PyExc_KeyError, \
-                           "Missing key in dictionary provided to " \
-                           "plot_buffer: Was expecting <" #name "> key"); \
-        return; \
-    }
-
-// TODO move to PNI.h
-#define CHECK_FIELD_TYPE(name, type_checker_funct) \
-    if(type_checker_funct(py_##name) == 0) { \
-        RAISE_PY_EXCEPTION(PyExc_TypeError, \
-                           "Key " #name " provided to plot_buffer does not " \
-                           "have the expected type (" #type_checker_funct \
-                           " failed)"); \
-        return; \
-    }
-
-// TODO move to PNI.h
-int getPyInt(PyObject* obj)
+void MainWindow::plot_buffer(const BufferRequestMessage& buffer_metadata)
 {
-    return PyLong_AS_LONG(obj);
-}
-
-int checkPyStringType(PyObject* obj)
-{
-    return PyUnicode_Check(obj) == 1 ? 1 : PyBytes_Check(obj);
-}
-
-void MainWindow::plot_buffer(PyObject* buffer_metadata)
-{
-    if(!PyDict_Check(buffer_metadata)) {
-        RAISE_PY_EXCEPTION(PyExc_TypeError,
-                           "Invalid object given to plot_buffer (was expecting"
-                           " a dict).");
-        return;
-    }
-
-    PyObject* py_variable_name = PyDict_GetItemString(buffer_metadata,
-                                                      "variable_name");
-    PyObject* py_display_name = PyDict_GetItemString(buffer_metadata,
-                                                     "display_name");
-    PyObject* py_pointer = PyDict_GetItemString(buffer_metadata, "pointer");
-    PyObject* py_width = PyDict_GetItemString(buffer_metadata, "width");
-    PyObject* py_height = PyDict_GetItemString(buffer_metadata, "height");
-    PyObject* py_channels = PyDict_GetItemString(buffer_metadata, "channels");
-    PyObject* py_type = PyDict_GetItemString(buffer_metadata, "type");
-    PyObject* py_row_stride = PyDict_GetItemString(buffer_metadata,
-                                                   "row_stride");
-    PyObject* py_pixel_layout = PyDict_GetItemString(buffer_metadata,
-                                                     "pixel_layout");
-
-    /*
-     * Check if expected fields were provided
-     */
-    CHECK_FIELD_PROVIDED(variable_name);
-    CHECK_FIELD_PROVIDED(display_name);
-    CHECK_FIELD_PROVIDED(pointer);
-    CHECK_FIELD_PROVIDED(width);
-    CHECK_FIELD_PROVIDED(height);
-    CHECK_FIELD_PROVIDED(channels);
-    CHECK_FIELD_PROVIDED(type);
-    CHECK_FIELD_PROVIDED(row_stride);
-    CHECK_FIELD_PROVIDED(pixel_layout);
-
-    /*
-     * Check if expected fields have the correct types
-     */
-    CHECK_FIELD_TYPE(variable_name, checkPyStringType);
-    CHECK_FIELD_TYPE(display_name, checkPyStringType);
-    CHECK_FIELD_TYPE(pointer, PyMemoryView_Check);
-    CHECK_FIELD_TYPE(width, PyLong_Check);
-    CHECK_FIELD_TYPE(height, PyLong_Check);
-    CHECK_FIELD_TYPE(channels, PyLong_Check);
-    CHECK_FIELD_TYPE(type, PyLong_Check);
-    CHECK_FIELD_TYPE(row_stride, PyLong_Check);
-    CHECK_FIELD_TYPE(pixel_layout, checkPyStringType);
-
-    /*
-     * Enqueue provided fields so the request can be processed in the main thread
-     */
-    BufferRequestMessage request(
-        py_pointer,
-        py_variable_name,
-        py_display_name,
-        getPyInt(py_width),
-        getPyInt(py_height),
-        getPyInt(py_channels),
-        getPyInt(py_type),
-        getPyInt(py_row_stride),
-        py_pixel_layout
-    );
-
-    {
-        std::unique_lock<std::mutex> lock(ui_mutex_);
-        pending_updates_.push_back(request);
-    }
-
+    std::unique_lock<std::mutex> lock(ui_mutex_);
+    pending_updates_.push_back(buffer_metadata);
 }
 
 void MainWindow::loop() {
@@ -423,12 +323,12 @@ void MainWindow::loop() {
         uint8_t* srcBuffer;
         shared_ptr<uint8_t> managedBuffer;
         if(request.type == Buffer::BufferType::Float64) {
-            managedBuffer = makeFloatBufferFromDouble(reinterpret_cast<double*>(PyMemoryView_GET_BUFFER(request.py_buffer)->buf),
+            managedBuffer = makeFloatBufferFromDouble(static_cast<double*>(getCPtrFromPyBuffer(request.py_buffer)),
                                                       request.width_i * request.height_i * request.channels);
             srcBuffer = managedBuffer.get();
         } else {
             managedBuffer = makeSharedPyObject(request.py_buffer);
-            srcBuffer = reinterpret_cast<uint8_t*>(PyMemoryView_GET_BUFFER(request.py_buffer)->buf);
+            srcBuffer = static_cast<uint8_t*>(getCPtrFromPyBuffer(request.py_buffer));
         }
 
         auto buffer_stage = stages_.find(request.variable_name_str);
@@ -832,27 +732,23 @@ void MainWindow::remove_selected_buffer()
     }
 }
 
-// TODO remove python dependency by receiving an STL container instead
-void MainWindow::set_available_symbols(PyObject *available_set)
+void MainWindow::set_available_symbols(const deque<string>& available_vars)
 {
     std::unique_lock<std::mutex> lock(ui_mutex_);
 
     available_vars_.clear();
 
-    for(Py_ssize_t pos = 0; pos < PyList_Size(available_set); ++pos) {
+    for(const auto& var_name: available_vars) {
         /*
          * Add symbol name to autocomplete list
          */
-        string var_name_str;
-        PyObject* listItem = PyList_GetItem(available_set, pos);
-        copyPyString(var_name_str, listItem);
-        available_vars_.push_back(var_name_str.c_str());
+        available_vars_.push_back(var_name.c_str());
 
         // Plot buffer if it was available in the previous session
-        if(previous_session_buffers_.find(var_name_str) !=
+        if(previous_session_buffers_.find(var_name) !=
            previous_session_buffers_.end())
         {
-            plot_callback_(var_name_str.c_str());
+            plot_callback_(var_name.c_str());
         }
     }
 

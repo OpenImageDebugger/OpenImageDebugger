@@ -3,9 +3,10 @@ AllowAllParametersOfDeclarationOnNextLine: false
 ColumnLimit: 80
 IndentWidth: 4
 UseTab: Never
+AlignConsecutiveAssignments: true
 PointerBindsToType: true
 Cpp11BracedListStyle: true
-AlignAfterOpenBracket: true
+AlignAfterOpenBracket: Align
 AlignEscapedNewlinesLeft: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
@@ -26,4 +27,3 @@ BreakBeforeBraces: Custom
 MaxEmptyLinesToKeep: 2
 SortIncludes: true
 SpaceBeforeAssignmentOperators: true
-

@@ -15,8 +15,6 @@
 #include <QShortcut>
 #include <QTimer>
 
-#include <Python.h>
-
 #include "gl_canvas.h"
 #include "symbol_completer.h"
 #include "debuggerinterface/buffer_request_message.h"
@@ -57,7 +55,7 @@ public:
 
     // External interface
     void set_plot_callback(int(*plot_cbk)(const char*));
-    void plot_buffer(PyObject* buffer_metadata);
+    void plot_buffer(const BufferRequestMessage& buffer_metadata);
     std::deque<std::string> get_observed_symbols();
     bool is_window_ready();
 
@@ -87,7 +85,7 @@ public Q_SLOTS:
 
     void remove_selected_buffer();
 
-    void set_available_symbols(PyObject* available_set);
+    void set_available_symbols(const std::deque<std::string>& available_set);
 
     void symbol_selected();
 

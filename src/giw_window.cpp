@@ -30,14 +30,14 @@
 
 #include <QApplication>
 
+#include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
-#include "pythoninterface/preprocessor_directives.h"
 #include "ui/main_window.h"
 
 
 static char giw_app_argv0[] = "GDB-ImageWatch";
 static char* giw_app_argv[] = {giw_app_argv0};
-static int giw_app_argc = 1;
+static int giw_app_argc     = 1;
 
 
 void dummy_sgn_handler(int signum)
@@ -140,12 +140,12 @@ PyObject* giw_get_observed_buffers(WindowHandler handler)
         return nullptr;
     }
 
-    auto observed_symbols = window->get_observed_symbols();
+    auto observed_symbols         = window->get_observed_symbols();
     PyObject* py_observed_symbols = PyList_New(observed_symbols.size());
 
     int observed_symbols_sentinel = static_cast<int>(observed_symbols.size());
     for (int i = 0; i < observed_symbols_sentinel; ++i) {
-        string symbol_name = observed_symbols[i];
+        string symbol_name       = observed_symbols[i];
         PyObject* py_symbol_name = PyBytes_FromString(symbol_name.c_str());
 
         if (py_symbol_name == nullptr) {
@@ -160,9 +160,10 @@ PyObject* giw_get_observed_buffers(WindowHandler handler)
 }
 
 
-void giw_set_available_symbols(WindowHandler handler, PyObject* available_set)
+void giw_set_available_symbols(WindowHandler handler,
+                               PyObject* available_vars_py)
 {
-    assert(PyList_Check(available_set));
+    assert(PyList_Check(available_vars_py));
 
     MainWindow* window = static_cast<MainWindow*>(handler);
 
@@ -173,7 +174,15 @@ void giw_set_available_symbols(WindowHandler handler, PyObject* available_set)
         return;
     }
 
-    window->set_available_symbols(available_set);
+    deque<string> available_vars_stl;
+    for (Py_ssize_t pos = 0; pos < PyList_Size(available_vars_py); ++pos) {
+        string var_name_str;
+        PyObject* listItem = PyList_GetItem(available_vars_py, pos);
+        copyPyString(var_name_str, listItem);
+        available_vars_stl.push_back(var_name_str);
+    }
+
+    window->set_available_symbols(available_vars_stl);
 }
 
 
@@ -187,5 +196,66 @@ void giw_plot_buffer(WindowHandler handler, PyObject* buffer_metadata)
         return;
     }
 
-    window->plot_buffer(buffer_metadata);
+    if (!PyDict_Check(buffer_metadata)) {
+        RAISE_PY_EXCEPTION(PyExc_TypeError,
+                           "Invalid object given to plot_buffer (was expecting"
+                           " a dict).");
+        return;
+    }
+
+    PyObject* py_variable_name =
+        PyDict_GetItemString(buffer_metadata, "variable_name");
+    PyObject* py_display_name =
+        PyDict_GetItemString(buffer_metadata, "display_name");
+    PyObject* py_pointer  = PyDict_GetItemString(buffer_metadata, "pointer");
+    PyObject* py_width    = PyDict_GetItemString(buffer_metadata, "width");
+    PyObject* py_height   = PyDict_GetItemString(buffer_metadata, "height");
+    PyObject* py_channels = PyDict_GetItemString(buffer_metadata, "channels");
+    PyObject* py_type     = PyDict_GetItemString(buffer_metadata, "type");
+    PyObject* py_row_stride =
+        PyDict_GetItemString(buffer_metadata, "row_stride");
+    PyObject* py_pixel_layout =
+        PyDict_GetItemString(buffer_metadata, "pixel_layout");
+
+    /*
+     * Check if expected fields were provided
+     */
+    CHECK_FIELD_PROVIDED(variable_name, "plot_buffer");
+    CHECK_FIELD_PROVIDED(display_name, "plot_buffer");
+    CHECK_FIELD_PROVIDED(pointer, "plot_buffer");
+    CHECK_FIELD_PROVIDED(width, "plot_buffer");
+    CHECK_FIELD_PROVIDED(height, "plot_buffer");
+    CHECK_FIELD_PROVIDED(channels, "plot_buffer");
+    CHECK_FIELD_PROVIDED(type, "plot_buffer");
+    CHECK_FIELD_PROVIDED(row_stride, "plot_buffer");
+    CHECK_FIELD_PROVIDED(pixel_layout, "plot_buffer");
+
+    /*
+     * Check if expected fields have the correct types
+     */
+    CHECK_FIELD_TYPE(variable_name, checkPyStringType, "plot_buffer");
+    CHECK_FIELD_TYPE(display_name, checkPyStringType, "plot_buffer");
+    CHECK_FIELD_TYPE(pointer, PyMemoryView_Check, "plot_buffer");
+    CHECK_FIELD_TYPE(width, PyLong_Check, "plot_buffer");
+    CHECK_FIELD_TYPE(height, PyLong_Check, "plot_buffer");
+    CHECK_FIELD_TYPE(channels, PyLong_Check, "plot_buffer");
+    CHECK_FIELD_TYPE(type, PyLong_Check, "plot_buffer");
+    CHECK_FIELD_TYPE(row_stride, PyLong_Check, "plot_buffer");
+    CHECK_FIELD_TYPE(pixel_layout, checkPyStringType, "plot_buffer");
+
+    /*
+     * Enqueue provided fields so the request can be processed in the main
+     * thread
+     */
+    BufferRequestMessage request(py_pointer,
+                                 py_variable_name,
+                                 py_display_name,
+                                 getPyInt(py_width),
+                                 getPyInt(py_height),
+                                 getPyInt(py_channels),
+                                 getPyInt(py_type),
+                                 getPyInt(py_row_stride),
+                                 py_pixel_layout);
+
+    window->plot_buffer(request);
 }
