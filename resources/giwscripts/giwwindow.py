@@ -40,16 +40,16 @@ class GdbImageWatchWindow():
         self._lib.giw_exec.argtypes = [ctypes.c_void_p]
         self._lib.giw_exec.restype = None
 
-        self._lib.giw_create_window.argtypes = [ FETCH_BUFFER_CBK_TYPE ]
+        self._lib.giw_create_window.argtypes = [FETCH_BUFFER_CBK_TYPE]
         self._lib.giw_create_window.restype = ctypes.c_void_p
 
-        self._lib.giw_destroy_window.argtypes = [ ctypes.c_void_p ]
+        self._lib.giw_destroy_window.argtypes = [ctypes.c_void_p]
         self._lib.giw_destroy_window.restype = ctypes.c_int
 
-        self._lib.giw_is_window_ready.argtypes = [ ctypes.c_void_p ]
+        self._lib.giw_is_window_ready.argtypes = [ctypes.c_void_p]
         self._lib.giw_is_window_ready.restype = ctypes.c_bool
 
-        self._lib.giw_get_observed_buffers.argtypes = [ ctypes.c_void_p ]
+        self._lib.giw_get_observed_buffers.argtypes = [ctypes.c_void_p]
         self._lib.giw_get_observed_buffers.restype = ctypes.py_object
 
         self._lib.giw_set_available_symbols.argtypes = [

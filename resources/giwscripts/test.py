@@ -41,7 +41,7 @@ def giwtest(script_path):
         exit(0)
 
 
-def gen_color(pos, k, f_a, f_b):
+def _gen_color(pos, k, f_a, f_b):
     """
     Generates a color for the pixel at (pos[0], pos[1]) with coefficients k[0]
     and k[1], and colouring functions f_a and f_b that map R->[-1, 1].
@@ -49,7 +49,7 @@ def gen_color(pos, k, f_a, f_b):
     return (f_a(pos[0] * f_b(pos[1]/k[0])/k[1]) + 1) * 255 / 2
 
 
-def gen_buffers(width, height):
+def _gen_buffers(width, height):
     """
     Generate sample buffers
     """
@@ -67,11 +67,11 @@ def gen_buffers(width, height):
 
             buffer_pos = pos_y * channels[0] * width + channels[0] * pos_x
 
-            tex1[buffer_pos + 0] = gen_color(
+            tex1[buffer_pos + 0] = _gen_color(
                 pixel_pos, [20, 80], math.cos, math.cos)
-            tex1[buffer_pos + 1] = gen_color(
+            tex1[buffer_pos + 1] = _gen_color(
                 pixel_pos, [50, 200], math.sin, math.cos)
-            tex1[buffer_pos + 2] = gen_color(
+            tex1[buffer_pos + 2] = _gen_color(
                 pixel_pos, [30, 120], math.cos, math.cos)
 
             buffer_pos = pos_y * channels[1] * width + channels[1] * pos_x
@@ -121,7 +121,7 @@ class DummyDebugger(BridgeInterface):
     def __init__(self):
         width = 400
         height = 200
-        self._buffers = gen_buffers(width, height)
+        self._buffers = _gen_buffers(width, height)
         self._buffer_names = [name for name in self._buffers]
 
     def get_casted_pointer(self, typename, debugger_object):

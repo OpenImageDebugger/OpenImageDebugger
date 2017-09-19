@@ -17,13 +17,17 @@ class GdbImageWatchEvents(BridgeEventHandlerInterface):
         self._window = window
         self._debugger = debugger
 
-    def set_symbol_complete_list(self):
+    def _set_symbol_complete_list(self):
+        """
+        Retrieve the list of available symbols and provide it to the GIW window
+        for autocompleting.
+        """
         observable_symbols = list(self._debugger.get_available_symbols())
         if self._window.is_ready():
             self._window.set_available_symbols(observable_symbols)
 
     def refresh_handler(self, event):
-        self.set_symbol_complete_list()
+        self._set_symbol_complete_list()
 
     def exit_handler(self, event):
         self._window.terminate()
@@ -45,7 +49,7 @@ class GdbImageWatchEvents(BridgeEventHandlerInterface):
             self._window.plot_variable(buffer_name)
 
         # Set list of available symbols
-        self.set_symbol_complete_list()
+        self._set_symbol_complete_list()
 
     def plot_handler(self, variable_name):
         """
