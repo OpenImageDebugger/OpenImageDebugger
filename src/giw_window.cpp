@@ -1,7 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2017 GDB ImageWatch contributors
+ * (github.com/csantosbh/gdb-imagewatch/)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -22,17 +23,17 @@
  * IN THE SOFTWARE.
  */
 
-#include "giw_window.h"
-
 #include <csignal>
 
 #include <string>
 
 #include <QApplication>
 
+#include "giw_window.h"
+
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
-#include "ui/main_window.h"
+#include "ui/main_window/main_window.h"
 
 
 static char giw_app_argv0[] = "GDB-ImageWatch";

@@ -26,9 +26,12 @@ SOURCES += \
   src/math/assorted.cpp \
   src/math/linear_algebra.cpp \
   src/ui/gl_canvas.cpp \
-  src/ui/main_window.cpp \
   src/ui/symbol_completer.cpp \
   src/ui/symbol_search_input.cpp \
+  src/ui/main_window/main_window.cpp \
+  src/ui/main_window/initialization.cpp \
+  src/ui/main_window/auto_contrast.cpp \
+  src/ui/main_window/ui_events.cpp \
   src/visualization/game_object.cpp \
   src/visualization/shader.cpp \
   src/visualization/stage.cpp \
@@ -48,7 +51,7 @@ SOURCES += \
 HEADERS += \
   src/debuggerinterface/preprocessor_directives.h \
   src/ui/gl_canvas.h \
-  src/ui/main_window.h \
+  src/ui/main_window/main_window.h \
   src/ui/symbol_completer.h \
   src/ui/symbol_search_input.h
 
