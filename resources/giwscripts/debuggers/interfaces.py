@@ -62,6 +62,12 @@ class BridgeEventHandlerInterface():
         """
         raise NotImplementedError("Method is not implemented")
 
+    def exit_handler(self, event):
+        """
+        Event raised whenever the inferior has exited.
+        """
+        raise NotImplementedError("Method is not implemented")
+
     def refresh_handler(self, event):
         """
         Handler to be called by the IDE whenever the user performs some action

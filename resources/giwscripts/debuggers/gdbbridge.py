@@ -56,6 +56,7 @@ class GdbBridge(BridgeInterface):
 
     def register_event_handlers(self, event_handler):
         gdb.events.stop.connect(event_handler.stop_handler)
+        gdb.events.exited.connect(event_handler.exit_handler)
         self._commands['plot'].set_command_listener(event_handler.plot_handler)
 
     def get_fields_from_type(self, this_type, observable_symbols):

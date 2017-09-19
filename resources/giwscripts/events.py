@@ -25,6 +25,9 @@ class GdbImageWatchEvents(BridgeEventHandlerInterface):
     def refresh_handler(self, event):
         self.set_symbol_complete_list()
 
+    def exit_handler(self, event):
+        self._window.terminate()
+
     def stop_handler(self, event):
         """
         The debugger has stopped (e.g. a breakpoint was hit). We must list all

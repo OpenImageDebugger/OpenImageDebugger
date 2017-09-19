@@ -294,6 +294,7 @@ private:
         ones<uint8_t>(W, H, 1, TestField);
         i(0,0,0) = 255;
         computeSumTable<uint8_t>(W, H, C, TestField);
+        return;
     }
 };
 

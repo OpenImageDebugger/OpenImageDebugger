@@ -852,7 +852,7 @@ void MainWindow::set_available_symbols(PyObject *available_set)
         if(previous_session_buffers_.find(var_name_str) !=
            previous_session_buffers_.end())
         {
-            //plot_callback_(var_name_str.c_str());
+            plot_callback_(var_name_str.c_str());
         }
     }
 
