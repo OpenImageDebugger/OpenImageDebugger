@@ -33,6 +33,9 @@
 #include "visualization/game_object.h"
 
 
+using namespace std;
+
+
 void MainWindow::resize_callback(int w, int h)
 {
     for (auto& stage : stages_)

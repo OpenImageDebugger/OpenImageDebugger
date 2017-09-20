@@ -33,6 +33,9 @@
 #include "visualization/components/camera.h"
 
 
+using namespace std;
+
+
 struct compareRenderOrder
 {
     bool operator()(const Component* a, const Component* b) const

@@ -38,6 +38,9 @@
 #include "visualization/game_object.h"
 
 
+using namespace std;
+
+
 Q_DECLARE_METATYPE(QList<QString>)
 
 
@@ -348,7 +351,7 @@ void MainWindow::update_status_bar()
                 << floorf(mouse_pos.x()) << "," << floorf(mouse_pos.y())
                 << ")\t" << cam->get_zoom() * 100.0 << "%";
         message << " val=";
-        buffer->getPixelInfo(
+        buffer->get_pixel_info(
             message, floor(mouse_pos.x()), floor(mouse_pos.y()));
         status_bar_->setText(message.str().c_str());
     }

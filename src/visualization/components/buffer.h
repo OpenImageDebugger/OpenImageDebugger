@@ -1,46 +1,77 @@
-#pragma once
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2015-2017 GDB ImageWatch contributors
+ * (github.com/csantosbh/gdb-imagewatch/)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 
-#include <vector>
+#ifndef BUFFER_H_
+#define BUFFER_H_
+
 #include <sstream>
+#include <vector>
 
-#include "visualization/shader.h"
 #include "component.h"
+#include "visualization/shader.h"
 
-using namespace std;
-class Buffer : public Component {
-public:
+
+class Buffer : public Component
+{
+  public:
+    enum class BufferType {
+        UnsignedByte  = 0,
+        UnsignedShort = 2,
+        Short         = 3,
+        Int32         = 4,
+        Float32       = 5,
+        Float64       = 6
+    };
+
     int max_texture_size = 2048;
 
     std::vector<GLuint> buff_tex;
+
     static const float no_ac_params[8];
-
-    enum class BufferType {
-        UnsignedByte = 0,
-        UnsignedShort = 2,
-        Short = 3,
-        Int32 = 4,
-        Float32 = 5,
-        Float64 = 6
-    };
-
-    ~Buffer();
 
     float buffer_width_f;
     float buffer_height_f;
+
     int channels;
-    BufferType type;
     int step;
+
+    BufferType type;
+
     uint8_t* buffer;
+
+    ~Buffer();
 
     bool buffer_update();
 
-    void recomputeMinColorValues();
+    void recompute_min_color_values();
 
-    void recomputeMaxColorValues();
+    void recompute_max_color_values();
 
-    void resetContrastBrightnessParameters();
+    void reset_contrast_brightness_parameters();
 
-    void computeContrastBrightnessParameters();
+    void compute_contrast_brightness_parameters();
 
     int sub_texture_id_at_coord(int x, int y);
 
@@ -69,17 +100,20 @@ public:
     void set_min_buffer_values();
     void set_max_buffer_values();
 
-    void getPixelInfo(stringstream& output, int x, int y);
-private:
+    void get_pixel_info(std::stringstream& output, int x, int y);
+
+  private:
     void create_shader_program();
     void setup_gl_buffer();
 
+    char pixel_layout_[4] = {'r', 'g', 'b', 'a'};
     float min_buffer_values_[4];
     float max_buffer_values_[4];
-    char  pixel_layout_[4] = {'r', 'g', 'b', 'a'};
-    float auto_buffer_contrast_brightness_[8] = {1.0,1.0,1.0,1.0, 0.0,0.0,0.0,0.0};
+    float auto_buffer_contrast_brightness_[8] =
+        {1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0};
 
     ShaderProgram buff_prog;
     GLuint vbo;
 };
 
+#endif // BUFFER_H_

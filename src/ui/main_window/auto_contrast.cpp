@@ -31,6 +31,9 @@
 #include "visualization/game_object.h"
 
 
+using namespace std;
+
+
 void enable_inputs(const initializer_list<QLineEdit*>& inputs)
 {
     for (auto& input : inputs) {
@@ -169,8 +172,8 @@ void MainWindow::ac_min_reset()
         GameObject* buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
         Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
-        buff->recomputeMinColorValues();
-        buff->computeContrastBrightnessParameters();
+        buff->recompute_min_color_values();
+        buff->compute_contrast_brightness_parameters();
 
         // Update inputs
         reset_ac_min_labels();
@@ -186,8 +189,8 @@ void MainWindow::ac_max_reset()
         GameObject* buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
         Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
-        buff->recomputeMaxColorValues();
-        buff->computeContrastBrightnessParameters();
+        buff->recompute_max_color_values();
+        buff->compute_contrast_brightness_parameters();
 
         // Update inputs
         reset_ac_max_labels();
@@ -214,7 +217,7 @@ void MainWindow::set_ac_min_value(int idx, float value)
             currently_selected_stage_->get_game_object("buffer");
         Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
         buff->min_buffer_values()[idx] = value;
-        buff->computeContrastBrightnessParameters();
+        buff->compute_contrast_brightness_parameters();
 
         request_render_update_ = true;
     }
@@ -228,7 +231,7 @@ void MainWindow::set_ac_max_value(int idx, float value)
             currently_selected_stage_->get_game_object("buffer");
         Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
         buff->max_buffer_values()[idx] = value;
-        buff->computeContrastBrightnessParameters();
+        buff->compute_contrast_brightness_parameters();
 
         request_render_update_ = true;
     }

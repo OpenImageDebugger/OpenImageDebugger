@@ -36,6 +36,9 @@
 #include "ui/main_window/main_window.h"
 
 
+using namespace std;
+
+
 static char giw_app_argv0[] = "GDB-ImageWatch";
 static char* giw_app_argv[] = {giw_app_argv0};
 static int giw_app_argc     = 1;

@@ -32,6 +32,9 @@
 #include "math/assorted.h"
 
 
+using namespace std;
+
+
 template <typename T>
 float get_multiplier()
 {

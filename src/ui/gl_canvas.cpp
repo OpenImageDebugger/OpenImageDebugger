@@ -31,6 +31,10 @@
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
 
+
+using namespace std;
+
+
 GLCanvas::GLCanvas(QWidget* parent)
     : QGLWidget(parent)
 {

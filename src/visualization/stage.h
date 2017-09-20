@@ -50,7 +50,7 @@ class Stage
                     int channels,
                     Buffer::BufferType type,
                     int step,
-                    const string& pixel_layout,
+                    const std::string& pixel_layout,
                     bool ac_enabled);
 
     bool buffer_update(uint8_t* buffer,
@@ -59,7 +59,7 @@ class Stage
                        int channels,
                        Buffer::BufferType type,
                        int step,
-                       const string& pixel_layout);
+                       const std::string& pixel_layout);
 
     GameObject* get_game_object(std::string tag);
 
