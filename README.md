@@ -12,36 +12,46 @@ class, but can also be customized to work with any arbitrary data structure.
   buffer.
 * Auto update: Whenever a breakpoint is hit, the buffer view is automatically
   updated.
-* Auto contrast
-* Editable contrast clamp values, useful when inspecting a buffer that contains
-  uninitialized values.
-* Link views together, moving all watched buffers when a single buffer is moved
-  on the screen
-* GPU accelerated
+* Auto contrast: The entire range of values present in the buffer can be
+  automatically mapped to the visualization range `[0, 1]`, where `0`
+  represents black and `1` represents white.
+* The contrast range can be manually adjusted, which is useful for inspecting
+  buffers with extreme values (e.g. infinity, nan and other outliers).
+* Link views together, moving all watched buffers simultaneously when any
+  single buffer is moved on the screen
 * Supported buffer types: uint8_t, int16_t, uint16_t, int32_t, uint32_t,
   float and double
-* Supported buffer channels: Grayscale, two-channels, RGB and RGBA
-* Supports big buffers whose dimensions exceed GL_MAX_TEXTURE_SIZE.
-* Supports data structures that map to a ROI of a bigger buffer.
-* Exports buffers as png images (with auto contrast) or octave matrix files
-  (unprocessed).
+* Supported buffer channels: Up to four channels (Grayscale, two-channels, RGB
+  and RGBA)
+* GPU accelerated
+* Supports large buffers whose dimensions exceed GL_MAX_TEXTURE_SIZE.
+* Supports data structures that map to a ROI of a larger buffer.
+* Exports buffers as png images (with auto contrast) or octave/matlab matrix
+  files (unprocessed).
 * Rotate buffers 90&deg; clockwise or counterclockwise.
 * Auto-load buffers being visualized in the previous debug session
+* Designed to scale well for HighDPI displays
 
 ## Requirements
 
- * An OpenGL 2.0+ compliant GPU
+ * An OpenGL 2.1+ compliant GPU
  * A C++11 compliant compiler (gcc-5 or later is recommended)
+ * GDB 7.10+ **compiled with python 3 support**
+ * Qt 5.6+ (required due to the HighDPI display support - download it
+   [here](https://info.qt.io/download-qt-for-application-development))
+ * FreeType 2
+ * Eigen 3
+ * Python 3+ with its development packages
+ * Numpy
+ * GLEW with its development packages
 
 ## Installation
 
 ### Dependencies
 
-GDB ImageWatch requires python 3+, lib freetype 2, Qt SDK, GLEW, GLFW, Qt 5+
-and GDB 7.10+ (which must be compiled with python 3 support). On Ubuntu, you
-can install these packages with the following command:
+On Ubuntu, you can install most of the dependencies with the following command:
 
-    sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip qt-sdk texinfo libfreetype6-dev libeigen3-dev libqt5opengl5-dev
+    sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip texinfo libfreetype6-dev libeigen3-dev
     sudo pip3 install pysigset
 
 Download and install the latest version of GDB with python3 support (if you
@@ -68,32 +78,36 @@ Finally, clone the GDB ImageWatch plugin to any folder you prefer:
 ### Ubuntu 16.04 manual installation with QtCreator
 
 Ubuntu 16.04 comes with qt4, which is not compatible with GDB ImageWatch. In
-order to compile it, you need to install qt5 and use its corresponding qmake
-during the compilation step.
+order to compile it, you need to install qt5
+([get it here](https://info.qt.io/download-qt-for-application-development)) and
+use its corresponding qmake during the compilation step.
 
-If you are using QtCreator, this can be done by going to Tools->Options->Build
-& Run->Kits and set Qt version to any Qt version >= 5.
+If you are using QtCreator, you can change your Qt version under
+Tools->Options->Build & Run->Kits, by setting Qt version to any Qt version >=
+5.
 
 ### Build plugin and configure GDB
 
 To build this plugin, create a `build` folder, open a terminal window inside it
 and run:
 
-    qmake ..
+    qmake .. BUILD_MODE=release PREFIX=/path/to/installation/folder
     make -j4
     make install
 
-The `make install` step is absolutely required, and will only copy the
-dependencies to the build folder (thus, it doesn't require any special user
-privileges).
+The installation step is optional; you can simply use the plugin from the build
+folder instead. If you choose to install the plugin, it will be placed under
+`/path/to/installation/folder/bin/gdb-imagewatch/`.
+
+By default, the `PREFIX` variable is `/usr/local`.
 
 #### Loading plugin: QtCreator
 
 If you use QtCreator, the best way to integrate GDB ImageWatch into your
 workflow is by using it as an *extra debugging helper*. This can be achieved by
 going to the menu `Tools`->`Options`->`Debugger` and adding the file
-`/path/to/gdb-imagewatch/build/gdb-imagewatch.py` in the option
-`Extra debugging Helpers`.
+`/path/to/gdb-imagewatch/gdb-imagewatch.py` in the option `Extra debugging
+Helpers`.
 
 This will automatically load the plugin for every debug session, and will
 reload the local variables when switching between threads/stack level when the
@@ -104,7 +118,7 @@ debugger is paused.
 If you are not using QtCreator, simply edit the `~/.gdbinit` file (create it if
 it doesn't exist) and append the following line:
 
-    source /path/to/gdb-imagewatch/build/gdb-imagewatch.py
+    source /path/to/gdb-imagewatch/gdb-imagewatch.py
 
 This way, GDB will automatically load the GDB imagewatch plugin every time it
 starts.
@@ -112,23 +126,25 @@ starts.
 ### Ubuntu 16.04 Automated Installation without QtCreator
 
 If you are not using QtCreator, we provide the script `configure_ubuntu_16.sh`
-which handles the Qt version issue and automates the installation of GDB ImageWatch
-on Ubuntu 16.04. From the root directory of this project, execute the following:
+which automates most of the installation of GDB ImageWatch on Ubuntu 16.04.
+From the root directory of this project, execute the following:
 
     bash configure_ubuntu_16.sh
-    
-Follow this step with the instructions below in the section `Testing your installation`.
+
+Follow this step with the instructions below in the section `Testing your
+installation`.
 
 ## Testing your installation
 
 After compiling the plugin, you can test it by opening a console in the
-installation folder and running the following command from the root project directory:
+installation folder and running the following command from the root project
+directory:
 
-    python3 build/gdb-imagewatch.py --test
+    python3 /path/to/gdb-imagewatch/gdb-imagewatch.py --test
 
 If the installation was succesful, you should see the GDB ImageWatch window
-with the same python_test and python_test2 buffers from the image on the header
-of this page.
+with the same `sample_buffer_1` and `sample_buffer_2` buffers from the image on
+the header of this page.
 
 ## Using plugin
 
@@ -141,7 +157,7 @@ with the following command:
 
     plot variable_name
 
-### <img src="resources/icons/contrast.png" width="20"/> Auto-contrast and manual contrast
+### <img src="doc/auto-contrast.svg" width="20"/> Auto-contrast and manual contrast
 
 The (min) and (max) fields on top of the buffer view can be changed to control
 autocontrast settings. By default, GDB ImageWatch will automatically fill these
@@ -150,12 +166,12 @@ channel values will be normalized from these values to the range [0, 1] inside
 the renderer.
 
 Sometimes, your buffer may contain trash, uninitialized values that are either
-too big or too small, making the entire image look flat because of this
+too large or too small, making the entire image look flat because of this
 normalization. If you know the expected range for your image, you can manually
 change the (min) and (max) values to focus on the range that you are
 interested.
 
-### <img src="resources/icons/link.png" width="20"/> Locking buffers
+### <img src="doc/link-views.svg" width="20"/> Locking buffers
 
 Sometimes you want to compare two buffers being visualized, and need to zoom in
 different places of these buffers. If they are large enough, this can become a
@@ -181,8 +197,9 @@ binary file that can be opened with any tool.
 ### Loading Octave/Matlab buffers
 
 Buffers exported in the `Octave matrix` format can be loaded with the function
-`giw_load.m`, which is installed in the binary folder. To use it, add this
-folder to Octave/Matlab `path` variable and call `giw_load('/path/to/buffer')`.
+`giw_load.m`, which is available in the `matlab` folder. To use it, add this
+folder to Octave/Matlab `path` variable and call
+`giw_load('/path/to/buffer.dump')`.
 
 ### Configure your IDE to use GDB 7.10
 

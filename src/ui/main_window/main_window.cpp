@@ -348,8 +348,9 @@ void MainWindow::update_status_bar()
             buffer->buffer_width_f / 2.f, buffer->buffer_height_f / 2.f, 0, 0);
 
         message << std::fixed << std::setprecision(1) << "("
-                << floorf(mouse_pos.x()) << "," << floorf(mouse_pos.y())
-                << ")\t" << cam->get_zoom() * 100.0 << "%";
+                << static_cast<int>(floor(mouse_pos.x())) << ", "
+                << static_cast<int>(floor(mouse_pos.y())) << ")\t"
+                << cam->get_zoom() * 100.0 << "%";
         message << " val=";
         buffer->get_pixel_info(
             message, floor(mouse_pos.x()), floor(mouse_pos.y()));

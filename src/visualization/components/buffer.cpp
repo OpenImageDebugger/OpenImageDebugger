@@ -324,21 +324,21 @@ void Buffer::update()
 void Buffer::create_shader_program()
 {
     // Buffer Shaders
-    ShaderProgram::TexelChannels channelType;
+    ShaderProgram::TexelChannels channel_type;
     if (channels == 1) {
-        channelType = ShaderProgram::FormatR;
+        channel_type = ShaderProgram::FormatR;
     } else if (channels == 2) {
-        channelType = ShaderProgram::FormatRG;
+        channel_type = ShaderProgram::FormatRG;
     } else if (channels == 3) {
-        channelType = ShaderProgram::FormatRGB;
+        channel_type = ShaderProgram::FormatRGB;
     } else {
         assert(channels == 4);
-        channelType = ShaderProgram::FormatRGBA;
+        channel_type = ShaderProgram::FormatRGBA;
     }
 
     buff_prog.create(shader::buff_vert_shader,
                      shader::buff_frag_shader,
-                     channelType,
+                     channel_type,
                      pixel_layout_,
                      {"mvp",
                       "sampler",

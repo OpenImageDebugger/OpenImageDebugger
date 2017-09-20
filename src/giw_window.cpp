@@ -40,7 +40,8 @@ using namespace std;
 
 
 static char giw_app_argv0[] = "GDB-ImageWatch";
-static char* giw_app_argv[] = {giw_app_argv0};
+static char giw_app_argv1[] = "-style=fusion";
+static char* giw_app_argv[] = {giw_app_argv0, giw_app_argv1};
 static int giw_app_argc     = 1;
 
 

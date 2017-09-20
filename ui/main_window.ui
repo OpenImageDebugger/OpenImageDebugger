@@ -20,8 +20,8 @@
   </property>
   <property name="styleSheet">
    <string notr="true">QFrame#frame { border: 0; }
-QFrame#frame_2 { margin-top: 5px; }
-QStatusBar::item { border: none; };</string>
+QFrame#frame_2 { margin-top: 5px; border: 0; }
+QStatusBar::item { border: 0; };</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout">

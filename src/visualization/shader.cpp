@@ -161,7 +161,7 @@ GLuint ShaderProgram::compile(GLuint type, GLchar const* source)
     GLuint shader = glCreateShader(type);
 
     const char* src[] = {
-        "#version 130\n",
+        "#version 120\n",
 
         // clang-format off
         texel_format_ == FormatR ?   "#define FORMAT_R\n" :

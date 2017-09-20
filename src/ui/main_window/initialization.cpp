@@ -265,5 +265,6 @@ void MainWindow::initialize_status_bar()
 {
     status_bar_ = new QLabel(this);
     status_bar_->setAlignment(Qt::AlignRight);
+
     statusBar()->addWidget(status_bar_, 1);
 }

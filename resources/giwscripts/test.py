@@ -66,8 +66,13 @@ def _gen_buffers(width, height):
     tex1 = [0] * width * height * channels[0]
     tex2 = [0] * width * height * channels[1]
 
+    c_x = width * 2.0 / 3.0
+    c_y = height * 0.5
+    scale = 3.0 / width
+
     for pos_y in range(0, height):
         for pos_x in range(0, width):
+            # Buffer 1: Coloured set
             pixel_pos = [pos_x, pos_y]
 
             buffer_pos = pos_y * channels[0] * width + channels[0] * pos_x
@@ -79,12 +84,21 @@ def _gen_buffers(width, height):
             tex1[buffer_pos + 2] = _gen_color(
                 pixel_pos, [30, 120], math.cos, math.cos)
 
+            # Buffer 2: Mandelbrot set
+            pixel_pos = complex((pos_x-c_x), (pos_y-c_y)) * scale
             buffer_pos = pos_y * channels[1] * width + channels[1] * pos_x
 
+            mandel_z = complex(0, 0)
+            for _ in range(0, 20):
+                mandel_z = mandel_z * mandel_z + pixel_pos
+
+            z_norm_squared = mandel_z.real * mandel_z.real +\
+                             mandel_z.imag * mandel_z.imag
+            z_threshold = 5.0
+
             for channel in range(0, channels[1]):
-                tex2[buffer_pos + channel] = (
-                    math.exp(math.cos(pos_x / 5.0) *
-                             math.sin(pos_y / 5.0)))
+                tex2[buffer_pos + channel] = z_threshold - min(z_threshold,
+                                                               z_norm_squared)
 
     tex_arr1 = numpy.asarray(tex1, types[0]['numpy'])
     tex_arr2 = numpy.asarray(tex2, types[1]['numpy'])

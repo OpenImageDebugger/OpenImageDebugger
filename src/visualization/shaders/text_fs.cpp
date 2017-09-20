@@ -33,12 +33,20 @@ uniform sampler2D text_sampler;
 uniform vec2 pix_coord;
 uniform vec4 brightness_contrast[2];
 
+
 // Ouput data
 varying vec2 uv;
+
 
 float round_float(float f) {
     return float(int(f + 0.5));
 }
+
+
+bool giw_isnan(float val) {
+    return (val < 0.0 || 0.0 < val || val == 0.0) ? false : true;
+}
+
 
 void main()
 {
@@ -48,7 +56,7 @@ void main()
     buff_color = buff_color * brightness_contrast[0].x +
                               brightness_contrast[1].x;
 
-    if (isnan(buff_color)) {
+    if (giw_isnan(buff_color)) {
         buff_color = 0.0;
     }
 

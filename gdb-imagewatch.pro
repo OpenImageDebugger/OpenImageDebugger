@@ -1,13 +1,21 @@
-# TODO config as release by default (so the user will know how to change to debug)
+# BUILD_MODE variable can be either release or debug
+isEmpty(BUILD_MODE) {
+  BUILD_MODE = release
+}
+
+message(GDB-ImageWatch build mode: $$BUILD_MODE)
+
+CONFIG += $$BUILD_MODE
+
+# Prevent strip from producing spurious error messages
+QMAKE_STRIP = echo "strip disabled: "
+
 QT += \
   core \
   gui \
   opengl \
   widgets \
   gui
-
-TARGET = giwwindow
-TEMPLATE = lib
 
 QMAKE_CXXFLAGS += \
   -fPIC \
@@ -55,8 +63,6 @@ HEADERS += \
   src/ui/symbol_completer.h \
   src/ui/symbol_search_input.h
 
-# TODO gerar .os em outro lugar (ou limpar eles no caso do make install)
-
 # Copy resource files to build folder
 copydata.commands = \
   $(COPY_DIR) \"$$shell_path($$PWD\\resources\\giwscripts)\" \"$$shell_path($$OUT_PWD)\"; \
@@ -64,21 +70,46 @@ copydata.commands = \
   $(COPY_DIR) \"$$shell_path($$PWD\\resources\\matlab)\" \"$$shell_path($$OUT_PWD)\"; \
   $(COPY_FILE) \"$$shell_path($$PWD\\resources\\gdb-imagewatch.py)\" \"$$shell_path($$OUT_PWD)\"
 
-# TODO check about these commands, do I need them all? https://dragly.org/2013/11/05/copying-data-files-to-the-build-directory-when-working-with-qmake/
 first.depends = $(first) copydata
 export(first.depends)
 export(copydata.commands)
 QMAKE_EXTRA_TARGETS += first copydata
 
+# Instalation instructions
+isEmpty(PREFIX) {
+  PREFIX = /usr/local
+}
+
+VERSION = 1.1.0
+TARGET = giwwindow
+TEMPLATE = lib
+target.path = $$PREFIX/bin/gdb-imagewatch/
+
+install_debugger_scripts.path = $$PREFIX/bin/gdb-imagewatch/
+install_debugger_scripts.files = \
+  resources/gdb-imagewatch.py \
+  resources/giwscripts
+
+install_fonts.path = $$PREFIX/bin/gdb-imagewatch/fonts/
+install_fonts.files = resources/fonts/*
+
+install_matlab_scripts.path = $$PREFIX/bin/gdb-imagewatch/matlab
+install_matlab_scripts.files = resources/matlab/*
+
+INSTALLS += \
+  install_fonts \
+  install_matlab_scripts \
+  install_debugger_scripts \
+  target
+
+# Assorted configuration
 INCLUDEPATH += $$PWD/src
 
 CONFIG += \
   link_pkgconfig \
+  warn_on \
   c++11 \
   no_keywords
-
-# TODO ou usa isso ou nao
-#QMAKE_LFLAGS += -Xlinker -Bstatic
 
 DEFINES += "FONT_PATH=\\\"$$OUT_PWD/fonts/serif.ttf\\\""
 
@@ -99,3 +130,4 @@ OTHER_FILES += \
 
 RESOURCES += \
   resources/resources.qrc
+
