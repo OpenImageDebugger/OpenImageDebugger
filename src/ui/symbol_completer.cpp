@@ -1,25 +1,56 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2015-2017 GDB ImageWatch contributors
+ * (github.com/csantosbh/gdb-imagewatch/)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+
 #include "symbol_completer.h"
 
 
-SymbolCompleter::SymbolCompleter(QObject* parent) :
-    QCompleter(parent), m_list(), m_model()
+SymbolCompleter::SymbolCompleter(QObject* parent)
+    : QCompleter(parent)
+    , list_()
+    , model_()
 {
-    setModel(&m_model);
+    setModel(&model_);
 }
 
-void SymbolCompleter::update(QString word)
+
+void SymbolCompleter::update(const QString& word)
 {
-    QStringList filtered = m_list.filter(word, caseSensitivity());
-    m_model.setStringList(filtered);
-    m_word = word;
+    QStringList filtered = list_.filter(word, caseSensitivity());
+    model_.setStringList(filtered);
+    word_ = word;
     complete();
 }
 
-void SymbolCompleter::updateSymbolList(QStringList& symbols) {
-    m_list = symbols;
+
+void SymbolCompleter::update_symbol_list(const QStringList& symbols)
+{
+    list_ = symbols;
 }
 
-QString SymbolCompleter::word()
+
+const QString& SymbolCompleter::word() const
 {
-    return m_word;
+    return word_;
 }

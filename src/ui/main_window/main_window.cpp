@@ -48,6 +48,8 @@ MainWindow::MainWindow(QWidget* parent)
     , completer_updated_(false)
     , ac_enabled_(true)
     , link_views_enabled_(false)
+    , icon_width_base_(100)
+    , icon_height_base_(50)
     , currently_selected_stage_(nullptr)
     , ui_(new Ui::MainWindowUi)
     , plot_callback_(nullptr)
@@ -90,6 +92,14 @@ void MainWindow::draw()
     if (currently_selected_stage_ != nullptr) {
         currently_selected_stage_->draw();
     }
+}
+
+
+QSizeF MainWindow::get_icon_size()
+{
+    const qreal screen_dpi_scale = get_screen_dpi_scale();
+    return QSizeF(icon_width_base_ * screen_dpi_scale,
+                  icon_height_base_ * screen_dpi_scale);
 }
 
 
@@ -147,10 +157,10 @@ void MainWindow::set_available_symbols(const deque<string>& available_vars)
 
 void MainWindow::loop()
 {
-    const qreal screen_dpi_scale = get_screen_dpi_scale();
     // Buffer icon dimensions
-    const int icon_width     = 100 * screen_dpi_scale;
-    const int icon_height    = 50 * screen_dpi_scale;
+    QSizeF icon_size         = get_icon_size();
+    int icon_width           = icon_size.width();
+    int icon_height          = icon_size.height();
     const int bytes_per_line = icon_width * 3;
 
     // Handle buffer plot requests
@@ -161,13 +171,14 @@ void MainWindow::loop()
         shared_ptr<uint8_t> managedBuffer;
         if (request.type == Buffer::BufferType::Float64) {
             managedBuffer = make_float_buffer_from_double(
-                static_cast<double*>(get_c_ptr_from_py_buffer(request.py_buffer)),
+                static_cast<double*>(
+                    get_c_ptr_from_py_buffer(request.py_buffer)),
                 request.width_i * request.height_i * request.channels);
             srcBuffer = managedBuffer.get();
         } else {
             managedBuffer = make_shared_py_object(request.py_buffer);
-            srcBuffer =
-                static_cast<uint8_t*>(get_c_ptr_from_py_buffer(request.py_buffer));
+            srcBuffer     = static_cast<uint8_t*>(
+                get_c_ptr_from_py_buffer(request.py_buffer));
         }
 
         auto buffer_stage = stages_.find(request.variable_name_str);
@@ -259,7 +270,7 @@ void MainWindow::loop()
 
     if (completer_updated_) {
         // Update auto-complete suggestion list
-        symbol_completer_->updateSymbolList(available_vars_);
+        symbol_completer_->update_symbol_list(available_vars_);
         completer_updated_ = false;
     }
 
@@ -317,8 +328,8 @@ void MainWindow::update_status_bar()
             currently_selected_stage_->getGameObject("buffer");
         Buffer* buffer = buffer_obj->getComponent<Buffer>("buffer_component");
 
-        float mouse_x = ui_->bufferPreview->mouseX();
-        float mouse_y = ui_->bufferPreview->mouseY();
+        float mouse_x = ui_->bufferPreview->mouse_x();
+        float mouse_y = ui_->bufferPreview->mouse_y();
         float win_w   = ui_->bufferPreview->width();
         float win_h   = ui_->bufferPreview->height();
         vec4 mouse_pos_ndc(2.0 * (mouse_x - win_w / 2) / win_w,

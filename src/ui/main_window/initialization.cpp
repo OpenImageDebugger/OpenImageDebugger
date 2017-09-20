@@ -159,7 +159,7 @@ void MainWindow::initialize_symbol_completer()
     symbol_completer_->setModelSorting(
         QCompleter::CaseInsensitivelySortedModel);
 
-    ui_->symbolList->setCompleter(symbol_completer_);
+    ui_->symbolList->set_completer(symbol_completer_);
     connect(ui_->symbolList->completer(),
             SIGNAL(activated(QString)),
             this,

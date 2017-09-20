@@ -66,6 +66,8 @@ class MainWindow : public QMainWindow
 
     void draw();
 
+    QSizeF get_icon_size();
+
     // External interface
     void set_plot_callback(int (*plot_cbk)(const char*));
 
@@ -162,6 +164,9 @@ class MainWindow : public QMainWindow
     bool completer_updated_;
     bool ac_enabled_;
     bool link_views_enabled_;
+
+    const int icon_width_base_;
+    const int icon_height_base_;
 
     double render_framerate_;
 

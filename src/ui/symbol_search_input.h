@@ -1,30 +1,37 @@
-#ifndef SYMBOL_SEARCH_INPUT_H
-#define SYMBOL_SEARCH_INPUT_H
+/*
+ * Advanced search completer based on:
+ * http://www.qtcentre.org/threads/23518
+ */
+
+#ifndef SYMBOL_SEARCH_INPUT_H_
+#define SYMBOL_SEARCH_INPUT_H_
 
 #include <QLineEdit>
 
 #include "ui/symbol_completer.h"
 
+
 class SymbolSearchInput : public QLineEdit
 {
     Q_OBJECT
 
-public:
-    SymbolSearchInput(QWidget *parent = 0);
+  public:
+    SymbolSearchInput(QWidget* parent = 0);
     ~SymbolSearchInput();
 
-    void setCompleter(SymbolCompleter *completer_);
-    SymbolCompleter *completer() const;
+    void set_completer(SymbolCompleter* completer_);
 
-protected:
-    void keyPressEvent(QKeyEvent *e);
+    SymbolCompleter* completer() const;
 
-private Q_SLOTS:
-    void insertCompletion(const QString &completion);
+  protected:
+    void keyPressEvent(QKeyEvent* e);
 
-private:
-    SymbolCompleter *completer_;
+  private Q_SLOTS:
+    void insert_completion(const QString& completion);
+
+  private:
+    SymbolCompleter* completer_;
 };
 
 
-#endif // SYMBOL_SEARCH_INPUT_H
+#endif // SYMBOL_SEARCH_INPUT_H_
