@@ -29,7 +29,7 @@ Camera& Camera::operator=(const Camera& cam) {
 }
 
 void Camera::window_resized(int w, int h) {
-    projection.setOrthoProjection(w/2.0, h/2.0, -1.0f, 1.0f);
+    projection.set_ortho_projection(w/2.0, h/2.0, -1.0f, 1.0f);
     canvas_width_ = w;
     canvas_height_ = h;
 }

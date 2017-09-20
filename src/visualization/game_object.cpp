@@ -40,7 +40,7 @@ void GameObject::add_component(const std::string &component_name, std::shared_pt
 mat4 GameObject::get_pose()
 {
     mat4 pose;
-    pose.setFromSRT(scale.x(), scale.y(), scale.z(),
+    pose.set_from_srt(scale.x(), scale.y(), scale.z(),
                     angle,
                     position.x(), position.y(), position.z());
     return pose;

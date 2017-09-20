@@ -2,7 +2,7 @@
 
 #include "gl_canvas.h"
 
-#include "main_window.h"
+#include "main_window/main_window.h"
 #include "visualization/game_object.h"
 #include "visualization/components/camera.h"
 
@@ -104,7 +104,7 @@ void GLCanvas::render_buffer_icon(Stage* stage,
     // Adapt camera to the thumbnail dimentions
     cam->window_resized(icon_width, icon_height);
     // Flips the projected image along the horizontal axis
-    cam->projection.setOrthoProjection(icon_width/2.0, -icon_height/2.0, -1.0f, 1.0f);
+    cam->projection.set_ortho_projection(icon_width/2.0, -icon_height/2.0, -1.0f, 1.0f);
     // Reposition buffer in the center of the canvas
     cam->recenter_camera();
 

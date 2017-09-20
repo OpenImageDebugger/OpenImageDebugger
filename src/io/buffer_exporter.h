@@ -39,4 +39,4 @@ class BufferExporter
                               OutputType type);
 };
 
-#endif
+#endif // BUFFER_EXPORTER_H_

@@ -351,7 +351,7 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
                 px += 0.5;
             }
 
-            tile_model.setFromST(buff_w, buff_h, 1.0,
+            tile_model.set_from_st(buff_w, buff_h, 1.0,
                                  px,
                                  py, 0.0f);
             buff_prog.uniformMatrix4fv("mvp", 1, GL_FALSE, (mvp * tile_model).data());
