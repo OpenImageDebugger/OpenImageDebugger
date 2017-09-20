@@ -6,6 +6,8 @@ Module developed for quick testing the ImageWatch shared library
 
 import math
 import time
+import threading
+import queue
 
 import numpy
 
@@ -36,9 +38,12 @@ def giwtest(script_path):
 
         while window.is_ready():
             time.sleep(0.5)
+
     except KeyboardInterrupt:
         window.terminate()
         exit(0)
+
+    dummy_debugger.kill()
 
 
 def _gen_color(pos, k, f_a, f_b):
@@ -124,6 +129,24 @@ class DummyDebugger(BridgeInterface):
         self._buffers = _gen_buffers(width, height)
         self._buffer_names = [name for name in self._buffers]
 
+        self._is_running = True
+        self._request_queue = queue.Queue()
+        self._request_consumer_thread = threading.Thread(
+            target=self._request_consumer,
+            daemon=True)
+        self._request_consumer_thread.start()
+
+    def _request_consumer(self):
+        while self._is_running:
+            latest_request = self._request_queue.get(block=True, timeout=None)
+            latest_request()
+
+    def kill(self):
+        """
+        Request consumer thread to finish its execution
+        """
+        self._is_running = False
+
     def get_casted_pointer(self, typename, debugger_object):
         """
         No need to cast anything in this example
@@ -152,4 +175,4 @@ class DummyDebugger(BridgeInterface):
         return None
 
     def queue_request(self, callable_request):
-        callable_request()
+        self._request_queue.put(callable_request)
