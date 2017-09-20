@@ -48,8 +48,12 @@ void main()
     buff_color = buff_color * brightness_contrast[0].x +
                               brightness_contrast[1].x;
 
+    if (isnan(buff_color)) {
+        buff_color = 0.0;
+    }
+
     float text_color = texture2D(text_sampler, uv).r;
-    float pix_intensity = round_float(1.0-buff_color);
+    float pix_intensity = round_float(1.0 - buff_color);
 
     color = vec4(vec3(pix_intensity), text_color);
 
