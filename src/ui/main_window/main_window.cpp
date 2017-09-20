@@ -160,14 +160,14 @@ void MainWindow::loop()
         uint8_t* srcBuffer;
         shared_ptr<uint8_t> managedBuffer;
         if (request.type == Buffer::BufferType::Float64) {
-            managedBuffer = makeFloatBufferFromDouble(
-                static_cast<double*>(getCPtrFromPyBuffer(request.py_buffer)),
+            managedBuffer = make_float_buffer_from_double(
+                static_cast<double*>(get_c_ptr_from_py_buffer(request.py_buffer)),
                 request.width_i * request.height_i * request.channels);
             srcBuffer = managedBuffer.get();
         } else {
-            managedBuffer = makeSharedPyObject(request.py_buffer);
+            managedBuffer = make_shared_py_object(request.py_buffer);
             srcBuffer =
-                static_cast<uint8_t*>(getCPtrFromPyBuffer(request.py_buffer));
+                static_cast<uint8_t*>(get_c_ptr_from_py_buffer(request.py_buffer));
         }
 
         auto buffer_stage = stages_.find(request.variable_name_str);

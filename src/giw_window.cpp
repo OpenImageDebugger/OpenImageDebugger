@@ -179,7 +179,7 @@ void giw_set_available_symbols(WindowHandler handler,
     for (Py_ssize_t pos = 0; pos < PyList_Size(available_vars_py); ++pos) {
         string var_name_str;
         PyObject* listItem = PyList_GetItem(available_vars_py, pos);
-        copyPyString(var_name_str, listItem);
+        copy_py_string(var_name_str, listItem);
         available_vars_stl.push_back(var_name_str);
     }
 
@@ -234,15 +234,15 @@ void giw_plot_buffer(WindowHandler handler, PyObject* buffer_metadata)
     /*
      * Check if expected fields have the correct types
      */
-    CHECK_FIELD_TYPE(variable_name, checkPyStringType, "plot_buffer");
-    CHECK_FIELD_TYPE(display_name, checkPyStringType, "plot_buffer");
+    CHECK_FIELD_TYPE(variable_name, check_py_string_type, "plot_buffer");
+    CHECK_FIELD_TYPE(display_name, check_py_string_type, "plot_buffer");
     CHECK_FIELD_TYPE(pointer, PyMemoryView_Check, "plot_buffer");
     CHECK_FIELD_TYPE(width, PyLong_Check, "plot_buffer");
     CHECK_FIELD_TYPE(height, PyLong_Check, "plot_buffer");
     CHECK_FIELD_TYPE(channels, PyLong_Check, "plot_buffer");
     CHECK_FIELD_TYPE(type, PyLong_Check, "plot_buffer");
     CHECK_FIELD_TYPE(row_stride, PyLong_Check, "plot_buffer");
-    CHECK_FIELD_TYPE(pixel_layout, checkPyStringType, "plot_buffer");
+    CHECK_FIELD_TYPE(pixel_layout, check_py_string_type, "plot_buffer");
 
     /*
      * Enqueue provided fields so the request can be processed in the main
@@ -251,11 +251,11 @@ void giw_plot_buffer(WindowHandler handler, PyObject* buffer_metadata)
     BufferRequestMessage request(py_pointer,
                                  py_variable_name,
                                  py_display_name,
-                                 getPyInt(py_width),
-                                 getPyInt(py_height),
-                                 getPyInt(py_channels),
-                                 getPyInt(py_type),
-                                 getPyInt(py_row_stride),
+                                 get_py_int(py_width),
+                                 get_py_int(py_height),
+                                 get_py_int(py_channels),
+                                 get_py_int(py_type),
+                                 get_py_int(py_row_stride),
                                  py_pixel_layout);
 
     window->plot_buffer(request);

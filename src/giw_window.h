@@ -56,7 +56,6 @@ typedef void* WindowHandler;
 GIW_API
 AppHandler giw_initialize();
 
-
 /**
  * Cleanup GIW application
  *
@@ -68,7 +67,6 @@ AppHandler giw_initialize();
 GIW_API
 void giw_cleanup(AppHandler handler);
 
-
 /**
  * Request GIW application to be terminated
  *
@@ -77,7 +75,6 @@ void giw_cleanup(AppHandler handler);
  */
 GIW_API
 void giw_terminate();
-
 
 /**
  * Execute GUI loop
@@ -90,7 +87,6 @@ void giw_terminate();
  */
 GIW_API
 void giw_exec(AppHandler handler);
-
 
 /**
  * Create and open new window
@@ -105,7 +101,6 @@ void giw_exec(AppHandler handler);
 GIW_API
 WindowHandler giw_create_window(int (*plot_callback)(const char*));
 
-
 /**
  * Check if the given window is open
  *
@@ -114,7 +109,6 @@ WindowHandler giw_create_window(int (*plot_callback)(const char*));
  */
 GIW_API
 int giw_is_window_ready(WindowHandler handler);
-
 
 /**
  * Clean up GIW window
@@ -126,7 +120,6 @@ int giw_is_window_ready(WindowHandler handler);
  */
 GIW_API
 void giw_destroy_window(WindowHandler handler);
-
 
 /**
  * Get a list of the names of all buffers being visualized
@@ -140,7 +133,6 @@ void giw_destroy_window(WindowHandler handler);
  */
 GIW_API
 PyObject* giw_get_observed_buffers(WindowHandler handler);
-
 
 /**
  * Set list of symbols available in the current context
@@ -156,7 +148,6 @@ PyObject* giw_get_observed_buffers(WindowHandler handler);
 GIW_API
 void giw_set_available_symbols(WindowHandler handler,
                                PyObject* available_vars);
-
 
 /**
  * Add a buffer to the plot list
@@ -174,7 +165,6 @@ void giw_set_available_symbols(WindowHandler handler,
  * */
 GIW_API
 void giw_plot_buffer(WindowHandler handler, PyObject* bufffer_metadata);
-
 
 #ifdef __cplusplus
 }
