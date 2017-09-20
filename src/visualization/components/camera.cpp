@@ -67,8 +67,8 @@ bool Camera::post_initialize() {
 void Camera::set_initial_zoom() {
     using std::pow;
 
-    GameObject* buffer_obj = game_object->stage->getGameObject("buffer");
-    Buffer* buff = buffer_obj->getComponent<Buffer>("buffer_component");
+    GameObject* buffer_obj = game_object->stage->get_game_object("buffer");
+    Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
     float buf_w = buff->buffer_width_f;
     float buf_h = buff->buffer_height_f;
     zoom_power_ = 0.0;

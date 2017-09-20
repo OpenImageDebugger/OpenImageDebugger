@@ -202,7 +202,7 @@ void MainWindow::loop()
             ui_->bufferPreview->render_buffer_icon(
                 stage.get(), icon_width, icon_height);
 
-            QImage bufferIcon(stage->buffer_icon_.data(),
+            QImage bufferIcon(stage->buffer_icon.data(),
                               icon_width,
                               icon_height,
                               bytes_per_line,
@@ -237,7 +237,7 @@ void MainWindow::loop()
                 stage.get(), icon_width, icon_height);
 
             // Looking for corresponding item...
-            QImage bufferIcon(stage->buffer_icon_.data(),
+            QImage bufferIcon(stage->buffer_icon.data(),
                               icon_width,
                               icon_height,
                               bytes_per_line,
@@ -321,12 +321,12 @@ void MainWindow::update_status_bar()
     if (currently_selected_stage_ != nullptr) {
         stringstream message;
         GameObject* cam_obj =
-            currently_selected_stage_->getGameObject("camera");
-        Camera* cam = cam_obj->getComponent<Camera>("camera_component");
+            currently_selected_stage_->get_game_object("camera");
+        Camera* cam = cam_obj->get_component<Camera>("camera_component");
 
         GameObject* buffer_obj =
-            currently_selected_stage_->getGameObject("buffer");
-        Buffer* buffer = buffer_obj->getComponent<Buffer>("buffer_component");
+            currently_selected_stage_->get_game_object("buffer");
+        Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
 
         float mouse_x = ui_->bufferPreview->mouse_x();
         float mouse_y = ui_->bufferPreview->mouse_y();

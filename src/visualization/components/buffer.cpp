@@ -239,8 +239,8 @@ float Buffer::tile_coord_y(int y) {
 }
 
 void Buffer::update() {
-    GameObject* cam_obj = game_object->stage->getGameObject("camera");
-    Camera* camera = cam_obj->getComponent<Camera>("camera_component");
+    GameObject* cam_obj = game_object->stage->get_game_object("camera");
+    Camera* camera = cam_obj->get_component<Camera>("camera_component");
     float zoom = camera->get_zoom();
 
     buff_prog.use();
@@ -354,7 +354,7 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
             tile_model.set_from_st(buff_w, buff_h, 1.0,
                                  px,
                                  py, 0.0f);
-            buff_prog.uniformMatrix4fv("mvp", 1, GL_FALSE, (mvp * tile_model).data());
+            buff_prog.uniform_matrix4fv("mvp", 1, GL_FALSE, (mvp * tile_model).data());
             buff_prog.uniform2f("buffer_dimension", buff_w, buff_h);
 
             px += buff_w/2;

@@ -152,14 +152,14 @@ inline void pix2str(const Buffer::BufferType& type,
 }
 
 void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
-    GameObject* cam_obj = game_object->stage->getGameObject("camera");
-    Camera* camera = cam_obj->getComponent<Camera>("camera_component");
+    GameObject* cam_obj = game_object->stage->get_game_object("camera");
+    Camera* camera = cam_obj->get_component<Camera>("camera_component");
     float zoom = camera->get_zoom();
 
     if(zoom > 40) {
         mat4 camRot = mat4::rotation(game_object->angle);
 
-        Buffer* buffer_component = game_object->getComponent<Buffer>("buffer_component");
+        Buffer* buffer_component = game_object->get_component<Buffer>("buffer_component");
         float buffer_width_f = buffer_component->buffer_width_f;
         float buffer_height_f = buffer_component->buffer_height_f;
         int step = buffer_component->step;
@@ -242,7 +242,7 @@ void BufferValues::draw_text(const mat4& projection,
                              float y,
                              float y_offset,
                              float channels) {
-    Buffer* buffer_component = game_object->getComponent<Buffer>("buffer_component");
+    Buffer* buffer_component = game_object->get_component<Buffer>("buffer_component");
     const float* auto_buffer_contrast_brightness;
     if(game_object->stage->contrast_enabled) {
         auto_buffer_contrast_brightness =
@@ -266,7 +266,7 @@ void BufferValues::draw_text(const mat4& projection,
     glBindTexture(GL_TEXTURE_2D, text_tex);
     text_prog.uniform1i("text_sampler", 1);
 
-    text_prog.uniformMatrix4fv("mvp", 1, GL_FALSE,
+    text_prog.uniform_matrix4fv("mvp", 1, GL_FALSE,
             (projection*viewInv).data());
     text_prog.uniform2f("pix_coord",
             buffer_component->tile_coord_x(x + buffer_component->buffer_width_f/2.f),

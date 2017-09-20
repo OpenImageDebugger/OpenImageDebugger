@@ -104,15 +104,15 @@ void MainWindow::recenter_buffer()
 {
     if (link_views_enabled_) {
         for (auto& stage : stages_) {
-            GameObject* cam_obj = stage.second->getGameObject("camera");
-            Camera* cam = cam_obj->getComponent<Camera>("camera_component");
+            GameObject* cam_obj = stage.second->get_game_object("camera");
+            Camera* cam = cam_obj->get_component<Camera>("camera_component");
             cam->recenter_camera();
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
             GameObject* cam_obj =
-                currently_selected_stage_->getGameObject("camera");
-            Camera* cam = cam_obj->getComponent<Camera>("camera_component");
+                currently_selected_stage_->get_game_object("camera");
+            Camera* cam = cam_obj->get_component<Camera>("camera_component");
             cam->recenter_camera();
         }
     }
@@ -131,13 +131,13 @@ void MainWindow::rotate_90_cw()
 {
     if (link_views_enabled_) {
         for (auto& stage : stages_) {
-            GameObject* buff_obj = stage.second->getGameObject("buffer");
+            GameObject* buff_obj = stage.second->get_game_object("buffer");
             buff_obj->angle += 90.f * M_PI / 180.f;
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
             GameObject* buff_obj =
-                currently_selected_stage_->getGameObject("buffer");
+                currently_selected_stage_->get_game_object("buffer");
             buff_obj->angle += 90.f * M_PI / 180.f;
         }
     }
@@ -150,13 +150,13 @@ void MainWindow::rotate_90_ccw()
 {
     if (link_views_enabled_) {
         for (auto& stage : stages_) {
-            GameObject* buff_obj = stage.second->getGameObject("buffer");
+            GameObject* buff_obj = stage.second->get_game_object("buffer");
             buff_obj->angle -= 90.f * M_PI / 180.f;
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
             GameObject* buff_obj =
-                currently_selected_stage_->getGameObject("buffer");
+                currently_selected_stage_->get_game_object("buffer");
             buff_obj->angle -= 90.f * M_PI / 180.f;
         }
     }
@@ -232,8 +232,9 @@ void MainWindow::export_buffer()
 
     auto stage =
         stages_.find(sender_action->data().toString().toStdString())->second;
-    GameObject* buffer_obj = stage->getGameObject("buffer");
-    Buffer* component = buffer_obj->getComponent<Buffer>("buffer_component");
+
+    GameObject* buffer_obj = stage->get_game_object("buffer");
+    Buffer* component = buffer_obj->get_component<Buffer>("buffer_component");
 
     QFileDialog file_dialog(this);
     file_dialog.setAcceptMode(QFileDialog::AcceptSave);

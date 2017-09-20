@@ -1,14 +1,47 @@
-#pragma once
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2015-2017 GDB ImageWatch contributors
+ * (github.com/csantosbh/gdb-imagewatch/)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 
-#include <string>
+#ifndef SHADER_H_
+#define SHADER_H_
+
 #include <iostream>
 #include <map>
+#include <string>
 #include <vector>
+
 #include <GL/gl.h>
 
-class ShaderProgram {
-public:
-    enum TexelChannels {FormatR, FormatRG, FormatRGB, FormatRGBA};
+
+class ShaderProgram
+{
+  public:
+    enum TexelChannels { FormatR, FormatRG, FormatRGB, FormatRGBA };
+
+    ShaderProgram();
+
+    ~ShaderProgram();
 
     bool create(const char* v_source,
                 const char* f_source,
@@ -21,27 +54,34 @@ public:
 
     void uniform2f(const std::string& name, float x, float y);
 
-    void uniform3fv(const std::string& name, int count, const float *data);
+    void uniform3fv(const std::string& name, int count, const float* data);
 
-    void uniform4fv(const std::string& name, int count, const float *data);
+    void uniform4fv(const std::string& name, int count, const float* data);
 
-    void uniformMatrix4fv(const std::string& name, int count, GLboolean transpose, const float* value);
+    void uniform_matrix4fv(const std::string& name,
+                           int count,
+                           GLboolean transpose,
+                           const float* value);
 
     // Program utility
     void use();
 
-    ~ShaderProgram();
+  private:
+    GLuint program_;
 
-private:
-    GLuint program_ = 0;
     TexelChannels texel_format_;
+
     std::map<std::string, GLuint> uniforms_;
+
     char pixel_layout_[5];
 
-    GLuint compile(GLuint type, GLchar const *source);
+    GLuint compile(GLuint type, GLchar const* source);
 
-    std::string getShaderType(GLuint type);
-    bool shaderIsOutdated(TexelChannels texel_format,
-                          const std::vector<std::string>& uniforms,
-                          const char* pixel_layout);
+    std::string get_shader_type(GLuint type);
+
+    bool is_shader_outdated(TexelChannels texel_format,
+                            const std::vector<std::string>& uniforms,
+                            const char* pixel_layout);
 };
+
+#endif // SHADER_H_
