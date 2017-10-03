@@ -23,6 +23,8 @@
  * IN THE SOFTWARE.
  */
 
+#include <cmath>
+
 #include <QDebug>
 #include <QFontDatabase>
 #include <QSettings>

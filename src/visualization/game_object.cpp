@@ -23,6 +23,9 @@
  * IN THE SOFTWARE.
  */
 
+#include <cmath>
+#include <map>
+
 #include "game_object.h"
 
 #include "visualization/components/component.h"
