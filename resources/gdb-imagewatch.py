@@ -64,5 +64,4 @@ def main():
         debugger.register_event_handlers(event_handler)
 
 
-if __name__ == "__main__":
-    main()
+main()
