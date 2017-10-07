@@ -285,7 +285,7 @@ QStatusBar::item { border: 0; };</string>
             <widget class="QToolButton" name="rotate_90_cw">
              <property name="geometry">
               <rect>
-               <x>170</x>
+               <x>210</x>
                <y>0</y>
                <width>35</width>
                <height>24</height>
@@ -298,7 +298,7 @@ QStatusBar::item { border: 0; };</string>
             <widget class="QToolButton" name="rotate_90_ccw">
              <property name="geometry">
               <rect>
-               <x>210</x>
+               <x>170</x>
                <y>0</y>
                <width>35</width>
                <height>24</height>

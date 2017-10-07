@@ -80,7 +80,7 @@ isEmpty(PREFIX) {
   PREFIX = /usr/local
 }
 
-VERSION = 1.1.0
+VERSION = 1.1.1
 TARGET = giwwindow
 TEMPLATE = lib
 target.path = $$PREFIX/bin/gdb-imagewatch/
