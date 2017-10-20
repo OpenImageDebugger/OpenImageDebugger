@@ -180,31 +180,32 @@ void BufferValues::generate_glyphs_texture()
 
 
 inline void pix2str(const Buffer::BufferType& type,
-                    char* pix_label,
                     const uint8_t* buffer,
-                    int& pos,
-                    const int& c)
+                    const int& pos,
+                    const int& channel,
+                    const int label_length,
+                    char* pix_label)
 {
     if (type == Buffer::BufferType::Float32 ||
         type == Buffer::BufferType::Float64) {
-        float fpix = reinterpret_cast<const float*>(buffer)[pos + c];
-        sprintf(pix_label, "%.3f", fpix);
+        float fpix = reinterpret_cast<const float*>(buffer)[pos + channel];
+        snprintf(pix_label, label_length, "%.3f", fpix);
         if (strlen(pix_label) > 7)
-            sprintf(pix_label, "%.3e", fpix);
+            snprintf(pix_label, label_length, "%.3e", fpix);
     } else if (type == Buffer::BufferType::UnsignedByte) {
-        sprintf(pix_label, "%d", buffer[pos + c]);
+        snprintf(pix_label, label_length, "%d", buffer[pos + channel]);
     } else if (type == Buffer::BufferType::Short) {
-        short fpix = reinterpret_cast<const short*>(buffer)[pos + c];
-        sprintf(pix_label, "%d", fpix);
+        short fpix = reinterpret_cast<const short*>(buffer)[pos + channel];
+        snprintf(pix_label, label_length, "%d", fpix);
     } else if (type == Buffer::BufferType::UnsignedShort) {
         unsigned short fpix =
-            reinterpret_cast<const unsigned short*>(buffer)[pos + c];
-        sprintf(pix_label, "%d", fpix);
+            reinterpret_cast<const unsigned short*>(buffer)[pos + channel];
+        snprintf(pix_label, label_length, "%d", fpix);
     } else if (type == Buffer::BufferType::Int32) {
-        int fpix = reinterpret_cast<const int*>(buffer)[pos + c];
-        sprintf(pix_label, "%d", fpix);
+        int fpix = reinterpret_cast<const int*>(buffer)[pos + channel];
+        snprintf(pix_label, label_length, "%d", fpix);
         if (strlen(pix_label) > 7)
-            sprintf(pix_label, "%.3e", static_cast<float>(fpix));
+            snprintf(pix_label, label_length, "%.3e", static_cast<float>(fpix));
     }
 }
 
@@ -258,7 +259,8 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
         int pos_center_x = -buffer_width_f / 2;
         int pos_center_y = -buffer_height_f / 2;
 
-        char pix_label[30];
+        const int label_length = 30;
+        char pix_label[label_length];
 
         int pos;
         float y_off;
@@ -289,7 +291,7 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
                     y_off = (0.5f * (channels - 1) - c) / channels -
                             recenter_factors[c];
 
-                    pix2str(type, pix_label, buffer, pos, c);
+                    pix2str(type, buffer, pos, c, label_length, pix_label);
                     draw_text(projection,
                               view_inv,
                               camRot,
