@@ -26,6 +26,7 @@
 #include <iomanip>
 
 #include <QAction>
+#include <QDateTime>
 #include <QScreen>
 #include <QSettings>
 
@@ -292,14 +293,35 @@ void MainWindow::loop()
 
 void MainWindow::persist_settings()
 {
+    using BufferExpiration = QPair<QString, QDateTime>;
+
     QSettings settings(QSettings::Format::IniFormat,
                        QSettings::Scope::UserScope,
                        "gdbimagewatch");
 
-    QList<QString> current_session_buffers;
+    QList<BufferExpiration> persisted_session_buffers;
+
+    // Load previous session symbols
+    QList<BufferExpiration> previous_session_buffers =
+        settings.value("PreviousSession/buffers")
+            .value<QList<BufferExpiration>>();
+
+    QDateTime now             = QDateTime::currentDateTime();
+    QDateTime next_expiration = now.addDays(1);
+
+    // Of the buffers not currently being visualized, only keep those whose
+    // timer hasn't expired yet
+    for (const auto& prev_buff : previous_session_buffers) {
+        if (held_buffers_.find(prev_buff.first.toStdString()) ==
+                held_buffers_.end() &&
+            prev_buff.second >= now) {
+            persisted_session_buffers.append(prev_buff);
+        }
+    }
 
     for (const auto& held_buffer : held_buffers_) {
-        current_session_buffers.append(held_buffer.first.c_str());
+        persisted_session_buffers.append(
+            BufferExpiration(held_buffer.first.c_str(), next_expiration));
     }
 
     // Write maximum framerate
@@ -307,7 +329,7 @@ void MainWindow::persist_settings()
 
     // Write previous session symbols
     settings.setValue("PreviousSession/buffers",
-                      QVariant::fromValue(current_session_buffers));
+                      QVariant::fromValue(persisted_session_buffers));
 
     // Write window position/size
     settings.beginGroup("MainWindow");

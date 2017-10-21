@@ -25,6 +25,7 @@
 
 #include <cmath>
 
+#include <QDateTime>
 #include <QDebug>
 #include <QFontDatabase>
 #include <QSettings>
@@ -36,7 +37,10 @@
 
 void MainWindow::initialize_settings()
 {
-    qRegisterMetaTypeStreamOperators<QList<QString>>("QList<QString>");
+    using BufferExpiration = QPair<QString, QDateTime>;
+
+    qRegisterMetaTypeStreamOperators<QList<BufferExpiration>>(
+        "QList<QPair<QString, QDateTime>>");
 
     QSettings settings(QSettings::Format::IniFormat,
                        QSettings::Scope::UserScope,
@@ -52,11 +56,16 @@ void MainWindow::initialize_settings()
     }
 
     // Load previous session symbols
-    QList<QString> buffers =
-        settings.value("PreviousSession/buffers").value<QList<QString>>();
+    QDateTime now = QDateTime::currentDateTime();
+    QList<BufferExpiration> previous_buffers =
+        settings.value("PreviousSession/buffers")
+            .value<QList<BufferExpiration>>();
 
-    for (const auto& i : buffers) {
-        previous_session_buffers_.insert(i.toStdString());
+    for (const auto& previous_buffer : previous_buffers) {
+        if (previous_buffer.second >= now) {
+            previous_session_buffers_.insert(
+                previous_buffer.first.toStdString());
+        }
     }
 
     // Load window position/size
