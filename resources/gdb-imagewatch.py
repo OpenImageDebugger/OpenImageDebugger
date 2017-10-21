@@ -8,10 +8,9 @@ window with a couple of sample buffers; otherwise, should be invoked by the
 debugger (GDB).
 """
 
-import sys
 import argparse
-
 import os
+import sys
 
 
 def get_debugger_bridge():
@@ -20,10 +19,10 @@ def get_debugger_bridge():
     debuggers, this will be the place to instantiate its bridge object.
     """
     from giwscripts.debuggers import gdbbridge
-    from giwscripts import giwtype
+    from giwscripts import typebridge
 
     try:
-        return gdbbridge.GdbBridge(giwtype)
+        return gdbbridge.GdbBridge(typebridge.TypeBridge())
     except Exception as err:
         print(err)
 
