@@ -11,13 +11,6 @@ import re
 from giwscripts import symbols
 from giwscripts.giwtypes import interface
 
-import numpy as np
-
-# we need the gdb module as we need to call methods
-# for finding the data, width and height of
-# Eigen::Matrix or Eigen::Map
-import gdb
-
 
 class EigenXX(interface.TypeInspectorInterface):
     """
@@ -57,11 +50,11 @@ class EigenXX(interface.TypeInspectorInterface):
 
         # differentiate between Map and Matrix in handling
         if 'Map' in str(picked_obj.type):
-            str_data = obj_name + '.m_data'
-            buffer = debugger_bridge.get_casted_pointer(current_type, gdb.parse_and_eval(str_data))
+
+            buffer = debugger_bridge.get_casted_pointer(current_type, picked_obj['m_data'])
         else:
-            str_data ='&' + obj_name + '.m_storage'
-            buffer = debugger_bridge.get_casted_pointer(current_type, gdb.parse_and_eval(str_data))
+            buffer = debugger_bridge.get_casted_pointer(current_type, picked_obj['m_storage'].address)
+
 
         if buffer == 0x0:
             raise Exception('Received null buffer!')
