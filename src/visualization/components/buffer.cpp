@@ -34,7 +34,6 @@
 #include "visualization/shaders/giw_shaders.h"
 #include "visualization/stage.h"
 
-
 using namespace std;
 
 
@@ -96,6 +95,12 @@ void Buffer::get_pixel_info(stringstream& message, int x, int y)
         }
     }
     message << "]";
+}
+
+
+void Buffer::rotate(float angle)
+{
+    angle_ += angle;
 }
 
 
@@ -310,7 +315,7 @@ void Buffer::update()
 {
     GameObject* cam_obj = game_object->stage->get_game_object("camera");
     Camera* camera      = cam_obj->get_component<Camera>("camera_component");
-    float zoom          = camera->get_zoom();
+    float zoom          = camera->compute_zoom();
 
     buff_prog.use();
     if (zoom > 40) {
@@ -318,6 +323,31 @@ void Buffer::update()
     } else {
         buff_prog.uniform1i("enable_borders", 0);
     }
+
+    update_object_pose();
+}
+
+
+void Buffer::update_object_pose()
+{
+    mat4 rotation = mat4::rotation(angle_);
+
+    mat4 transposition;
+
+    if(transpose) {
+        // clang-format off
+        transposition << std::initializer_list<float> {
+            0,1,0,0,
+            1,0,0,0,
+            0,0,1,0,
+            0,0,0,1
+        };
+        // clang-format on
+    } else {
+        transposition.set_identity();
+    }
+
+    game_object->set_pose(transposition * rotation);
 }
 
 
@@ -372,6 +402,8 @@ bool Buffer::initialize()
                  GL_STATIC_DRAW);
 
     setup_gl_buffer();
+
+    update_object_pose();
 
     return true;
 }
@@ -471,9 +503,6 @@ void Buffer::setup_gl_buffer()
 {
     int buffer_width_i  = static_cast<int>(buffer_width_f);
     int buffer_height_i = static_cast<int>(buffer_height_f);
-
-    game_object->scale    = {1.0, 1.0, 1.0f, 0.0f};
-    game_object->position = {0.f, 0.f, 0.f, 1.f};
 
     // Initialize contrast parameters
     reset_contrast_brightness_parameters();

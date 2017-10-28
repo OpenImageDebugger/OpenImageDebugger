@@ -132,16 +132,21 @@ void MainWindow::link_views_toggle()
 
 void MainWindow::rotate_90_cw()
 {
+    const auto request_90_cw_rotation = [](Stage* stage) {
+        GameObject* buffer_obj = stage->get_game_object("buffer");
+        Buffer* buffer_comp =
+            buffer_obj->get_component<Buffer>("buffer_component");
+
+        buffer_comp->rotate(-90.f * M_PI / 180.f);
+    };
+
     if (link_views_enabled_) {
         for (auto& stage : stages_) {
-            GameObject* buff_obj = stage.second->get_game_object("buffer");
-            buff_obj->angle += 90.f * M_PI / 180.f;
+            request_90_cw_rotation(stage.second.get());
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
-            GameObject* buff_obj =
-                currently_selected_stage_->get_game_object("buffer");
-            buff_obj->angle += 90.f * M_PI / 180.f;
+            request_90_cw_rotation(currently_selected_stage_);
         }
     }
 
@@ -151,16 +156,21 @@ void MainWindow::rotate_90_cw()
 
 void MainWindow::rotate_90_ccw()
 {
+    const auto request_90_ccw_rotation = [](Stage* stage) {
+        GameObject* buffer_obj = stage->get_game_object("buffer");
+        Buffer* buffer_comp =
+            buffer_obj->get_component<Buffer>("buffer_component");
+
+        buffer_comp->rotate(90.f * M_PI / 180.f);
+    };
+
     if (link_views_enabled_) {
         for (auto& stage : stages_) {
-            GameObject* buff_obj = stage.second->get_game_object("buffer");
-            buff_obj->angle -= 90.f * M_PI / 180.f;
+            request_90_ccw_rotation(stage.second.get());
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
-            GameObject* buff_obj =
-                currently_selected_stage_->get_game_object("buffer");
-            buff_obj->angle -= 90.f * M_PI / 180.f;
+            request_90_ccw_rotation(currently_selected_stage_);
         }
     }
 

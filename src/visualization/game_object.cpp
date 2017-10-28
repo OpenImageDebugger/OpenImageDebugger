@@ -28,20 +28,20 @@
 
 #include "game_object.h"
 
+#include "visualization/components/camera.h"
 #include "visualization/components/component.h"
+#include "visualization/stage.h"
 
 
 GameObject::GameObject()
-    : scale(1.0, 1.0, 1.0, 0.0)
-    , position(0.0, 0.0, 0.0, 1.0)
-    , angle(0.0)
 {
+    pose_.set_identity();
 }
 
 
 bool GameObject::initialize(GLCanvas* gl_canvas)
 {
-    for (auto comp : all_components) {
+    for (const auto& comp : all_components_) {
         comp.second->game_object = this;
         comp.second->gl_canvas   = gl_canvas;
         if (!comp.second->initialize()) {
@@ -54,9 +54,10 @@ bool GameObject::initialize(GLCanvas* gl_canvas)
 
 bool GameObject::post_initialize()
 {
-    for (auto comp : all_components) {
-        if (!comp.second->post_initialize())
+    for (const auto& comp : all_components_) {
+        if (!comp.second->post_initialize()) {
             return false;
+        }
     }
     return true;
 }
@@ -64,35 +65,42 @@ bool GameObject::post_initialize()
 
 void GameObject::update()
 {
-    for (auto comp : all_components)
+    for (const auto& comp : all_components_) {
         comp.second->update();
+    }
 }
 
 void GameObject::add_component(const std::string& component_name,
                                std::shared_ptr<Component> component)
 {
-    all_components[component_name] = component;
+    all_components_[component_name] = component;
 }
 
 
 mat4 GameObject::get_pose()
 {
-    mat4 pose;
-    pose.set_from_srt(scale.x(),
-                      scale.y(),
-                      scale.z(),
-                      angle,
-                      position.x(),
-                      position.y(),
-                      position.z());
-    return pose;
+    return pose_;
+}
+
+
+void GameObject::set_pose(const mat4& pose)
+{
+    pose_ = pose;
 }
 
 
 void GameObject::mouse_drag_event(int mouse_x, int mouse_y)
 {
-    for (auto comp : all_components) {
+    for (const auto& comp : all_components_) {
         comp.second->mouse_drag_event(mouse_x, mouse_y);
+    }
+}
+
+
+void GameObject::mouse_move_event(int mouse_x, int mouse_y)
+{
+    for (const auto& comp : all_components_) {
+        comp.second->mouse_move_event(mouse_x, mouse_y);
     }
 }
 
@@ -100,5 +108,5 @@ void GameObject::mouse_drag_event(int mouse_x, int mouse_y)
 const std::map<std::string, std::shared_ptr<Component>>&
 GameObject::get_components()
 {
-    return all_components;
+    return all_components_;
 }

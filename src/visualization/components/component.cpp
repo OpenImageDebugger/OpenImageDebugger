@@ -60,6 +60,11 @@ void Component::mouse_drag_event(int, int)
 }
 
 
+void Component::mouse_move_event(int, int)
+{
+}
+
+
 bool Component::post_initialize()
 {
     return true;

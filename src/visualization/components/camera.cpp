@@ -36,21 +36,14 @@
 
 Camera& Camera::operator=(const Camera& cam)
 {
-    zoom_power_      = cam.zoom_power_;
-    buffer_origin_x_ = cam.buffer_origin_x_;
-    buffer_origin_y_ = cam.buffer_origin_y_;
-    camera_pos_x_    = cam.camera_pos_x_;
-    camera_pos_y_    = cam.camera_pos_y_;
-    canvas_width_    = cam.canvas_width_;
-    canvas_height_   = cam.canvas_height_;
-    angle_           = cam.angle_;
+    zoom_power_    = cam.zoom_power_;
+    camera_pos_x_  = cam.camera_pos_x_;
+    camera_pos_y_  = cam.camera_pos_y_;
+    canvas_width_  = cam.canvas_width_;
+    canvas_height_ = cam.canvas_height_;
+    scale_         = cam.scale_;
 
-    if (game_object != nullptr) {
-        update_object_pose();
-
-        float zoom         = 1.0 / std::pow(zoom_factor, zoom_power_);
-        game_object->scale = {zoom, zoom, 1.0, 0.0};
-    }
+    update_object_pose();
 
     return *this;
 }
@@ -66,9 +59,37 @@ void Camera::window_resized(int w, int h)
 
 void Camera::scroll_callback(float delta)
 {
+    float mouse_x = gl_canvas->mouse_x();
+    float mouse_y = gl_canvas->mouse_y();
+    float win_w   = gl_canvas->width();
+    float win_h   = gl_canvas->height();
+
+    vec4 mouse_pos_ndc(2.0 * (mouse_x - win_w / 2) / win_w,
+                       -2.0 * (mouse_y - win_h / 2) / win_h,
+                       0,
+                       1);
+    mat4 vp_inv = game_object->get_pose() * projection.inv();
+
+    float delta_zoom = std::pow(zoom_factor, -delta);
+
+    vec4 mouse_pos = scale_.inv() * vp_inv * mouse_pos_ndc;
+
+    // Since the view matrix of the camera is inverted before being applied to
+    // the world coordinates, the order in which the operations below are
+    // applied to world coordinates during rendering will also be reversed
+
+    // clang-format off
+    scale_ = scale_ *
+             mat4::translation(mouse_pos) *
+             mat4::scale(vec4(delta_zoom, delta_zoom, 1.0, 1.0)) *
+             mat4::translation(-mouse_pos);
+    // clang-format on
+
+    // Calls to compute_zoom will require the zoom_power_ parameter to be on par
+    // with the accumulated delta_zooms
     zoom_power_ += delta;
-    float zoom         = 1.0 / std::pow(zoom_factor, zoom_power_);
-    game_object->scale = {zoom, zoom, 1.0, 0.0};
+
+    update_object_pose();
 }
 
 
@@ -77,29 +98,30 @@ void Camera::update()
 }
 
 
-void Camera::reset_buffer_origin()
-{
-    buffer_origin_x_ = buffer_origin_y_ = 0.0f;
-
-    update_object_pose();
-}
-
-
 void Camera::update_object_pose()
 {
-    game_object->position = {-camera_pos_x_ - buffer_origin_x_,
-                             -camera_pos_y_ - buffer_origin_y_,
-                             0,
-                             1.0f};
+    if (game_object != nullptr) {
+        vec4 position{-camera_pos_x_, -camera_pos_y_, 0, 1.0f};
+
+        // Since the view matrix of the camera is inverted before being applied
+        // to the world coordinates, the order in which the operations below are
+        // applied to world coordinates during rendering will also be reversed
+
+        // clang-format off
+        mat4 pose =  scale_ *
+                     mat4::translation(position);
+        // clang-format on
+
+        game_object->set_pose(pose);
+    }
 }
 
 
 bool Camera::post_initialize()
 {
-    reset_buffer_origin();
-
     window_resized(gl_canvas->width(), gl_canvas->height());
     set_initial_zoom();
+    update_object_pose();
 
     return true;
 }
@@ -107,40 +129,48 @@ bool Camera::post_initialize()
 
 void Camera::set_initial_zoom()
 {
-    using std::pow;
-
     GameObject* buffer_obj = game_object->stage->get_game_object("buffer");
     Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
-    float buf_w  = buff->buffer_width_f;
-    float buf_h  = buff->buffer_height_f;
-    zoom_power_  = 0.0;
 
-    if (canvas_width_ > buf_w && canvas_height_ > buf_h) {
+    vec4 buf_dim = buffer_obj->get_pose() *
+                   vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1);
+
+    zoom_power_ = 0.0;
+
+    if (canvas_width_ > buf_dim.x() && canvas_height_ > buf_dim.y()) {
         // Zoom in
         zoom_power_ += 1.0;
-        float new_zoom = pow(zoom_factor, zoom_power_);
+        float new_zoom = compute_zoom();
 
-        while (canvas_width_ > new_zoom * buf_w &&
-               canvas_height_ > new_zoom * buf_h) {
+        // Iterate until buffer can fit inside the canvas
+        while (canvas_width_ > new_zoom * buf_dim.x() &&
+               canvas_height_ > new_zoom * buf_dim.y()) {
             zoom_power_ += 1.0;
-            new_zoom = pow(zoom_factor, zoom_power_);
+            new_zoom = compute_zoom();
         }
 
         zoom_power_ -= 1.0;
-    } else if (canvas_width_ < buf_w || canvas_height_ < buf_h) {
+    } else if (canvas_width_ < buf_dim.x() || canvas_height_ < buf_dim.y()) {
         // Zoom out
         zoom_power_ -= 1.0;
-        float new_zoom = pow(zoom_factor, zoom_power_);
+        float new_zoom = compute_zoom();
 
-        while (canvas_width_ < new_zoom * buf_w ||
-               canvas_height_ < new_zoom * buf_h) {
+        // Iterate until buffer can fit inside the canvas
+        while (canvas_width_ < new_zoom * buf_dim.x() ||
+               canvas_height_ < new_zoom * buf_dim.y()) {
             zoom_power_ -= 1.0;
-            new_zoom = pow(zoom_factor, zoom_power_);
+            new_zoom = compute_zoom();
         }
     }
 
-    float zoom         = 1.0f / pow(zoom_factor, zoom_power_);
-    game_object->scale = {zoom, zoom, 1.0, 0.0};
+    float zoom = 1.f / compute_zoom();
+    scale_     = mat4::scale(vec4(zoom, zoom, 1.0, 1.0));
+}
+
+
+float Camera::compute_zoom()
+{
+    return std::pow(zoom_factor, zoom_power_);
 }
 
 
@@ -148,31 +178,22 @@ void Camera::recenter_camera()
 {
     camera_pos_x_ = camera_pos_y_ = 0.0f;
 
-    reset_buffer_origin();
     set_initial_zoom();
+    update_object_pose();
 }
 
 
 void Camera::mouse_drag_event(int mouse_x, int mouse_y)
 {
     // Mouse is down. Update camera_pos_x_/camera_pos_y_
-    float zoom = 1.0 / std::pow(zoom_factor, zoom_power_);
-
-    camera_pos_x_ += mouse_x * zoom;
-    camera_pos_y_ += mouse_y * zoom;
+    camera_pos_x_ += mouse_x;
+    camera_pos_y_ += mouse_y;
 
     update_object_pose();
 }
 
 
-float Camera::get_zoom()
-{
-    return 1.0f / game_object->scale.x();
-}
-
-
 bool Camera::post_buffer_update()
 {
-    reset_buffer_origin();
     return true;
 }

@@ -11,6 +11,8 @@ class Camera : public Component
     static constexpr float zoom_factor = 1.1;
     mat4 projection;
 
+    vec4 mouse_position = vec4::zero();
+
     Camera& operator=(const Camera& cam);
 
     virtual void update();
@@ -27,27 +29,25 @@ class Camera : public Component
 
     void scroll_callback(float delta);
 
-    void set_initial_zoom();
-
     void recenter_camera();
 
     void mouse_drag_event(int mouse_x, int mouse_y);
 
-    float get_zoom();
+    float compute_zoom();
 
   private:
-    void reset_buffer_origin();
     void update_object_pose();
 
-    float zoom_power_      = 0.0f;
-    float buffer_origin_x_ = 0.0f;
-    float buffer_origin_y_ = 0.0f;
-    float camera_pos_x_    = 0.0f;
-    float camera_pos_y_    = 0.0f;
-    float angle_           = 0.0f;
+    void set_initial_zoom();
+
+    float zoom_power_   = 0.0f;
+    float camera_pos_x_ = 0.0f;
+    float camera_pos_y_ = 0.0f;
 
     int canvas_width_;
     int canvas_height_;
+
+    mat4 scale_;
 };
 
 #endif // CAMERA_H_

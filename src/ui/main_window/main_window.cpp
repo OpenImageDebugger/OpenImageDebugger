@@ -198,9 +198,10 @@ void MainWindow::loop()
                                    request.type,
                                    request.step,
                                    request.pixel_layout,
-                                   ac_enabled_)) {
+                                   request.transpose_buffer)) {
                 cerr << "[error] Could not initialize opengl canvas!" << endl;
             }
+            stage->contrast_enabled = ac_enabled_;
             stages_[request.variable_name_str] = stage;
 
             ui_->bufferPreview->render_buffer_icon(
@@ -234,7 +235,8 @@ void MainWindow::loop()
                                                 request.channels,
                                                 request.type,
                                                 request.step,
-                                                request.pixel_layout);
+                                                request.pixel_layout,
+                                                request.transpose_buffer);
             // Update buffer icon
             shared_ptr<Stage>& stage = stages_[request.variable_name_str];
             ui_->bufferPreview->render_buffer_icon(
@@ -361,9 +363,9 @@ void MainWindow::update_status_bar()
                            -2.0 * (mouse_y - win_h / 2) / win_h,
                            0,
                            1);
-        mat4 view     = cam_obj->get_pose().inv();
-        mat4 buff_rot = mat4::rotation(buffer_obj->angle);
-        mat4 vp_inv   = (cam->projection * view * buff_rot).inv();
+        mat4 view      = cam_obj->get_pose().inv();
+        mat4 buff_pose = buffer_obj->get_pose();
+        mat4 vp_inv    = (cam->projection * view * buff_pose).inv();
 
         vec4 mouse_pos = vp_inv * mouse_pos_ndc;
         mouse_pos += vec4(
@@ -372,10 +374,12 @@ void MainWindow::update_status_bar()
         message << std::fixed << std::setprecision(1) << "("
                 << static_cast<int>(floor(mouse_pos.x())) << ", "
                 << static_cast<int>(floor(mouse_pos.y())) << ")\t"
-                << cam->get_zoom() * 100.0 << "%";
+                << cam->compute_zoom() * 100.0 << "%";
         message << " val=";
+
         buffer->get_pixel_info(
             message, floor(mouse_pos.x()), floor(mouse_pos.y()));
+
         status_bar_->setText(message.str().c_str());
     }
 }

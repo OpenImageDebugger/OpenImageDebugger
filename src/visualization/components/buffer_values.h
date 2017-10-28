@@ -69,7 +69,7 @@ class BufferValues : public Component
 
     void draw_text(const mat4& projection,
                    const mat4& view_inv,
-                   const mat4& cam_rot,
+                   const mat4& buffer_pose,
                    const char* text,
                    float x,
                    float y,

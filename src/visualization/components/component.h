@@ -48,6 +48,8 @@ class Component
 
     virtual void mouse_drag_event(int mouse_x, int mouse_y);
 
+    virtual void mouse_move_event(int mouse_x, int mouse_y);
+
     // Called after all components are initialized
     virtual bool post_initialize();
 

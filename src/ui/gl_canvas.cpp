@@ -37,6 +37,8 @@ using namespace std;
 
 GLCanvas::GLCanvas(QWidget* parent)
     : QGLWidget(parent)
+    , mouse_x_(0)
+    , mouse_y_(0)
 {
     mouse_down_[0] = mouse_down_[1] = false;
 }

@@ -214,10 +214,10 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 {
     GameObject* cam_obj = game_object->stage->get_game_object("camera");
     Camera* camera      = cam_obj->get_component<Camera>("camera_component");
-    float zoom          = camera->get_zoom();
+    float zoom          = camera->compute_zoom();
 
     if (zoom > 40) {
-        mat4 camRot = mat4::rotation(game_object->angle);
+        mat4 buffer_pose = game_object->get_pose();
 
         Buffer* buffer_component =
             game_object->get_component<Buffer>("buffer_component");
@@ -230,7 +230,7 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 
         vec4 tl_ndc(-1, 1, 0, 1);
         vec4 br_ndc(1, -1, 0, 1);
-        mat4 vp_inv = (projection * view_inv * camRot).inv();
+        mat4 vp_inv = (projection * view_inv * buffer_pose).inv();
         vec4 tl     = vp_inv * tl_ndc;
         vec4 br     = vp_inv * br_ndc;
 
@@ -294,7 +294,7 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
                     pix2str(type, buffer, pos, c, label_length, pix_label);
                     draw_text(projection,
                               view_inv,
-                              camRot,
+                              buffer_pose,
                               pix_label,
                               x + pos_center_x,
                               y + pos_center_y,
@@ -309,7 +309,7 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 
 void BufferValues::draw_text(const mat4& projection,
                              const mat4& view_inv,
-                             const mat4& cam_rot,
+                             const mat4& buffer_pose,
                              const char* text,
                              float x,
                              float y,
@@ -379,7 +379,7 @@ void BufferValues::draw_text(const mat4& projection,
         centeredCoord.y() += 0.5f;
     }
 
-    centeredCoord = cam_rot * centeredCoord;
+    centeredCoord = buffer_pose * centeredCoord;
 
     y = centeredCoord.y() + boxH / 2.0 * sy - channel_offset.y();
     x = centeredCoord.x() - boxW / 2.0 * sx - channel_offset.x();

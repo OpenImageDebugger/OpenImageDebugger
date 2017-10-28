@@ -208,6 +208,9 @@ void giw_plot_buffer(WindowHandler handler, PyObject* buffer_metadata)
         return;
     }
 
+    /*
+     * Get required fields
+     */
     PyObject* py_variable_name =
         PyDict_GetItemString(buffer_metadata, "variable_name");
     PyObject* py_display_name =
@@ -221,6 +224,17 @@ void giw_plot_buffer(WindowHandler handler, PyObject* buffer_metadata)
         PyDict_GetItemString(buffer_metadata, "row_stride");
     PyObject* py_pixel_layout =
         PyDict_GetItemString(buffer_metadata, "pixel_layout");
+
+    /*
+     * Get optional fields
+     */
+    PyObject* py_transpose_buffer =
+        PyDict_GetItemString(buffer_metadata, "transpose_buffer");
+    bool transpose_buffer = false;
+    if (py_transpose_buffer != nullptr) {
+        CHECK_FIELD_TYPE(transpose_buffer, PyBool_Check, "transpose_buffer");
+        transpose_buffer = PyObject_IsTrue(py_transpose_buffer);
+    }
 
     /*
      * Check if expected fields were provided
@@ -260,7 +274,8 @@ void giw_plot_buffer(WindowHandler handler, PyObject* buffer_metadata)
                                  get_py_int(py_channels),
                                  get_py_int(py_type),
                                  get_py_int(py_row_stride),
-                                 py_pixel_layout);
+                                 py_pixel_layout,
+                                 transpose_buffer);
 
     window->plot_buffer(request);
 }

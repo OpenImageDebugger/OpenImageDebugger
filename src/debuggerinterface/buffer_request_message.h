@@ -46,6 +46,7 @@ struct BufferRequestMessage
     Buffer::BufferType type;
     int step;
     std::string pixel_layout;
+    bool transpose_buffer;
 
     BufferRequestMessage(const BufferRequestMessage& buff);
 
@@ -57,7 +58,8 @@ struct BufferRequestMessage
                          int channels,
                          int type,
                          int step,
-                         PyObject* pixel_layout);
+                         PyObject* pixel_layout,
+                         bool transpose);
 
     ~BufferRequestMessage();
 
