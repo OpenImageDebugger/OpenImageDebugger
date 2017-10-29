@@ -35,7 +35,6 @@
 #include "debuggerinterface/python_native_interface.h"
 #include "ui/main_window/main_window.h"
 
-
 using namespace std;
 
 

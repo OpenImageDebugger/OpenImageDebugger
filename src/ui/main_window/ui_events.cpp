@@ -206,6 +206,8 @@ void MainWindow::remove_selected_buffer()
         held_buffers_.erase(buffer_name);
         delete removed_item;
 
+        removed_buffer_names_.insert(buffer_name);
+
         if (stages_.size() == 0) {
             set_currently_selected_stage(nullptr);
         }

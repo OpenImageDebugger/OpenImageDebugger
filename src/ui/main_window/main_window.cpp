@@ -201,7 +201,7 @@ void MainWindow::loop()
                                    request.transpose_buffer)) {
                 cerr << "[error] Could not initialize opengl canvas!" << endl;
             }
-            stage->contrast_enabled = ac_enabled_;
+            stage->contrast_enabled            = ac_enabled_;
             stages_[request.variable_name_str] = stage;
 
             ui_->bufferPreview->render_buffer_icon(
@@ -312,11 +312,17 @@ void MainWindow::persist_settings()
     QDateTime next_expiration = now.addDays(1);
 
     // Of the buffers not currently being visualized, only keep those whose
-    // timer hasn't expired yet
+    // timer hasn't expired yet and is not in the set of removed names
     for (const auto& prev_buff : previous_session_buffers) {
-        if (held_buffers_.find(prev_buff.first.toStdString()) ==
-                held_buffers_.end() &&
-            prev_buff.second >= now) {
+        const string buff_name_std_str = prev_buff.first.toStdString();
+
+        const bool being_viewed =
+            held_buffers_.find(buff_name_std_str) != held_buffers_.end();
+        const bool was_removed =
+            removed_buffer_names_.find(buff_name_std_str) !=
+            removed_buffer_names_.end();
+
+        if (!being_viewed && !was_removed && prev_buff.second >= now) {
             persisted_session_buffers.append(prev_buff);
         }
     }
@@ -340,6 +346,8 @@ void MainWindow::persist_settings()
     settings.endGroup();
 
     settings.sync();
+
+    removed_buffer_names_.clear();
 }
 
 

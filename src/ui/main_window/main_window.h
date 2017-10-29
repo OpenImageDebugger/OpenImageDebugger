@@ -178,8 +178,8 @@ class MainWindow : public QMainWindow
     std::map<std::string, std::shared_ptr<uint8_t>> held_buffers_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
 
-    // TODO use a more sophisticated structure with a TTL per buffer
     std::set<std::string> previous_session_buffers_;
+    std::set<std::string> removed_buffer_names_;
 
     std::deque<BufferRequestMessage> pending_updates_;
 
