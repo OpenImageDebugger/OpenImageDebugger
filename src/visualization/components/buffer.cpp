@@ -347,7 +347,7 @@ void Buffer::update_object_pose()
         transposition.set_identity();
     }
 
-    game_object->set_pose(transposition * rotation);
+    game_object->set_pose(rotation * transposition);
 }
 
 
