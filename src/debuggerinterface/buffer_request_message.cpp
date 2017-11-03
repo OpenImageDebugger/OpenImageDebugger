@@ -86,3 +86,23 @@ BufferRequestMessage::~BufferRequestMessage()
 {
     Py_DECREF(py_buffer);
 }
+
+
+int BufferRequestMessage::get_visualized_width() const
+{
+    if (!transpose_buffer) {
+        return width_i;
+    } else {
+        return height_i;
+    }
+}
+
+
+int BufferRequestMessage::get_visualized_height() const
+{
+    if (!transpose_buffer) {
+        return height_i;
+    } else {
+        return width_i;
+    }
+}

@@ -214,8 +214,9 @@ void MainWindow::loop()
                               QImage::Format_RGB888);
 
             stringstream label;
-            label << request.display_name_str << "\n[" << request.width_i << "x"
-                  << request.height_i << "]\n"
+            label << request.display_name_str << "\n["
+                  << request.get_visualized_width() << "x"
+                  << request.get_visualized_height() << "]\n"
                   << get_type_label(request.type, request.channels);
             QListWidgetItem* item =
                 new QListWidgetItem(QPixmap::fromImage(bufferIcon),
@@ -249,8 +250,9 @@ void MainWindow::loop()
                               bytes_per_line,
                               QImage::Format_RGB888);
             stringstream label;
-            label << request.display_name_str << "\n[" << request.width_i << "x"
-                  << request.height_i << "]\n"
+            label << request.display_name_str << "\n["
+                  << request.get_visualized_width() << "x"
+                  << request.get_visualized_height() << "]\n"
                   << get_type_label(request.type, request.channels);
 
             for (int i = 0; i < ui_->imageList->count(); ++i) {
