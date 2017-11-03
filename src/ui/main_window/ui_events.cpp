@@ -137,7 +137,7 @@ void MainWindow::rotate_90_cw()
         Buffer* buffer_comp =
             buffer_obj->get_component<Buffer>("buffer_component");
 
-        buffer_comp->rotate(-90.f * M_PI / 180.f);
+        buffer_comp->rotate(90.f * M_PI / 180.f);
     };
 
     if (link_views_enabled_) {
@@ -161,7 +161,7 @@ void MainWindow::rotate_90_ccw()
         Buffer* buffer_comp =
             buffer_obj->get_component<Buffer>("buffer_component");
 
-        buffer_comp->rotate(90.f * M_PI / 180.f);
+        buffer_comp->rotate(-90.f * M_PI / 180.f);
     };
 
     if (link_views_enabled_) {
