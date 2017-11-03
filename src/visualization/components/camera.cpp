@@ -135,6 +135,9 @@ void Camera::set_initial_zoom()
     vec4 buf_dim = buffer_obj->get_pose() *
                    vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1);
 
+    buf_dim.x() = std::abs(buf_dim.x());
+    buf_dim.y() = std::abs(buf_dim.y());
+
     zoom_power_ = 0.0;
 
     if (canvas_width_ > buf_dim.x() && canvas_height_ > buf_dim.y()) {
