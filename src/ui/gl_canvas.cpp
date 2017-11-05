@@ -26,6 +26,7 @@
 #include "gl_canvas.h"
 
 #include "main_window/main_window.h"
+#include "ui/gl_text_renderer.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
 
@@ -39,8 +40,14 @@ GLCanvas::GLCanvas(QWidget* parent)
     , mouse_x_(0)
     , mouse_y_(0)
     , initialized_(false)
+    , text_renderer_(new GLTextRenderer(this))
 {
     mouse_down_[0] = mouse_down_[1] = false;
+}
+
+
+GLCanvas::~GLCanvas()
+{
 }
 
 
@@ -135,6 +142,9 @@ void GLCanvas::initializeGL()
 
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
 
+    // Initialize text renderer
+    text_renderer_->initialize();
+
     initialized_ = true;
 }
 
@@ -149,6 +159,12 @@ void GLCanvas::paintGL()
 void GLCanvas::wheelEvent(QWheelEvent* ev)
 {
     main_window_->scroll_callback(ev->delta() / 120.0f);
+}
+
+
+const GLTextRenderer* GLCanvas::get_text_renderer()
+{
+    return text_renderer_.get();
 }
 
 

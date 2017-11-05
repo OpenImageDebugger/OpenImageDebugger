@@ -23,13 +23,14 @@
  * IN THE SOFTWARE.
  */
 
+#include <QFontMetrics>
+
 #include "buffer_values.h"
 
 #include "buffer.h"
 #include "camera.h"
 #include "math/assorted.h"
 #include "visualization/game_object.h"
-#include "visualization/shaders/giw_shaders.h"
 #include "visualization/stage.h"
 
 
@@ -38,153 +39,18 @@ using namespace std;
 
 BufferValues::BufferValues(GameObject* game_object, GLCanvas* gl_canvas)
     : Component(game_object, gl_canvas)
-    , text_prog(gl_canvas)
 {
 }
 
 
 BufferValues::~BufferValues()
 {
-    gl_canvas_->glDeleteTextures(1, &text_tex);
-    gl_canvas_->glDeleteBuffers(1, &text_vbo);
-    FT_Done_FreeType(ft);
-}
-
-
-bool BufferValues::initialize()
-{
-    if (FT_Init_FreeType(&ft)) {
-        std::cerr << "Failed to initialize freetype" << std::endl;
-        return false;
-    }
-
-    // The macro FONT_PATH is defined at compile time.
-    if (FT_New_Face(ft, FONT_PATH, 0, &font)) {
-        std::cerr << "Could not open font " FONT_PATH << std::endl;
-        return false;
-    }
-    FT_Set_Pixel_Sizes(font, 0, font_size);
-
-    text_prog.create(shader::text_vert_shader,
-                     shader::text_frag_shader,
-                     ShaderProgram::FormatR,
-                     "rgba",
-                     {"mvp",
-                      "buff_sampler",
-                      "text_sampler",
-                      "pix_coord",
-                      "brightness_contrast"});
-
-    gl_canvas_->glGenTextures(1, &text_tex);
-    gl_canvas_->glActiveTexture(GL_TEXTURE0);
-    gl_canvas_->glBindTexture(GL_TEXTURE_2D, text_tex);
-    gl_canvas_->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    gl_canvas_->glGenBuffers(1, &text_vbo);
-    generate_glyphs_texture();
-
-    FT_Done_Face(font);
-
-    return true;
 }
 
 
 int BufferValues::render_index() const
 {
     return 50;
-}
-
-
-void BufferValues::generate_glyphs_texture()
-{
-    const char text[] = "0123456789., -enaninf";
-    const unsigned char* p;
-    const int border_size = 2;
-
-    FT_GlyphSlot g = font->glyph;
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, text_tex);
-
-    // Compute text box size
-    float box_w = 0;
-    float box_h = 0;
-
-    for (p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
-        if (FT_Load_Char(font, *p, FT_LOAD_RENDER))
-            continue;
-        text_texture_advances[*p][0] = (g->advance.x >> 6);
-        text_texture_advances[*p][1] = (g->advance.y >> 6);
-        text_texture_sizes[*p][0]    = g->bitmap.width;
-        text_texture_sizes[*p][1]    = g->bitmap.rows;
-        text_texture_tls[*p][0]      = g->bitmap_left;
-        text_texture_tls[*p][1]      = g->bitmap_top;
-        box_w += g->bitmap.width + 2 * border_size;
-        box_h = std::max(box_h, (float)g->bitmap.rows + 2 * border_size);
-    }
-
-    text_texture_width = text_texture_height = 1.0f;
-    while (text_texture_width < box_w)
-        text_texture_width *= 2.f;
-    while (text_texture_height < box_h)
-        text_texture_height *= 2.f;
-
-    const int mipmap_levels = 5;
-
-    gl_canvas_->glTexStorage2D(GL_TEXTURE_2D,
-                               mipmap_levels,
-                               GL_R8,
-                               text_texture_width,
-                               text_texture_height);
-
-    // Clears generated buffer
-    {
-        std::vector<uint8_t> zeros(text_texture_width * text_texture_height, 0);
-        glTexSubImage2D(GL_TEXTURE_2D,
-                        0,
-                        0,
-                        0,
-                        text_texture_width,
-                        text_texture_height,
-                        GL_RED,
-                        GL_UNSIGNED_BYTE,
-                        zeros.data());
-    }
-
-    int x = 0;
-    int y = 0;
-
-    for (p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
-        if (FT_Load_Char(font, *p, FT_LOAD_RENDER))
-            continue;
-
-        glTexSubImage2D(GL_TEXTURE_2D,
-                        0,
-                        x + border_size,
-                        y + border_size,
-                        g->bitmap.width,
-                        g->bitmap.rows,
-                        GL_RED,
-                        GL_UNSIGNED_BYTE,
-                        g->bitmap.buffer);
-
-        text_texture_offsets[*p][0] = x + border_size;
-        text_texture_offsets[*p][1] = y + border_size;
-
-        x += g->bitmap.width + border_size * 2;
-        y += (g->advance.y >> 6);
-    }
-
-    gl_canvas_->glGenerateMipmap(GL_TEXTURE_2D);
-    gl_canvas_->glTexParameteri(
-        GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    gl_canvas_->glTexParameteri(
-        GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    gl_canvas_->glTexParameteri(
-        GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    gl_canvas_->glTexParameteri(
-        GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    gl_canvas_->glTexParameteri(
-        GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
 }
 
 
@@ -325,6 +191,8 @@ void BufferValues::draw_text(const mat4& projection,
                              float y_offset,
                              float channels)
 {
+    const GLTextRenderer* text_renderer = gl_canvas_->get_text_renderer();
+
     Buffer* buffer_component =
         game_object_->get_component<Buffer>("buffer_component");
 
@@ -337,9 +205,9 @@ void BufferValues::draw_text(const mat4& projection,
         auto_buffer_contrast_brightness = Buffer::no_ac_params;
     }
 
-    text_prog.use();
+    text_renderer->text_prog.use();
     gl_canvas_->glEnableVertexAttribArray(0);
-    gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
+    gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, text_renderer->text_vbo);
     gl_canvas_->glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
     glActiveTexture(GL_TEXTURE0);
@@ -347,28 +215,29 @@ void BufferValues::draw_text(const mat4& projection,
         x + buffer_component->buffer_width_f / 2.f,
         y + buffer_component->buffer_height_f / 2.f);
     glBindTexture(GL_TEXTURE_2D, buff_tex);
-    text_prog.uniform1i("buff_sampler", 0);
+    text_renderer->text_prog.uniform1i("buff_sampler", 0);
 
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, text_tex);
-    text_prog.uniform1i("text_sampler", 1);
+    glBindTexture(GL_TEXTURE_2D, text_renderer->text_tex);
+    text_renderer->text_prog.uniform1i("text_sampler", 1);
 
-    text_prog.uniform_matrix4fv(
+    text_renderer->text_prog.uniform_matrix4fv(
         "mvp", 1, GL_FALSE, (projection * view_inv).data());
-    text_prog.uniform2f("pix_coord",
-                        buffer_component->tile_coord_x(
-                            x + buffer_component->buffer_width_f / 2.f),
-                        buffer_component->tile_coord_y(
-                            y + buffer_component->buffer_height_f / 2.f));
+    text_renderer->text_prog.uniform2f(
+        "pix_coord",
+        buffer_component->tile_coord_x(x +
+                                       buffer_component->buffer_width_f / 2.f),
+        buffer_component->tile_coord_y(y + buffer_component->buffer_height_f /
+                                               2.f));
 
-    text_prog.uniform4fv(
+    text_renderer->text_prog.uniform4fv(
         "brightness_contrast", 2, auto_buffer_contrast_brightness);
 
     // Compute text box size
     float boxW = 0, boxH = 0;
     for (auto p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
-        boxW += text_texture_advances[*p][0];
-        boxH = max(boxH, (float)text_texture_sizes[*p][1]);
+        boxW += text_renderer->text_texture_advances[*p][0];
+        boxH = max(boxH, (float)text_renderer->text_texture_sizes[*p][1]);
     }
 
     float paddingScale = 1.f / (1.f - 2.f * padding);
@@ -394,23 +263,26 @@ void BufferValues::draw_text(const mat4& projection,
     x = centeredCoord.x() - boxW / 2.0 * sx - channel_offset.x();
 
     for (auto p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
-        float x2 = x + text_texture_tls[*p][0] * sx;
-        float y2 = y - text_texture_tls[*p][1] * sy;
+        float x2 = x + text_renderer->text_texture_tls[*p][0] * sx;
+        float y2 = y - text_renderer->text_texture_tls[*p][1] * sy;
 
-        int tex_wid = text_texture_sizes[*p][0];
-        int tex_hei = text_texture_sizes[*p][1];
+        int tex_wid = text_renderer->text_texture_sizes[*p][0];
+        int tex_hei = text_renderer->text_texture_sizes[*p][1];
 
         float w = tex_wid * sx;
         float h = tex_hei * sy;
 
         float tex_lower_x =
-            ((float)text_texture_offsets[*p][0]) / text_texture_width;
+            ((float)text_renderer->text_texture_offsets[*p][0]) /
+            text_renderer->text_texture_width;
         float tex_lower_y =
-            ((float)text_texture_offsets[*p][1]) / text_texture_height;
-        float tex_upper_x =
-            tex_lower_x + ((float)tex_wid - 1.0f) / text_texture_width;
+            ((float)text_renderer->text_texture_offsets[*p][1]) /
+            text_renderer->text_texture_height;
+        float tex_upper_x = tex_lower_x + ((float)tex_wid - 1.0f) /
+                                              text_renderer->text_texture_width;
         float tex_upper_y =
-            tex_lower_y + ((float)tex_hei - 1.0f) / text_texture_height;
+            tex_lower_y +
+            ((float)tex_hei - 1.0f) / text_renderer->text_texture_height;
 
         /*
          * box format: <pixel coord x, pixel coord y, texture coord x, texture
@@ -427,10 +299,11 @@ void BufferValues::draw_text(const mat4& projection,
             GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
         gl_canvas_->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-        vec4 char_step_direction(text_texture_advances[*p][0] * sx,
-                                 text_texture_advances[*p][1] * sy,
-                                 0.0,
-                                 1.0);
+        vec4 char_step_direction(
+            text_renderer->text_texture_advances[*p][0] * sx,
+            text_renderer->text_texture_advances[*p][1] * sy,
+            0.0,
+            1.0);
 
         x += char_step_direction.x();
         y += char_step_direction.y();

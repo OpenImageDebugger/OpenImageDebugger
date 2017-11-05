@@ -23,46 +23,42 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef BUFFER_VALUES_H_
-#define BUFFER_VALUES_H_
+#ifndef GL_TEXT_RENDERER_H_
+#define GL_TEXT_RENDERER_H_
 
-#include <iostream>
+#include "math/linear_algebra.h"
+#include "ui/gl_canvas.h"
+#include "visualization/shader.h"
 
-#include <QFont>
 
-#include "component.h"
-#include "ui/gl_text_renderer.h"
-
-class BufferValues : public Component
+class GLTextRenderer
 {
   public:
-    BufferValues(GameObject* game_object,
-                 GLCanvas* gl_canvas);
+    static constexpr float font_size = 96.0f;
 
-    virtual ~BufferValues();
+    QFont font;
+    GLuint text_vbo;
+    GLuint text_tex;
 
-    virtual void update()
-    {
-    }
+    int text_texture_offsets[256][2];
+    int text_texture_advances[256][2];
+    int text_texture_sizes[256][2];
+    int text_texture_tls[256][2];
 
-    virtual int render_index() const;
+    GLTextRenderer(GLCanvas* gl_canvas);
+    ~GLTextRenderer();
 
-    virtual void draw(const mat4& projection, const mat4& view_inv);
-
-  private:
-    float text_pixel_scale         = 1.0;
-    static float constexpr padding = 0.125f; // Must be smaller than 0.5
+    bool initialize();
 
     void generate_glyphs_texture();
 
-    void draw_text(const mat4& projection,
-                   const mat4& view_inv,
-                   const mat4& buffer_pose,
-                   const char* text,
-                   float x,
-                   float y,
-                   float y_offset,
-                   float channels);
+    ShaderProgram text_prog;
+
+    float text_texture_width;
+    float text_texture_height;
+
+  private:
+    GLCanvas* gl_canvas_;
 };
 
-#endif // BUFFER_VALUES_H_
+#endif // GL_TEXT_RENDERER_H_

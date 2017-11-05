@@ -53,7 +53,8 @@ SOURCES += \
   src/visualization/shaders/buffer_fs.cpp \
   src/visualization/shaders/buffer_vs.cpp \
   src/visualization/shaders/text_fs.cpp \
-  src/visualization/shaders/text_vs.cpp
+  src/visualization/shaders/text_vs.cpp \
+    src/ui/gl_text_renderer.cpp
 
 # Qt related headers
 HEADERS += \
@@ -61,12 +62,12 @@ HEADERS += \
   src/ui/gl_canvas.h \
   src/ui/main_window/main_window.h \
   src/ui/symbol_completer.h \
-  src/ui/symbol_search_input.h
+  src/ui/symbol_search_input.h \
+    src/ui/gl_text_renderer.h
 
 # Copy resource files to build folder
 copydata.commands = \
   $(COPY_DIR) \"$$shell_path($$PWD\\resources\\giwscripts)\" \"$$shell_path($$OUT_PWD)\"; \
-  $(COPY_DIR) \"$$shell_path($$PWD\\resources\\fonts)\" \"$$shell_path($$OUT_PWD)\"; \
   $(COPY_DIR) \"$$shell_path($$PWD\\resources\\matlab)\" \"$$shell_path($$OUT_PWD)\"; \
   $(COPY_FILE) \"$$shell_path($$PWD\\resources\\gdb-imagewatch.py)\" \"$$shell_path($$OUT_PWD)\"
 
@@ -111,10 +112,7 @@ CONFIG += \
   c++11 \
   no_keywords
 
-DEFINES += "FONT_PATH=\\\"$$OUT_PWD/fonts/serif.ttf\\\""
-
 PKGCONFIG += \
-  freetype2 \
   python3
 
 FORMS += ui/main_window.ui

@@ -113,44 +113,44 @@ bool ShaderProgram::create(const char* v_source,
 }
 
 
-void ShaderProgram::uniform1i(const std::string& name, int value)
+void ShaderProgram::uniform1i(const std::string& name, int value) const
 {
-    gl_canvas_->glUniform1i(uniforms_[name], value);
+    gl_canvas_->glUniform1i(uniforms_.at(name), value);
 }
 
 
-void ShaderProgram::uniform2f(const std::string& name, float x, float y)
+void ShaderProgram::uniform2f(const std::string& name, float x, float y) const
 {
-    gl_canvas_->glUniform2f(uniforms_[name], x, y);
+    gl_canvas_->glUniform2f(uniforms_.at(name), x, y);
 }
 
 
 void ShaderProgram::uniform3fv(const std::string& name,
                                int count,
-                               const float* data)
+                               const float* data) const
 {
-    gl_canvas_->glUniform3fv(uniforms_[name], count, data);
+    gl_canvas_->glUniform3fv(uniforms_.at(name), count, data);
 }
 
 
 void ShaderProgram::uniform4fv(const std::string& name,
                                int count,
-                               const float* data)
+                               const float* data) const
 {
-    gl_canvas_->glUniform4fv(uniforms_[name], count, data);
+    gl_canvas_->glUniform4fv(uniforms_.at(name), count, data);
 }
 
 
 void ShaderProgram::uniform_matrix4fv(const std::string& name,
                                       int count,
                                       GLboolean transpose,
-                                      const float* value)
+                                      const float* value) const
 {
-    gl_canvas_->glUniformMatrix4fv(uniforms_[name], count, transpose, value);
+    gl_canvas_->glUniformMatrix4fv(uniforms_.at(name), count, transpose, value);
 }
 
 
-void ShaderProgram::use()
+void ShaderProgram::use() const
 {
     gl_canvas_->glUseProgram(program_);
 }
