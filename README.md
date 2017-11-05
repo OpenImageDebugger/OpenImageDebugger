@@ -39,7 +39,6 @@ class, but can also be customized to work with any arbitrary data structure.
  * GDB 7.10+ **compiled with python 3 support**
  * Qt 5.6+ (required due to the HighDPI display support - download it
    [here](https://info.qt.io/download-qt-for-application-development))
- * FreeType 2
  * Eigen 3
  * Python 3+ with its development packages
  * Numpy
@@ -50,7 +49,7 @@ class, but can also be customized to work with any arbitrary data structure.
 
 On Ubuntu, you can install most of the dependencies with the following command:
 
-    sudo apt-get install libpython3-dev python3-numpy python3-pip libfreetype6-dev libeigen3-dev
+    sudo apt-get install libpython3-dev python3-numpy python3-pip libeigen3-dev
     sudo pip3 install pysigset
 
 Download and install the latest version of GDB with python3 support (if you
