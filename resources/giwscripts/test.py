@@ -8,8 +8,7 @@ import math
 import time
 import threading
 import queue
-
-import numpy
+import array
 
 from giwscripts import giwwindow
 from giwscripts import symbols
@@ -60,8 +59,8 @@ def _gen_buffers(width, height):
     """
     channels = [3, 1]
 
-    types = [{'numpy': numpy.uint8, 'giw': symbols.GIW_TYPES_UINT8},
-             {'numpy': numpy.float32, 'giw': symbols.GIW_TYPES_FLOAT32}]
+    types = [{'array': 'B', 'giw': symbols.GIW_TYPES_UINT8},
+             {'array': 'f', 'giw': symbols.GIW_TYPES_FLOAT32}]
 
     tex1 = [0] * width * height * channels[0]
     tex2 = [0] * width * height * channels[1]
@@ -100,8 +99,8 @@ def _gen_buffers(width, height):
                 tex2[buffer_pos + channel] = z_threshold - min(z_threshold,
                                                                z_norm_squared)
 
-    tex_arr1 = numpy.asarray(tex1, types[0]['numpy'])
-    tex_arr2 = numpy.asarray(tex2, types[1]['numpy'])
+    tex_arr1 = array.array(types[0]['array'], [int(val) for val in tex1])
+    tex_arr2 = array.array(types[1]['array'], tex2)
     mem1 = memoryview(tex_arr1)
     mem2 = memoryview(tex_arr2)
     rowstride = width

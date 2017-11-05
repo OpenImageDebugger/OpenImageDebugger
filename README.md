@@ -41,7 +41,6 @@ class, but can also be customized to work with any arbitrary data structure.
    [here](https://info.qt.io/download-qt-for-application-development))
  * Eigen 3
  * Python 3+ with its development packages
- * Numpy
 
 ## Installation
 
@@ -49,7 +48,7 @@ class, but can also be customized to work with any arbitrary data structure.
 
 On Ubuntu, you can install most of the dependencies with the following command:
 
-    sudo apt-get install libpython3-dev python3-numpy python3-pip libeigen3-dev
+    sudo apt-get install libpython3-dev python3-pip libeigen3-dev
     sudo pip3 install pysigset
 
 Download and install the latest version of GDB with python3 support (if you
