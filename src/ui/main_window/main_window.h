@@ -35,10 +35,10 @@
 #include <QLabel>
 #include <QListWidgetItem>
 #include <QMainWindow>
-#include <QShortcut>
 #include <QTimer>
 
 #include "debuggerinterface/buffer_request_message.h"
+#include "ui/go_to_widget.h"
 #include "ui/symbol_completer.h"
 #include "visualization/stage.h"
 
@@ -187,14 +187,12 @@ class MainWindow : public QMainWindow
 
     std::mutex ui_mutex_;
 
-    QShortcut* symbol_list_focus_shortcut_;
-    QShortcut* buffer_removal_shortcut_;
-
     SymbolCompleter* symbol_completer_;
 
     Ui::MainWindowUi* ui_;
 
     QLabel* status_bar_;
+    GoToWidget* go_to_widget_;
 
     int (*plot_callback_)(const char*);
 
@@ -237,6 +235,8 @@ class MainWindow : public QMainWindow
     void initialize_visualization_pane();
 
     void initialize_settings();
+
+    void initialize_go_to_widget();
 };
 
 #endif // MAIN_WINDOW_H_
