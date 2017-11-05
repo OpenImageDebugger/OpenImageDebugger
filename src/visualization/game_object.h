@@ -51,7 +51,7 @@ class GameObject
         return dynamic_cast<T*>(all_components_[tag].get());
     }
 
-    bool initialize(GLCanvas* gl_canvas);
+    bool initialize();
 
     bool post_initialize();
 

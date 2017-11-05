@@ -39,11 +39,9 @@ GameObject::GameObject()
 }
 
 
-bool GameObject::initialize(GLCanvas* gl_canvas)
+bool GameObject::initialize()
 {
     for (const auto& comp : all_components_) {
-        comp.second->game_object = this;
-        comp.second->gl_canvas   = gl_canvas;
         if (!comp.second->initialize()) {
             return false;
         }

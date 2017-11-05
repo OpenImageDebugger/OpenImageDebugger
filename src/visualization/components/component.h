@@ -35,8 +35,7 @@ class mat4;
 class Component
 {
   public:
-    GameObject* game_object = nullptr;
-    GLCanvas* gl_canvas     = nullptr;
+    Component(GameObject* game_object, GLCanvas* gl_canvas);
 
     virtual bool initialize();
 
@@ -58,6 +57,11 @@ class Component
     virtual void draw(const mat4& projection, const mat4& viewInv) = 0;
 
     virtual ~Component();
+
+  protected:
+    GameObject* game_object_;
+
+    GLCanvas* gl_canvas_;
 };
 
 #endif // COMPONENT_H_

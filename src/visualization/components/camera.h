@@ -8,6 +8,8 @@
 class Camera : public Component
 {
   public:
+    Camera(GameObject* game_object, GLCanvas* gl_canvas);
+
     static constexpr float zoom_factor = 1.1;
     mat4 projection;
 

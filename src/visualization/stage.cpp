@@ -63,19 +63,24 @@ bool Stage::initialize(GLCanvas* gl_canvas,
     std::shared_ptr<GameObject> camera_obj = std::make_shared<GameObject>();
 
     camera_obj->stage = this;
-    camera_obj->add_component("camera_component", std::make_shared<Camera>());
-    camera_obj->add_component("background_component",
-                              std::make_shared<Background>());
+    camera_obj->add_component(
+        "camera_component",
+        std::make_shared<Camera>(camera_obj.get(), gl_canvas));
+    camera_obj->add_component(
+        "background_component",
+        std::make_shared<Background>(camera_obj.get(), gl_canvas));
 
     all_game_objects["camera"] = camera_obj;
 
     std::shared_ptr<GameObject> buffer_obj = std::make_shared<GameObject>();
 
     buffer_obj->stage = this;
-    buffer_obj->add_component("text_component",
-                              std::make_shared<BufferValues>());
+    buffer_obj->add_component(
+        "text_component",
+        std::make_shared<BufferValues>(buffer_obj.get(), gl_canvas));
 
-    std::shared_ptr<Buffer> buffer_component = std::make_shared<Buffer>();
+    std::shared_ptr<Buffer> buffer_component =
+        std::make_shared<Buffer>(buffer_obj.get(), gl_canvas);
 
     buffer_component->buffer          = buffer;
     buffer_component->channels        = channels;
@@ -90,7 +95,7 @@ bool Stage::initialize(GLCanvas* gl_canvas,
     all_game_objects["buffer"] = buffer_obj;
 
     for (const auto& go : all_game_objects) {
-        if (!go.second->initialize(gl_canvas)) {
+        if (!go.second->initialize()) {
             return false;
         }
     }

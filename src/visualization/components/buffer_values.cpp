@@ -23,8 +23,6 @@
  * IN THE SOFTWARE.
  */
 
-#include <GL/glew.h>
-
 #include "buffer_values.h"
 
 #include "buffer.h"
@@ -38,10 +36,17 @@
 using namespace std;
 
 
+BufferValues::BufferValues(GameObject* game_object, GLCanvas* gl_canvas)
+    : Component(game_object, gl_canvas)
+    , text_prog(gl_canvas)
+{
+}
+
+
 BufferValues::~BufferValues()
 {
-    glDeleteTextures(1, &text_tex);
-    glDeleteBuffers(1, &text_vbo);
+    gl_canvas_->glDeleteTextures(1, &text_tex);
+    gl_canvas_->glDeleteBuffers(1, &text_vbo);
     FT_Done_FreeType(ft);
 }
 
@@ -70,11 +75,11 @@ bool BufferValues::initialize()
                       "pix_coord",
                       "brightness_contrast"});
 
-    glGenTextures(1, &text_tex);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, text_tex);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glGenBuffers(1, &text_vbo);
+    gl_canvas_->glGenTextures(1, &text_tex);
+    gl_canvas_->glActiveTexture(GL_TEXTURE0);
+    gl_canvas_->glBindTexture(GL_TEXTURE_2D, text_tex);
+    gl_canvas_->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    gl_canvas_->glGenBuffers(1, &text_vbo);
     generate_glyphs_texture();
 
     FT_Done_Face(font);
@@ -125,11 +130,11 @@ void BufferValues::generate_glyphs_texture()
 
     const int mipmap_levels = 5;
 
-    glTexStorage2D(GL_TEXTURE_2D,
-                   mipmap_levels,
-                   GL_R8,
-                   text_texture_width,
-                   text_texture_height);
+    gl_canvas_->glTexStorage2D(GL_TEXTURE_2D,
+                               mipmap_levels,
+                               GL_R8,
+                               text_texture_width,
+                               text_texture_height);
 
     // Clears generated buffer
     {
@@ -169,13 +174,17 @@ void BufferValues::generate_glyphs_texture()
         y += (g->advance.y >> 6);
     }
 
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(
+    gl_canvas_->glGenerateMipmap(GL_TEXTURE_2D);
+    gl_canvas_->glTexParameteri(
+        GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    gl_canvas_->glTexParameteri(
         GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+    gl_canvas_->glTexParameteri(
+        GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    gl_canvas_->glTexParameteri(
+        GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    gl_canvas_->glTexParameteri(
+        GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
 }
 
 
@@ -212,15 +221,15 @@ inline void pix2str(const Buffer::BufferType& type,
 
 void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 {
-    GameObject* cam_obj = game_object->stage->get_game_object("camera");
+    GameObject* cam_obj = game_object_->stage->get_game_object("camera");
     Camera* camera      = cam_obj->get_component<Camera>("camera_component");
     float zoom          = camera->compute_zoom();
 
     if (zoom > 40) {
-        mat4 buffer_pose = game_object->get_pose();
+        mat4 buffer_pose = game_object_->get_pose();
 
         Buffer* buffer_component =
-            game_object->get_component<Buffer>("buffer_component");
+            game_object_->get_component<Buffer>("buffer_component");
         float buffer_width_f    = buffer_component->buffer_width_f;
         float buffer_height_f   = buffer_component->buffer_height_f;
         int step                = buffer_component->step;
@@ -317,11 +326,11 @@ void BufferValues::draw_text(const mat4& projection,
                              float channels)
 {
     Buffer* buffer_component =
-        game_object->get_component<Buffer>("buffer_component");
+        game_object_->get_component<Buffer>("buffer_component");
 
     const float* auto_buffer_contrast_brightness;
 
-    if (game_object->stage->contrast_enabled) {
+    if (game_object_->stage->contrast_enabled) {
         auto_buffer_contrast_brightness =
             buffer_component->auto_buffer_contrast_brightness();
     } else {
@@ -329,9 +338,9 @@ void BufferValues::draw_text(const mat4& projection,
     }
 
     text_prog.use();
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+    gl_canvas_->glEnableVertexAttribArray(0);
+    gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
+    gl_canvas_->glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
     glActiveTexture(GL_TEXTURE0);
     GLuint buff_tex = buffer_component->sub_texture_id_at_coord(
@@ -414,8 +423,9 @@ void BufferValues::draw_text(const mat4& projection,
             {x2 + w, y2 + h, tex_upper_x, tex_upper_y},
         };
 
-        glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        gl_canvas_->glBufferData(
+            GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
+        gl_canvas_->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         vec4 char_step_direction(text_texture_advances[*p][0] * sx,
                                  text_texture_advances[*p][1] * sy,

@@ -115,8 +115,7 @@ DEFINES += "FONT_PATH=\\\"$$OUT_PWD/fonts/serif.ttf\\\""
 
 PKGCONFIG += \
   freetype2 \
-  python3 \
-  glew
+  python3
 
 FORMS += ui/main_window.ui
 

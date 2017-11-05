@@ -134,7 +134,7 @@ deque<string> MainWindow::get_observed_symbols()
 
 bool MainWindow::is_window_ready()
 {
-    return is_window_ready_;
+    return ui_->bufferPreview->is_ready() && is_window_ready_;
 }
 
 
@@ -288,7 +288,7 @@ void MainWindow::loop()
             currently_selected_stage_->update();
         }
 
-        ui_->bufferPreview->updateGL();
+        ui_->bufferPreview->update();
 
         request_render_update_ = false;
     }

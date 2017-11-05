@@ -23,8 +23,6 @@
  * IN THE SOFTWARE.
  */
 
-#include <GL/glew.h>
-
 #include "background.h"
 
 #include "math/linear_algebra.h"
@@ -34,9 +32,16 @@
 #include "visualization/stage.h"
 
 
+Background::Background(GameObject* game_object, GLCanvas* gl_canvas)
+    : Component(game_object, gl_canvas)
+    , background_prog(gl_canvas)
+{
+}
+
+
 Background::~Background()
 {
-    glDeleteBuffers(1, &background_vbo);
+    gl_canvas_->glDeleteBuffers(1, &background_vbo);
 }
 
 
@@ -59,13 +64,13 @@ bool Background::initialize()
         -1, -1,
     };
     // clang-format on
-    glGenBuffers(1, &background_vbo);
+    gl_canvas_->glGenBuffers(1, &background_vbo);
 
-    glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
-    glBufferData(GL_ARRAY_BUFFER,
-                 sizeof(vertex_buffer_data),
-                 vertex_buffer_data,
-                 GL_STATIC_DRAW);
+    gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
+    gl_canvas_->glBufferData(GL_ARRAY_BUFFER,
+                             sizeof(vertex_buffer_data),
+                             vertex_buffer_data,
+                             GL_STATIC_DRAW);
 
     return true;
 }
@@ -75,10 +80,10 @@ void Background::draw(const mat4&, const mat4&)
 {
     background_prog.use();
 
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    gl_canvas_->glEnableVertexAttribArray(0);
+    gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
+    gl_canvas_->glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    gl_canvas_->glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 

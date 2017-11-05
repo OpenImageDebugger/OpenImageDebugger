@@ -43,7 +43,6 @@ class, but can also be customized to work with any arbitrary data structure.
  * Eigen 3
  * Python 3+ with its development packages
  * Numpy
- * GLEW with its development packages
 
 ## Installation
 
@@ -51,7 +50,7 @@ class, but can also be customized to work with any arbitrary data structure.
 
 On Ubuntu, you can install most of the dependencies with the following command:
 
-    sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip texinfo libfreetype6-dev libeigen3-dev
+    sudo apt-get install libpython3-dev python3-numpy python3-pip libfreetype6-dev libeigen3-dev
     sudo pip3 install pysigset
 
 Download and install the latest version of GDB with python3 support (if you

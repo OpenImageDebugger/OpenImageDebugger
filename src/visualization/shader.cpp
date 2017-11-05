@@ -23,21 +23,21 @@
  * IN THE SOFTWARE.
  */
 
-#include <GL/glew.h>
 #include <cstring>
 
 #include "shader.h"
 
 
-ShaderProgram::ShaderProgram()
+ShaderProgram::ShaderProgram(GLCanvas* gl_canvas)
     : program_(0)
+    , gl_canvas_(gl_canvas)
 {
 }
 
 
 ShaderProgram::~ShaderProgram()
 {
-    glDeleteProgram(program_);
+    gl_canvas_->glDeleteProgram(program_);
 }
 
 
@@ -81,7 +81,7 @@ bool ShaderProgram::create(const char* v_source,
             return true;
         }
         // Delete old program
-        glDeleteProgram(program_);
+        gl_canvas_->glDeleteProgram(program_);
     }
 
     texel_format_ = texel_format;
@@ -94,18 +94,18 @@ bool ShaderProgram::create(const char* v_source,
         return false;
     }
 
-    program_ = glCreateProgram();
-    glAttachShader(program_, vertex_shader);
-    glAttachShader(program_, fragment_shader);
-    glLinkProgram(program_);
+    program_ = gl_canvas_->glCreateProgram();
+    gl_canvas_->glAttachShader(program_, vertex_shader);
+    gl_canvas_->glAttachShader(program_, fragment_shader);
+    gl_canvas_->glLinkProgram(program_);
 
     // Delete shaders. We don't need them anymore.
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
+    gl_canvas_->glDeleteShader(vertex_shader);
+    gl_canvas_->glDeleteShader(fragment_shader);
 
     // Get uniform locations
     for (const auto& name : uniforms) {
-        GLuint loc      = glGetUniformLocation(program_, name.c_str());
+        GLuint loc = gl_canvas_->glGetUniformLocation(program_, name.c_str());
         uniforms_[name] = loc;
     }
 
@@ -115,13 +115,13 @@ bool ShaderProgram::create(const char* v_source,
 
 void ShaderProgram::uniform1i(const std::string& name, int value)
 {
-    glUniform1i(uniforms_[name], value);
+    gl_canvas_->glUniform1i(uniforms_[name], value);
 }
 
 
 void ShaderProgram::uniform2f(const std::string& name, float x, float y)
 {
-    glUniform2f(uniforms_[name], x, y);
+    gl_canvas_->glUniform2f(uniforms_[name], x, y);
 }
 
 
@@ -129,7 +129,7 @@ void ShaderProgram::uniform3fv(const std::string& name,
                                int count,
                                const float* data)
 {
-    glUniform3fv(uniforms_[name], count, data);
+    gl_canvas_->glUniform3fv(uniforms_[name], count, data);
 }
 
 
@@ -137,7 +137,7 @@ void ShaderProgram::uniform4fv(const std::string& name,
                                int count,
                                const float* data)
 {
-    glUniform4fv(uniforms_[name], count, data);
+    gl_canvas_->glUniform4fv(uniforms_[name], count, data);
 }
 
 
@@ -146,19 +146,19 @@ void ShaderProgram::uniform_matrix4fv(const std::string& name,
                                       GLboolean transpose,
                                       const float* value)
 {
-    glUniformMatrix4fv(uniforms_[name], count, transpose, value);
+    gl_canvas_->glUniformMatrix4fv(uniforms_[name], count, transpose, value);
 }
 
 
 void ShaderProgram::use()
 {
-    glUseProgram(program_);
+    gl_canvas_->glUseProgram(program_);
 }
 
 
 GLuint ShaderProgram::compile(GLuint type, GLchar const* source)
 {
-    GLuint shader = glCreateShader(type);
+    GLuint shader = gl_canvas_->glCreateShader(type);
 
     const char* src[] = {
         "#version 120\n",
@@ -175,17 +175,17 @@ GLuint ShaderProgram::compile(GLuint type, GLchar const* source)
 
         source};
 
-    glShaderSource(shader, 5, src, NULL);
-    glCompileShader(shader);
+    gl_canvas_->glShaderSource(shader, 5, src, NULL);
+    gl_canvas_->glCompileShader(shader);
 
     GLint compiled;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+    gl_canvas_->glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 
     if (!compiled) {
         GLint length;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+        gl_canvas_->glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
         std::string log(length, ' ');
-        glGetShaderInfoLog(shader, length, &length, &log[0]);
+        gl_canvas_->glGetShaderInfoLog(shader, length, &length, &log[0]);
         std::cerr << "Failed to compile shadertype: " + get_shader_type(type)
                   << std::endl
                   << log << std::endl;

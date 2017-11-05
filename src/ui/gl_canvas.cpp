@@ -23,8 +23,6 @@
  * IN THE SOFTWARE.
  */
 
-#include <GL/glew.h>
-
 #include "gl_canvas.h"
 
 #include "main_window/main_window.h"
@@ -36,9 +34,11 @@ using namespace std;
 
 
 GLCanvas::GLCanvas(QWidget* parent)
-    : QGLWidget(parent)
+    : QOpenGLWidget(parent)
+    , QOpenGLExtraFunctions()
     , mouse_x_(0)
     , mouse_y_(0)
+    , initialized_(false)
 {
     mouse_down_[0] = mouse_down_[1] = false;
 }
@@ -84,15 +84,12 @@ void GLCanvas::mouseReleaseEvent(QMouseEvent* ev)
 
 void GLCanvas::initializeGL()
 {
+    this->makeCurrent();
+    initializeOpenGLFunctions();
+
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
-    GLenum err = glewInit();
-    if (err != GLEW_OK) {
-        std::cerr << "Error while initializing GLEW:" << glewGetErrorString(err)
-                  << std::endl;
-    }
 
     ///
     // Texture for generating icons
@@ -136,9 +133,9 @@ void GLCanvas::initializeGL()
         break;
     }
 
-    setAutoBufferSwap(false);
-
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
+
+    initialized_ = true;
 }
 
 
@@ -146,7 +143,6 @@ void GLCanvas::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     main_window_->draw();
-    swapBuffers();
 }
 
 

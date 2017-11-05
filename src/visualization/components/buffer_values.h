@@ -39,6 +39,8 @@ class BufferValues : public Component
   public:
     static constexpr float font_size = 96.0f;
 
+    BufferValues(GameObject* game_object, GLCanvas* gl_canvas);
+
     virtual ~BufferValues();
 
     virtual bool initialize();

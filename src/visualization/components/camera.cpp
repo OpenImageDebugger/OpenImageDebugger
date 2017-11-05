@@ -25,13 +25,17 @@
 
 #include <cmath>
 
-#include <GL/glew.h>
-
 #include "camera.h"
 
 #include "ui/gl_canvas.h"
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
+
+
+Camera::Camera(GameObject* game_object, GLCanvas* gl_canvas)
+    : Component(game_object, gl_canvas)
+{
+}
 
 
 Camera& Camera::operator=(const Camera& cam)
@@ -59,16 +63,16 @@ void Camera::window_resized(int w, int h)
 
 void Camera::scroll_callback(float delta)
 {
-    float mouse_x = gl_canvas->mouse_x();
-    float mouse_y = gl_canvas->mouse_y();
-    float win_w   = gl_canvas->width();
-    float win_h   = gl_canvas->height();
+    float mouse_x = gl_canvas_->mouse_x();
+    float mouse_y = gl_canvas_->mouse_y();
+    float win_w   = gl_canvas_->width();
+    float win_h   = gl_canvas_->height();
 
     vec4 mouse_pos_ndc(2.0 * (mouse_x - win_w / 2) / win_w,
                        -2.0 * (mouse_y - win_h / 2) / win_h,
                        0,
                        1);
-    mat4 vp_inv = game_object->get_pose() * projection.inv();
+    mat4 vp_inv = game_object_->get_pose() * projection.inv();
 
     float delta_zoom = std::pow(zoom_factor, -delta);
 
@@ -100,7 +104,7 @@ void Camera::update()
 
 void Camera::update_object_pose()
 {
-    if (game_object != nullptr) {
+    if (game_object_ != nullptr) {
         vec4 position{-camera_pos_x_, -camera_pos_y_, 0, 1.0f};
 
         // Since the view matrix of the camera is inverted before being applied
@@ -112,14 +116,14 @@ void Camera::update_object_pose()
                      mat4::translation(position);
         // clang-format on
 
-        game_object->set_pose(pose);
+        game_object_->set_pose(pose);
     }
 }
 
 
 bool Camera::post_initialize()
 {
-    window_resized(gl_canvas->width(), gl_canvas->height());
+    window_resized(gl_canvas_->width(), gl_canvas_->height());
     set_initial_zoom();
     update_object_pose();
 
@@ -129,7 +133,7 @@ bool Camera::post_initialize()
 
 void Camera::set_initial_zoom()
 {
-    GameObject* buffer_obj = game_object->stage->get_game_object("buffer");
+    GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
     Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
 
     vec4 buf_dim = buffer_obj->get_pose() *

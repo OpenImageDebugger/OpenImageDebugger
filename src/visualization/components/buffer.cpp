@@ -25,8 +25,6 @@
 
 #include <limits>
 
-#include <GL/glew.h>
-
 #include "buffer.h"
 
 #include "camera.h"
@@ -40,12 +38,19 @@ using namespace std;
 const float Buffer::no_ac_params[8] = {1.0, 1.0, 1.0, 1.0, 0, 0, 0, 0};
 
 
+Buffer::Buffer(GameObject* game_object, GLCanvas* gl_canvas)
+    : Component(game_object, gl_canvas)
+    , buff_prog(gl_canvas)
+{
+}
+
+
 Buffer::~Buffer()
 {
     int num_textures = num_textures_x * num_textures_y;
 
-    glDeleteTextures(num_textures, buff_tex.data());
-    glDeleteBuffers(1, &vbo);
+    gl_canvas_->glDeleteTextures(num_textures, buff_tex.data());
+    gl_canvas_->glDeleteBuffers(1, &vbo);
 }
 
 
@@ -313,7 +318,7 @@ float Buffer::tile_coord_y(int y)
 
 void Buffer::update()
 {
-    GameObject* cam_obj = game_object->stage->get_game_object("camera");
+    GameObject* cam_obj = game_object_->stage->get_game_object("camera");
     Camera* camera      = cam_obj->get_component<Camera>("camera_component");
     float zoom          = camera->compute_zoom();
 
@@ -334,7 +339,7 @@ void Buffer::update_object_pose()
 
     mat4 transposition;
 
-    if(transpose) {
+    if (transpose) {
         // clang-format off
         transposition << std::initializer_list<float> {
             0,1,0,0,
@@ -347,7 +352,7 @@ void Buffer::update_object_pose()
         transposition.set_identity();
     }
 
-    game_object->set_pose(rotation * transposition);
+    game_object_->set_pose(rotation * transposition);
 }
 
 
@@ -394,12 +399,12 @@ bool Buffer::initialize()
     };
     // clang-format on
 
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER,
-                 sizeof(g_vertex_buffer_data),
-                 g_vertex_buffer_data,
-                 GL_STATIC_DRAW);
+    gl_canvas_->glGenBuffers(1, &vbo);
+    gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    gl_canvas_->glBufferData(GL_ARRAY_BUFFER,
+                             sizeof(g_vertex_buffer_data),
+                             g_vertex_buffer_data,
+                             GL_STATIC_DRAW);
 
     setup_gl_buffer();
 
@@ -412,13 +417,14 @@ bool Buffer::initialize()
 void Buffer::draw(const mat4& projection, const mat4& viewInv)
 {
     buff_prog.use();
-    mat4 model = game_object->get_pose();
+    mat4 model = game_object_->get_pose();
     mat4 mvp   = projection * viewInv * model;
 
-    glEnableVertexAttribArray(0);
-    glActiveTexture(GL_TEXTURE0);
+    gl_canvas_->glEnableVertexAttribArray(0);
+    gl_canvas_->glActiveTexture(GL_TEXTURE0);
+
     buff_prog.uniform1i("sampler", 0);
-    if (game_object->stage->contrast_enabled) {
+    if (game_object_->stage->contrast_enabled) {
         buff_prog.uniform4fv(
             "brightness_contrast", 2, auto_buffer_contrast_brightness_);
     } else {
@@ -471,9 +477,10 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
 
             px += buff_w / 2;
 
-            glBindBuffer(GL_ARRAY_BUFFER, vbo);
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+            gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, vbo);
+            gl_canvas_->glVertexAttribPointer(
+                0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+            gl_canvas_->glDrawArrays(GL_TRIANGLES, 0, 6);
         }
 
         py += buff_h / 2;
@@ -556,31 +563,39 @@ void Buffer::setup_gl_buffer()
             remaining_w -= buff_w;
 
             int tex_id = ty * num_textures_x + tx;
-            glBindTexture(GL_TEXTURE_2D, buff_tex[tex_id]);
+            gl_canvas_->glBindTexture(GL_TEXTURE_2D, buff_tex[tex_id]);
 
-            glPixelStorei(GL_UNPACK_SKIP_ROWS, ty * max_texture_size);
-            glPixelStorei(GL_UNPACK_SKIP_PIXELS, tx * max_texture_size);
-            glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, buff_w, buff_h);
+            gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_ROWS,
+                                      ty * max_texture_size);
+            gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_PIXELS,
+                                      tx * max_texture_size);
+            gl_canvas_->glTexStorage2D(
+                GL_TEXTURE_2D, 1, GL_RGBA32F, buff_w, buff_h);
 
-            glTexSubImage2D(GL_TEXTURE_2D,
-                            0,
-                            0,
-                            0,
-                            buff_w,
-                            buff_h,
-                            tex_format,
-                            tex_type,
-                            reinterpret_cast<GLvoid*>(buffer));
+            gl_canvas_->glTexSubImage2D(GL_TEXTURE_2D,
+                                        0,
+                                        0,
+                                        0,
+                                        buff_w,
+                                        buff_h,
+                                        tex_format,
+                                        tex_type,
+                                        reinterpret_cast<GLvoid*>(buffer));
 
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            gl_canvas_->glTexParameteri(
+                GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            gl_canvas_->glTexParameteri(
+                GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            gl_canvas_->glTexParameteri(
+                GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            gl_canvas_->glTexParameteri(
+                GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            gl_canvas_->glTexParameteri(
+                GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         }
     }
 
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    gl_canvas_->glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+    gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
 }

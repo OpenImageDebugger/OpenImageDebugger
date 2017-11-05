@@ -26,15 +26,16 @@
 #ifndef GL_CANVAS_H_
 #define GL_CANVAS_H_
 
-#include <QGLWidget>
+#include <QOpenGLWidget>
 #include <QMouseEvent>
+#include <QOpenGLExtraFunctions>
 
 
 class MainWindow;
 class Stage;
 
 
-class GLCanvas : public QGLWidget
+class GLCanvas : public QOpenGLWidget, public QOpenGLExtraFunctions
 {
     Q_OBJECT
   public:
@@ -73,6 +74,10 @@ class GLCanvas : public QGLWidget
 
     void render_buffer_icon(Stage* stage, int icon_width, int icon_height);
 
+    bool is_ready() {
+        return initialized_;
+    }
+
   private:
     bool mouse_down_[2];
 
@@ -83,6 +88,8 @@ class GLCanvas : public QGLWidget
 
     GLuint icon_texture_;
     GLuint icon_fbo_;
+
+    bool initialized_;
 
     void generate_icon_texture();
 };

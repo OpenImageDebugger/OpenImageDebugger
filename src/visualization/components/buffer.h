@@ -36,6 +36,8 @@
 class Buffer : public Component
 {
   public:
+    Buffer(GameObject* game_object, GLCanvas* gl_canvas);
+
     enum class BufferType {
         UnsignedByte  = 0,
         UnsignedShort = 2,

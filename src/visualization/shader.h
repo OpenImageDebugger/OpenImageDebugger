@@ -33,13 +33,15 @@
 
 #include <GL/gl.h>
 
+#include "ui/gl_canvas.h"
+
 
 class ShaderProgram
 {
   public:
     enum TexelChannels { FormatR, FormatRG, FormatRGB, FormatRGBA };
 
-    ShaderProgram();
+    ShaderProgram(GLCanvas* gl_canvas);
 
     ~ShaderProgram();
 
@@ -68,6 +70,8 @@ class ShaderProgram
 
   private:
     GLuint program_;
+
+    GLCanvas* gl_canvas_;
 
     TexelChannels texel_format_;
 
