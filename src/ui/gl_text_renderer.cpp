@@ -70,7 +70,8 @@ bool GLTextRenderer::initialize()
 
 void GLTextRenderer::generate_glyphs_texture()
 {
-    const char text[] = "0123456789., -enaninf";
+    // Required characters for numbers, scientific notation (e), nan, inf
+    const char text[] = "0123456789., -+enaif";
     const unsigned char* p;
     const int border_size = 0;
 
