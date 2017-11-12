@@ -56,17 +56,18 @@ void SymbolSearchInput::insert_completion(const QString& completion)
 
 void SymbolSearchInput::keyPressEvent(QKeyEvent* e)
 {
-    if (completer_ && completer_->popup()->isVisible()) {
-        // The following keys are forwarded by the completer to the widget
-        switch (e->key()) {
-        case Qt::Key_Enter:
-        case Qt::Key_Return:
-        case Qt::Key_Escape:
-        case Qt::Key_Tab:
-        case Qt::Key_Backtab:
-            e->ignore();
-            return; // Let the completer do default behavior
-        }
+    // The following keys are forwarded by the completer to the widget
+    switch (e->key()) {
+    case Qt::Key_Escape:
+        clearFocus();
+        e->accept();
+        return;
+    case Qt::Key_Tab:
+    case Qt::Key_Backtab:
+    case Qt::Key_Enter:
+    case Qt::Key_Return:
+        e->ignore();
+        return; // Let the completer do default behavior
     }
 
     bool is_shortcut =

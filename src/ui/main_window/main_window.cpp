@@ -62,7 +62,6 @@ MainWindow::MainWindow(QWidget* parent)
 
     initialize_ui_icons();
     initialize_timers();
-    initialize_shortcuts();
     initialize_symbol_completer();
     initialize_left_pane();
     initialize_auto_contrast_form();
@@ -70,6 +69,8 @@ MainWindow::MainWindow(QWidget* parent)
     initialize_status_bar();
     initialize_visualization_pane();
     initialize_settings();
+    initialize_go_to_widget();
+    initialize_shortcuts();
 
     is_window_ready_ = true;
 }

@@ -40,6 +40,9 @@ void MainWindow::resize_callback(int w, int h)
 {
     for (auto& stage : stages_)
         stage.second->resize_callback(w, h);
+
+    go_to_widget_->move(ui_->bufferPreview->width() - go_to_widget_->width(),
+                        ui_->bufferPreview->height() - go_to_widget_->height());
 }
 
 

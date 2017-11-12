@@ -54,7 +54,8 @@ SOURCES += \
   src/visualization/shaders/buffer_vs.cpp \
   src/visualization/shaders/text_fs.cpp \
   src/visualization/shaders/text_vs.cpp \
-  src/ui/gl_text_renderer.cpp
+  src/ui/gl_text_renderer.cpp \
+  src/ui/go_to_widget.cpp
 
 # Qt related headers
 HEADERS += \
@@ -63,7 +64,8 @@ HEADERS += \
   src/ui/main_window/main_window.h \
   src/ui/symbol_completer.h \
   src/ui/symbol_search_input.h \
-  src/ui/gl_text_renderer.h
+  src/ui/gl_text_renderer.h \
+  src/ui/go_to_widget.h
 
 # Copy resource files to build folder
 copydata.commands = \

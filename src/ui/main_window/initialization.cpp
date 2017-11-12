@@ -29,6 +29,7 @@
 #include <QDebug>
 #include <QFontDatabase>
 #include <QSettings>
+#include <QShortcut>
 
 #include "main_window.h"
 
@@ -145,19 +146,26 @@ void MainWindow::initialize_timers()
 
 void MainWindow::initialize_shortcuts()
 {
-    symbol_list_focus_shortcut_ =
+    QShortcut* symbol_list_focus_shortcut_ =
         new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_K), this);
     connect(symbol_list_focus_shortcut_,
             SIGNAL(activated()),
             ui_->symbolList,
             SLOT(setFocus()));
 
-    buffer_removal_shortcut_ =
+    QShortcut* buffer_removal_shortcut_ =
         new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList);
     connect(buffer_removal_shortcut_,
             SIGNAL(activated()),
             this,
             SLOT(remove_selected_buffer()));
+
+    QShortcut* go_to_shortcut =
+        new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_L), this);
+    connect(go_to_shortcut,
+            SIGNAL(activated()),
+            go_to_widget_,
+            SLOT(toggle_visible()));
 }
 
 
@@ -278,4 +286,10 @@ void MainWindow::initialize_status_bar()
     status_bar_->setAlignment(Qt::AlignRight);
 
     statusBar()->addWidget(status_bar_, 1);
+}
+
+
+void MainWindow::initialize_go_to_widget()
+{
+    go_to_widget_ = new GoToWidget(ui_->bufferPreview);
 }
