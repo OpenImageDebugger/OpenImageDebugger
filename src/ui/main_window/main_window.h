@@ -38,6 +38,7 @@
 #include <QTimer>
 
 #include "debuggerinterface/buffer_request_message.h"
+#include "math/linear_algebra.h"
 #include "ui/go_to_widget.h"
 #include "ui/symbol_completer.h"
 #include "visualization/stage.h"
@@ -153,6 +154,10 @@ class MainWindow : public QMainWindow
 
     void show_context_menu(const QPoint& pos);
 
+    void toggle_go_to_dialog();
+
+    void go_to_pixel(int x, int y);
+
   private Q_SLOTS:
     ///
     // Assorted methods - private slots - implemented in main_window.cpp
@@ -207,6 +212,8 @@ class MainWindow : public QMainWindow
     void persist_settings_deferred();
 
     void set_currently_selected_stage(Stage* stage);
+
+    vec4 get_stage_coordinates(float mouse_x, float mouse_y);
 
     ///
     // Auto contrast pane - private - implemented in auto_contrast.cpp

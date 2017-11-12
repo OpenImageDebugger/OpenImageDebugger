@@ -37,6 +37,8 @@ class Camera : public Component
 
     float compute_zoom();
 
+    void move_to(float x, float y);
+
   private:
     void update_object_pose();
 

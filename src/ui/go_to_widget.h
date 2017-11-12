@@ -36,11 +36,13 @@ class GoToWidget : public QWidget
 
   public:
     explicit GoToWidget(QWidget* parent = nullptr);
+    void toggle_visible();
+    void set_defaults(int default_x, int default_y);
 
   Q_SIGNALS:
+    void go_to_requested(int x, int y);
 
   public Q_SLOTS:
-    void toggle_visible();
 
   protected:
     void keyPressEvent(QKeyEvent* e);

@@ -164,8 +164,12 @@ void MainWindow::initialize_shortcuts()
         new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_L), this);
     connect(go_to_shortcut,
             SIGNAL(activated()),
-            go_to_widget_,
-            SLOT(toggle_visible()));
+            this,
+            SLOT(toggle_go_to_dialog()));
+    connect(go_to_widget_,
+            SIGNAL(go_to_requested(int, int)),
+            this,
+            SLOT(go_to_pixel(int, int)));
 }
 
 

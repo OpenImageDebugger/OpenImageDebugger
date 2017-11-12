@@ -302,3 +302,39 @@ void MainWindow::show_context_menu(const QPoint& pos)
     // Show context menu at handling position
     myMenu.exec(globalPos);
 }
+
+
+void MainWindow::toggle_go_to_dialog()
+{
+    if (!go_to_widget_->isVisible()) {
+        vec4 default_goal(0, 0, 0, 0);
+
+        if (currently_selected_stage_ != nullptr) {
+
+            int screen_center_x = ui_->bufferPreview->width() / 2;
+            int screen_center_y = ui_->bufferPreview->height() / 2;
+            default_goal =
+                get_stage_coordinates(screen_center_x, screen_center_y);
+        }
+
+        go_to_widget_->set_defaults(default_goal.x(), default_goal.y());
+    }
+
+    go_to_widget_->toggle_visible();
+}
+
+
+void MainWindow::go_to_pixel(int x, int y)
+{
+    if (link_views_enabled_) {
+        for (auto& stage : stages_) {
+            stage.second->go_to_pixel(x, y);
+        }
+    } else if (currently_selected_stage_ != nullptr) {
+        currently_selected_stage_->go_to_pixel(x, y);
+    }
+
+    update_status_bar();
+
+    request_render_update_ = true;
+}

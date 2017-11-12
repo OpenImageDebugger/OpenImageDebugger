@@ -26,6 +26,7 @@
 #include "go_to_widget.h"
 
 #include <QHBoxLayout>
+#include <QIntValidator>
 #include <QKeyEvent>
 
 
@@ -38,9 +39,11 @@ GoToWidget::GoToWidget(QWidget* parent)
 
     x_coordinate_ = new QLineEdit(this);
     x_coordinate_->setPlaceholderText("x");
+    x_coordinate_->setValidator(new QIntValidator(x_coordinate_));
 
     y_coordinate_ = new QLineEdit(this);
     y_coordinate_->setPlaceholderText("y");
+    y_coordinate_->setValidator(new QIntValidator(y_coordinate_));
 
     layout->addWidget(x_coordinate_);
     layout->addWidget(y_coordinate_);
@@ -60,9 +63,9 @@ void GoToWidget::keyPressEvent(QKeyEvent* e)
     case Qt::Key_Enter:
     case Qt::Key_Return:
         toggle_visible();
-        // TODO emit "go to position" event
-
         e->accept();
+        Q_EMIT(go_to_requested(x_coordinate_->text().toInt(),
+                               y_coordinate_->text().toInt()));
         return; // Let the completer do default behavior
     }
 }
@@ -81,6 +84,15 @@ void GoToWidget::toggle_visible()
 
         this->move(parent_widget->width() - this->width(),
                    parent_widget->height() - this->height());
+
         x_coordinate_->setFocus();
+        x_coordinate_->selectAll();
     }
+}
+
+
+void GoToWidget::set_defaults(int default_x, int default_y)
+{
+    x_coordinate_->setText(QString::number(default_x));
+    y_coordinate_->setText(QString::number(default_y));
 }

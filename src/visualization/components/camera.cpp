@@ -181,6 +181,29 @@ float Camera::compute_zoom()
 }
 
 
+void Camera::move_to(float x, float y)
+{
+    GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
+
+    Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+    vec4 buf_dim =
+        buffer_obj->get_pose() *
+        (vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1) * 0.5f -
+         vec4(x, y, 0, 1));
+
+    // Zoom into the specified coordinate
+    zoom_power_ = 45.f;
+    float zoom  = 1.f / compute_zoom();
+    scale_      = mat4::scale(vec4(zoom, zoom, 1.0, 1.0));
+
+    vec4 transformed_goal = scale_.inv() * buf_dim;
+    camera_pos_x_         = transformed_goal.x();
+    camera_pos_y_         = transformed_goal.y();
+
+    update_object_pose();
+}
+
+
 void Camera::recenter_camera()
 {
     camera_pos_x_ = camera_pos_y_ = 0.0f;

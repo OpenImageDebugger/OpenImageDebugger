@@ -76,6 +76,8 @@ class Stage
 
     void mouse_move_event(int mouse_x, int mouse_y);
 
+    void go_to_pixel(int x, int y);
+
   private:
     std::map<std::string, std::shared_ptr<GameObject>> all_game_objects;
 };

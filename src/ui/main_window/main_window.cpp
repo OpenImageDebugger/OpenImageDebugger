@@ -354,10 +354,38 @@ void MainWindow::persist_settings()
 }
 
 
+vec4 MainWindow::get_stage_coordinates(float mouse_x, float mouse_y)
+{
+    GameObject* cam_obj = currently_selected_stage_->get_game_object("camera");
+    Camera* cam         = cam_obj->get_component<Camera>("camera_component");
+
+    GameObject* buffer_obj =
+        currently_selected_stage_->get_game_object("buffer");
+    Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
+
+    float win_w = ui_->bufferPreview->width();
+    float win_h = ui_->bufferPreview->height();
+    vec4 mouse_pos_ndc(2.0 * (mouse_x - win_w / 2) / win_w,
+                       -2.0 * (mouse_y - win_h / 2) / win_h,
+                       0,
+                       1);
+    mat4 view      = cam_obj->get_pose().inv();
+    mat4 buff_pose = buffer_obj->get_pose();
+    mat4 vp_inv    = (cam->projection * view * buff_pose).inv();
+
+    vec4 mouse_pos = vp_inv * mouse_pos_ndc;
+    mouse_pos +=
+        vec4(buffer->buffer_width_f / 2.f, buffer->buffer_height_f / 2.f, 0, 0);
+
+    return mouse_pos;
+}
+
+
 void MainWindow::update_status_bar()
 {
     if (currently_selected_stage_ != nullptr) {
         stringstream message;
+
         GameObject* cam_obj =
             currently_selected_stage_->get_game_object("camera");
         Camera* cam = cam_obj->get_component<Camera>("camera_component");
@@ -368,19 +396,8 @@ void MainWindow::update_status_bar()
 
         float mouse_x = ui_->bufferPreview->mouse_x();
         float mouse_y = ui_->bufferPreview->mouse_y();
-        float win_w   = ui_->bufferPreview->width();
-        float win_h   = ui_->bufferPreview->height();
-        vec4 mouse_pos_ndc(2.0 * (mouse_x - win_w / 2) / win_w,
-                           -2.0 * (mouse_y - win_h / 2) / win_h,
-                           0,
-                           1);
-        mat4 view      = cam_obj->get_pose().inv();
-        mat4 buff_pose = buffer_obj->get_pose();
-        mat4 vp_inv    = (cam->projection * view * buff_pose).inv();
 
-        vec4 mouse_pos = vp_inv * mouse_pos_ndc;
-        mouse_pos += vec4(
-            buffer->buffer_width_f / 2.f, buffer->buffer_height_f / 2.f, 0, 0);
+        vec4 mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
 
         message << std::fixed << std::setprecision(1) << "("
                 << static_cast<int>(floor(mouse_pos.x())) << ", "
