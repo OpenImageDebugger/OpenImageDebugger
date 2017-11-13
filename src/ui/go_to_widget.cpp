@@ -91,8 +91,8 @@ void GoToWidget::toggle_visible()
 }
 
 
-void GoToWidget::set_defaults(int default_x, int default_y)
+void GoToWidget::set_defaults(float default_x, float default_y)
 {
-    x_coordinate_->setText(QString::number(default_x));
-    y_coordinate_->setText(QString::number(default_y));
+    x_coordinate_->setText(QString::number(std::round(default_x)));
+    y_coordinate_->setText(QString::number(std::round(default_y)));
 }

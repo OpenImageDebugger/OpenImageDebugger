@@ -191,8 +191,7 @@ void Camera::move_to(float x, float y)
         (vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1) * 0.5f -
          vec4(x, y, 0, 1));
 
-    // Zoom into the specified coordinate
-    zoom_power_ = 45.f;
+    // Recompute zoom matrix to discard its internal translation
     float zoom  = 1.f / compute_zoom();
     scale_      = mat4::scale(vec4(zoom, zoom, 1.0, 1.0));
 
