@@ -5,6 +5,7 @@ Classes related to exposing an interface to the ImageWatch window
 """
 
 import ctypes
+import ctypes.util
 import signal
 import threading
 
@@ -22,6 +23,12 @@ class GdbImageWatchWindow():
     """
     def __init__(self, script_path, bridge):
         self._bridge = bridge
+
+        # Request ctypes to load libGL before the native giwwindow does; this
+        # fixes an issue on Ubuntu machines with nvidia drivers. For more
+        # information, please refer to
+        # https://github.com/csantosbh/gdb-imagewatch/issues/28
+        ctypes.CDLL(ctypes.util.find_library('GL'), ctypes.RTLD_GLOBAL)
 
         # Load imagewatch library and set up its API
         self._lib = ctypes.cdll.LoadLibrary(
