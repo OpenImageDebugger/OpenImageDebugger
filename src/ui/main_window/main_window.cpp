@@ -58,6 +58,8 @@ MainWindow::MainWindow(QWidget* parent)
     , ui_(new Ui::MainWindowUi)
     , plot_callback_(nullptr)
 {
+    installEventFilter(this);
+
     ui_->setupUi(this);
 
     initialize_ui_icons();

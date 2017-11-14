@@ -45,16 +45,26 @@ class Component
 
     virtual int render_index() const;
 
-    virtual void mouse_drag_event(int mouse_x, int mouse_y);
-
-    virtual void mouse_move_event(int mouse_x, int mouse_y);
-
     // Called after all components are initialized
     virtual bool post_initialize();
 
     virtual void update() = 0;
 
     virtual void draw(const mat4& projection, const mat4& viewInv) = 0;
+
+    ///
+    // Events
+    virtual void key_press_event(int /* key_code */)
+    {
+    }
+
+    virtual void mouse_drag_event(int /* mouse_x */, int /* mouse_y */)
+    {
+    }
+
+    virtual void mouse_move_event(int /* mouse_x */, int /* mouse_y */)
+    {
+    }
 
     virtual ~Component();
 

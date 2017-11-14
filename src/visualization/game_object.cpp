@@ -103,6 +103,14 @@ void GameObject::mouse_move_event(int mouse_x, int mouse_y)
 }
 
 
+void GameObject::key_press_event(int key_code)
+{
+    for (const auto& comp : all_components_) {
+        comp.second->key_press_event(key_code);
+    }
+}
+
+
 const std::map<std::string, std::shared_ptr<Component>>&
 GameObject::get_components()
 {

@@ -27,6 +27,8 @@ class Camera : public Component
 
     virtual bool post_initialize();
 
+    virtual void key_press_event(int key_code);
+
     void window_resized(int w, int h);
 
     void scroll_callback(float delta);
@@ -41,6 +43,8 @@ class Camera : public Component
 
   private:
     void update_object_pose();
+
+    void scale_at(const vec4& center_ndc, float delta);
 
     void set_initial_zoom();
 

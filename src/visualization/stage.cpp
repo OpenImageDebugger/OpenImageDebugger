@@ -235,11 +235,19 @@ void Stage::mouse_move_event(int mouse_x, int mouse_y)
 }
 
 
+void Stage::key_press_event(int key_code)
+{
+    for (const auto& game_obj : all_game_objects) {
+        game_obj.second->key_press_event(key_code);
+    }
+}
+
+
 void Stage::go_to_pixel(int x, int y)
 {
     GameObject* cam_obj = all_game_objects["camera"].get();
     Camera* camera_component =
         cam_obj->get_component<Camera>("camera_component");
 
-    camera_component->move_to(x, y);
+    camera_component->move_to(x + 0.5f, y + 0.5f);
 }

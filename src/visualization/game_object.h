@@ -68,6 +68,8 @@ class GameObject
 
     void mouse_move_event(int mouse_x, int mouse_y);
 
+    void key_press_event(int key_code);
+
     const std::map<std::string, std::shared_ptr<Component>>& get_components();
 
   private:

@@ -97,6 +97,8 @@ class MainWindow : public QMainWindow
     void mouse_move_event(int mouse_x, int mouse_y);
 
     // Window change events - only called after the event is finished
+    bool eventFilter(QObject* target, QEvent* event);
+
     void resizeEvent(QResizeEvent*);
 
     void moveEvent(QMoveEvent*);

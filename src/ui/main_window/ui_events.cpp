@@ -106,6 +106,28 @@ void MainWindow::closeEvent(QCloseEvent*)
 }
 
 
+bool MainWindow::eventFilter(QObject* target, QEvent* event)
+{
+    if (event->type() == QEvent::KeyPress) {
+        QKeyEvent* key_event = static_cast<QKeyEvent*>(event);
+
+        if (link_views_enabled_) {
+            for (auto& stage : stages_) {
+                stage.second->key_press_event(key_event->key());
+            }
+        } else if (currently_selected_stage_ != nullptr) {
+            currently_selected_stage_->key_press_event(key_event->key());
+        }
+
+        request_render_update_ = true;
+
+        return QObject::eventFilter(target, event);
+    }
+
+    return false;
+}
+
+
 void MainWindow::recenter_buffer()
 {
     if (link_views_enabled_) {

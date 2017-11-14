@@ -76,6 +76,8 @@ class Stage
 
     void mouse_move_event(int mouse_x, int mouse_y);
 
+    void key_press_event(int key_code);
+
     void go_to_pixel(int x, int y);
 
   private:

@@ -72,28 +72,8 @@ void Camera::scroll_callback(float delta)
                        -2.0 * (mouse_y - win_h / 2) / win_h,
                        0,
                        1);
-    mat4 vp_inv = game_object_->get_pose() * projection.inv();
 
-    float delta_zoom = std::pow(zoom_factor, -delta);
-
-    vec4 mouse_pos = scale_.inv() * vp_inv * mouse_pos_ndc;
-
-    // Since the view matrix of the camera is inverted before being applied to
-    // the world coordinates, the order in which the operations below are
-    // applied to world coordinates during rendering will also be reversed
-
-    // clang-format off
-    scale_ = scale_ *
-             mat4::translation(mouse_pos) *
-             mat4::scale(vec4(delta_zoom, delta_zoom, 1.0, 1.0)) *
-             mat4::translation(-mouse_pos);
-    // clang-format on
-
-    // Calls to compute_zoom will require the zoom_power_ parameter to be on par
-    // with the accumulated delta_zooms
-    zoom_power_ += delta;
-
-    update_object_pose();
+    scale_at(mouse_pos_ndc, delta);
 }
 
 
@@ -128,6 +108,45 @@ bool Camera::post_initialize()
     update_object_pose();
 
     return true;
+}
+
+
+void Camera::key_press_event(int key_code)
+{
+    const vec4 screen_center(0, 0, 0, 1);
+
+    if (key_code == Qt::Key_Plus) {
+        scale_at(screen_center, 1.0);
+    } else if (key_code == Qt::Key_Minus) {
+        scale_at(screen_center, -1.0);
+    }
+}
+
+
+void Camera::scale_at(const vec4& center_ndc, float delta)
+{
+    mat4 vp_inv = game_object_->get_pose() * projection.inv();
+
+    float delta_zoom = std::pow(zoom_factor, -delta);
+
+    vec4 center_pos = scale_.inv() * vp_inv * center_ndc;
+
+    // Since the view matrix of the camera is inverted before being applied
+    // to the world coordinates, the order in which the operations below are
+    // applied to world coordinates during rendering will also be reversed
+
+    // clang-format off
+        scale_ = scale_ *
+                 mat4::translation(center_pos) *
+                 mat4::scale(vec4(delta_zoom, delta_zoom, 1.0, 1.0)) *
+                 mat4::translation(-center_pos);
+    // clang-format on
+
+    // Calls to compute_zoom will require the zoom_power_ parameter to be on
+    // par with the accumulated delta_zooms
+    zoom_power_ += delta;
+
+    update_object_pose();
 }
 
 
@@ -192,8 +211,8 @@ void Camera::move_to(float x, float y)
          vec4(x, y, 0, 1));
 
     // Recompute zoom matrix to discard its internal translation
-    float zoom  = 1.f / compute_zoom();
-    scale_      = mat4::scale(vec4(zoom, zoom, 1.0, 1.0));
+    float zoom = 1.f / compute_zoom();
+    scale_     = mat4::scale(vec4(zoom, zoom, 1.0, 1.0));
 
     vec4 transformed_goal = scale_.inv() * buf_dim;
     camera_pos_x_         = transformed_goal.x();
