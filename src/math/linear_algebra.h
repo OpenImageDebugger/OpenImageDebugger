@@ -29,7 +29,7 @@
 #include <cstring>
 #include <iostream>
 
-#include <eigen3/Eigen/Eigen>
+#include "thirdparty/Eigen/Eigen"
 
 
 class mat4;

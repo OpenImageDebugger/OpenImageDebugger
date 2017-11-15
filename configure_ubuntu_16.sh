@@ -2,7 +2,7 @@
 echo "Starting GDB ImageWatch configuration for Ubuntu 16.04."
 set -e
 sudo apt-get install python3-pip
-sudo apt-get -y install libpython3-dev python3-pip libeigen3-dev
+sudo apt-get -y install libpython3-dev python3-pip
 sudo pip3 install pysigset
 mkdir build
 cd build

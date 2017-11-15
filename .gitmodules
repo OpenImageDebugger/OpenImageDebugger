@@ -1,0 +1,4 @@
+[submodule "src/thirdparty/Eigen"]
+	path = src/thirdparty/Eigen
+	url = git@github.com:csantosbh/eigen.git
+	branch = v3.4
