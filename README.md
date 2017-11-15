@@ -10,7 +10,7 @@ class, but can also be customized to work with any arbitrary data structure.
 * GUI interactivity:
     * Scroll to zoom, left click+drag to move the buffer around;
     * Rotate buffers 90&deg; clockwise or counterclockwise;
-    * Press "Ctrl+L" to zoom into any arbitrary pixel location;
+    * Go-to widget that quickly takes you to any arbitrary pixel location;
 * Buffer values: Zoom in close enough to see the numerical values of the
   buffer.
 * Auto update: Whenever a breakpoint is hit, the buffer view is automatically
@@ -193,11 +193,11 @@ GDB ImageWatch supports two export modes. You can save your buffer as a PNG
 (which may result in loss of data if your buffer type is not `uint8_t`) or as a
 binary file that can be opened with any tool.
 
-### Quickly zooming into arbitrary coordinates
+### Quickly moving to arbitrary coordinates
 
-If you need to quickly zoom into any pixel location, then the *go to*
-functionality is what you are looking for. Press *ctrl+l* and two input fields
-corresponding to the target destination in format **<x, y>** will appear at the
+If you need to quickly move to any pixel location, then the *go to*
+functionality is what you are looking for. Press *Ctrl+L* and two input fields
+corresponding to the target destination in format `<x, y>` will appear at the
 bottom right corner of the buffer screen. Type the desired location, then press
 enter to quickly zoom into that location.
 

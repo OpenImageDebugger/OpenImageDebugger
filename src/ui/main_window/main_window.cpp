@@ -309,7 +309,7 @@ void MainWindow::persist_settings()
     QList<BufferExpiration> persisted_session_buffers;
 
     // Load previous session symbols
-    QList<BufferExpiration> previous_session_buffers =
+    QList<BufferExpiration> previous_session_buffers_qlist =
         settings.value("PreviousSession/buffers")
             .value<QList<BufferExpiration>>();
 
@@ -318,7 +318,7 @@ void MainWindow::persist_settings()
 
     // Of the buffers not currently being visualized, only keep those whose
     // timer hasn't expired yet and is not in the set of removed names
-    for (const auto& prev_buff : previous_session_buffers) {
+    for (const auto& prev_buff : previous_session_buffers_qlist) {
         const string buff_name_std_str = prev_buff.first.toStdString();
 
         const bool being_viewed =
@@ -327,7 +327,10 @@ void MainWindow::persist_settings()
             removed_buffer_names_.find(buff_name_std_str) !=
             removed_buffer_names_.end();
 
-        if (!being_viewed && !was_removed && prev_buff.second >= now) {
+        if(was_removed) {
+            previous_session_buffers_.erase(buff_name_std_str);
+        }
+        else if (!being_viewed && prev_buff.second >= now) {
             persisted_session_buffers.append(prev_buff);
         }
     }

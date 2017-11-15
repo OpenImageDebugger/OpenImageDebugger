@@ -25,6 +25,8 @@
 
 #include "go_to_widget.h"
 
+#include <cmath>
+
 #include <QHBoxLayout>
 #include <QIntValidator>
 #include <QKeyEvent>

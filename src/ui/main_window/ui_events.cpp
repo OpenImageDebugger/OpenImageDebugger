@@ -120,6 +120,7 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
         }
 
         request_render_update_ = true;
+        update_status_bar();
 
         return QObject::eventFilter(target, event);
     }
