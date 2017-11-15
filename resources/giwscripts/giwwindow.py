@@ -9,7 +9,7 @@ import ctypes.util
 import signal
 import threading
 
-import pysigset
+from giwscripts.thirdparty.pysigset import pysigset
 
 
 FETCH_BUFFER_CBK_TYPE = ctypes.CFUNCTYPE(ctypes.c_int,

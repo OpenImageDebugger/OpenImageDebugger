@@ -49,8 +49,7 @@ class, but can also be customized to work with any arbitrary data structure.
 
 On Ubuntu, you can install most of the dependencies with the following command:
 
-    sudo apt-get install libpython3-dev python3-pip
-    sudo pip3 install pysigset
+    sudo apt-get install libpython3-dev
 
 Download and install the latest version of GDB with python3 support (if you
 already don't have it):
@@ -72,6 +71,8 @@ folder `gdb-7.10`.
 Finally, clone the GDB ImageWatch plugin to any folder you prefer:
 
     git clone https://github.com/csantosbh/gdb-imagewatch
+    git submodule init
+    git submodule update
 
 ### Ubuntu 16.04 manual installation with QtCreator
 
@@ -98,18 +99,6 @@ folder instead. If you choose to install the plugin, it will be placed under
 `/path/to/installation/folder/bin/gdb-imagewatch/`.
 
 By default, the `PREFIX` variable is `/usr/local`.
-
-#### Loading plugin: QtCreator
-
-If you use QtCreator, the best way to integrate GDB ImageWatch into your
-workflow is by using it as an *extra debugging helper*. This can be achieved by
-going to the menu `Tools`->`Options`->`Debugger` and adding the file
-`/path/to/gdb-imagewatch/gdb-imagewatch.py` in the option `Extra debugging
-Helpers`.
-
-This will automatically load the plugin for every debug session, and will
-reload the local variables when switching between threads/stack level when the
-debugger is paused.
 
 #### Loading pugin: GDB/Other IDEs
 
