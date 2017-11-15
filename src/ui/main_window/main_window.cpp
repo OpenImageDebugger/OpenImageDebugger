@@ -359,7 +359,7 @@ void MainWindow::persist_settings()
 }
 
 
-vec4 MainWindow::get_stage_coordinates(float mouse_x, float mouse_y)
+vec4 MainWindow::get_stage_coordinates(float pos_window_x, float pos_window_y)
 {
     GameObject* cam_obj = currently_selected_stage_->get_game_object("camera");
     Camera* cam         = cam_obj->get_component<Camera>("camera_component");
@@ -370,8 +370,8 @@ vec4 MainWindow::get_stage_coordinates(float mouse_x, float mouse_y)
 
     float win_w = ui_->bufferPreview->width();
     float win_h = ui_->bufferPreview->height();
-    vec4 mouse_pos_ndc(2.0 * (mouse_x - win_w / 2) / win_w,
-                       -2.0 * (mouse_y - win_h / 2) / win_h,
+    vec4 mouse_pos_ndc(2.0 * (pos_window_x - win_w / 2) / win_w,
+                       -2.0 * (pos_window_y - win_h / 2) / win_h,
                        0,
                        1);
     mat4 view      = cam_obj->get_pose().inv();

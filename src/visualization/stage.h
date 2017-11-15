@@ -78,7 +78,7 @@ class Stage
 
     void key_press_event(int key_code);
 
-    void go_to_pixel(int x, int y);
+    void go_to_pixel(float x, float y);
 
   private:
     std::map<std::string, std::shared_ptr<GameObject>> all_game_objects;

@@ -108,6 +108,8 @@ class mat4
 
     vec4 operator*(const vec4& b) const;
 
+    float& operator()(int row, int col);
+
     static mat4 rotation(float angle);
 
     static mat4 translation(const vec4& vector);

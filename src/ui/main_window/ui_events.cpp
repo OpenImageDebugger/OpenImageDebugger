@@ -333,11 +333,11 @@ void MainWindow::toggle_go_to_dialog()
         vec4 default_goal(0, 0, 0, 0);
 
         if (currently_selected_stage_ != nullptr) {
+            GameObject* cam_obj =
+                currently_selected_stage_->get_game_object("camera");
+            Camera* cam = cam_obj->get_component<Camera>("camera_component");
 
-            int screen_center_x = ui_->bufferPreview->width() / 2;
-            int screen_center_y = ui_->bufferPreview->height() / 2;
-            default_goal =
-                get_stage_coordinates(screen_center_x, screen_center_y);
+            default_goal = cam->get_position();
         }
 
         go_to_widget_->set_defaults(default_goal.x(), default_goal.y());
@@ -347,7 +347,7 @@ void MainWindow::toggle_go_to_dialog()
 }
 
 
-void MainWindow::go_to_pixel(int x, int y)
+void MainWindow::go_to_pixel(float x, float y)
 {
     if (link_views_enabled_) {
         for (auto& stage : stages_) {

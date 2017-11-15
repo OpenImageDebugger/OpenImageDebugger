@@ -167,9 +167,9 @@ void MainWindow::initialize_shortcuts()
             this,
             SLOT(toggle_go_to_dialog()));
     connect(go_to_widget_,
-            SIGNAL(go_to_requested(int, int)),
+            SIGNAL(go_to_requested(float, float)),
             this,
-            SLOT(go_to_pixel(int, int)));
+            SLOT(go_to_pixel(float, float)));
 }
 
 

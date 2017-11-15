@@ -158,7 +158,7 @@ class MainWindow : public QMainWindow
 
     void toggle_go_to_dialog();
 
-    void go_to_pixel(int x, int y);
+    void go_to_pixel(float x, float y);
 
   private Q_SLOTS:
     ///
@@ -215,7 +215,7 @@ class MainWindow : public QMainWindow
 
     void set_currently_selected_stage(Stage* stage);
 
-    vec4 get_stage_coordinates(float mouse_x, float mouse_y);
+    vec4 get_stage_coordinates(float pos_window_x, float pos_window_y);
 
     ///
     // Auto contrast pane - private - implemented in auto_contrast.cpp

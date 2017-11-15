@@ -66,8 +66,8 @@ void GoToWidget::keyPressEvent(QKeyEvent* e)
     case Qt::Key_Return:
         toggle_visible();
         e->accept();
-        Q_EMIT(go_to_requested(x_coordinate_->text().toInt(),
-                               y_coordinate_->text().toInt()));
+        Q_EMIT(go_to_requested(x_coordinate_->text().toFloat() + 0.5f,
+                               y_coordinate_->text().toFloat() + 0.5f));
         return; // Let the completer do default behavior
     }
 }
@@ -95,6 +95,6 @@ void GoToWidget::toggle_visible()
 
 void GoToWidget::set_defaults(float default_x, float default_y)
 {
-    x_coordinate_->setText(QString::number(std::round(default_x)));
-    y_coordinate_->setText(QString::number(std::round(default_y)));
+    x_coordinate_->setText(QString::number(std::round(default_x - 0.5f)));
+    y_coordinate_->setText(QString::number(std::round(default_y - 0.5f)));
 }

@@ -41,7 +41,9 @@ class Camera : public Component
 
     void move_to(float x, float y);
 
-  private:
+    vec4 get_position();
+
+private:
     void update_object_pose();
 
     void scale_at(const vec4& center_ndc, float delta);

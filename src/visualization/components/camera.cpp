@@ -136,11 +136,18 @@ void Camera::scale_at(const vec4& center_ndc, float delta)
     // applied to world coordinates during rendering will also be reversed
 
     // clang-format off
-        scale_ = scale_ *
-                 mat4::translation(center_pos) *
-                 mat4::scale(vec4(delta_zoom, delta_zoom, 1.0, 1.0)) *
-                 mat4::translation(-center_pos);
+    scale_ = scale_ *
+             mat4::translation(center_pos) *
+             mat4::scale(vec4(delta_zoom, delta_zoom, 1.0, 1.0)) *
+             mat4::translation(-center_pos);
     // clang-format on
+
+    // Update camera position and force the scale matrix to contain scale only
+    camera_pos_x_ = camera_pos_x_ - scale_(0, 3) / scale_(0, 0);
+    camera_pos_y_ = camera_pos_y_ - scale_(1, 3) / scale_(1, 1);
+
+    scale_(0, 3) = 0.0f;
+    scale_(1, 3) = 0.0f;
 
     // Calls to compute_zoom will require the zoom_power_ parameter to be on
     // par with the accumulated delta_zooms
@@ -205,20 +212,32 @@ void Camera::move_to(float x, float y)
     GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
 
     Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
-    vec4 buf_dim =
-        buffer_obj->get_pose() *
-        (vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1) * 0.5f -
-         vec4(x, y, 0, 1));
+    vec4 buf_dim = vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1);
+    vec4 centered_coord = buf_dim * 0.5f - vec4(x, y, 0, 0);
 
     // Recompute zoom matrix to discard its internal translation
     float zoom = 1.f / compute_zoom();
     scale_     = mat4::scale(vec4(zoom, zoom, 1.0, 1.0));
 
-    vec4 transformed_goal = scale_.inv() * buf_dim;
-    camera_pos_x_         = transformed_goal.x();
-    camera_pos_y_         = transformed_goal.y();
+    vec4 transformed_goal =
+        scale_.inv() * buffer_obj->get_pose() * centered_coord;
+
+    camera_pos_x_ = transformed_goal.x();
+    camera_pos_y_ = transformed_goal.y();
 
     update_object_pose();
+}
+
+
+vec4 Camera::get_position()
+{
+    GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
+
+    Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+    vec4 buf_dim = vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1);
+    vec4 pos_vec(camera_pos_x_, camera_pos_y_, 0, 1);
+
+    return (buf_dim * 0.5f) - buffer_obj->get_pose().inv() * scale_ * pos_vec;
 }
 
 

@@ -243,11 +243,11 @@ void Stage::key_press_event(int key_code)
 }
 
 
-void Stage::go_to_pixel(int x, int y)
+void Stage::go_to_pixel(float x, float y)
 {
     GameObject* cam_obj = all_game_objects["camera"].get();
     Camera* camera_component =
         cam_obj->get_component<Camera>("camera_component");
 
-    camera_component->move_to(x + 0.5f, y + 0.5f);
+    camera_component->move_to(x, y);
 }
