@@ -1,8 +1,8 @@
 [submodule "src/thirdparty/Eigen"]
 	path = src/thirdparty/Eigen
-	url = git@github.com:csantosbh/eigen.git
+	url = https://github.com/csantosbh/eigen.git
 	branch = v3.4
 [submodule "resources/giwscripts/thirdparty/pysigset"]
 	path = resources/giwscripts/thirdparty/pysigset
-	url = git@github.com:csantosbh/pysigset.git
+	url = https://github.com/csantosbh/pysigset.git
 	branch = v0.3
