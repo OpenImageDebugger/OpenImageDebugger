@@ -29,6 +29,8 @@
 #include <QLineEdit>
 #include <QWidget>
 
+#include "decorated_line_edit.h"
+
 
 class GoToWidget : public QWidget
 {
@@ -49,8 +51,8 @@ class GoToWidget : public QWidget
 
 
   private:
-    QLineEdit* x_coordinate_;
-    QLineEdit* y_coordinate_;
+    DecoratedLineEdit* x_coordinate_;
+    DecoratedLineEdit* y_coordinate_;
 };
 
 #endif // GO_TO_WIDGET_H_

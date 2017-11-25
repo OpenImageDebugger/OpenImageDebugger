@@ -55,7 +55,8 @@ SOURCES += \
   src/visualization/shaders/text_fs.cpp \
   src/visualization/shaders/text_vs.cpp \
   src/ui/gl_text_renderer.cpp \
-  src/ui/go_to_widget.cpp
+  src/ui/go_to_widget.cpp \
+  src/ui/decorated_line_edit.cpp
 
 # Qt related headers
 HEADERS += \
@@ -65,7 +66,8 @@ HEADERS += \
   src/ui/symbol_completer.h \
   src/ui/symbol_search_input.h \
   src/ui/gl_text_renderer.h \
-  src/ui/go_to_widget.h
+  src/ui/go_to_widget.h \
+  src/ui/decorated_line_edit.h
 
 # Copy resource files to build folder
 copydata.commands = \
@@ -114,19 +116,9 @@ CONFIG += \
   c++11 \
   no_keywords
 
-PKGCONFIG += \
-  python3
+PKGCONFIG += python3
 
 FORMS += ui/main_window.ui
 
-OTHER_FILES += \
-  resources/icons/arrow-down-b.png \
-  resources/icons/arrow-shrink.png \
-  resources/icons/contrast.png \
-  resources/icons/link.png \
-  resources/icons/rotate-ccw.png \
-  resources/icons/rotate-cw.png
-
-RESOURCES += \
-  resources/resources.qrc
+RESOURCES += resources/resources.qrc
 

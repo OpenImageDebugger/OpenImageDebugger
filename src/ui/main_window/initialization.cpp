@@ -275,6 +275,9 @@ void MainWindow::initialize_toolbar()
 
     connect(ui_->rotate_90_cw, SIGNAL(clicked()), this, SLOT(rotate_90_cw()));
     connect(ui_->rotate_90_ccw, SIGNAL(clicked()), this, SLOT(rotate_90_ccw()));
+
+    connect(
+        ui_->go_to_pixel, SIGNAL(clicked()), this, SLOT(toggle_go_to_dialog()));
 }
 
 
@@ -296,8 +299,4 @@ void MainWindow::initialize_status_bar()
 void MainWindow::initialize_go_to_widget()
 {
     go_to_widget_ = new GoToWidget(ui_->bufferPreview);
-    connect(ui_->go_to_pixel,
-            SIGNAL(clicked()),
-            this,
-            SLOT(toggle_go_to_dialog()));
 }

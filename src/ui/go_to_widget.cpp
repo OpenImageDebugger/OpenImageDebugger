@@ -23,14 +23,13 @@
  * IN THE SOFTWARE.
  */
 
-#include "go_to_widget.h"
-
 #include <cmath>
 
 #include <QHBoxLayout>
 #include <QIntValidator>
 #include <QKeyEvent>
 
+#include "go_to_widget.h"
 
 GoToWidget::GoToWidget(QWidget* parent)
     : QWidget(parent)
@@ -39,12 +38,12 @@ GoToWidget::GoToWidget(QWidget* parent)
     layout->setMargin(0);
     layout->setSpacing(0);
 
-    x_coordinate_ = new QLineEdit(this);
-    x_coordinate_->setPlaceholderText("x");
+    x_coordinate_ = new DecoratedLineEdit(
+        ":resources/icons/x.svg", "Horizontal coordinate", this);
     x_coordinate_->setValidator(new QIntValidator(x_coordinate_));
 
-    y_coordinate_ = new QLineEdit(this);
-    y_coordinate_->setPlaceholderText("y");
+    y_coordinate_ = new DecoratedLineEdit(
+        ":resources/icons/y.svg", "Vertical coordinate", this);
     y_coordinate_->setValidator(new QIntValidator(y_coordinate_));
 
     layout->addWidget(x_coordinate_);
