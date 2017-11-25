@@ -55,7 +55,7 @@ class CvMat(interface.TypeInspectorInterface):
             row_stride = int(row_stride / 8)
 
         return {
-            'display_name': str(picked_obj.type) + ' ' + obj_name,
+            'display_name':  obj_name + ' (' + str(picked_obj.type) + ')',
             'pointer': buffer,
             'width': width,
             'height': height,

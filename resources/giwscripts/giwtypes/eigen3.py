@@ -88,7 +88,7 @@ class EigenXX(interface.TypeInspectorInterface):
         row_stride = width
 
         return {
-            'display_name': str(matrix_type_obj) + ' ' + obj_name,
+            'display_name': obj_name + ' (' + str(matrix_type_obj) + ')',
             'pointer': buffer,
             'width': width,
             'height': height,

@@ -100,10 +100,10 @@ folder instead. If you choose to install the plugin, it will be placed under
 
 By default, the `PREFIX` variable is `/usr/local`.
 
-#### Loading pugin: GDB/Other IDEs
+#### Loading pugin
 
-If you are not using QtCreator, simply edit the `~/.gdbinit` file (create it if
-it doesn't exist) and append the following line:
+In order to load the GDB-ImageWatch plugin, simply edit the `~/.gdbinit` file
+(create it if it doesn't exist) and append the following line:
 
     source /path/to/gdb-imagewatch/gdb-imagewatch.py
 
@@ -112,13 +112,16 @@ starts.
 
 ### Ubuntu 16.04 Automated Installation without QtCreator
 
-If you are not using QtCreator, we provide the script `configure_ubuntu_16.sh`
-which automates most of the installation of GDB ImageWatch on Ubuntu 16.04.
-From the root directory of this project, execute the following:
+The script `configure_ubuntu_16.sh` automates some of the installation steps
+for GDB ImageWatch on Ubuntu 16.04.  From the root directory of this project,
+    execute the following:
 
     bash configure_ubuntu_16.sh
 
-Follow this step with the instructions below in the section `Testing your
+Note that this script will not instal Qt 5.6+ and GDB with python 3 support. If
+you don't have these packages, please follow the instructions above.
+
+When you are done, follow the instructions below in the section `Testing your
 installation`.
 
 ## Testing your installation
@@ -189,7 +192,7 @@ corresponding to the target destination in format `<x, y>` will appear at the
 bottom right corner of the buffer screen. Type the desired location, then press
 enter to quickly zoom into that location.
 
-### Loading Octave/Matlab buffers
+### Loading exported buffers on Octave/Matlab
 
 Buffers exported in the `Octave matrix` format can be loaded with the function
 `giw_load.m`, which is available in the `matlab` folder. To use it, add this

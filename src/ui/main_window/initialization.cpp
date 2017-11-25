@@ -111,6 +111,8 @@ void MainWindow::initialize_ui_icons()
     SET_FONT_ICON(ui_->linkViewsToggle, "\ue805");
     SET_FONT_ICON(ui_->rotate_90_cw, "\ue801");
     SET_FONT_ICON(ui_->rotate_90_ccw, "\ue802");
+    SET_FONT_ICON(ui_->go_to_pixel, "\uf031");
+
     SET_FONT_ICON(ui_->ac_reset_min, "\ue808");
     SET_FONT_ICON(ui_->ac_reset_max, "\ue808");
 
@@ -162,10 +164,8 @@ void MainWindow::initialize_shortcuts()
 
     QShortcut* go_to_shortcut =
         new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_L), this);
-    connect(go_to_shortcut,
-            SIGNAL(activated()),
-            this,
-            SLOT(toggle_go_to_dialog()));
+    connect(
+        go_to_shortcut, SIGNAL(activated()), this, SLOT(toggle_go_to_dialog()));
     connect(go_to_widget_,
             SIGNAL(go_to_requested(float, float)),
             this,
@@ -296,4 +296,8 @@ void MainWindow::initialize_status_bar()
 void MainWindow::initialize_go_to_widget()
 {
     go_to_widget_ = new GoToWidget(ui_->bufferPreview);
+    connect(ui_->go_to_pixel,
+            SIGNAL(clicked()),
+            this,
+            SLOT(toggle_go_to_dialog()));
 }

@@ -308,6 +308,25 @@ QStatusBar::item { border: 0; };</string>
               <string>Rotate 90° counterclockwise</string>
              </property>
             </widget>
+            <widget class="QToolButton" name="go_to_pixel">
+             <property name="geometry">
+              <rect>
+               <x>250</x>
+               <y>0</y>
+               <width>35</width>
+               <height>24</height>
+              </rect>
+             </property>
+             <property name="toolTip">
+              <string>Go to pixel position</string>
+             </property>
+             <property name="text">
+              <string/>
+             </property>
+             <property name="checkable">
+              <bool>false</bool>
+             </property>
+            </widget>
            </widget>
           </item>
           <item>
@@ -650,7 +669,7 @@ QStatusBar::item { border: 0; };</string>
      <x>0</x>
      <y>0</y>
      <width>1024</width>
-     <height>23</height>
+     <height>22</height>
     </rect>
    </property>
    <property name="font">
