@@ -111,18 +111,31 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent* key_event = static_cast<QKeyEvent*>(event);
 
+        EventProcessCode event_intercepted = EventProcessCode::IGNORED;
+
         if (link_views_enabled_) {
             for (auto& stage : stages_) {
-                stage.second->key_press_event(key_event->key());
+                EventProcessCode event_intercepted_stage =
+                    stage.second->key_press_event(key_event->key());
+
+                if (event_intercepted_stage == EventProcessCode::INTERCEPTED) {
+                    event_intercepted = EventProcessCode::INTERCEPTED;
+                }
             }
         } else if (currently_selected_stage_ != nullptr) {
-            currently_selected_stage_->key_press_event(key_event->key());
+            event_intercepted =
+                currently_selected_stage_->key_press_event(key_event->key());
         }
 
-        request_render_update_ = true;
-        update_status_bar();
+        if (event_intercepted == EventProcessCode::INTERCEPTED) {
+            request_render_update_ = true;
+            update_status_bar();
 
-        return QObject::eventFilter(target, event);
+            event->accept();
+            return true;
+        } else {
+            return QObject::eventFilter(target, event);
+        }
     }
 
     return false;

@@ -45,6 +45,8 @@ class vec4
 
     vec4& operator+=(const vec4& b);
 
+    vec4 operator+(const vec4& b) const;
+
     vec4 operator-(const vec4& b) const;
 
     vec4 operator*(float scalar) const;

@@ -27,7 +27,7 @@ class Camera : public Component
 
     virtual bool post_initialize();
 
-    virtual void key_press_event(int key_code);
+    virtual EventProcessCode key_press_event(int key_code);
 
     void window_resized(int w, int h);
 

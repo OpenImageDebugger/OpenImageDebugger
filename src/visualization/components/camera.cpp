@@ -28,6 +28,7 @@
 #include "camera.h"
 
 #include "ui/gl_canvas.h"
+#include "visualization/events.h"
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
 
@@ -111,15 +112,41 @@ bool Camera::post_initialize()
 }
 
 
-void Camera::key_press_event(int key_code)
+EventProcessCode Camera::key_press_event(int key_code)
 {
     const vec4 screen_center(0, 0, 0, 1);
+    EventProcessCode event_intercepted = EventProcessCode::IGNORED;
 
-    if (key_code == Qt::Key_Plus) {
-        scale_at(screen_center, 1.0);
-    } else if (key_code == Qt::Key_Minus) {
-        scale_at(screen_center, -1.0);
+    if (KeyboardState::is_key_pressed(KeyboardState::ModifierKey::Control)) {
+        if (key_code == Qt::Key_Plus) {
+            scale_at(screen_center, 1.0);
+
+            event_intercepted = EventProcessCode::INTERCEPTED;
+        } else if (key_code == Qt::Key_Minus) {
+            scale_at(screen_center, -1.0);
+
+            event_intercepted = EventProcessCode::INTERCEPTED;
+        } else {
+            vec4 delta_pos(0, 0, 0, 0);
+
+            if (key_code == Qt::Key_Up) {
+                delta_pos.y() = -1;
+            } else if (key_code == Qt::Key_Down) {
+                delta_pos.y() = 1;
+            } else if (key_code == Qt::Key_Left) {
+                delta_pos.x() = -1;
+            } else if (key_code == Qt::Key_Right) {
+                delta_pos.x() = 1;
+            }
+
+            vec4 destination = get_position() + delta_pos;
+            move_to(destination.x(), destination.y());
+
+            event_intercepted = EventProcessCode::INTERCEPTED;
+        }
     }
+
+    return event_intercepted;
 }
 
 
@@ -142,7 +169,8 @@ void Camera::scale_at(const vec4& center_ndc, float delta)
              mat4::translation(-center_pos);
     // clang-format on
 
-    // Update camera position and force the scale matrix to contain scale only
+    // Update camera position and force the scale matrix to contain scale
+    // only
     camera_pos_x_ = camera_pos_x_ - scale_(0, 3) / scale_(0, 0);
     camera_pos_y_ = camera_pos_y_ - scale_(1, 3) / scale_(1, 1);
 

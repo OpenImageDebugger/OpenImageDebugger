@@ -103,11 +103,20 @@ void GameObject::mouse_move_event(int mouse_x, int mouse_y)
 }
 
 
-void GameObject::key_press_event(int key_code)
+EventProcessCode GameObject::key_press_event(int key_code)
 {
+    EventProcessCode event_intercepted = EventProcessCode::IGNORED;
+
     for (const auto& comp : all_components_) {
-        comp.second->key_press_event(key_code);
+        EventProcessCode event_intercepted_component =
+            comp.second->key_press_event(key_code);
+
+        if (event_intercepted_component == EventProcessCode::INTERCEPTED) {
+            event_intercepted = EventProcessCode::INTERCEPTED;
+        }
     }
+
+    return event_intercepted;
 }
 
 

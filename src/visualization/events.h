@@ -23,59 +23,17 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GAME_OBJECT_H_
-#define GAME_OBJECT_H_
+#ifndef EVENTS_H_
+#define EVENTS_H_
 
-#include <memory>
+enum class EventProcessCode { IGNORED, INTERCEPTED };
 
-#include "math/linear_algebra.h"
-#include "events.h"
-
-
-class GLCanvas;
-class Stage;
-class Component;
-
-
-class GameObject
+class KeyboardState
 {
   public:
-    Stage* stage;
+    enum class ModifierKey { Control, Alt, Shift };
 
-    GameObject();
-
-    template <typename T>
-    T* get_component(std::string tag)
-    {
-        if (all_components_.find(tag) == all_components_.end())
-            return nullptr;
-        return dynamic_cast<T*>(all_components_[tag].get());
-    }
-
-    bool initialize();
-
-    bool post_initialize();
-
-    void update();
-
-    void add_component(const std::string& component_name,
-                       std::shared_ptr<Component> component);
-
-    mat4 get_pose();
-
-    void set_pose(const mat4& pose);
-
-    void mouse_drag_event(int mouse_x, int mouse_y);
-
-    void mouse_move_event(int mouse_x, int mouse_y);
-
-    EventProcessCode key_press_event(int key_code);
-
-    const std::map<std::string, std::shared_ptr<Component>>& get_components();
-
-  private:
-    std::map<std::string, std::shared_ptr<Component>> all_components_;
-    mat4 pose_;
+    static bool is_key_pressed(ModifierKey key);
 };
 
-#endif // GAME_OBJECT_H_
+#endif // EVENTS_H_

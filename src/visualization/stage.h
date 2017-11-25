@@ -76,7 +76,7 @@ class Stage
 
     void mouse_move_event(int mouse_x, int mouse_y);
 
-    void key_press_event(int key_code);
+    EventProcessCode key_press_event(int key_code);
 
     void go_to_pixel(float x, float y);
 

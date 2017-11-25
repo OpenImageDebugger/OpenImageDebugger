@@ -235,11 +235,20 @@ void Stage::mouse_move_event(int mouse_x, int mouse_y)
 }
 
 
-void Stage::key_press_event(int key_code)
+EventProcessCode Stage::key_press_event(int key_code)
 {
+    EventProcessCode event_intercepted = EventProcessCode::IGNORED;
+
     for (const auto& game_obj : all_game_objects) {
-        game_obj.second->key_press_event(key_code);
+        EventProcessCode event_intercepted_game_obj =
+            game_obj.second->key_press_event(key_code);
+
+        if (event_intercepted_game_obj == EventProcessCode::INTERCEPTED) {
+            event_intercepted = EventProcessCode::INTERCEPTED;
+        }
     }
+
+    return event_intercepted;
 }
 
 

@@ -58,7 +58,7 @@ MainWindow::MainWindow(QWidget* parent)
     , ui_(new Ui::MainWindowUi)
     , plot_callback_(nullptr)
 {
-    installEventFilter(this);
+    QCoreApplication::instance()->installEventFilter(this);
 
     ui_->setupUi(this);
 

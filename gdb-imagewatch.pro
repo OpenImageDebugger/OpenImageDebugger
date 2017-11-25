@@ -40,6 +40,7 @@ SOURCES += \
   src/ui/main_window/initialization.cpp \
   src/ui/main_window/auto_contrast.cpp \
   src/ui/main_window/ui_events.cpp \
+  src/visualization/events.cpp \
   src/visualization/game_object.cpp \
   src/visualization/shader.cpp \
   src/visualization/stage.cpp \

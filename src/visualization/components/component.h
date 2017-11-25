@@ -26,6 +26,7 @@
 #ifndef COMPONENT_H_
 #define COMPONENT_H_
 
+#include "src/visualization/events.h"
 
 class GameObject;
 class GLCanvas;
@@ -54,8 +55,9 @@ class Component
 
     ///
     // Events
-    virtual void key_press_event(int /* key_code */)
+    virtual EventProcessCode key_press_event(int /* key_code */)
     {
+        return EventProcessCode::IGNORED;
     }
 
     virtual void mouse_drag_event(int /* mouse_x */, int /* mouse_y */)
