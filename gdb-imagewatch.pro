@@ -23,6 +23,9 @@ QMAKE_CXXFLAGS += \
   -pthread
 
 QMAKE_LFLAGS += \
+  # If you have an error "cannot find -lGL", uncomment the following line and
+  # replace the folder by the location of your libGL.so
+  #-L/path/to/your/opengl/folder \
   -Wl,--exclude-libs,ALL
 
 SOURCES += \
@@ -109,7 +112,9 @@ INSTALLS += \
   target
 
 # Assorted configuration
-INCLUDEPATH += $$PWD/src
+INCLUDEPATH += \
+  $$PWD/src \
+  $$PWD/src/thirdparty/Khronos/
 
 CONFIG += \
   link_pkgconfig \

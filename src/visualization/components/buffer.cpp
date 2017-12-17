@@ -25,6 +25,8 @@
 
 #include <limits>
 
+#include "GL/gl.h"
+
 #include "buffer.h"
 
 #include "camera.h"

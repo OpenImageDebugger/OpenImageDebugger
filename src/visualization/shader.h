@@ -31,7 +31,7 @@
 #include <string>
 #include <vector>
 
-#include <GL/gl.h>
+#include "GL/gl.h"
 
 #include "ui/gl_canvas.h"
 

@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include <QApplication>
 
 #include "events.h"
@@ -12,5 +14,8 @@ bool KeyboardState::is_key_pressed(ModifierKey key)
         return (QApplication::keyboardModifiers() & Qt::ControlModifier) != 0;
     case ModifierKey::Shift:
         return (QApplication::keyboardModifiers() & Qt::ShiftModifier) != 0;
+    default:
+        assert(!"Invalid modifier key");
+        return false;
     }
 }

@@ -51,14 +51,42 @@ On Ubuntu, you can install most of the dependencies with the following command:
 
     sudo apt-get install libpython3-dev
 
-Download and install the latest version of GDB with python3 support (if you
-already don't have it):
 
-    wget http://ftp.gnu.org/gnu/gdb/gdb-7.10.tar.gz
-    tar -zxvf gdb-7.10.tar.gz
-    cd gdb-7.10
-    ./configure --with-python=python3 --disable-werror
-    make -j8
+#### Check GDB version
+Before installing the gdb-imagewatch plugin, you need to first check if your
+GDB version is >= 7.10:
+
+```shell
+$ gdb --version
+```
+
+On Ubuntu 16.04.3, this will print `GNU gdb (Ubuntu 7.11.1-0ubuntu1~16.5)
+7.11.1`, which is good enough.
+
+You also need to make sure that your GDB was compiled with Python 3 support.
+For that, run the `gdb` command, and inside the gdb console, run the following
+command:
+
+```gdb
+(gdb) python import sys; print(sys.version)
+```
+
+On Ubuntu 16.04.3, this will print `3.5.2 (default, Nov 23 2017, 16:37:01)`,
+which meets the requirements.
+
+
+#### GDB 7.10+ with Python 3
+If your GDB version is not supported, you need to download and install a
+compatible version of GDB with python3 support. Here are the commands for GDB
+7.10:
+
+```shell
+$ wget http://ftp.gnu.org/gnu/gdb/gdb-7.10.tar.gz
+$ tar -zxvf gdb-7.10.tar.gz
+$ cd gdb-7.10
+$ ./configure --with-python=python3 --disable-werror
+$ make -j8
+```
 
 Notice that if you already have an older version of GDB, you will need to
 either reconfigure your environment running `update-alternatives` or
@@ -68,11 +96,16 @@ installed on `/usr/local/bin/gdb`).
 After the installation, you can remove both the file `gdb-7.10.tar.gz` and the
 folder `gdb-7.10`.
 
-Finally, clone the GDB ImageWatch plugin to any folder you prefer:
+#### Downloading GDB ImageWatch
+Clone the GDB ImageWatch plugin to any folder you prefer and initialize the
+submodules:
 
-    git clone https://github.com/csantosbh/gdb-imagewatch
-    git submodule init
-    git submodule update
+```shell
+$ git clone https://github.com/csantosbh/gdb-imagewatch
+$ cd gdb-imagewatch
+$ git submodule init
+$ git submodule update
+```
 
 ### Ubuntu 16.04 manual installation with QtCreator
 
@@ -90,15 +123,64 @@ Tools->Options->Build & Run->Kits, by setting Qt version to any Qt version >=
 To build this plugin, create a `build` folder, open a terminal window inside it
 and run:
 
-    qmake .. BUILD_MODE=release PREFIX=/path/to/installation/folder
-    make -j4
-    make install
+```shell
+$ qmake .. BUILD_MODE=release PREFIX=/path/to/installation/folder
+$ make -j4
+$ make install
+```
 
 The installation step is optional; you can simply use the plugin from the build
 folder instead. If you choose to install the plugin, it will be placed under
 `/path/to/installation/folder/bin/gdb-imagewatch/`.
 
 By default, the `PREFIX` variable is `/usr/local`.
+
+
+### libGL troubleshooting
+Some users might experience a linking error if the libGL.so is not found by
+qmake, especially when using a nvidia graphics card. This issue will usually
+present itself with the message `cannot find -lGL`.
+
+To fix that, you need to find the location for your libGL.so file. The
+following commands should help you find it:
+
+```shell
+$ sudo updatedb
+$ locate -i libgl.so
+```
+
+If you have installed the proprietary drivers, you don't want to use the mesa
+folder. For example, running the command above could result in the following
+output:
+
+```
+/usr/lib/nvidia-384/libGL.so
+/usr/lib/nvidia-384/libGL.so.1
+/usr/lib/nvidia-384/libGL.so.384.90
+/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1
+/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1.2.0
+/usr/lib32/nvidia-384/libGL.so
+/usr/lib32/nvidia-384/libGL.so.1
+/usr/lib32/nvidia-384/libGL.so.384.90
+```
+
+In this case, since I'm using the proprietary nvidia drivers, I'll choose the
+folder `/usr/lib/nvidia-384`.
+
+Copy the name of the folder you found, and paste it in the file
+`gdb-imagewatch.pro` under the definition of the `QMAKE_LFLAGS` variable. In my
+case, this variable now looks like this:
+
+```
+QMAKE_LFLAGS += \
+  # If you have an error "cannot find -lGL", uncomment the following line and
+  # replace the folder by the location of your libGL.so
+  -L/usr/lib/nvidia-384/ \
+  -Wl,--exclude-libs,ALL
+```
+
+Now, just run the build steps again, including the `qmake` command, as
+described above.
 
 #### Loading pugin
 
@@ -174,6 +256,14 @@ amount. This means you only need to align the buffers being compared once;
 after activating the `lock buffers` mode, you can zoom in anywhere you wish in
 one buffer that all other buffers will be zoomed in the same location.
 
+### <img src="doc/location.svg" width="20"/> Quickly moving to arbitrary coordinates
+
+If you need to quickly move to any pixel location, then the *go to*
+functionality is what you are looking for. Press *Ctrl+L* and two input fields
+corresponding to the target destination in format `<x, y>` will appear at the
+bottom right corner of the buffer screen. Type the desired location, then press
+enter to quickly zoom into that location.
+
 ### Exporting bufers
 
 Sometimes you may want to export your buffers to be able to process them in an
@@ -183,14 +273,6 @@ the buffer you wish to export on the left pane and select "export buffer".
 GDB ImageWatch supports two export modes. You can save your buffer as a PNG
 (which may result in loss of data if your buffer type is not `uint8_t`) or as a
 binary file that can be opened with any tool.
-
-### Quickly moving to arbitrary coordinates
-
-If you need to quickly move to any pixel location, then the *go to*
-functionality is what you are looking for. Press *Ctrl+L* and two input fields
-corresponding to the target destination in format `<x, y>` will appear at the
-bottom right corner of the buffer screen. Type the desired location, then press
-enter to quickly zoom into that location.
 
 ### Loading exported buffers on Octave/Matlab
 
