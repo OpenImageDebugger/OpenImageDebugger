@@ -50,6 +50,8 @@ private:
 
     void set_initial_zoom();
 
+    void handle_key_events();
+
     float zoom_power_   = 0.0f;
     float camera_pos_x_ = 0.0f;
     float camera_pos_y_ = 0.0f;

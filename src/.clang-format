@@ -27,3 +27,4 @@ BreakBeforeBraces: Custom
 MaxEmptyLinesToKeep: 2
 SortIncludes: true
 SpaceBeforeAssignmentOperators: true
+BreakConstructorInitializers: BeforeComma

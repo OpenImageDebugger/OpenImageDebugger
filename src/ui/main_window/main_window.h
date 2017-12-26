@@ -67,6 +67,8 @@ class MainWindow : public QMainWindow
 
     void draw();
 
+    GLCanvas* gl_canvas();
+
     QSizeF get_icon_size();
 
     // External interface
@@ -109,6 +111,8 @@ class MainWindow : public QMainWindow
     ///
     // Assorted methods - slots - implemented in main_window.cpp
     void loop();
+
+    void request_render_update();
 
     ///
     // Auto contrast pane - slots - implemented in auto_contrast.cpp

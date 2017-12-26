@@ -108,6 +108,8 @@ void MainWindow::closeEvent(QCloseEvent*)
 
 bool MainWindow::eventFilter(QObject* target, QEvent* event)
 {
+    KeyboardState::update_keyboard_state(event);
+
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent* key_event = static_cast<QKeyEvent*>(event);
 

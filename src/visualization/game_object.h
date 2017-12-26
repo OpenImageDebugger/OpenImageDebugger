@@ -28,8 +28,8 @@
 
 #include <memory>
 
-#include "math/linear_algebra.h"
 #include "events.h"
+#include "math/linear_algebra.h"
 
 
 class GLCanvas;
@@ -64,6 +64,8 @@ class GameObject
     mat4 get_pose();
 
     void set_pose(const mat4& pose);
+
+    void request_render_update();
 
     void mouse_drag_event(int mouse_x, int mouse_y);
 

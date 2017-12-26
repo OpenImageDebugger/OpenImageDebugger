@@ -28,6 +28,7 @@
 #include "stage.h"
 
 #include "game_object.h"
+#include "ui/main_window/main_window.h"
 #include "visualization/components/background.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
@@ -45,13 +46,13 @@ struct compareRenderOrder
 };
 
 
-Stage::Stage()
+Stage::Stage(MainWindow* main_wnd)
+    : main_window(main_wnd)
 {
 }
 
 
-bool Stage::initialize(GLCanvas* gl_canvas,
-                       uint8_t* buffer,
+bool Stage::initialize(uint8_t* buffer,
                        int buffer_width_i,
                        int buffer_height_i,
                        int channels,
@@ -63,24 +64,26 @@ bool Stage::initialize(GLCanvas* gl_canvas,
     std::shared_ptr<GameObject> camera_obj = std::make_shared<GameObject>();
 
     camera_obj->stage = this;
+
     camera_obj->add_component(
         "camera_component",
-        std::make_shared<Camera>(camera_obj.get(), gl_canvas));
-    camera_obj->add_component(
-        "background_component",
-        std::make_shared<Background>(camera_obj.get(), gl_canvas));
+        std::make_shared<Camera>(camera_obj.get(), main_window->gl_canvas()));
+    camera_obj->add_component("background_component",
+                              std::make_shared<Background>(
+                                  camera_obj.get(), main_window->gl_canvas()));
 
     all_game_objects["camera"] = camera_obj;
 
     std::shared_ptr<GameObject> buffer_obj = std::make_shared<GameObject>();
 
     buffer_obj->stage = this;
-    buffer_obj->add_component(
-        "text_component",
-        std::make_shared<BufferValues>(buffer_obj.get(), gl_canvas));
+
+    buffer_obj->add_component("text_component",
+                              std::make_shared<BufferValues>(
+                                  buffer_obj.get(), main_window->gl_canvas()));
 
     std::shared_ptr<Buffer> buffer_component =
-        std::make_shared<Buffer>(buffer_obj.get(), gl_canvas);
+        std::make_shared<Buffer>(buffer_obj.get(), main_window->gl_canvas());
 
     buffer_component->buffer          = buffer;
     buffer_component->channels        = channels;

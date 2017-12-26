@@ -28,6 +28,7 @@
 
 #include "game_object.h"
 
+#include "ui/main_window/main_window.h"
 #include "visualization/components/camera.h"
 #include "visualization/components/component.h"
 #include "visualization/stage.h"
@@ -84,6 +85,12 @@ mat4 GameObject::get_pose()
 void GameObject::set_pose(const mat4& pose)
 {
     pose_ = pose;
+}
+
+
+void GameObject::request_render_update()
+{
+    stage->main_window->request_render_update();
 }
 
 

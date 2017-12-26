@@ -80,6 +80,7 @@ void Camera::scroll_callback(float delta)
 
 void Camera::update()
 {
+    handle_key_events();
 }
 
 
@@ -112,36 +113,71 @@ bool Camera::post_initialize()
 }
 
 
-EventProcessCode Camera::key_press_event(int key_code)
+// Handle keyboard events at the update loop
+void Camera::handle_key_events()
 {
+    using Key = KeyboardState::Key;
+
+    EventProcessCode event_intercepted = EventProcessCode::IGNORED;
+
+    if (KeyboardState::is_modifier_key_pressed(
+            KeyboardState::ModifierKey::Control)) {
+        vec4 delta_pos(0, 0, 0, 0);
+
+        if (KeyboardState::is_key_pressed(Key::Up)) {
+            delta_pos.y()     = -1;
+            event_intercepted = EventProcessCode::INTERCEPTED;
+        } else if (KeyboardState::is_key_pressed(Key::Down)) {
+            delta_pos.y()     = 1;
+            event_intercepted = EventProcessCode::INTERCEPTED;
+        }
+
+        if (KeyboardState::is_key_pressed(Key::Left)) {
+            delta_pos.x()     = -1;
+            event_intercepted = EventProcessCode::INTERCEPTED;
+        } else if (KeyboardState::is_key_pressed(Key::Right)) {
+            delta_pos.x()     = 1;
+            event_intercepted = EventProcessCode::INTERCEPTED;
+        }
+
+        if (event_intercepted == EventProcessCode::INTERCEPTED) {
+            // Recompute zoom matrix to discard its internal translation
+            camera_pos_x_ -= delta_pos.x() + scale_(0, 3);
+            camera_pos_y_ -= delta_pos.y() + scale_(1, 3);
+
+            float zoom = 1.f / compute_zoom();
+            scale_     = mat4::scale(vec4(zoom, zoom, 1.0, 1.0));
+
+            update_object_pose();
+
+            game_object_->request_render_update();
+        }
+    }
+}
+
+
+EventProcessCode Camera::key_press_event(int)
+{
+    using Key = KeyboardState::Key;
+
     const vec4 screen_center(0, 0, 0, 1);
     EventProcessCode event_intercepted = EventProcessCode::IGNORED;
 
-    if (KeyboardState::is_key_pressed(KeyboardState::ModifierKey::Control)) {
-        if (key_code == Qt::Key_Plus) {
+    if (KeyboardState::is_modifier_key_pressed(
+            KeyboardState::ModifierKey::Control)) {
+        if (KeyboardState::is_key_pressed(Key::Plus)) {
             scale_at(screen_center, 1.0);
 
             event_intercepted = EventProcessCode::INTERCEPTED;
-        } else if (key_code == Qt::Key_Minus) {
+        } else if (KeyboardState::is_key_pressed(Key::Minus)) {
             scale_at(screen_center, -1.0);
 
             event_intercepted = EventProcessCode::INTERCEPTED;
-        } else {
-            vec4 delta_pos(0, 0, 0, 0);
-
-            if (key_code == Qt::Key_Up) {
-                delta_pos.y() = -1;
-            } else if (key_code == Qt::Key_Down) {
-                delta_pos.y() = 1;
-            } else if (key_code == Qt::Key_Left) {
-                delta_pos.x() = -1;
-            } else if (key_code == Qt::Key_Right) {
-                delta_pos.x() = 1;
-            }
-
-            vec4 destination = get_position() + delta_pos;
-            move_to(destination.x(), destination.y());
-
+        } else if (KeyboardState::is_key_pressed(Key::Left) ||
+                   KeyboardState::is_key_pressed(Key::Right) ||
+                   KeyboardState::is_key_pressed(Key::Up) ||
+                   KeyboardState::is_key_pressed(Key::Down)) {
+            // Prevent the arrow keys to propagate
             event_intercepted = EventProcessCode::INTERCEPTED;
         }
     }

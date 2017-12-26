@@ -40,11 +40,11 @@ class Stage
   public:
     bool contrast_enabled;
     std::vector<uint8_t> buffer_icon;
+    MainWindow* main_window;
 
-    Stage();
+    Stage(MainWindow* main_window);
 
-    bool initialize(GLCanvas* gl_canvas,
-                    uint8_t* buffer,
+    bool initialize(uint8_t* buffer,
                     int buffer_width_i,
                     int buffer_height_i,
                     int channels,

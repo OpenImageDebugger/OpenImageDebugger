@@ -26,14 +26,29 @@
 #ifndef EVENTS_H_
 #define EVENTS_H_
 
+#include <set>
+
 enum class EventProcessCode { IGNORED, INTERCEPTED };
+
+class MainWindow;
+class QEvent;
 
 class KeyboardState
 {
   public:
-    enum class ModifierKey { Control, Alt, Shift };
+    friend class MainWindow;
 
-    static bool is_key_pressed(ModifierKey key);
+    enum class ModifierKey { Control, Alt, Shift };
+    enum class Key { Left, Right, Up, Down, Plus, Minus };
+
+    static bool is_modifier_key_pressed(ModifierKey key);
+
+    static bool is_key_pressed(Key key);
+
+  private:
+    static void update_keyboard_state(const QEvent* event);
+
+    static std::set<int> pressed_keys_;
 };
 
 #endif // EVENTS_H_

@@ -102,6 +102,12 @@ void MainWindow::draw()
 }
 
 
+GLCanvas* MainWindow::gl_canvas()
+{
+    return ui_->bufferPreview;
+}
+
+
 QSizeF MainWindow::get_icon_size()
 {
     const qreal screen_dpi_scale = get_screen_dpi_scale();
@@ -192,9 +198,8 @@ void MainWindow::loop()
         held_buffers_[request.variable_name_str] = managedBuffer;
 
         if (buffer_stage == stages_.end()) { // New buffer request
-            shared_ptr<Stage> stage = make_shared<Stage>();
-            if (!stage->initialize(ui_->bufferPreview,
-                                   srcBuffer,
+            shared_ptr<Stage> stage = make_shared<Stage>(this);
+            if (!stage->initialize(srcBuffer,
                                    request.width_i,
                                    request.height_i,
                                    request.channels,
@@ -285,16 +290,23 @@ void MainWindow::loop()
         completer_updated_ = false;
     }
 
+    // Run update for current stage
+    if (currently_selected_stage_ != nullptr) {
+        currently_selected_stage_->update();
+    }
+
     if (request_render_update_) {
         // Update visualization pane
-        if (currently_selected_stage_ != nullptr) {
-            currently_selected_stage_->update();
-        }
-
         ui_->bufferPreview->update();
 
         request_render_update_ = false;
     }
+}
+
+
+void MainWindow::request_render_update()
+{
+    request_render_update_ = true;
 }
 
 
@@ -327,10 +339,9 @@ void MainWindow::persist_settings()
             removed_buffer_names_.find(buff_name_std_str) !=
             removed_buffer_names_.end();
 
-        if(was_removed) {
+        if (was_removed) {
             previous_session_buffers_.erase(buff_name_std_str);
-        }
-        else if (!being_viewed && prev_buff.second >= now) {
+        } else if (!being_viewed && prev_buff.second >= now) {
             persisted_session_buffers.append(prev_buff);
         }
     }
