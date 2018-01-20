@@ -184,6 +184,8 @@ class MainWindow : public QMainWindow
     QTimer settings_persist_timer_;
     QTimer update_timer_;
 
+    QString default_export_suffix_;
+
     Stage* currently_selected_stage_;
 
     std::map<std::string, std::shared_ptr<uint8_t>> held_buffers_;

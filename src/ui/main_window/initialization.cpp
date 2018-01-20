@@ -56,6 +56,14 @@ void MainWindow::initialize_settings()
         render_framerate_ = 1.0;
     }
 
+    // Default save suffix: Image
+    if (settings.contains("Export/default_export_suffix")) {
+        default_export_suffix_ =
+            settings.value("Export/default_export_suffix").value<QString>();
+    } else {
+        default_export_suffix_ = "Image File (*.png)";
+    }
+
     // Load previous session symbols
     QDateTime now = QDateTime::currentDateTime();
     QList<BufferExpiration> previous_buffers =

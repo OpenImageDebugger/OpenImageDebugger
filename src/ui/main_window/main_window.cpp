@@ -351,6 +351,9 @@ void MainWindow::persist_settings()
             BufferExpiration(held_buffer.first.c_str(), next_expiration));
     }
 
+    // Write default suffix for buffer export
+    settings.setValue("Export/default_export_suffix", default_export_suffix_);
+
     // Write maximum framerate
     settings.setValue("Rendering/maximum_framerate", render_framerate_);
 

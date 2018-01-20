@@ -302,8 +302,11 @@ void MainWindow::export_buffer()
     output_extensions[tr("Octave Raw Matrix (*.oct)")] =
         BufferExporter::OutputType::OctaveMatrix;
 
+    // Generate the save suffix string
     QHashIterator<QString, BufferExporter::OutputType> it(output_extensions);
+
     QString save_message;
+
     while (it.hasNext()) {
         it.next();
         save_message += it.key();
@@ -312,33 +315,45 @@ void MainWindow::export_buffer()
     }
 
     file_dialog.setNameFilter(save_message);
+    file_dialog.selectNameFilter(default_export_suffix_);
 
     if (file_dialog.exec() == QDialog::Accepted) {
         string file_name = file_dialog.selectedFiles()[0].toStdString();
+        const auto selected_filter = file_dialog.selectedNameFilter();
 
+        // Export buffer
         BufferExporter::export_buffer(
             component,
             file_name,
-            output_extensions[file_dialog.selectedNameFilter()]);
+            output_extensions[selected_filter]);
+
+        // Update default export suffix to the previously used suffix
+        default_export_suffix_ = selected_filter;
+
+        // Persist settings
+        persist_settings_deferred();
     }
 }
 
 
 void MainWindow::show_context_menu(const QPoint& pos)
 {
-    // Handle global position
-    QPoint globalPos = ui_->imageList->mapToGlobal(pos);
+    if (ui_->imageList->itemAt(pos) != nullptr) {
+        // Handle global position
+        QPoint globalPos = ui_->imageList->mapToGlobal(pos);
 
-    // Create menu and insert context actions
-    QMenu myMenu(this);
+        // Create menu and insert context actions
+        QMenu myMenu(this);
 
-    QAction* exportAction =
-        myMenu.addAction("Export buffer", this, SLOT(export_buffer()));
-    // Add parameter to action: buffer name
-    exportAction->setData(ui_->imageList->itemAt(pos)->data(Qt::UserRole));
+        QAction* exportAction =
+            myMenu.addAction("Export buffer", this, SLOT(export_buffer()));
 
-    // Show context menu at handling position
-    myMenu.exec(globalPos);
+        // Add parameter to action: buffer name
+        exportAction->setData(ui_->imageList->itemAt(pos)->data(Qt::UserRole));
+
+        // Show context menu at handling position
+        myMenu.exec(globalPos);
+    }
 }
 
 
