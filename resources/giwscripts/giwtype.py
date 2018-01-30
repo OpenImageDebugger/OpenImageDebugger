@@ -30,10 +30,16 @@ def get_buffer_metadata(obj_name, picked_obj, debugger_bridge):
 
     width = int(picked_obj['cols'])
     height = int(picked_obj['rows'])
+    if hasattr(picked_obj,'flags'):
     flags = int(picked_obj['flags'])
+    else:
+        flags = int(picked_obj['type'])
 
     channels = ((((flags) & CV_MAT_CN_MASK) >> CV_CN_SHIFT) + 1)
+    if hasattr(picked_obj['step'],'buf'):
     row_stride = int(int(picked_obj['step']['buf'][0])/channels)
+    else:
+        row_stride = int(int(picked_obj['step'])/channels)
 
     if channels >= 3:
         pixel_layout = 'bgra'
@@ -74,4 +80,5 @@ def is_symbol_observable(symbol):
     # Check if symbol type is the expected buffer
     symbol_type = str(symbol.type)
     type_regex = r'(const\s+)?cv::Mat(\s+?[*&])?'
-    return re.match(type_regex, symbol_type) is not None
+    type2_regex = r'(const\s+)?CvMat(\s+?[*&])?'
+    return re.match(type_regex, symbol_type) is not None or re.match(type2_regex, symbol_type) is not None
