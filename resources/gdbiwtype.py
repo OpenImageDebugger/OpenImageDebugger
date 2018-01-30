@@ -3,7 +3,7 @@ GIW_TYPES_UINT16 = 2
 GIW_TYPES_INT16 = 3
 GIW_TYPES_INT32 = 4
 GIW_TYPES_FLOAT32 = 5
-GIW_TYPES_UINT32 = 6
+GIW_TYPES_FLOAT64 = 6
 
 ##
 # Default values created for OpenCV Mat structures. Change it according to your
@@ -39,9 +39,10 @@ def get_buffer_info(picked_obj):
        type == GIW_TYPES_INT16:
         step = int(step / 2)
     elif type == GIW_TYPES_INT32 or \
-         type == GIW_TYPES_UINT32 or \
          type == GIW_TYPES_FLOAT32:
         step = int(step / 4)
+    elif type == GIW_TYPES_FLOAT64:
+        step = int(step / 8)
 
     return (buffer, width, height, channels, type, step)
 

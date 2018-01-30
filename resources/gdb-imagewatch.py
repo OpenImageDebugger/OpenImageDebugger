@@ -134,9 +134,10 @@ def get_buffer_size(width, height, channels, type, step):
        type == gdbiwtype.GIW_TYPES_INT16:
         channel_size = 2 # 2 bytes per element
     elif type == gdbiwtype.GIW_TYPES_INT32 or \
-         type == gdbiwtype.GIW_TYPES_UINT32 or \
          type == gdbiwtype.GIW_TYPES_FLOAT32:
         channel_size = 4 # 4 bytes per element
+    elif type == gdbiwtype.GIW_TYPES_FLOAT64:
+        channel_size = 8 # 8 bytes per element
         pass
 
     return channel_size * channels * step*height

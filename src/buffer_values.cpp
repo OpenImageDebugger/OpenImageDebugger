@@ -171,9 +171,9 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                         int fpix = reinterpret_cast<int*>(buffer)[pos];
                         sprintf(pix_label, "%d", fpix);
                     }
-                    else if(type == Buffer::BufferType::UnsignedInt32) {
-                        unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos];
-                        sprintf(pix_label, "%d", fpix);
+                    else if(type == Buffer::BufferType::Float64) {
+                        double fpix = reinterpret_cast<double*>(buffer)[pos];
+                        sprintf(pix_label, "%.3f", fpix);
                     }
 
                     draw_text(projection, viewInv, camRot, pix_label, x + pos_center_x, y + pos_center_y, 0.0);
@@ -204,9 +204,9 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, camRot, pix_label, x + pos_center_x, y + pos_center_y, y_off);
                         }
-                        else if(type == Buffer::BufferType::UnsignedInt32) {
-                            unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
+                        else if(type == Buffer::BufferType::Float64) {
+                            double fpix = reinterpret_cast<double*>(buffer)[pos+c];
+                            sprintf(pix_label, "%f", fpix);
                             draw_text(projection, viewInv, camRot, pix_label, x + pos_center_x, y + pos_center_y, y_off);
                         }
                     }
@@ -237,9 +237,9 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, camRot, pix_label, x + pos_center_x, y + pos_center_y, y_off);
                         }
-                        else if(type == Buffer::BufferType::UnsignedInt32) {
-                            unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
+                        else if(type == Buffer::BufferType::Float64) {
+                            double fpix = reinterpret_cast<double*>(buffer)[pos+c];
+                            sprintf(pix_label, "%.3f", fpix);
                             draw_text(projection, viewInv, camRot, pix_label, x + pos_center_x, y + pos_center_y, y_off);
                         }
                     }
@@ -270,9 +270,9 @@ void BufferValues::draw(const mat4& projection, const mat4& viewInv) {
                             sprintf(pix_label, "%d", fpix);
                             draw_text(projection, viewInv, camRot, pix_label, x + pos_center_x, y + pos_center_y, y_off);
                         }
-                        else if(type == Buffer::BufferType::UnsignedInt32) {
-                            unsigned int fpix = reinterpret_cast<unsigned int*>(buffer)[pos+c];
-                            sprintf(pix_label, "%d", fpix);
+                        else if(type == Buffer::BufferType::Float64) {
+                            double fpix = reinterpret_cast<double*>(buffer)[pos+c];
+                            sprintf(pix_label, "%.3f", fpix);
                             draw_text(projection, viewInv, camRot, pix_label, x + pos_center_x, y + pos_center_y, y_off);
                         }
                     }
