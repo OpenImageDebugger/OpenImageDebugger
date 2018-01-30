@@ -1,0 +1,29 @@
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+ColumnLimit: 80
+IndentWidth: 4
+UseTab: Never
+AlignConsecutiveAssignments: true
+PointerBindsToType: true
+Cpp11BracedListStyle: true
+AlignAfterOpenBracket: Align
+AlignEscapedNewlinesLeft: true
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false
+BinPackArguments: false
+AlwaysBreakTemplateDeclarations: true
+AllowShortFunctionsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortBlocksOnASingleLine: false
+AlignOperands: true
+BraceWrapping:
+  AfterFunction: true
+  AfterNamespace: true
+  AfterClass: true
+  AfterStruct: true
+  AfterUnion: true
+BreakBeforeBraces: Custom
+MaxEmptyLinesToKeep: 2
+SortIncludes: true
+SpaceBeforeAssignmentOperators: true
