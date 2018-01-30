@@ -37,7 +37,7 @@ def get_buffer_metadata(obj_name, picked_obj, debugger_bridge):
 
     channels = ((((flags) & CV_MAT_CN_MASK) >> CV_CN_SHIFT) + 1)
     if hasattr(picked_obj['step'],'buf'):
-    row_stride = int(int(picked_obj['step']['buf'][0])/channels)
+        row_stride = int(int(picked_obj['step']['buf'][0])/channels)
     else:
         row_stride = int(int(picked_obj['step'])/channels)
 
