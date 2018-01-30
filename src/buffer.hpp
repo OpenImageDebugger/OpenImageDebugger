@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <sstream>
 #include "shader.hpp"
 #include "component.hpp"
 
@@ -13,7 +12,7 @@ public:
     std::vector<GLuint> buff_tex;
     static const float no_ac_params[8];
 
-    enum class BufferType { UnsignedByte = 0, UnsignedShort = 2, Short = 3, Int32 = 4, Float32 = 5, Float64 = 6 };
+    enum class BufferType { UnsignedByte = 0, UnsignedShort = 2, Short = 3, Int32 = 4, Float32 = 5, UnsignedInt32 = 6 };
 
     ~Buffer();
 
@@ -57,7 +56,6 @@ public:
     void set_min_buffer_values();
     void set_max_buffer_values();
 
-    void getPixelInfo(stringstream& output, int x, int y);
 private:
     void setup_gl_buffer();
     float min_buffer_values_[4];

@@ -367,8 +367,6 @@ void MainWindow::update_statusbar()
         message << std::fixed << std::setprecision(1) <<
                    "(" << floorf(mouse_pos.x()) << "," << floorf(mouse_pos.y()) << ")\t" <<
                    cam->get_zoom() * 100.0 << "%";
-        message << " val=";
-        buffer->getPixelInfo(message, floor(mouse_pos.x()), floor(mouse_pos.y()));
         status_bar->setText(message.str().c_str());
     }
 }
@@ -386,8 +384,8 @@ string MainWindow::get_type_label(Buffer::BufferType type, int channels)
         result << "uint16";
     } else if(type == Buffer::BufferType::Int32) {
         result << "int32";
-    } else if(type == Buffer::BufferType::Float64) {
-        result << "float64";
+    } else if(type == Buffer::BufferType::UnsignedInt32) {
+        result << "uint32";
     }
     result << "x" << channels;
 
