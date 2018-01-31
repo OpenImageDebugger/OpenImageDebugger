@@ -30,16 +30,16 @@ def get_buffer_metadata(obj_name, picked_obj, debugger_bridge):
 
     width = int(picked_obj['cols'])
     height = int(picked_obj['rows'])
-    if hasattr(picked_obj,'flags'):
-        flags = int(picked_obj['flags'])
+    if str(picked_obj.type) == "cv::Mat":
+        flags = int(picked_obj['flags']) # cv::Mat
     else:
-        flags = int(picked_obj['type'])
+        flags = int(picked_obj['type']) # CvMat
 
     channels = ((((flags) & CV_MAT_CN_MASK) >> CV_CN_SHIFT) + 1)
-    if hasattr(picked_obj['step'],'buf'):
-        row_stride = int(int(picked_obj['step']['buf'][0])/channels)
+    if str(picked_obj.type) == "cv::Mat":
+        row_stride = int(int(picked_obj['step']['buf'][0])/channels) # cv::Mat
     else:
-        row_stride = int(int(picked_obj['step'])/channels)
+        row_stride = int(int(picked_obj['step'])/channels) # CvMat
 
     if channels >= 3:
         pixel_layout = 'bgra'
