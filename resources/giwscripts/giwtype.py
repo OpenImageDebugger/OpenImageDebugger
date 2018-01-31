@@ -31,7 +31,7 @@ def get_buffer_metadata(obj_name, picked_obj, debugger_bridge):
     width = int(picked_obj['cols'])
     height = int(picked_obj['rows'])
     if hasattr(picked_obj,'flags'):
-    flags = int(picked_obj['flags'])
+        flags = int(picked_obj['flags'])
     else:
         flags = int(picked_obj['type'])
 
