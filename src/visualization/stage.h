@@ -40,18 +40,18 @@ class Stage
   public:
     bool contrast_enabled;
     std::vector<uint8_t> buffer_icon;
+    MainWindow* main_window;
 
-    Stage();
+    Stage(MainWindow* main_window);
 
-    bool initialize(GLCanvas* gl_canvas,
-                    uint8_t* buffer,
+    bool initialize(uint8_t* buffer,
                     int buffer_width_i,
                     int buffer_height_i,
                     int channels,
                     Buffer::BufferType type,
                     int step,
                     const std::string& pixel_layout,
-                    bool ac_enabled);
+                    bool transpose_buffer);
 
     bool buffer_update(uint8_t* buffer,
                        int buffer_width_i,
@@ -59,7 +59,8 @@ class Stage
                        int channels,
                        Buffer::BufferType type,
                        int step,
-                       const std::string& pixel_layout);
+                       const std::string& pixel_layout,
+                       bool transpose_buffer);
 
     GameObject* get_game_object(std::string tag);
 
@@ -72,6 +73,12 @@ class Stage
     void resize_callback(int w, int h);
 
     void mouse_drag_event(int mouse_x, int mouse_y);
+
+    void mouse_move_event(int mouse_x, int mouse_y);
+
+    EventProcessCode key_press_event(int key_code);
+
+    void go_to_pixel(float x, float y);
 
   private:
     std::map<std::string, std::shared_ptr<GameObject>> all_game_objects;

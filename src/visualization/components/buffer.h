@@ -36,6 +36,8 @@
 class Buffer : public Component
 {
   public:
+    Buffer(GameObject* game_object, GLCanvas* gl_canvas);
+
     enum class BufferType {
         UnsignedByte  = 0,
         UnsignedShort = 2,
@@ -45,7 +47,7 @@ class Buffer : public Component
         Float64       = 6
     };
 
-    int max_texture_size = 2048;
+    const int max_texture_size = 2048;
 
     std::vector<GLuint> buff_tex;
 
@@ -60,6 +62,8 @@ class Buffer : public Component
     BufferType type;
 
     uint8_t* buffer;
+
+    bool transpose;
 
     ~Buffer();
 
@@ -102,15 +106,22 @@ class Buffer : public Component
 
     void get_pixel_info(std::stringstream& output, int x, int y);
 
+    void rotate(float angle);
+
   private:
     void create_shader_program();
+
     void setup_gl_buffer();
 
+    void update_object_pose();
+
     char pixel_layout_[4] = {'r', 'g', 'b', 'a'};
+
     float min_buffer_values_[4];
     float max_buffer_values_[4];
     float auto_buffer_contrast_brightness_[8] =
         {1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0};
+    float angle_ = 0.f;
 
     ShaderProgram buff_prog;
     GLuint vbo;

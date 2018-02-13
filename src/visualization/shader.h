@@ -31,7 +31,9 @@
 #include <string>
 #include <vector>
 
-#include <GL/gl.h>
+#include "GL/gl.h"
+
+#include "ui/gl_canvas.h"
 
 
 class ShaderProgram
@@ -39,7 +41,7 @@ class ShaderProgram
   public:
     enum TexelChannels { FormatR, FormatRG, FormatRGB, FormatRGBA };
 
-    ShaderProgram();
+    ShaderProgram(GLCanvas* gl_canvas);
 
     ~ShaderProgram();
 
@@ -50,24 +52,28 @@ class ShaderProgram
                 const std::vector<std::string>& uniforms);
 
     // Uniform handlers
-    void uniform1i(const std::string& name, int value);
+    void uniform1i(const std::string& name, int value) const;
 
-    void uniform2f(const std::string& name, float x, float y);
+    void uniform2f(const std::string& name, float x, float y) const;
 
-    void uniform3fv(const std::string& name, int count, const float* data);
+    void
+    uniform3fv(const std::string& name, int count, const float* data) const;
 
-    void uniform4fv(const std::string& name, int count, const float* data);
+    void
+    uniform4fv(const std::string& name, int count, const float* data) const;
 
     void uniform_matrix4fv(const std::string& name,
                            int count,
                            GLboolean transpose,
-                           const float* value);
+                           const float* value) const;
 
     // Program utility
-    void use();
+    void use() const;
 
   private:
     GLuint program_;
+
+    GLCanvas* gl_canvas_;
 
     TexelChannels texel_format_;
 

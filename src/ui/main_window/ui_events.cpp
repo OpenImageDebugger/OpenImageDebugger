@@ -40,6 +40,9 @@ void MainWindow::resize_callback(int w, int h)
 {
     for (auto& stage : stages_)
         stage.second->resize_callback(w, h);
+
+    go_to_widget_->move(ui_->bufferPreview->width() - go_to_widget_->width(),
+                        ui_->bufferPreview->height() - go_to_widget_->height());
 }
 
 
@@ -103,6 +106,44 @@ void MainWindow::closeEvent(QCloseEvent*)
 }
 
 
+bool MainWindow::eventFilter(QObject* target, QEvent* event)
+{
+    KeyboardState::update_keyboard_state(event);
+
+    if (event->type() == QEvent::KeyPress) {
+        QKeyEvent* key_event = static_cast<QKeyEvent*>(event);
+
+        EventProcessCode event_intercepted = EventProcessCode::IGNORED;
+
+        if (link_views_enabled_) {
+            for (auto& stage : stages_) {
+                EventProcessCode event_intercepted_stage =
+                    stage.second->key_press_event(key_event->key());
+
+                if (event_intercepted_stage == EventProcessCode::INTERCEPTED) {
+                    event_intercepted = EventProcessCode::INTERCEPTED;
+                }
+            }
+        } else if (currently_selected_stage_ != nullptr) {
+            event_intercepted =
+                currently_selected_stage_->key_press_event(key_event->key());
+        }
+
+        if (event_intercepted == EventProcessCode::INTERCEPTED) {
+            request_render_update_ = true;
+            update_status_bar();
+
+            event->accept();
+            return true;
+        } else {
+            return QObject::eventFilter(target, event);
+        }
+    }
+
+    return false;
+}
+
+
 void MainWindow::recenter_buffer()
 {
     if (link_views_enabled_) {
@@ -132,16 +173,21 @@ void MainWindow::link_views_toggle()
 
 void MainWindow::rotate_90_cw()
 {
+    const auto request_90_cw_rotation = [](Stage* stage) {
+        GameObject* buffer_obj = stage->get_game_object("buffer");
+        Buffer* buffer_comp =
+            buffer_obj->get_component<Buffer>("buffer_component");
+
+        buffer_comp->rotate(90.f * M_PI / 180.f);
+    };
+
     if (link_views_enabled_) {
         for (auto& stage : stages_) {
-            GameObject* buff_obj = stage.second->get_game_object("buffer");
-            buff_obj->angle += 90.f * M_PI / 180.f;
+            request_90_cw_rotation(stage.second.get());
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
-            GameObject* buff_obj =
-                currently_selected_stage_->get_game_object("buffer");
-            buff_obj->angle += 90.f * M_PI / 180.f;
+            request_90_cw_rotation(currently_selected_stage_);
         }
     }
 
@@ -151,16 +197,21 @@ void MainWindow::rotate_90_cw()
 
 void MainWindow::rotate_90_ccw()
 {
+    const auto request_90_ccw_rotation = [](Stage* stage) {
+        GameObject* buffer_obj = stage->get_game_object("buffer");
+        Buffer* buffer_comp =
+            buffer_obj->get_component<Buffer>("buffer_component");
+
+        buffer_comp->rotate(-90.f * M_PI / 180.f);
+    };
+
     if (link_views_enabled_) {
         for (auto& stage : stages_) {
-            GameObject* buff_obj = stage.second->get_game_object("buffer");
-            buff_obj->angle -= 90.f * M_PI / 180.f;
+            request_90_ccw_rotation(stage.second.get());
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
-            GameObject* buff_obj =
-                currently_selected_stage_->get_game_object("buffer");
-            buff_obj->angle -= 90.f * M_PI / 180.f;
+            request_90_ccw_rotation(currently_selected_stage_);
         }
     }
 
@@ -195,6 +246,8 @@ void MainWindow::remove_selected_buffer()
         stages_.erase(buffer_name);
         held_buffers_.erase(buffer_name);
         delete removed_item;
+
+        removed_buffer_names_.insert(buffer_name);
 
         if (stages_.size() == 0) {
             set_currently_selected_stage(nullptr);
@@ -249,8 +302,11 @@ void MainWindow::export_buffer()
     output_extensions[tr("Octave Raw Matrix (*.oct)")] =
         BufferExporter::OutputType::OctaveMatrix;
 
+    // Generate the save suffix string
     QHashIterator<QString, BufferExporter::OutputType> it(output_extensions);
+
     QString save_message;
+
     while (it.hasNext()) {
         it.next();
         save_message += it.key();
@@ -259,31 +315,79 @@ void MainWindow::export_buffer()
     }
 
     file_dialog.setNameFilter(save_message);
+    file_dialog.selectNameFilter(default_export_suffix_);
 
     if (file_dialog.exec() == QDialog::Accepted) {
         string file_name = file_dialog.selectedFiles()[0].toStdString();
+        const auto selected_filter = file_dialog.selectedNameFilter();
 
+        // Export buffer
         BufferExporter::export_buffer(
             component,
             file_name,
-            output_extensions[file_dialog.selectedNameFilter()]);
+            output_extensions[selected_filter]);
+
+        // Update default export suffix to the previously used suffix
+        default_export_suffix_ = selected_filter;
+
+        // Persist settings
+        persist_settings_deferred();
     }
 }
 
 
 void MainWindow::show_context_menu(const QPoint& pos)
 {
-    // Handle global position
-    QPoint globalPos = ui_->imageList->mapToGlobal(pos);
+    if (ui_->imageList->itemAt(pos) != nullptr) {
+        // Handle global position
+        QPoint globalPos = ui_->imageList->mapToGlobal(pos);
 
-    // Create menu and insert context actions
-    QMenu myMenu(this);
+        // Create menu and insert context actions
+        QMenu myMenu(this);
 
-    QAction* exportAction =
-        myMenu.addAction("Export buffer", this, SLOT(export_buffer()));
-    // Add parameter to action: buffer name
-    exportAction->setData(ui_->imageList->itemAt(pos)->data(Qt::UserRole));
+        QAction* exportAction =
+            myMenu.addAction("Export buffer", this, SLOT(export_buffer()));
 
-    // Show context menu at handling position
-    myMenu.exec(globalPos);
+        // Add parameter to action: buffer name
+        exportAction->setData(ui_->imageList->itemAt(pos)->data(Qt::UserRole));
+
+        // Show context menu at handling position
+        myMenu.exec(globalPos);
+    }
+}
+
+
+void MainWindow::toggle_go_to_dialog()
+{
+    if (!go_to_widget_->isVisible()) {
+        vec4 default_goal(0, 0, 0, 0);
+
+        if (currently_selected_stage_ != nullptr) {
+            GameObject* cam_obj =
+                currently_selected_stage_->get_game_object("camera");
+            Camera* cam = cam_obj->get_component<Camera>("camera_component");
+
+            default_goal = cam->get_position();
+        }
+
+        go_to_widget_->set_defaults(default_goal.x(), default_goal.y());
+    }
+
+    go_to_widget_->toggle_visible();
+}
+
+
+void MainWindow::go_to_pixel(float x, float y)
+{
+    if (link_views_enabled_) {
+        for (auto& stage : stages_) {
+            stage.second->go_to_pixel(x, y);
+        }
+    } else if (currently_selected_stage_ != nullptr) {
+        currently_selected_stage_->go_to_pixel(x, y);
+    }
+
+    update_status_bar();
+
+    request_render_update_ = true;
 }

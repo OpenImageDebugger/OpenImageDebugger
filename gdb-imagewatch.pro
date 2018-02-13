@@ -23,6 +23,9 @@ QMAKE_CXXFLAGS += \
   -pthread
 
 QMAKE_LFLAGS += \
+  # If you have an error "cannot find -lGL", uncomment the following line and
+  # replace the folder by the location of your libGL.so
+  #-L/path/to/your/opengl/folder \
   -Wl,--exclude-libs,ALL
 
 SOURCES += \
@@ -40,6 +43,7 @@ SOURCES += \
   src/ui/main_window/initialization.cpp \
   src/ui/main_window/auto_contrast.cpp \
   src/ui/main_window/ui_events.cpp \
+  src/visualization/events.cpp \
   src/visualization/game_object.cpp \
   src/visualization/shader.cpp \
   src/visualization/stage.cpp \
@@ -53,7 +57,10 @@ SOURCES += \
   src/visualization/shaders/buffer_fs.cpp \
   src/visualization/shaders/buffer_vs.cpp \
   src/visualization/shaders/text_fs.cpp \
-  src/visualization/shaders/text_vs.cpp
+  src/visualization/shaders/text_vs.cpp \
+  src/ui/gl_text_renderer.cpp \
+  src/ui/go_to_widget.cpp \
+  src/ui/decorated_line_edit.cpp
 
 # Qt related headers
 HEADERS += \
@@ -61,12 +68,14 @@ HEADERS += \
   src/ui/gl_canvas.h \
   src/ui/main_window/main_window.h \
   src/ui/symbol_completer.h \
-  src/ui/symbol_search_input.h
+  src/ui/symbol_search_input.h \
+  src/ui/gl_text_renderer.h \
+  src/ui/go_to_widget.h \
+  src/ui/decorated_line_edit.h
 
 # Copy resource files to build folder
 copydata.commands = \
   $(COPY_DIR) \"$$shell_path($$PWD\\resources\\giwscripts)\" \"$$shell_path($$OUT_PWD)\"; \
-  $(COPY_DIR) \"$$shell_path($$PWD\\resources\\fonts)\" \"$$shell_path($$OUT_PWD)\"; \
   $(COPY_DIR) \"$$shell_path($$PWD\\resources\\matlab)\" \"$$shell_path($$OUT_PWD)\"; \
   $(COPY_FILE) \"$$shell_path($$PWD\\resources\\gdb-imagewatch.py)\" \"$$shell_path($$OUT_PWD)\"
 
@@ -80,7 +89,7 @@ isEmpty(PREFIX) {
   PREFIX = /usr/local
 }
 
-VERSION = 1.1.1
+VERSION = 1.2
 TARGET = giwwindow
 TEMPLATE = lib
 target.path = $$PREFIX/bin/gdb-imagewatch/
@@ -103,7 +112,9 @@ INSTALLS += \
   target
 
 # Assorted configuration
-INCLUDEPATH += $$PWD/src
+INCLUDEPATH += \
+  $$PWD/src \
+  $$PWD/src/thirdparty/Khronos/
 
 CONFIG += \
   link_pkgconfig \
@@ -111,23 +122,9 @@ CONFIG += \
   c++11 \
   no_keywords
 
-DEFINES += "FONT_PATH=\\\"$$OUT_PWD/fonts/serif.ttf\\\""
-
-PKGCONFIG += \
-  freetype2 \
-  python3 \
-  glew
+PKGCONFIG += python3
 
 FORMS += ui/main_window.ui
 
-OTHER_FILES += \
-  resources/icons/arrow-down-b.png \
-  resources/icons/arrow-shrink.png \
-  resources/icons/contrast.png \
-  resources/icons/link.png \
-  resources/icons/rotate-ccw.png \
-  resources/icons/rotate-cw.png
-
-RESOURCES += \
-  resources/resources.qrc
+RESOURCES += resources/resources.qrc
 

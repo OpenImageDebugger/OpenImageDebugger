@@ -50,6 +50,7 @@ BufferRequestMessage::BufferRequestMessage(const BufferRequestMessage& buff)
     , type(buff.type)
     , step(buff.step)
     , pixel_layout(buff.pixel_layout)
+    , transpose_buffer(buff.transpose_buffer)
 {
     Py_INCREF(py_buffer);
 }
@@ -63,13 +64,15 @@ BufferRequestMessage::BufferRequestMessage(PyObject* pybuffer,
                                            int channels,
                                            int type,
                                            int step,
-                                           PyObject* pixel_layout)
+                                           PyObject* pixel_layout,
+                                           bool transpose)
     : py_buffer(pybuffer)
     , width_i(buffer_width_i)
     , height_i(buffer_height_i)
     , channels(channels)
     , type(static_cast<Buffer::BufferType>(type))
     , step(step)
+    , transpose_buffer(transpose)
 {
     Py_INCREF(py_buffer);
 
@@ -82,4 +85,24 @@ BufferRequestMessage::BufferRequestMessage(PyObject* pybuffer,
 BufferRequestMessage::~BufferRequestMessage()
 {
     Py_DECREF(py_buffer);
+}
+
+
+int BufferRequestMessage::get_visualized_width() const
+{
+    if (!transpose_buffer) {
+        return width_i;
+    } else {
+        return height_i;
+    }
+}
+
+
+int BufferRequestMessage::get_visualized_height() const
+{
+    if (!transpose_buffer) {
+        return height_i;
+    } else {
+        return width_i;
+    }
 }

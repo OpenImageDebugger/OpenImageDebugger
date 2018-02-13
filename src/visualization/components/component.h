@@ -26,6 +26,7 @@
 #ifndef COMPONENT_H_
 #define COMPONENT_H_
 
+#include "src/visualization/events.h"
 
 class GameObject;
 class GLCanvas;
@@ -35,8 +36,7 @@ class mat4;
 class Component
 {
   public:
-    GameObject* game_object = nullptr;
-    GLCanvas* gl_canvas     = nullptr;
+    Component(GameObject* game_object, GLCanvas* gl_canvas);
 
     virtual bool initialize();
 
@@ -46,8 +46,6 @@ class Component
 
     virtual int render_index() const;
 
-    virtual void mouse_drag_event(int mouse_x, int mouse_y);
-
     // Called after all components are initialized
     virtual bool post_initialize();
 
@@ -55,7 +53,27 @@ class Component
 
     virtual void draw(const mat4& projection, const mat4& viewInv) = 0;
 
+    ///
+    // Events
+    virtual EventProcessCode key_press_event(int /* key_code */)
+    {
+        return EventProcessCode::IGNORED;
+    }
+
+    virtual void mouse_drag_event(int /* mouse_x */, int /* mouse_y */)
+    {
+    }
+
+    virtual void mouse_move_event(int /* mouse_x */, int /* mouse_y */)
+    {
+    }
+
     virtual ~Component();
+
+  protected:
+    GameObject* game_object_;
+
+    GLCanvas* gl_canvas_;
 };
 
 #endif // COMPONENT_H_

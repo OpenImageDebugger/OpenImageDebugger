@@ -26,6 +26,13 @@
 #include "component.h"
 
 
+Component::Component(GameObject* game_object, GLCanvas* gl_canvas)
+    : game_object_(game_object)
+    , gl_canvas_(gl_canvas)
+{
+}
+
+
 Component::~Component()
 {
 }
@@ -55,9 +62,7 @@ int Component::render_index() const
 }
 
 
-void Component::mouse_drag_event(int, int)
-{
-}
+
 
 
 bool Component::post_initialize()

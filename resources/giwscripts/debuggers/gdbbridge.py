@@ -15,8 +15,8 @@ class GdbBridge(BridgeInterface):
     GDB Bridge class, exposing the common expected interface for the ImageWatch
     to access the required buffer data and interact with the debugger.
     """
-    def __init__(self, type_inspector):
-        self._type_inspector = type_inspector
+    def __init__(self, type_bridge):
+        self._type_bridge = type_bridge
         self._commands = dict(plot=PlotterCommand(self))
 
     def queue_request(self, callable_request):
@@ -25,7 +25,7 @@ class GdbBridge(BridgeInterface):
     def get_buffer_metadata(self, variable):
         picked_obj = gdb.parse_and_eval(variable)
 
-        buffer_metadata = self._type_inspector.get_buffer_metadata(
+        buffer_metadata = self._type_bridge.get_buffer_metadata(
             variable, picked_obj, self)
 
         bufsize = sysinfo.get_buffer_size(
@@ -70,7 +70,7 @@ class GdbBridge(BridgeInterface):
                                                         observable_symbols)
                 observable_symbols.update(type_fields)
             elif ((field_name not in observable_symbols) and
-                  (self._type_inspector.is_symbol_observable(field_val))):
+                  (self._type_bridge.is_symbol_observable(field_val))):
                 try:
                     observable_symbols.add(field_name)
                 except Exception:
@@ -104,7 +104,7 @@ class GdbBridge(BridgeInterface):
                             observable_symbols)
                         observable_symbols.update(type_fields)
                     elif ((name not in observable_symbols) and
-                          (self._type_inspector.is_symbol_observable(symbol))):
+                          (self._type_bridge.is_symbol_observable(symbol))):
                         try:
                             observable_symbols.add(name)
                         except Exception:

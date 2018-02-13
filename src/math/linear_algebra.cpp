@@ -33,6 +33,12 @@ vec4::vec4()
 }
 
 
+vec4::vec4(float x, float y, float z, float w)
+    : vec(x, y, z, w)
+{
+}
+
+
 void vec4::operator=(const vec4& b)
 {
     vec = b.vec;
@@ -47,7 +53,16 @@ vec4& vec4::operator+=(const vec4& b)
 }
 
 
-vec4 vec4::operator-(const vec4& b)
+vec4 vec4::operator+(const vec4& b) const
+{
+    return vec4(vec[0] + b.vec[0],
+                vec[1] + b.vec[1],
+                vec[2] + b.vec[2],
+                vec[3] + b.vec[3]);
+}
+
+
+vec4 vec4::operator-(const vec4& b) const
 {
     return vec4(vec[0] - b.vec[0],
                 vec[1] - b.vec[1],
@@ -56,15 +71,18 @@ vec4 vec4::operator-(const vec4& b)
 }
 
 
-vec4::vec4(float x, float y, float z, float w)
-    : vec(x, y, z, w)
+vec4 vec4::operator*(float scalar) const
 {
+    vec4 result(*this);
+    result.vec *= scalar;
+
+    return result;
 }
 
 
 void vec4::print() const
 {
-    std::cout << vec << std::endl;
+    std::cout << vec.transpose() << std::endl;
 }
 
 
@@ -98,23 +116,52 @@ float& vec4::w()
 }
 
 
+const float& vec4::x() const
+{
+    return vec[0];
+}
+
+
+const float& vec4::y() const
+{
+    return vec[1];
+}
+
+
+const float& vec4::z() const
+{
+    return vec[2];
+}
+
+
+const float& vec4::w() const
+{
+    return vec[3];
+}
+
+
 vec4 vec4::zero()
 {
     return vec4(0, 0, 0, 0);
 }
 
 
+vec4 operator-(const vec4& vector)
+{
+    return {-vector.x(), -vector.y(), -vector.z(), -vector.w()};
+}
+
+
 void mat4::set_identity()
 {
     // clang-format off
-    const float I[] = {
+    *this << std::initializer_list<float>{
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
         0, 0, 0, 1
     };
     // clang-format on
-    memcpy(mat.data(), I, sizeof(I));
 }
 
 
@@ -153,13 +200,19 @@ void mat4::set_from_srt(float scaleX,
     t.translate(Vector3f(x, y, z))
         .rotate(AngleAxisf(rZ, Vector3f(0, 0, 1)))
         .scale(Vector3f(scaleX, scaleY, scaleZ));
-    this->mat = t.matrix();
+    this->mat_ = t.matrix();
 }
 
 
 float* mat4::data()
 {
-    return mat.data();
+    return mat_.data();
+}
+
+
+void mat4::operator<<(const std::initializer_list<float>& data)
+{
+    memcpy(mat_.data(), data.begin(), sizeof(float) * data.size());
 }
 
 
@@ -173,7 +226,37 @@ mat4 mat4::rotation(float angle)
     Affine3f t = Affine3f::Identity();
     t.rotate(AngleAxisf(angle, Vector3f(0, 0, 1)));
 
-    result.mat = t.matrix();
+    result.mat_ = t.matrix();
+    return result;
+}
+
+
+mat4 mat4::translation(const vec4& vector)
+{
+    using Eigen::Affine3f;
+    using Eigen::Vector3f;
+
+    mat4 result;
+
+    Affine3f t = Affine3f::Identity();
+    t.translate(Vector3f(vector.x(), vector.y(), vector.z()));
+    result.mat_ = t.matrix();
+
+    return result;
+}
+
+
+mat4 mat4::scale(const vec4& factor)
+{
+    using Eigen::Affine3f;
+    using Eigen::Vector3f;
+
+    mat4 result;
+
+    Affine3f t = Affine3f::Identity();
+    t.scale(Vector3f(factor.x(), factor.y(), factor.z()));
+    result.mat_ = t.matrix();
+
     return result;
 }
 
@@ -196,14 +279,14 @@ void mat4::set_ortho_projection(float right, float top, float near, float far)
 
 void mat4::print() const
 {
-    std::cout << mat << std::endl;
+    std::cout << mat_ << std::endl;
 }
 
 
 mat4 mat4::inv() const
 {
     mat4 res;
-    res.mat = this->mat.inverse();
+    res.mat_ = this->mat_.inverse();
 
     return res;
 }
@@ -212,9 +295,14 @@ mat4 mat4::inv() const
 vec4 mat4::operator*(const vec4& b) const
 {
     vec4 res;
-    res.vec = this->mat * b.vec;
+    res.vec = this->mat_ * b.vec;
 
     return res;
+}
+
+
+float&mat4::operator()(int row, int col) {
+    return mat_(row, col);
 }
 
 
@@ -222,7 +310,7 @@ mat4 mat4::operator*(const mat4& b) const
 {
     mat4 res;
 
-    res.mat = this->mat * b.mat;
+    res.mat_ = this->mat_ * b.mat_;
 
     return res;
 }

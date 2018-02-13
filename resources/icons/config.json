@@ -47,6 +47,12 @@
       "css": "erase",
       "code": 59400,
       "src": "entypo"
+    },
+    {
+      "uid": "291e2e127efe7a6bc580af6d3ead3771",
+      "css": "location",
+      "code": 61489,
+      "src": "mfglabs"
     }
   ]
 }

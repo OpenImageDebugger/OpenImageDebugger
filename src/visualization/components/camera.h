@@ -8,8 +8,12 @@
 class Camera : public Component
 {
   public:
+    Camera(GameObject* game_object, GLCanvas* gl_canvas);
+
     static constexpr float zoom_factor = 1.1;
     mat4 projection;
+
+    vec4 mouse_position = vec4::zero();
 
     Camera& operator=(const Camera& cam);
 
@@ -23,31 +27,39 @@ class Camera : public Component
 
     virtual bool post_initialize();
 
+    virtual EventProcessCode key_press_event(int key_code);
+
     void window_resized(int w, int h);
 
     void scroll_callback(float delta);
-
-    void set_initial_zoom();
 
     void recenter_camera();
 
     void mouse_drag_event(int mouse_x, int mouse_y);
 
-    float get_zoom();
+    float compute_zoom();
 
-  private:
-    void reset_buffer_origin();
+    void move_to(float x, float y);
+
+    vec4 get_position();
+
+private:
     void update_object_pose();
 
-    float zoom_power_      = 0.0f;
-    float buffer_origin_x_ = 0.0f;
-    float buffer_origin_y_ = 0.0f;
-    float camera_pos_x_    = 0.0f;
-    float camera_pos_y_    = 0.0f;
-    float angle_           = 0.0f;
+    void scale_at(const vec4& center_ndc, float delta);
+
+    void set_initial_zoom();
+
+    void handle_key_events();
+
+    float zoom_power_   = 0.0f;
+    float camera_pos_x_ = 0.0f;
+    float camera_pos_y_ = 0.0f;
 
     int canvas_width_;
     int canvas_height_;
+
+    mat4 scale_;
 };
 
 #endif // CAMERA_H_

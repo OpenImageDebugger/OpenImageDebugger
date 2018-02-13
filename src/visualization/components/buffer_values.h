@@ -28,20 +28,18 @@
 
 #include <iostream>
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
+#include <QFont>
 
 #include "component.h"
-#include "visualization/shader.h"
+#include "ui/gl_text_renderer.h"
 
 class BufferValues : public Component
 {
   public:
-    static constexpr float font_size = 96.0f;
+    BufferValues(GameObject* game_object,
+                 GLCanvas* gl_canvas);
 
     virtual ~BufferValues();
-
-    virtual bool initialize();
 
     virtual void update()
     {
@@ -52,24 +50,14 @@ class BufferValues : public Component
     virtual void draw(const mat4& projection, const mat4& view_inv);
 
   private:
-    GLuint text_tex;
-    GLuint text_vbo;
-    FT_Face font;
-    FT_Library ft;
-    ShaderProgram text_prog;
-    float text_pixel_scale = 1.0;
-    float text_texture_width, text_texture_height;
-    int text_texture_offsets[256][2];
-    int text_texture_advances[256][2];
-    int text_texture_sizes[256][2];
-    int text_texture_tls[256][2];
+    float text_pixel_scale         = 1.0;
     static float constexpr padding = 0.125f; // Must be smaller than 0.5
 
     void generate_glyphs_texture();
 
     void draw_text(const mat4& projection,
                    const mat4& view_inv,
-                   const mat4& cam_rot,
+                   const mat4& buffer_pose,
                    const char* text,
                    float x,
                    float y,

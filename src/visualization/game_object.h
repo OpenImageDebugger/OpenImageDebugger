@@ -28,6 +28,7 @@
 
 #include <memory>
 
+#include "events.h"
 #include "math/linear_algebra.h"
 
 
@@ -38,25 +39,20 @@ class Component;
 
 class GameObject
 {
-    friend class Stage;
-
   public:
     Stage* stage;
-    vec4 scale;
-    vec4 position;
-    float angle;
 
     GameObject();
 
     template <typename T>
     T* get_component(std::string tag)
     {
-        if (all_components.find(tag) == all_components.end())
+        if (all_components_.find(tag) == all_components_.end())
             return nullptr;
-        return dynamic_cast<T*>(all_components[tag].get());
+        return dynamic_cast<T*>(all_components_[tag].get());
     }
 
-    bool initialize(GLCanvas* gl_canvas);
+    bool initialize();
 
     bool post_initialize();
 
@@ -67,12 +63,21 @@ class GameObject
 
     mat4 get_pose();
 
+    void set_pose(const mat4& pose);
+
+    void request_render_update();
+
     void mouse_drag_event(int mouse_x, int mouse_y);
+
+    void mouse_move_event(int mouse_x, int mouse_y);
+
+    EventProcessCode key_press_event(int key_code);
 
     const std::map<std::string, std::shared_ptr<Component>>& get_components();
 
   private:
-    std::map<std::string, std::shared_ptr<Component>> all_components;
+    std::map<std::string, std::shared_ptr<Component>> all_components_;
+    mat4 pose_;
 };
 
 #endif // GAME_OBJECT_H_

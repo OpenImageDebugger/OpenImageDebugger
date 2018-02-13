@@ -35,10 +35,11 @@
 #include <QLabel>
 #include <QListWidgetItem>
 #include <QMainWindow>
-#include <QShortcut>
 #include <QTimer>
 
 #include "debuggerinterface/buffer_request_message.h"
+#include "math/linear_algebra.h"
+#include "ui/go_to_widget.h"
 #include "ui/symbol_completer.h"
 #include "visualization/stage.h"
 
@@ -65,6 +66,8 @@ class MainWindow : public QMainWindow
     void show();
 
     void draw();
+
+    GLCanvas* gl_canvas();
 
     QSizeF get_icon_size();
 
@@ -96,6 +99,8 @@ class MainWindow : public QMainWindow
     void mouse_move_event(int mouse_x, int mouse_y);
 
     // Window change events - only called after the event is finished
+    bool eventFilter(QObject* target, QEvent* event);
+
     void resizeEvent(QResizeEvent*);
 
     void moveEvent(QMoveEvent*);
@@ -106,6 +111,8 @@ class MainWindow : public QMainWindow
     ///
     // Assorted methods - slots - implemented in main_window.cpp
     void loop();
+
+    void request_render_update();
 
     ///
     // Auto contrast pane - slots - implemented in auto_contrast.cpp
@@ -153,6 +160,10 @@ class MainWindow : public QMainWindow
 
     void show_context_menu(const QPoint& pos);
 
+    void toggle_go_to_dialog();
+
+    void go_to_pixel(float x, float y);
+
   private Q_SLOTS:
     ///
     // Assorted methods - private slots - implemented in main_window.cpp
@@ -173,13 +184,15 @@ class MainWindow : public QMainWindow
     QTimer settings_persist_timer_;
     QTimer update_timer_;
 
+    QString default_export_suffix_;
+
     Stage* currently_selected_stage_;
 
     std::map<std::string, std::shared_ptr<uint8_t>> held_buffers_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
 
-    // TODO use a more sophisticated structure with a TTL per buffer
     std::set<std::string> previous_session_buffers_;
+    std::set<std::string> removed_buffer_names_;
 
     std::deque<BufferRequestMessage> pending_updates_;
 
@@ -187,14 +200,12 @@ class MainWindow : public QMainWindow
 
     std::mutex ui_mutex_;
 
-    QShortcut* symbol_list_focus_shortcut_;
-    QShortcut* buffer_removal_shortcut_;
-
     SymbolCompleter* symbol_completer_;
 
     Ui::MainWindowUi* ui_;
 
     QLabel* status_bar_;
+    GoToWidget* go_to_widget_;
 
     int (*plot_callback_)(const char*);
 
@@ -209,6 +220,8 @@ class MainWindow : public QMainWindow
     void persist_settings_deferred();
 
     void set_currently_selected_stage(Stage* stage);
+
+    vec4 get_stage_coordinates(float pos_window_x, float pos_window_y);
 
     ///
     // Auto contrast pane - private - implemented in auto_contrast.cpp
@@ -237,6 +250,8 @@ class MainWindow : public QMainWindow
     void initialize_visualization_pane();
 
     void initialize_settings();
+
+    void initialize_go_to_widget();
 };
 
 #endif // MAIN_WINDOW_H_

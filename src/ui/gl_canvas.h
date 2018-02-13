@@ -26,19 +26,25 @@
 #ifndef GL_CANVAS_H_
 #define GL_CANVAS_H_
 
-#include <QGLWidget>
+#include <memory>
+
 #include <QMouseEvent>
+#include <QOpenGLExtraFunctions>
+#include <QOpenGLWidget>
 
 
 class MainWindow;
 class Stage;
+class GLTextRenderer;
 
 
-class GLCanvas : public QGLWidget
+class GLCanvas : public QOpenGLWidget, public QOpenGLExtraFunctions
 {
     Q_OBJECT
   public:
     explicit GLCanvas(QWidget* parent = 0);
+
+    ~GLCanvas();
 
     void mouseMoveEvent(QMouseEvent* ev);
 
@@ -69,6 +75,13 @@ class GLCanvas : public QGLWidget
         return mouse_down_[0];
     }
 
+    bool is_ready()
+    {
+        return initialized_;
+    }
+
+    const GLTextRenderer* get_text_renderer();
+
     void set_main_window(MainWindow* mw);
 
     void render_buffer_icon(Stage* stage, int icon_width, int icon_height);
@@ -83,6 +96,10 @@ class GLCanvas : public QGLWidget
 
     GLuint icon_texture_;
     GLuint icon_fbo_;
+
+    bool initialized_;
+
+    std::unique_ptr<GLTextRenderer> text_renderer_;
 
     void generate_icon_texture();
 };

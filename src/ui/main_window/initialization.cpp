@@ -25,9 +25,11 @@
 
 #include <cmath>
 
+#include <QDateTime>
 #include <QDebug>
 #include <QFontDatabase>
 #include <QSettings>
+#include <QShortcut>
 
 #include "main_window.h"
 
@@ -36,7 +38,10 @@
 
 void MainWindow::initialize_settings()
 {
-    qRegisterMetaTypeStreamOperators<QList<QString>>("QList<QString>");
+    using BufferExpiration = QPair<QString, QDateTime>;
+
+    qRegisterMetaTypeStreamOperators<QList<BufferExpiration>>(
+        "QList<QPair<QString, QDateTime>>");
 
     QSettings settings(QSettings::Format::IniFormat,
                        QSettings::Scope::UserScope,
@@ -51,12 +56,25 @@ void MainWindow::initialize_settings()
         render_framerate_ = 1.0;
     }
 
-    // Load previous session symbols
-    QList<QString> buffers =
-        settings.value("PreviousSession/buffers").value<QList<QString>>();
+    // Default save suffix: Image
+    if (settings.contains("Export/default_export_suffix")) {
+        default_export_suffix_ =
+            settings.value("Export/default_export_suffix").value<QString>();
+    } else {
+        default_export_suffix_ = "Image File (*.png)";
+    }
 
-    for (const auto& i : buffers) {
-        previous_session_buffers_.insert(i.toStdString());
+    // Load previous session symbols
+    QDateTime now = QDateTime::currentDateTime();
+    QList<BufferExpiration> previous_buffers =
+        settings.value("PreviousSession/buffers")
+            .value<QList<BufferExpiration>>();
+
+    for (const auto& previous_buffer : previous_buffers) {
+        if (previous_buffer.second >= now) {
+            previous_session_buffers_.insert(
+                previous_buffer.first.toStdString());
+        }
     }
 
     // Load window position/size
@@ -101,6 +119,8 @@ void MainWindow::initialize_ui_icons()
     SET_FONT_ICON(ui_->linkViewsToggle, "\ue805");
     SET_FONT_ICON(ui_->rotate_90_cw, "\ue801");
     SET_FONT_ICON(ui_->rotate_90_ccw, "\ue802");
+    SET_FONT_ICON(ui_->go_to_pixel, "\uf031");
+
     SET_FONT_ICON(ui_->ac_reset_min, "\ue808");
     SET_FONT_ICON(ui_->ac_reset_max, "\ue808");
 
@@ -136,19 +156,28 @@ void MainWindow::initialize_timers()
 
 void MainWindow::initialize_shortcuts()
 {
-    symbol_list_focus_shortcut_ =
+    QShortcut* symbol_list_focus_shortcut_ =
         new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_K), this);
     connect(symbol_list_focus_shortcut_,
             SIGNAL(activated()),
             ui_->symbolList,
             SLOT(setFocus()));
 
-    buffer_removal_shortcut_ =
+    QShortcut* buffer_removal_shortcut_ =
         new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList);
     connect(buffer_removal_shortcut_,
             SIGNAL(activated()),
             this,
             SLOT(remove_selected_buffer()));
+
+    QShortcut* go_to_shortcut =
+        new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_L), this);
+    connect(
+        go_to_shortcut, SIGNAL(activated()), this, SLOT(toggle_go_to_dialog()));
+    connect(go_to_widget_,
+            SIGNAL(go_to_requested(float, float)),
+            this,
+            SLOT(go_to_pixel(float, float)));
 }
 
 
@@ -254,6 +283,9 @@ void MainWindow::initialize_toolbar()
 
     connect(ui_->rotate_90_cw, SIGNAL(clicked()), this, SLOT(rotate_90_cw()));
     connect(ui_->rotate_90_ccw, SIGNAL(clicked()), this, SLOT(rotate_90_ccw()));
+
+    connect(
+        ui_->go_to_pixel, SIGNAL(clicked()), this, SLOT(toggle_go_to_dialog()));
 }
 
 
@@ -269,4 +301,10 @@ void MainWindow::initialize_status_bar()
     status_bar_->setAlignment(Qt::AlignRight);
 
     statusBar()->addWidget(status_bar_, 1);
+}
+
+
+void MainWindow::initialize_go_to_widget()
+{
+    go_to_widget_ = new GoToWidget(ui_->bufferPreview);
 }

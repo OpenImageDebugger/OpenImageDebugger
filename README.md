@@ -1,4 +1,4 @@
-# Advanced GDB ImageWatch
+# GDB ImageWatch: The advanced Image Debugger
 GDB ImageWatch is a tool for visualizing in-memory buffers during debug
 sessions using GDB. It works out of the box with instances of the OpenCV `Mat`
 class, but can also be customized to work with any arbitrary data structure.
@@ -7,7 +7,10 @@ class, but can also be customized to work with any arbitrary data structure.
 
 ## Features
 
-* GUI interactivity: Scroll to zoom, left click+drag to move the buffer around.
+* GUI interactivity:
+    * Scroll to zoom, left click+drag to move the buffer around;
+    * Rotate buffers 90&deg; clockwise or counterclockwise;
+    * Go-to widget that quickly takes you to any arbitrary pixel location;
 * Buffer values: Zoom in close enough to see the numerical values of the
   buffer.
 * Auto update: Whenever a breakpoint is hit, the buffer view is automatically
@@ -28,7 +31,6 @@ class, but can also be customized to work with any arbitrary data structure.
 * Supports data structures that map to a ROI of a larger buffer.
 * Exports buffers as png images (with auto contrast) or octave/matlab matrix
   files (unprocessed).
-* Rotate buffers 90&deg; clockwise or counterclockwise.
 * Auto-load buffers being visualized in the previous debug session
 * Designed to scale well for HighDPI displays
 
@@ -39,11 +41,7 @@ class, but can also be customized to work with any arbitrary data structure.
  * GDB 7.10+ **compiled with python 3 support**
  * Qt 5.6+ (required due to the HighDPI display support - download it
    [here](https://info.qt.io/download-qt-for-application-development))
- * FreeType 2
- * Eigen 3
  * Python 3+ with its development packages
- * Numpy
- * GLEW with its development packages
 
 ## Installation
 
@@ -51,17 +49,44 @@ class, but can also be customized to work with any arbitrary data structure.
 
 On Ubuntu, you can install most of the dependencies with the following command:
 
-    sudo apt-get install libpython3-dev libglew-dev python3-numpy python3-pip texinfo libfreetype6-dev libeigen3-dev
-    sudo pip3 install pysigset
+    sudo apt-get install libpython3-dev
 
-Download and install the latest version of GDB with python3 support (if you
-already don't have it):
 
-    wget http://ftp.gnu.org/gnu/gdb/gdb-7.10.tar.gz
-    tar -zxvf gdb-7.10.tar.gz
-    cd gdb-7.10
-    ./configure --with-python=python3 --disable-werror
-    make -j8
+#### Check GDB version
+Before installing the gdb-imagewatch plugin, you need to first check if your
+GDB version is >= 7.10:
+
+```shell
+$ gdb --version
+```
+
+On Ubuntu 16.04.3, this will print `GNU gdb (Ubuntu 7.11.1-0ubuntu1~16.5)
+7.11.1`, which is good enough.
+
+You also need to make sure that your GDB was compiled with Python 3 support.
+For that, run the `gdb` command, and inside the gdb console, run the following
+command:
+
+```gdb
+(gdb) python import sys; print(sys.version)
+```
+
+On Ubuntu 16.04.3, this will print `3.5.2 (default, Nov 23 2017, 16:37:01)`,
+which meets the requirements.
+
+
+#### GDB 7.10+ with Python 3
+If your GDB version is not supported, you need to download and install a
+compatible version of GDB with python3 support. Here are the commands for GDB
+7.10:
+
+```shell
+$ wget http://ftp.gnu.org/gnu/gdb/gdb-7.10.tar.gz
+$ tar -zxvf gdb-7.10.tar.gz
+$ cd gdb-7.10
+$ ./configure --with-python=python3 --disable-werror
+$ make -j8
+```
 
 Notice that if you already have an older version of GDB, you will need to
 either reconfigure your environment running `update-alternatives` or
@@ -71,9 +96,16 @@ installed on `/usr/local/bin/gdb`).
 After the installation, you can remove both the file `gdb-7.10.tar.gz` and the
 folder `gdb-7.10`.
 
-Finally, clone the GDB ImageWatch plugin to any folder you prefer:
+#### Downloading GDB ImageWatch
+Clone the GDB ImageWatch plugin to any folder you prefer and initialize the
+submodules:
 
-    git clone https://github.com/csantosbh/gdb-imagewatch
+```shell
+$ git clone https://github.com/csantosbh/gdb-imagewatch
+$ cd gdb-imagewatch
+$ git submodule init
+$ git submodule update
+```
 
 ### Ubuntu 16.04 manual installation with QtCreator
 
@@ -91,9 +123,11 @@ Tools->Options->Build & Run->Kits, by setting Qt version to any Qt version >=
 To build this plugin, create a `build` folder, open a terminal window inside it
 and run:
 
-    qmake .. BUILD_MODE=release PREFIX=/path/to/installation/folder
-    make -j4
-    make install
+```shell
+$ qmake .. BUILD_MODE=release PREFIX=/path/to/installation/folder
+$ make -j4
+$ make install
+```
 
 The installation step is optional; you can simply use the plugin from the build
 folder instead. If you choose to install the plugin, it will be placed under
@@ -101,22 +135,57 @@ folder instead. If you choose to install the plugin, it will be placed under
 
 By default, the `PREFIX` variable is `/usr/local`.
 
-#### Loading plugin: QtCreator
 
-If you use QtCreator, the best way to integrate GDB ImageWatch into your
-workflow is by using it as an *extra debugging helper*. This can be achieved by
-going to the menu `Tools`->`Options`->`Debugger` and adding the file
-`/path/to/gdb-imagewatch/gdb-imagewatch.py` in the option `Extra debugging
-Helpers`.
+### libGL troubleshooting
+Some users might experience a linking error if the libGL.so is not found by
+qmake, especially when using a nvidia graphics card. This issue will usually
+present itself with the message `cannot find -lGL`.
 
-This will automatically load the plugin for every debug session, and will
-reload the local variables when switching between threads/stack level when the
-debugger is paused.
+To fix that, you need to find the location for your libGL.so file. The
+following commands should help you find it:
 
-#### Loading pugin: GDB/Other IDEs
+```shell
+$ sudo updatedb
+$ locate -i libgl.so
+```
 
-If you are not using QtCreator, simply edit the `~/.gdbinit` file (create it if
-it doesn't exist) and append the following line:
+If you have installed the proprietary drivers, you don't want to use the mesa
+folder. For example, running the command above could result in the following
+output:
+
+```
+/usr/lib/nvidia-384/libGL.so
+/usr/lib/nvidia-384/libGL.so.1
+/usr/lib/nvidia-384/libGL.so.384.90
+/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1
+/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1.2.0
+/usr/lib32/nvidia-384/libGL.so
+/usr/lib32/nvidia-384/libGL.so.1
+/usr/lib32/nvidia-384/libGL.so.384.90
+```
+
+In this case, since I'm using the proprietary nvidia drivers, I'll choose the
+folder `/usr/lib/nvidia-384`.
+
+Copy the name of the folder you found, and paste it in the file
+`gdb-imagewatch.pro` under the definition of the `QMAKE_LFLAGS` variable. In my
+case, this variable now looks like this:
+
+```
+QMAKE_LFLAGS += \
+  # If you have an error "cannot find -lGL", uncomment the following line and
+  # replace the folder by the location of your libGL.so
+  -L/usr/lib/nvidia-384/ \
+  -Wl,--exclude-libs,ALL
+```
+
+Now, just run the build steps again, including the `qmake` command, as
+described above.
+
+#### Loading pugin
+
+In order to load the GDB-ImageWatch plugin, simply edit the `~/.gdbinit` file
+(create it if it doesn't exist) and append the following line:
 
     source /path/to/gdb-imagewatch/gdb-imagewatch.py
 
@@ -125,13 +194,16 @@ starts.
 
 ### Ubuntu 16.04 Automated Installation without QtCreator
 
-If you are not using QtCreator, we provide the script `configure_ubuntu_16.sh`
-which automates most of the installation of GDB ImageWatch on Ubuntu 16.04.
-From the root directory of this project, execute the following:
+The script `configure_ubuntu_16.sh` automates some of the installation steps
+for GDB ImageWatch on Ubuntu 16.04.  From the root directory of this project,
+    execute the following:
 
     bash configure_ubuntu_16.sh
 
-Follow this step with the instructions below in the section `Testing your
+Note that this script will not instal Qt 5.6+ and GDB with python 3 support. If
+you don't have these packages, please follow the instructions above.
+
+When you are done, follow the instructions below in the section `Testing your
 installation`.
 
 ## Testing your installation
@@ -184,6 +256,14 @@ amount. This means you only need to align the buffers being compared once;
 after activating the `lock buffers` mode, you can zoom in anywhere you wish in
 one buffer that all other buffers will be zoomed in the same location.
 
+### <img src="doc/location.svg" width="20"/> Quickly moving to arbitrary coordinates
+
+If you need to quickly move to any pixel location, then the *go to*
+functionality is what you are looking for. Press *Ctrl+L* and two input fields
+corresponding to the target destination in format `<x, y>` will appear at the
+bottom right corner of the buffer screen. Type the desired location, then press
+enter to quickly zoom into that location.
+
 ### Exporting bufers
 
 Sometimes you may want to export your buffers to be able to process them in an
@@ -194,7 +274,7 @@ GDB ImageWatch supports two export modes. You can save your buffer as a PNG
 (which may result in loss of data if your buffer type is not `uint8_t`) or as a
 binary file that can be opened with any tool.
 
-### Loading Octave/Matlab buffers
+### Loading exported buffers on Octave/Matlab
 
 Buffers exported in the `Octave matrix` format can be loaded with the function
 `giw_load.m`, which is available in the `matlab` folder. To use it, add this

@@ -28,6 +28,7 @@
 #include "stage.h"
 
 #include "game_object.h"
+#include "ui/main_window/main_window.h"
 #include "visualization/components/background.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
@@ -45,39 +46,44 @@ struct compareRenderOrder
 };
 
 
-Stage::Stage()
+Stage::Stage(MainWindow* main_wnd)
+    : main_window(main_wnd)
 {
 }
 
 
-bool Stage::initialize(GLCanvas* gl_canvas,
-                       uint8_t* buffer,
+bool Stage::initialize(uint8_t* buffer,
                        int buffer_width_i,
                        int buffer_height_i,
                        int channels,
                        Buffer::BufferType type,
                        int step,
                        const string& pixel_layout,
-                       bool ac_enabled)
+                       bool transpose_buffer)
 {
-    contrast_enabled = ac_enabled;
-
     std::shared_ptr<GameObject> camera_obj = std::make_shared<GameObject>();
 
     camera_obj->stage = this;
-    camera_obj->add_component("camera_component", std::make_shared<Camera>());
+
+    camera_obj->add_component(
+        "camera_component",
+        std::make_shared<Camera>(camera_obj.get(), main_window->gl_canvas()));
     camera_obj->add_component("background_component",
-                              std::make_shared<Background>());
+                              std::make_shared<Background>(
+                                  camera_obj.get(), main_window->gl_canvas()));
 
     all_game_objects["camera"] = camera_obj;
 
     std::shared_ptr<GameObject> buffer_obj = std::make_shared<GameObject>();
 
     buffer_obj->stage = this;
-    buffer_obj->add_component("text_component",
-                              std::make_shared<BufferValues>());
 
-    std::shared_ptr<Buffer> buffer_component = std::make_shared<Buffer>();
+    buffer_obj->add_component("text_component",
+                              std::make_shared<BufferValues>(
+                                  buffer_obj.get(), main_window->gl_canvas()));
+
+    std::shared_ptr<Buffer> buffer_component =
+        std::make_shared<Buffer>(buffer_obj.get(), main_window->gl_canvas());
 
     buffer_component->buffer          = buffer;
     buffer_component->channels        = channels;
@@ -85,18 +91,19 @@ bool Stage::initialize(GLCanvas* gl_canvas,
     buffer_component->buffer_width_f  = static_cast<float>(buffer_width_i);
     buffer_component->buffer_height_f = static_cast<float>(buffer_height_i);
     buffer_component->step            = step;
+    buffer_component->transpose       = transpose_buffer;
     buffer_component->set_pixel_layout(pixel_layout);
     buffer_obj->add_component("buffer_component", buffer_component);
 
     all_game_objects["buffer"] = buffer_obj;
 
-    for (auto& go : all_game_objects) {
-        if (!go.second->initialize(gl_canvas)) {
+    for (const auto& go : all_game_objects) {
+        if (!go.second->initialize()) {
             return false;
         }
     }
 
-    for (auto& go : all_game_objects) {
+    for (const auto& go : all_game_objects) {
         if (!go.second->post_initialize()) {
             return false;
         }
@@ -112,7 +119,8 @@ bool Stage::buffer_update(uint8_t* buffer,
                           int channels,
                           Buffer::BufferType type,
                           int step,
-                          const string& pixel_layout)
+                          const string& pixel_layout,
+                          bool transpose_buffer)
 {
     GameObject* buffer_obj = all_game_objects["buffer"].get();
     Buffer* buffer_component =
@@ -124,21 +132,22 @@ bool Stage::buffer_update(uint8_t* buffer,
     buffer_component->buffer_width_f  = static_cast<float>(buffer_width_i);
     buffer_component->buffer_height_f = static_cast<float>(buffer_height_i);
     buffer_component->step            = step;
+    buffer_component->transpose       = transpose_buffer;
     buffer_component->set_pixel_layout(pixel_layout);
 
-    for (auto& game_obj_it : all_game_objects) {
+    for (const auto& game_obj_it : all_game_objects) {
         GameObject* game_obj = game_obj_it.second.get();
         game_obj->stage      = this;
-        for (auto& comp : game_obj->all_components) {
+        for (const auto& comp : game_obj->get_components()) {
             if (!comp.second->buffer_update()) {
                 return false;
             }
         }
     }
 
-    for (auto& game_obj_it : all_game_objects) {
+    for (const auto& game_obj_it : all_game_objects) {
         GameObject* game_obj = game_obj_it.second.get();
-        for (auto comp : game_obj->all_components) {
+        for (const auto& comp : game_obj->get_components()) {
             if (!comp.second->post_buffer_update()) {
                 return false;
             }
@@ -151,16 +160,19 @@ bool Stage::buffer_update(uint8_t* buffer,
 
 GameObject* Stage::get_game_object(string tag)
 {
-    if (all_game_objects.find(tag) == all_game_objects.end())
+    if (all_game_objects.find(tag) == all_game_objects.end()) {
         return nullptr;
+    }
+
     return all_game_objects[tag].get();
 }
 
 
 void Stage::update()
 {
-    for (auto& game_obj : all_game_objects)
+    for (const auto& game_obj : all_game_objects) {
         game_obj.second->update();
+    }
 }
 
 
@@ -180,13 +192,13 @@ void Stage::draw()
 
     mat4 view_inv = camera_obj->get_pose().inv();
 
-    for (auto& game_obj : all_game_objects) {
-        for (auto& component : game_obj.second->get_components()) {
+    for (const auto& game_obj : all_game_objects) {
+        for (const auto& component : game_obj.second->get_components()) {
             ordered_components.insert(component.second.get());
         }
     }
 
-    for (auto& component : ordered_components) {
+    for (const auto& component : ordered_components) {
         component->draw(camera_component->projection, view_inv);
     }
 }
@@ -212,7 +224,42 @@ void Stage::resize_callback(int w, int h)
 
 void Stage::mouse_drag_event(int mouse_x, int mouse_y)
 {
-    for (auto& game_obj : all_game_objects) {
+    for (const auto& game_obj : all_game_objects) {
         game_obj.second->mouse_drag_event(mouse_x, mouse_y);
     }
+}
+
+
+void Stage::mouse_move_event(int mouse_x, int mouse_y)
+{
+    for (const auto& game_obj : all_game_objects) {
+        game_obj.second->mouse_move_event(mouse_x, mouse_y);
+    }
+}
+
+
+EventProcessCode Stage::key_press_event(int key_code)
+{
+    EventProcessCode event_intercepted = EventProcessCode::IGNORED;
+
+    for (const auto& game_obj : all_game_objects) {
+        EventProcessCode event_intercepted_game_obj =
+            game_obj.second->key_press_event(key_code);
+
+        if (event_intercepted_game_obj == EventProcessCode::INTERCEPTED) {
+            event_intercepted = EventProcessCode::INTERCEPTED;
+        }
+    }
+
+    return event_intercepted;
+}
+
+
+void Stage::go_to_pixel(float x, float y)
+{
+    GameObject* cam_obj = all_game_objects["camera"].get();
+    Camera* camera_component =
+        cam_obj->get_component<Camera>("camera_component");
+
+    camera_component->move_to(x, y);
 }

@@ -46,6 +46,7 @@ struct BufferRequestMessage
     Buffer::BufferType type;
     int step;
     std::string pixel_layout;
+    bool transpose_buffer;
 
     BufferRequestMessage(const BufferRequestMessage& buff);
 
@@ -57,13 +58,24 @@ struct BufferRequestMessage
                          int channels,
                          int type,
                          int step,
-                         PyObject* pixel_layout);
+                         PyObject* pixel_layout,
+                         bool transpose);
 
     ~BufferRequestMessage();
 
     BufferRequestMessage() = delete;
 
     BufferRequestMessage& operator=(const BufferRequestMessage&) = delete;
+
+    /**
+     * Returns buffer width taking into account its transposition flag
+     */
+    int get_visualized_width() const;
+
+    /**
+     * Returns buffer height taking into account its transposition flag
+     */
+    int get_visualized_height() const;
 };
 
 #endif // BUFFER_REQUEST_MESSAGE_H_

@@ -26,6 +26,7 @@
 #include <iomanip>
 
 #include <QAction>
+#include <QDateTime>
 #include <QScreen>
 #include <QSettings>
 
@@ -57,11 +58,12 @@ MainWindow::MainWindow(QWidget* parent)
     , ui_(new Ui::MainWindowUi)
     , plot_callback_(nullptr)
 {
+    QCoreApplication::instance()->installEventFilter(this);
+
     ui_->setupUi(this);
 
     initialize_ui_icons();
     initialize_timers();
-    initialize_shortcuts();
     initialize_symbol_completer();
     initialize_left_pane();
     initialize_auto_contrast_form();
@@ -69,6 +71,8 @@ MainWindow::MainWindow(QWidget* parent)
     initialize_status_bar();
     initialize_visualization_pane();
     initialize_settings();
+    initialize_go_to_widget();
+    initialize_shortcuts();
 
     is_window_ready_ = true;
 }
@@ -95,6 +99,12 @@ void MainWindow::draw()
     if (currently_selected_stage_ != nullptr) {
         currently_selected_stage_->draw();
     }
+}
+
+
+GLCanvas* MainWindow::gl_canvas()
+{
+    return ui_->bufferPreview;
 }
 
 
@@ -133,7 +143,7 @@ deque<string> MainWindow::get_observed_symbols()
 
 bool MainWindow::is_window_ready()
 {
-    return is_window_ready_;
+    return ui_->bufferPreview->is_ready() && is_window_ready_;
 }
 
 
@@ -188,18 +198,18 @@ void MainWindow::loop()
         held_buffers_[request.variable_name_str] = managedBuffer;
 
         if (buffer_stage == stages_.end()) { // New buffer request
-            shared_ptr<Stage> stage = make_shared<Stage>();
-            if (!stage->initialize(ui_->bufferPreview,
-                                   srcBuffer,
+            shared_ptr<Stage> stage = make_shared<Stage>(this);
+            if (!stage->initialize(srcBuffer,
                                    request.width_i,
                                    request.height_i,
                                    request.channels,
                                    request.type,
                                    request.step,
                                    request.pixel_layout,
-                                   ac_enabled_)) {
+                                   request.transpose_buffer)) {
                 cerr << "[error] Could not initialize opengl canvas!" << endl;
             }
+            stage->contrast_enabled            = ac_enabled_;
             stages_[request.variable_name_str] = stage;
 
             ui_->bufferPreview->render_buffer_icon(
@@ -212,8 +222,9 @@ void MainWindow::loop()
                               QImage::Format_RGB888);
 
             stringstream label;
-            label << request.display_name_str << "\n[" << request.width_i << "x"
-                  << request.height_i << "]\n"
+            label << request.display_name_str << "\n["
+                  << request.get_visualized_width() << "x"
+                  << request.get_visualized_height() << "]\n"
                   << get_type_label(request.type, request.channels);
             QListWidgetItem* item =
                 new QListWidgetItem(QPixmap::fromImage(bufferIcon),
@@ -233,7 +244,8 @@ void MainWindow::loop()
                                                 request.channels,
                                                 request.type,
                                                 request.step,
-                                                request.pixel_layout);
+                                                request.pixel_layout,
+                                                request.transpose_buffer);
             // Update buffer icon
             shared_ptr<Stage>& stage = stages_[request.variable_name_str];
             ui_->bufferPreview->render_buffer_icon(
@@ -246,8 +258,9 @@ void MainWindow::loop()
                               bytes_per_line,
                               QImage::Format_RGB888);
             stringstream label;
-            label << request.display_name_str << "\n[" << request.width_i << "x"
-                  << request.height_i << "]\n"
+            label << request.display_name_str << "\n["
+                  << request.get_visualized_width() << "x"
+                  << request.get_visualized_height() << "]\n"
                   << get_type_label(request.type, request.channels);
 
             for (int i = 0; i < ui_->imageList->count(); ++i) {
@@ -277,37 +290,76 @@ void MainWindow::loop()
         completer_updated_ = false;
     }
 
+    // Run update for current stage
+    if (currently_selected_stage_ != nullptr) {
+        currently_selected_stage_->update();
+    }
+
     if (request_render_update_) {
         // Update visualization pane
-        if (currently_selected_stage_ != nullptr) {
-            currently_selected_stage_->update();
-        }
-
-        ui_->bufferPreview->updateGL();
+        ui_->bufferPreview->update();
 
         request_render_update_ = false;
     }
 }
 
 
+void MainWindow::request_render_update()
+{
+    request_render_update_ = true;
+}
+
+
 void MainWindow::persist_settings()
 {
+    using BufferExpiration = QPair<QString, QDateTime>;
+
     QSettings settings(QSettings::Format::IniFormat,
                        QSettings::Scope::UserScope,
                        "gdbimagewatch");
 
-    QList<QString> current_session_buffers;
+    QList<BufferExpiration> persisted_session_buffers;
+
+    // Load previous session symbols
+    QList<BufferExpiration> previous_session_buffers_qlist =
+        settings.value("PreviousSession/buffers")
+            .value<QList<BufferExpiration>>();
+
+    QDateTime now             = QDateTime::currentDateTime();
+    QDateTime next_expiration = now.addDays(1);
+
+    // Of the buffers not currently being visualized, only keep those whose
+    // timer hasn't expired yet and is not in the set of removed names
+    for (const auto& prev_buff : previous_session_buffers_qlist) {
+        const string buff_name_std_str = prev_buff.first.toStdString();
+
+        const bool being_viewed =
+            held_buffers_.find(buff_name_std_str) != held_buffers_.end();
+        const bool was_removed =
+            removed_buffer_names_.find(buff_name_std_str) !=
+            removed_buffer_names_.end();
+
+        if (was_removed) {
+            previous_session_buffers_.erase(buff_name_std_str);
+        } else if (!being_viewed && prev_buff.second >= now) {
+            persisted_session_buffers.append(prev_buff);
+        }
+    }
 
     for (const auto& held_buffer : held_buffers_) {
-        current_session_buffers.append(held_buffer.first.c_str());
+        persisted_session_buffers.append(
+            BufferExpiration(held_buffer.first.c_str(), next_expiration));
     }
+
+    // Write default suffix for buffer export
+    settings.setValue("Export/default_export_suffix", default_export_suffix_);
 
     // Write maximum framerate
     settings.setValue("Rendering/maximum_framerate", render_framerate_);
 
     // Write previous session symbols
     settings.setValue("PreviousSession/buffers",
-                      QVariant::fromValue(current_session_buffers));
+                      QVariant::fromValue(persisted_session_buffers));
 
     // Write window position/size
     settings.beginGroup("MainWindow");
@@ -316,6 +368,35 @@ void MainWindow::persist_settings()
     settings.endGroup();
 
     settings.sync();
+
+    removed_buffer_names_.clear();
+}
+
+
+vec4 MainWindow::get_stage_coordinates(float pos_window_x, float pos_window_y)
+{
+    GameObject* cam_obj = currently_selected_stage_->get_game_object("camera");
+    Camera* cam         = cam_obj->get_component<Camera>("camera_component");
+
+    GameObject* buffer_obj =
+        currently_selected_stage_->get_game_object("buffer");
+    Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
+
+    float win_w = ui_->bufferPreview->width();
+    float win_h = ui_->bufferPreview->height();
+    vec4 mouse_pos_ndc(2.0 * (pos_window_x - win_w / 2) / win_w,
+                       -2.0 * (pos_window_y - win_h / 2) / win_h,
+                       0,
+                       1);
+    mat4 view      = cam_obj->get_pose().inv();
+    mat4 buff_pose = buffer_obj->get_pose();
+    mat4 vp_inv    = (cam->projection * view * buff_pose).inv();
+
+    vec4 mouse_pos = vp_inv * mouse_pos_ndc;
+    mouse_pos +=
+        vec4(buffer->buffer_width_f / 2.f, buffer->buffer_height_f / 2.f, 0, 0);
+
+    return mouse_pos;
 }
 
 
@@ -323,6 +404,7 @@ void MainWindow::update_status_bar()
 {
     if (currently_selected_stage_ != nullptr) {
         stringstream message;
+
         GameObject* cam_obj =
             currently_selected_stage_->get_game_object("camera");
         Camera* cam = cam_obj->get_component<Camera>("camera_component");
@@ -333,27 +415,18 @@ void MainWindow::update_status_bar()
 
         float mouse_x = ui_->bufferPreview->mouse_x();
         float mouse_y = ui_->bufferPreview->mouse_y();
-        float win_w   = ui_->bufferPreview->width();
-        float win_h   = ui_->bufferPreview->height();
-        vec4 mouse_pos_ndc(2.0 * (mouse_x - win_w / 2) / win_w,
-                           -2.0 * (mouse_y - win_h / 2) / win_h,
-                           0,
-                           1);
-        mat4 view     = cam_obj->get_pose().inv();
-        mat4 buff_rot = mat4::rotation(buffer_obj->angle);
-        mat4 vp_inv   = (cam->projection * view * buff_rot).inv();
 
-        vec4 mouse_pos = vp_inv * mouse_pos_ndc;
-        mouse_pos += vec4(
-            buffer->buffer_width_f / 2.f, buffer->buffer_height_f / 2.f, 0, 0);
+        vec4 mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
 
         message << std::fixed << std::setprecision(1) << "("
                 << static_cast<int>(floor(mouse_pos.x())) << ", "
                 << static_cast<int>(floor(mouse_pos.y())) << ")\t"
-                << cam->get_zoom() * 100.0 << "%";
+                << cam->compute_zoom() * 100.0 << "%";
         message << " val=";
+
         buffer->get_pixel_info(
             message, floor(mouse_pos.x()), floor(mouse_pos.y()));
+
         status_bar_->setText(message.str().c_str());
     }
 }

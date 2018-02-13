@@ -29,7 +29,7 @@
 #include <cstring>
 #include <iostream>
 
-#include <eigen3/Eigen/Eigen>
+#include "thirdparty/Eigen/Eigen"
 
 
 class mat4;
@@ -44,7 +44,12 @@ class vec4
     void operator=(const vec4& b);
 
     vec4& operator+=(const vec4& b);
-    vec4 operator-(const vec4& b);
+
+    vec4 operator+(const vec4& b) const;
+
+    vec4 operator-(const vec4& b) const;
+
+    vec4 operator*(float scalar) const;
 
     vec4(float x, float y, float z, float w);
 
@@ -57,11 +62,18 @@ class vec4
     float& z();
     float& w();
 
+    const float& x() const;
+    const float& y() const;
+    const float& z() const;
+    const float& w() const;
+
     static vec4 zero();
 
   private:
     Eigen::Vector4f vec;
 };
+
+vec4 operator-(const vec4& vector);
 
 
 class mat4
@@ -86,6 +98,8 @@ class mat4
 
     float* data();
 
+    void operator<<(const std::initializer_list<float>& data);
+
     void set_ortho_projection(float right, float top, float near, float far);
 
     void print() const;
@@ -96,10 +110,16 @@ class mat4
 
     vec4 operator*(const vec4& b) const;
 
+    float& operator()(int row, int col);
+
     static mat4 rotation(float angle);
 
+    static mat4 translation(const vec4& vector);
+
+    static mat4 scale(const vec4& factor);
+
   private:
-    Eigen::Matrix4f mat;
+    Eigen::Matrix4f mat_;
 };
 
 #endif // LINEAR_ALGEBRA_H_

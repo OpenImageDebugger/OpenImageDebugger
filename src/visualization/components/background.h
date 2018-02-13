@@ -33,6 +33,8 @@
 class Background : public Component
 {
   public:
+    Background(GameObject* game_object, GLCanvas* gl_canvas);
+
     virtual ~Background();
 
     virtual bool initialize();
