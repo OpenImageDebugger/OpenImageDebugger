@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+echo -e "\tThis version of GDB ImageWatch requires Qt 5.6 (or more recent)."
+echo -e "\tIf you don't have it, please download it from https://www.qt.io/download"
 echo "Starting GDB ImageWatch configuration for Ubuntu 16.04."
 set -e
 sudo apt-get -y install libpython3-dev
