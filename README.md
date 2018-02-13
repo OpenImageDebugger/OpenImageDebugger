@@ -299,28 +299,15 @@ The settings file for the plugin can be located under
 
 ## Advanced configuration
 
-By default, the plugin works with OpenCV `Mat` structures, i.e. it assumes that
-your buffer data structure has the following signature:
+By default, the plugin works with several data types, including OpenCV's `Mat`
+and `CvMat` and Eigen's `Matrix`.
 
-```cpp
-struct Buffer {
-    void* data;
-    int cols; // Width
-    int rows; // Height
-    int flags; // OpenCV flags
-    struct {
-       int buf[2]; // Buf[0] = width of the containing
-                   // buffer*channels; buff[1] = channels
-    } step;
-};
-```
-
-If you use a different buffer type, you need to adapt the file
-`resources/giwscripts/giwtype.py` to your needs. This is actually pretty simple
-and only involves editing the functions `get_buffer_info()` and
+If you use a different buffer type, you can create a python parser inside the
+folder `resources/giwscripts/giwtypes`. This is actually pretty simple and only
+involves implementing a class with the methods `get_buffer_metadata()` and
 `is_symbol_observable()`.
 
-The function `get_buffer_info()` must return a dictionary with the following
+The function `get_buffer_metadata()` must return a dictionary with the following
 fields:
 
  * **display_name** Name of the buffer as it must appear in the ImageWatch
@@ -348,16 +335,13 @@ fields:
    `'bgra'`, and `'rgba'` for images of 1 and 2 channels. This string must
    contain exactly four characters, and each one must be one of `'r'`, `'g'`,
    `'b'` or `'a'`.  Repeated channels, such as 'rrgg' are also valid.
+ * **transpose_buffer** Boolean indicating whether or not to transpose the
+   buffer in the interface. Can be very useful if your data structure represents
+   transposition with an internal metadata.
 
-The function `is_symbol_observable()` receives a gdb symbol and only returns
+The function `is_symbol_observable()` receives a gdb symbol and must only return
 `True` if that symbol is of the observable type (the buffer you are dealing
-with). By default, it works well with the `cv::Mat` type.
+with).
 
 For more information on how to customize this file, check out this [more
 detailed blog post](https://csantosbh.wordpress.com/2016/10/15/configuring-gdb-imagewatch-to-visualize-custom-buffer-types/).
-
-## Features for the Future & Known issues
-
-* Buffers are currently exported preserving the auto-contrast settings; they
-  should not preserve auto-contrast (when saving in octave format) or only do
-  it if auto-contrast is enabled (png)
