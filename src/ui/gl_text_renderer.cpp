@@ -91,11 +91,25 @@ void GLTextRenderer::generate_glyphs_texture()
 
     const int mipmap_levels = 5;
 
-    gl_canvas_->glTexStorage2D(GL_TEXTURE_2D,
-                               mipmap_levels,
-                               GL_R8,
-                               text_texture_width,
-                               text_texture_height);
+    {
+        int tex_level_width = text_texture_width;
+        int tex_level_height = text_texture_height;
+
+        for (int i = 0; i < mipmap_levels; ++i) {
+            gl_canvas_->glTexImage2D(GL_TEXTURE_2D,
+                                     i,
+                                     GL_R8,
+                                     tex_level_width,
+                                     tex_level_height,
+                                     0,
+                                     GL_RED,
+                                     GL_UNSIGNED_BYTE,
+                                     nullptr);
+
+            tex_level_width = std::max(1, tex_level_width / 2);
+            tex_level_height = std::max(1, tex_level_height / 2);
+        }
+    }
 
     QPixmap pixmap(texture_size);
     pixmap.fill(QColor(0, 0, 0));
@@ -168,15 +182,15 @@ void GLTextRenderer::generate_glyphs_texture()
 
     // Clears generated buffer
     {
-        glTexSubImage2D(GL_TEXTURE_2D,
-                        0,
-                        0,
-                        0,
-                        text_texture_width,
-                        text_texture_height,
-                        GL_RED,
-                        GL_UNSIGNED_BYTE,
-                        packed_texture.data());
+        gl_canvas_->glTexSubImage2D(GL_TEXTURE_2D,
+                                    0,
+                                    0,
+                                    0,
+                                    text_texture_width,
+                                    text_texture_height,
+                                    GL_RED,
+                                    GL_UNSIGNED_BYTE,
+                                    packed_texture.data());
     }
 
     int x = 0;
