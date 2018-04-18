@@ -29,7 +29,7 @@
 #include <memory>
 
 #include <QMouseEvent>
-#include <QOpenGLExtraFunctions>
+#include <QOpenGLFunctions>
 #include <QOpenGLWidget>
 
 
@@ -38,7 +38,7 @@ class Stage;
 class GLTextRenderer;
 
 
-class GLCanvas : public QOpenGLWidget, public QOpenGLExtraFunctions
+class GLCanvas : public QOpenGLWidget, public QOpenGLFunctions
 {
     Q_OBJECT
   public:

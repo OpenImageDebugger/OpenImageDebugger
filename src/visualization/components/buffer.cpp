@@ -571,8 +571,16 @@ void Buffer::setup_gl_buffer()
                                       ty * max_texture_size);
             gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_PIXELS,
                                       tx * max_texture_size);
-            gl_canvas_->glTexStorage2D(
-                GL_TEXTURE_2D, 1, GL_RGBA32F, buff_w, buff_h);
+
+            gl_canvas_->glTexImage2D(GL_TEXTURE_2D,
+                                     0,
+                                     GL_RGBA32F,
+                                     buff_w,
+                                     buff_h,
+                                     0,
+                                     tex_format,
+                                     tex_type,
+                                     nullptr);
 
             gl_canvas_->glTexSubImage2D(GL_TEXTURE_2D,
                                         0,

@@ -36,7 +36,7 @@ using namespace std;
 
 GLCanvas::GLCanvas(QWidget* parent)
     : QOpenGLWidget(parent)
-    , QOpenGLExtraFunctions()
+    , QOpenGLFunctions()
     , mouse_x_(0)
     , mouse_y_(0)
     , initialized_(false)
