@@ -62,7 +62,8 @@ class Mat(interface.TypeInspectorInterface):
             'channels': channels,
             'type': type_value,
             'row_stride': row_stride,
-            'pixel_layout': pixel_layout
+            'pixel_layout': pixel_layout,
+            'transpose_buffer' : False
         }
 
     def is_symbol_observable(self, symbol):
