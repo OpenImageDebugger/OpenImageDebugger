@@ -5,7 +5,7 @@ echo "Starting GDB ImageWatch configuration for Ubuntu 16.04."
 git submodule init
 git submodule update
 set -e
-sudo apt-get -y install libpython3-dev
+sudo apt-get -y install libpython3-dev python3-dev
 mkdir build
 cd build
 export QT_SELECT=5

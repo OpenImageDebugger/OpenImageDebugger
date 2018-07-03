@@ -49,7 +49,7 @@ class, but can also be customized to work with any arbitrary data structure.
 
 On Ubuntu, you can install most of the dependencies with the following command:
 
-    sudo apt-get install libpython3-dev
+    sudo apt-get install libpython3-dev python3-dev
 
 
 #### Check GDB version
