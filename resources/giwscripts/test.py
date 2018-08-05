@@ -115,7 +115,8 @@ def _gen_buffers(width, height):
             'channels': channels[0],
             'type': types[0]['giw'],
             'row_stride': rowstride,
-            'pixel_layout': 'rgba'
+            'pixel_layout': 'rgba',
+            'transpose_buffer': False
         },
         'sample_buffer_2': {
             'variable_name': 'sample_buffer_2',
@@ -126,7 +127,8 @@ def _gen_buffers(width, height):
             'channels': channels[1],
             'type': types[1]['giw'],
             'row_stride': rowstride,
-            'pixel_layout': 'rgba'
+            'pixel_layout': 'rgba',
+            'transpose_buffer': False
         }
     }
 

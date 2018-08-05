@@ -31,6 +31,7 @@ class TypeInspectorInterface():
          * type
          * row_stride
          * pixel_layout
+         * transpose_buffer
 
          For information about these fields, consult the documentation for
          giw_plot_buffer in the file $ROOT/src/giw_window.h. The module
