@@ -339,9 +339,15 @@ fields:
    buffer in the interface. Can be very useful if your data structure represents
    transposition with an internal metadata.
 
-The function `is_symbol_observable()` receives a gdb symbol and must only return
-`True` if that symbol is of the observable type (the buffer you are dealing
-with).
+The function `is_symbol_observable()` receives a gdb symbol and a string
+containing the variable name, and must only return `True` if that symbol is of
+the observable type (the buffer you are dealing with).
+
+It is possible to debug your custom inspector methods by using the python
+decorators `@interface.debug_buffer_metadata` and
+`@interface.debug_symbol_observable` in the methods `get_buffer_metadata` and
+`is_symbol_observable`, respectively. This will print information about all
+analyzed symbols in the debugger console every time a breakpoint is hit.
 
 For more information on how to customize this file, check out this [more
 detailed blog post](https://csantosbh.wordpress.com/2016/10/15/configuring-gdb-imagewatch-to-visualize-custom-buffer-types/).

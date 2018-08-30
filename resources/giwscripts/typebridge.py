@@ -35,20 +35,20 @@ class TypeBridge:
         purpose of plotting it in the giwwindow
         """
         for module in self._type_inspectors:
-            if module.is_symbol_observable(picked_obj):
+            if module.is_symbol_observable(picked_obj, symbol_name):
                 return module.get_buffer_metadata(symbol_name,
                                                   picked_obj,
                                                   debugger_bridge)
 
         return None
 
-    def is_symbol_observable(self, symbol_obj):
+    def is_symbol_observable(self, symbol_obj, symbol_name):
         """
         Returns true if any available module is able to process this particular
         symbol
         """
         for module in self._type_inspectors:
-            if module.is_symbol_observable(symbol_obj):
+            if module.is_symbol_observable(symbol_obj, symbol_name):
                 return True
 
         return False

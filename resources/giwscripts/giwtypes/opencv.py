@@ -66,7 +66,7 @@ class Mat(interface.TypeInspectorInterface):
             'transpose_buffer' : False
         }
 
-    def is_symbol_observable(self, symbol):
+    def is_symbol_observable(self, symbol, symbol_name):
         """
         Returns true if the given symbol is of observable type (the type of the
         buffer you are working with). Make sure to check for pointers of your
@@ -123,7 +123,7 @@ class CvMat(interface.TypeInspectorInterface):
             'transpose_buffer': False
         }
 
-    def is_symbol_observable(self, symbol):
+    def is_symbol_observable(self, symbol, symbol_name):
         symbol_type = str(symbol.type)
         type_regex = r'(const\s+)?CvMat(\s+?[*&])?'
         return re.match(type_regex, symbol_type) is not None

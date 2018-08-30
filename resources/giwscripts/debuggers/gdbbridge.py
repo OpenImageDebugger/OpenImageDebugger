@@ -70,7 +70,7 @@ class GdbBridge(BridgeInterface):
                                                         observable_symbols)
                 observable_symbols.update(type_fields)
             elif ((field_name not in observable_symbols) and
-                  (self._type_bridge.is_symbol_observable(field_val))):
+                  (self._type_bridge.is_symbol_observable(field_val, field_name))):
                 try:
                     observable_symbols.add(field_name)
                 except Exception:
@@ -92,6 +92,7 @@ class GdbBridge(BridgeInterface):
             for symbol in block:
                 if symbol.is_argument or symbol.is_variable:
                     name = symbol.name
+
                     # Get struct/class fields
                     if name == 'this':
                         # The GDB API is a bit convoluted, so I have to do some
@@ -104,7 +105,7 @@ class GdbBridge(BridgeInterface):
                             observable_symbols)
                         observable_symbols.update(type_fields)
                     elif ((name not in observable_symbols) and
-                          (self._type_bridge.is_symbol_observable(symbol))):
+                          (self._type_bridge.is_symbol_observable(symbol, name))):
                         try:
                             observable_symbols.add(name)
                         except Exception:
