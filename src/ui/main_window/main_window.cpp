@@ -418,7 +418,7 @@ void MainWindow::update_status_bar()
 
         vec4 mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
 
-        message << std::fixed << std::setprecision(1) << "("
+        message << std::fixed << std::setprecision(3) << "("
                 << static_cast<int>(floor(mouse_pos.x())) << ", "
                 << static_cast<int>(floor(mouse_pos.y())) << ")\t"
                 << cam->compute_zoom() * 100.0 << "%";
