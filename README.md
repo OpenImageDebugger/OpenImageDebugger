@@ -120,10 +120,10 @@ Tools->Options->Build & Run->Kits, by setting Qt version to any Qt version >=
 
 ### Build plugin and configure GDB
 
-To build this plugin, create a `build` folder, open a terminal window inside it
-and run:
+To build this plugin, run:
 
 ```shell
+$ mkdir build && cd build
 $ qmake .. BUILD_MODE=release PREFIX=/path/to/installation/folder
 $ make -j4
 $ make install
