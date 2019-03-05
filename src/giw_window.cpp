@@ -54,7 +54,7 @@ void dummy_sgn_handler(int signum)
 
 AppHandler giw_initialize()
 {
-    sighandler_t gdb_sigchld_handler = std::signal(SIGCHLD, dummy_sgn_handler);
+    auto gdb_sigchld_handler = std::signal(SIGCHLD, dummy_sgn_handler);
 
     QApplication* app = new QApplication(giw_app_argc, giw_app_argv);
 

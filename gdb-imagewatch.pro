@@ -25,8 +25,11 @@ QMAKE_CXXFLAGS += \
 QMAKE_LFLAGS += \
   # If you have an error "cannot find -lGL", uncomment the following line and
   # replace the folder by the location of your libGL.so
-  #-L/path/to/your/opengl/folder \
-  -Wl,--exclude-libs,ALL
+  #-L/path/to/your/opengl/folder
+
+linux-g++ {
+    QMAKE_LFLAGS += -Wl,--exclude-libs,ALL
+}
 
 SOURCES += \
   src/giw_window.cpp \

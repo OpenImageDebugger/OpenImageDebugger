@@ -23,6 +23,8 @@
  * IN THE SOFTWARE.
  */
 
+#include <array>
+
 #include <QFontMetrics>
 
 #include "buffer_values.h"

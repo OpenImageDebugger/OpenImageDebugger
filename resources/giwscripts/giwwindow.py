@@ -8,6 +8,7 @@ import ctypes
 import ctypes.util
 import signal
 import threading
+import platform
 
 from giwscripts.thirdparty.pysigset import pysigset
 
@@ -32,7 +33,7 @@ class GdbImageWatchWindow():
 
         # Load imagewatch library and set up its API
         self._lib = ctypes.cdll.LoadLibrary(
-            script_path + '/libgiwwindow.so')
+            script_path + '/' + GdbImageWatchWindow.__get_library_name())
 
         # libgiw API
         self._lib.giw_initialize.argtypes = []
@@ -73,6 +74,18 @@ class GdbImageWatchWindow():
 
         # UI handler
         self._window_handler = None
+
+    @staticmethod
+    def __get_library_name():
+        """
+        Return the name of the binary library, including its extension, which
+        is platform dependent.
+        """
+        platform_name = platform.system().lower()
+        if platform_name == 'linux':
+            return 'libgiwwindow.so'
+        elif platform_name == 'darwin':
+            return 'libgiwwindow.dylib'
 
     def plot_variable(self, requested_symbol):
         """
