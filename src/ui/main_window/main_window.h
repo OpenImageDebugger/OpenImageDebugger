@@ -36,6 +36,7 @@
 #include <QListWidgetItem>
 #include <QMainWindow>
 #include <QTimer>
+#include <QSharedMemory>
 
 #include "debuggerinterface/buffer_request_message.h"
 #include "math/linear_algebra.h"
@@ -73,8 +74,6 @@ class MainWindow : public QMainWindow
 
     // External interface
     void set_plot_callback(int (*plot_cbk)(const char*));
-
-    void plot_buffer(const BufferRequestMessage& buffer_metadata);
 
     std::deque<std::string> get_observed_symbols();
 
@@ -194,8 +193,6 @@ class MainWindow : public QMainWindow
     std::set<std::string> previous_session_buffers_;
     std::set<std::string> removed_buffer_names_;
 
-    std::deque<BufferRequestMessage> pending_updates_;
-
     QStringList available_vars_;
 
     std::mutex ui_mutex_;
@@ -207,6 +204,8 @@ class MainWindow : public QMainWindow
     QLabel* status_bar_;
     GoToWidget* go_to_widget_;
 
+    QSharedMemory shared_memory_;
+
     int (*plot_callback_)(const char*);
 
     ///
@@ -215,7 +214,7 @@ class MainWindow : public QMainWindow
 
     qreal get_screen_dpi_scale();
 
-    std::string get_type_label(Buffer::BufferType type, int channels);
+    std::string get_type_label(BufferType type, int channels);
 
     void persist_settings_deferred();
 

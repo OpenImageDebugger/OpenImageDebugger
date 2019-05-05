@@ -57,6 +57,7 @@ MainWindow::MainWindow(QWidget* parent)
     , currently_selected_stage_(nullptr)
     , ui_(new Ui::MainWindowUi)
     , plot_callback_(nullptr)
+    , shared_memory_("GIWSharedMemory")
 {
     QCoreApplication::instance()->installEventFilter(this);
 
@@ -122,13 +123,6 @@ void MainWindow::set_plot_callback(int (*plot_cbk)(const char*))
 }
 
 
-void MainWindow::plot_buffer(const BufferRequestMessage& buffer_metadata)
-{
-    std::unique_lock<std::mutex> lock(ui_mutex_);
-    pending_updates_.push_back(buffer_metadata);
-}
-
-
 deque<string> MainWindow::get_observed_symbols()
 {
     deque<string> observed_names;
@@ -177,29 +171,16 @@ void MainWindow::loop()
     const int bytes_per_line = icon_width * 3;
 
     // Handle buffer plot requests
-    while (!pending_updates_.empty()) {
-        const BufferRequestMessage& request = pending_updates_.front();
-
-        uint8_t* srcBuffer;
-        shared_ptr<uint8_t> managedBuffer;
-        if (request.type == Buffer::BufferType::Float64) {
-            managedBuffer = make_float_buffer_from_double(
-                static_cast<double*>(
-                    get_c_ptr_from_py_buffer(request.py_buffer)),
-                request.width_i * request.height_i * request.channels);
-            srcBuffer = managedBuffer.get();
-        } else {
-            managedBuffer = make_shared_py_object(request.py_buffer);
-            srcBuffer     = static_cast<uint8_t*>(
-                get_c_ptr_from_py_buffer(request.py_buffer));
-        }
+    BufferRequestMessage request;
+    if (request.retrieve_buffer_plot_request(shared_memory_))
+    {
 
         auto buffer_stage = stages_.find(request.variable_name_str);
-        held_buffers_[request.variable_name_str] = managedBuffer;
+        held_buffers_[request.variable_name_str] = request.managed_buffer;
 
         if (buffer_stage == stages_.end()) { // New buffer request
             shared_ptr<Stage> stage = make_shared<Stage>(this);
-            if (!stage->initialize(srcBuffer,
+            if (!stage->initialize(request.managed_buffer.get(),
                                    request.width_i,
                                    request.height_i,
                                    request.channels,
@@ -238,7 +219,7 @@ void MainWindow::loop()
 
             persist_settings_deferred();
         } else { // Update buffer request
-            buffer_stage->second->buffer_update(srcBuffer,
+            buffer_stage->second->buffer_update(request.managed_buffer.get(),
                                                 request.width_i,
                                                 request.height_i,
                                                 request.channels,
@@ -280,7 +261,6 @@ void MainWindow::loop()
             }
         }
 
-        pending_updates_.pop_front();
         request_render_update_ = true;
     }
 
@@ -438,20 +418,20 @@ qreal MainWindow::get_screen_dpi_scale()
 }
 
 
-string MainWindow::get_type_label(Buffer::BufferType type, int channels)
+string MainWindow::get_type_label(BufferType type, int channels)
 {
     stringstream result;
-    if (type == Buffer::BufferType::Float32) {
+    if (type == BufferType::Float32) {
         result << "float32";
-    } else if (type == Buffer::BufferType::UnsignedByte) {
+    } else if (type == BufferType::UnsignedByte) {
         result << "uint8";
-    } else if (type == Buffer::BufferType::Short) {
+    } else if (type == BufferType::Short) {
         result << "int16";
-    } else if (type == Buffer::BufferType::UnsignedShort) {
+    } else if (type == BufferType::UnsignedShort) {
         result << "uint16";
-    } else if (type == Buffer::BufferType::Int32) {
+    } else if (type == BufferType::Int32) {
         result << "int32";
-    } else if (type == Buffer::BufferType::Float64) {
+    } else if (type == BufferType::Float64) {
         result << "float64";
     }
     result << "x" << channels;

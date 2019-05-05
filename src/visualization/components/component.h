@@ -26,7 +26,7 @@
 #ifndef COMPONENT_H_
 #define COMPONENT_H_
 
-#include "src/visualization/events.h"
+#include "visualization/events.h"
 
 class GameObject;
 class GLCanvas;

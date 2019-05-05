@@ -29,6 +29,7 @@
 #include <sstream>
 #include <vector>
 
+#include "debuggerinterface/buffer_request_message.h"
 #include "component.h"
 #include "visualization/shader.h"
 
@@ -37,15 +38,6 @@ class Buffer : public Component
 {
   public:
     Buffer(GameObject* game_object, GLCanvas* gl_canvas);
-
-    enum class BufferType {
-        UnsignedByte  = 0,
-        UnsignedShort = 2,
-        Short         = 3,
-        Int32         = 4,
-        Float32       = 5,
-        Float64       = 6
-    };
 
     const int max_texture_size = 2048;
 
@@ -61,7 +53,7 @@ class Buffer : public Component
 
     BufferType type;
 
-    uint8_t* buffer;
+    const uint8_t* buffer;
 
     bool transpose;
 

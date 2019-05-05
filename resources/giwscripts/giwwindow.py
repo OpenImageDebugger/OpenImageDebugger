@@ -42,14 +42,8 @@ class GdbImageWatchWindow():
         self._lib.giw_cleanup.argtypes = [ctypes.c_void_p]
         self._lib.giw_cleanup.restype = None
 
-        self._lib.giw_terminate.argtypes = []
-        self._lib.giw_terminate.restype = None
-
         self._lib.giw_exec.argtypes = [ctypes.c_void_p]
         self._lib.giw_exec.restype = None
-
-        self._lib.giw_create_window.argtypes = [FETCH_BUFFER_CBK_TYPE]
-        self._lib.giw_create_window.restype = ctypes.c_void_p
 
         self._lib.giw_destroy_window.argtypes = [ctypes.c_void_p]
         self._lib.giw_destroy_window.restype = ctypes.c_int
@@ -83,9 +77,9 @@ class GdbImageWatchWindow():
         """
         platform_name = platform.system().lower()
         if platform_name == 'linux':
-            return 'libgiwwindow.so'
+            return 'libgiwbridge.so'
         elif platform_name == 'darwin':
-            return 'libgiwwindow.dylib'
+            return 'libgiwbridge.dylib'
 
     def plot_variable(self, requested_symbol):
         """
@@ -132,7 +126,7 @@ class GdbImageWatchWindow():
         """
         Request GIW to terminate application and close all windows
         """
-        self._lib.giw_terminate()
+        self._lib.giw_cleanup()
 
     def set_available_symbols(self, observable_symbols):
         """
@@ -149,35 +143,15 @@ class GdbImageWatchWindow():
         """
         return self._lib.giw_get_observed_buffers(self._window_handler)
 
-    def _ui_thread(self, plot_callback):
+    def initialize_window(self):
         # Initialize GIW lib
-        app_handler = self._lib.giw_initialize()
-        self._window_handler = self._lib.giw_create_window(plot_callback)
+        self._window_handler = self._lib.giw_initialize(
+            FETCH_BUFFER_CBK_TYPE(self.plot_variable))
         # Run UI loop
         self._lib.giw_exec(app_handler)
         # Cleanup GIW lib
         self._lib.giw_destroy_window(self._window_handler)
         self._lib.giw_cleanup(app_handler)
-
-    def initialize_window(self):
-        """
-        Launch the ImageWatch window.
-        """
-        ##
-        # Initialize imagewatch window
-        with pysigset.suspended_signals(signal.SIGCHLD):
-            # By default, my new threads will be the ones receiving the
-            # precious signals from the operating system. These signals should
-            # go to GDB so it could do its thing, and since it doesnt get them,
-            # my thread will make gdb hang. The solution is to configure the
-            # new thread to forward the signal back to the main thread, which
-            # is done by pysigset.
-            wnd_thread_instance = threading.Thread(
-                target=self._ui_thread,
-                args=(FETCH_BUFFER_CBK_TYPE(self.plot_variable),)
-            )
-            wnd_thread_instance.daemon = True
-            wnd_thread_instance.start()
 
 
 class DeferredVariablePlotter():

@@ -27,23 +27,32 @@
 #define BUFFER_REQUEST_MESSAGE_H_
 
 #include <string>
+#include <QBuffer>
+#include <QSharedMemory>
 
 #include <Python.h>
-
-#include "visualization/components/buffer.h"
 
 
 void copy_py_string(std::string& dst, PyObject* src);
 
+enum class BufferType {
+    UnsignedByte  = 0,
+    UnsignedShort = 2,
+    Short         = 3,
+    Int32         = 4,
+    Float32       = 5,
+    Float64       = 6
+};
+
 struct BufferRequestMessage
 {
-    PyObject* py_buffer;
+    std::shared_ptr<uint8_t> managed_buffer;
     std::string variable_name_str;
     std::string display_name_str;
     int width_i;
     int height_i;
     int channels;
-    Buffer::BufferType type;
+    BufferType type;
     int step;
     std::string pixel_layout;
     bool transpose_buffer;
@@ -63,7 +72,13 @@ struct BufferRequestMessage
 
     ~BufferRequestMessage();
 
-    BufferRequestMessage() = delete;
+    BufferRequestMessage() {}
+
+    std::shared_ptr<uint8_t> make_shared_buffer_object(const QByteArray& obj);
+    std::shared_ptr<uint8_t> make_float_buffer_from_double(const double* buff, int length);
+
+    void send_buffer_plot_request(QSharedMemory& shared_memory);
+    bool retrieve_buffer_plot_request(QSharedMemory& shared_memory);
 
     BufferRequestMessage& operator=(const BufferRequestMessage&) = delete;
 

@@ -52,11 +52,11 @@ Stage::Stage(MainWindow* main_wnd)
 }
 
 
-bool Stage::initialize(uint8_t* buffer,
+bool Stage::initialize(const uint8_t* buffer,
                        int buffer_width_i,
                        int buffer_height_i,
                        int channels,
-                       Buffer::BufferType type,
+                       BufferType type,
                        int step,
                        const string& pixel_layout,
                        bool transpose_buffer)
@@ -113,11 +113,11 @@ bool Stage::initialize(uint8_t* buffer,
 }
 
 
-bool Stage::buffer_update(uint8_t* buffer,
+bool Stage::buffer_update(const uint8_t* buffer,
                           int buffer_width_i,
                           int buffer_height_i,
                           int channels,
-                          Buffer::BufferType type,
+                          BufferType type,
                           int step,
                           const string& pixel_layout,
                           bool transpose_buffer)

@@ -690,13 +690,13 @@ QStatusBar::item { border: 0; };</string>
   <customwidget>
    <class>GLCanvas</class>
    <extends>QWidget</extends>
-   <header location="global">src/ui/gl_canvas.h</header>
+   <header location="global">ui/gl_canvas.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>SymbolSearchInput</class>
    <extends>QLineEdit</extends>
-   <header>src/ui/symbol_search_input.h</header>
+   <header>ui/symbol_search_input.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

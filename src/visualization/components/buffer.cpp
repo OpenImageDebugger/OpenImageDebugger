@@ -79,22 +79,22 @@ void Buffer::get_pixel_info(stringstream& message, int x, int y)
     message << "[";
 
     for (int c = 0; c < channels; ++c) {
-        if (type == Buffer::BufferType::Float32 ||
-            type == Buffer::BufferType::Float64) {
-            float fpix = reinterpret_cast<float*>(buffer)[pos + c];
+        if (type == BufferType::Float32 ||
+            type == BufferType::Float64) {
+            float fpix = reinterpret_cast<const float*>(buffer)[pos + c];
             message << fpix;
-        } else if (type == Buffer::BufferType::UnsignedByte) {
+        } else if (type == BufferType::UnsignedByte) {
             short fpix = buffer[pos + c];
             message << fpix;
-        } else if (type == Buffer::BufferType::Short) {
-            short fpix = reinterpret_cast<short*>(buffer)[pos + c];
+        } else if (type == BufferType::Short) {
+            short fpix = reinterpret_cast<const short*>(buffer)[pos + c];
             message << fpix;
-        } else if (type == Buffer::BufferType::UnsignedShort) {
+        } else if (type == BufferType::UnsignedShort) {
             unsigned short fpix =
-                reinterpret_cast<unsigned short*>(buffer)[pos + c];
+                reinterpret_cast<const unsigned short*>(buffer)[pos + c];
             message << fpix;
-        } else if (type == Buffer::BufferType::Int32) {
-            int fpix = reinterpret_cast<int*>(buffer)[pos + c];
+        } else if (type == BufferType::Int32) {
+            int fpix = reinterpret_cast<const int*>(buffer)[pos + c];
             message << fpix;
         }
         if (c < channels - 1) {
@@ -128,7 +128,7 @@ void Buffer::recompute_min_color_values()
                 if (type == BufferType::Float32 || type == BufferType::Float64)
                     lowest[c] = std::min(
                         lowest[c],
-                        reinterpret_cast<float*>(buffer)[channels * i + c]);
+                        reinterpret_cast<const float*>(buffer)[channels * i + c]);
                 else if (type == BufferType::UnsignedByte)
                     lowest[c] =
                         std::min(lowest[c],
@@ -136,17 +136,17 @@ void Buffer::recompute_min_color_values()
                 else if (type == BufferType::Short)
                     lowest[c] =
                         std::min(lowest[c],
-                                 static_cast<float>(reinterpret_cast<short*>(
+                                 static_cast<float>(reinterpret_cast<const short*>(
                                      buffer)[channels * i + c]));
                 else if (type == BufferType::UnsignedShort)
                     lowest[c] = std::min(
                         lowest[c],
-                        static_cast<float>(reinterpret_cast<unsigned short*>(
+                        static_cast<float>(reinterpret_cast<const unsigned short*>(
                             buffer)[channels * i + c]));
                 else if (type == BufferType::Int32)
                     lowest[c] =
                         std::min(lowest[c],
-                                 static_cast<float>(reinterpret_cast<int*>(
+                                 static_cast<float>(reinterpret_cast<const int*>(
                                      buffer)[channels * i + c]));
             }
         }
@@ -174,24 +174,24 @@ void Buffer::recompute_max_color_values()
                 if (type == BufferType::Float32 || type == BufferType::Float64)
                     upper[c] = std::max(
                         upper[c],
-                        reinterpret_cast<float*>(buffer)[channels * i + c]);
+                        reinterpret_cast<const float*>(buffer)[channels * i + c]);
                 else if (type == BufferType::UnsignedByte)
                     upper[c] = std::max(
                         upper[c], static_cast<float>(buffer[channels * i + c]));
                 else if (type == BufferType::Short)
                     upper[c] =
                         std::max(upper[c],
-                                 static_cast<float>(reinterpret_cast<short*>(
+                                 static_cast<float>(reinterpret_cast<const short*>(
                                      buffer)[channels * i + c]));
                 else if (type == BufferType::UnsignedShort)
                     upper[c] = std::max(
                         upper[c],
-                        static_cast<float>(reinterpret_cast<unsigned short*>(
+                        static_cast<float>(reinterpret_cast<const unsigned short*>(
                             buffer)[channels * i + c]));
                 else if (type == BufferType::Int32)
                     upper[c] =
                         std::max(upper[c],
-                                 static_cast<float>(reinterpret_cast<int*>(
+                                 static_cast<float>(reinterpret_cast<const int*>(
                                      buffer)[channels * i + c]));
             }
         }
@@ -590,7 +590,7 @@ void Buffer::setup_gl_buffer()
                                         buff_h,
                                         tex_format,
                                         tex_type,
-                                        reinterpret_cast<GLvoid*>(buffer));
+                                        reinterpret_cast<const GLvoid*>(buffer));
 
             gl_canvas_->glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
