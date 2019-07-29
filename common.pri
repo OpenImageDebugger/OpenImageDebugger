@@ -24,6 +24,4 @@ CONFIG += \
   c++11 \
   no_keywords
 
-PKGCONFIG += python3
-
 VERSION = 2.0

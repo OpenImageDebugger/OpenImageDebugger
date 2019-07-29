@@ -29,7 +29,7 @@
 #include <Python.h>
 
 
-int get_py_int(PyObject* obj);
+long get_py_int(PyObject* obj);
 
 
 int check_py_string_type(PyObject* obj);

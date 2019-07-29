@@ -24,8 +24,6 @@ linux-g++ {
 
 SOURCES += \
   giw_window.cpp \
-  debuggerinterface/buffer_request_message.cpp \
-  debuggerinterface/managed_pointer.cpp \
   io/buffer_exporter.cpp \
   math/assorted.cpp \
   math/linear_algebra.cpp \

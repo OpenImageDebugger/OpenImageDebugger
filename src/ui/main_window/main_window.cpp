@@ -32,8 +32,6 @@
 
 #include "main_window.h"
 
-#include "debuggerinterface/managed_pointer.h"
-#include "debuggerinterface/python_native_interface.h"
 #include "ui_main_window.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
@@ -43,6 +41,125 @@ using namespace std;
 
 
 Q_DECLARE_METATYPE(QList<QString>)
+
+
+
+
+
+
+//// TODO restructure
+#include <QBuffer>
+struct BufferRequestMessage
+{
+    std::shared_ptr<uint8_t> managed_buffer;
+    std::string variable_name_str;
+    std::string display_name_str;
+    int width_i;
+    int height_i;
+    int channels;
+    BufferType type;
+    int step;
+    std::string pixel_layout;
+    bool transpose_buffer;
+
+    BufferRequestMessage(const BufferRequestMessage& buff);
+
+    ~BufferRequestMessage() {}
+
+    BufferRequestMessage() {}
+
+    std::shared_ptr<uint8_t> make_shared_buffer_object(const QByteArray& obj) {
+        const int length = obj.size();
+        uint8_t* copied_buffer = new uint8_t[length];
+        for(int i = 0; i < length; ++i) {
+            copied_buffer[i] = static_cast<uint8_t>(obj.constData()[i]);
+        }
+
+        return std::shared_ptr<uint8_t>(
+                    copied_buffer, [](uint8_t* obj) { delete[] obj; });
+    }
+    std::shared_ptr<uint8_t> make_float_buffer_from_double(const double* buff, int length) {
+        std::shared_ptr<uint8_t> result(
+                    reinterpret_cast<uint8_t*>(new float[length]),
+                    [](uint8_t* buff) { delete[] reinterpret_cast<float*>(buff); });
+
+        // Cast from double to float
+        float* dst = reinterpret_cast<float*>(result.get());
+        for (int i = 0; i < length; ++i) {
+            dst[i] = static_cast<float>(buff[i]);
+        }
+
+        return result;
+    }
+
+    void send_buffer_plot_request(QSharedMemory& shared_memory) {
+        // TODO write
+    }
+    bool retrieve_buffer_plot_request(QSharedMemory& shared_memory) {
+        QBuffer buffer;
+        QDataStream in(&buffer);
+
+        if(!shared_memory.attach()) {
+            // TODO display error message maybe?
+            //std::cerr << "[Error] Could not attach to shared memory" << std::endl;
+            return false;
+        }
+
+        bool status = false;
+
+        shared_memory.lock();
+        buffer.setData(static_cast<const char*>(shared_memory.constData()), shared_memory.size());
+        buffer.open(QBuffer::ReadOnly);
+        qint8 qtype;
+        QByteArray buffer_content;
+
+        in >> qtype;
+        type = static_cast<BufferType>(qtype);
+        // TODO fill remaining fields
+
+        shared_memory.unlock();
+        shared_memory.detach();
+
+        if (type == BufferType::Float64) {
+            managed_buffer = make_float_buffer_from_double(
+                        reinterpret_cast<const double*>(buffer_content.constData()),
+                        width_i * height_i * channels);
+        } else {
+            managed_buffer = make_shared_buffer_object(buffer_content.constData());
+        }
+
+        return status;
+    }
+
+    BufferRequestMessage& operator=(const BufferRequestMessage&) = delete;
+
+    /**
+     * Returns buffer width taking into account its transposition flag
+     */
+    int get_visualized_width() const {
+        if (!transpose_buffer) {
+            return width_i;
+        } else {
+            return height_i;
+        }
+    }
+
+    /**
+     * Returns buffer height taking into account its transposition flag
+     */
+    int get_visualized_height() const {
+        if (!transpose_buffer) {
+            return height_i;
+        } else {
+            return width_i;
+        }
+    }
+};
+////////////////
+
+
+
+
 
 
 MainWindow::MainWindow(QWidget* parent)

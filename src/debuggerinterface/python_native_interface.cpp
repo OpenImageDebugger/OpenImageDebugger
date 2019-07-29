@@ -26,9 +26,15 @@
 #include "python_native_interface.h"
 
 
-int get_py_int(PyObject* obj)
+long get_py_int(PyObject* obj)
 {
+#if PY_MAJOR_VERSION==2
+    return PyLong_AsLong(obj);
+#elif PY_MAJOR_VERSION==3
     return PyLong_AS_LONG(obj);
+#else
+#error "Unsupported Python version"
+#endif
 }
 
 

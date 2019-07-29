@@ -29,7 +29,6 @@
 #include <map>
 #include <memory>
 
-#include "debuggerinterface/buffer_request_message.h"
 #include "visualization/components/buffer.h"
 
 

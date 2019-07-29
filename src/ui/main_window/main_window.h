@@ -38,7 +38,6 @@
 #include <QTimer>
 #include <QSharedMemory>
 
-#include "debuggerinterface/buffer_request_message.h"
 #include "math/linear_algebra.h"
 #include "ui/go_to_widget.h"
 #include "ui/symbol_completer.h"

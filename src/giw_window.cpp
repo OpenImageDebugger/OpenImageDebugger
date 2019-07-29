@@ -30,7 +30,6 @@
 #include <QApplication>
 
 #include "debuggerinterface/preprocessor_directives.h"
-#include "debuggerinterface/python_native_interface.h"
 #include "ui/main_window/main_window.h"
 
 using namespace std;
@@ -42,6 +41,5 @@ int main(int argc, char *argv[])
 
     MainWindow window;
     window.show();
-    //window.set_plot_callback(plot_callback);
     return app.exec();
 }
