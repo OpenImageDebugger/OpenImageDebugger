@@ -26,6 +26,8 @@
 #include <string>
 #include <deque>
 
+#include <signal.h>
+
 #include "giw_bridge.h"
 #include "debuggerinterface/buffer_request_message.h"
 #include "debuggerinterface/preprocessor_directives.h"
@@ -42,8 +44,8 @@ class GiwBridge
 public:
     void start()
     {
-        // TODO get binary path at runtime
-        QString program = "src/giwwindow.app/Contents/MacOS/giwwindow";
+        // TODO get proper binary path at runtime
+        QString program = "/Users/claudio.fernandes/workspace/pessoal/gdb-imagewatch/build/src/giwwindow.app/Contents/MacOS/giwwindow";
         QStringList arguments;
         arguments << "-style" << "fusion";
         _process.start(program, arguments);
@@ -51,7 +53,7 @@ public:
 
     bool is_window_ready()
     {
-        return _process.processId() != 0;
+        return _process.processId() != 0 && kill(_process.processId(), 0) == 0;
     }
 
     deque<string> get_observed_symbols()
@@ -65,6 +67,10 @@ public:
 
     void plot_buffer(const BufferRequestMessage& request)
     {
+    }
+
+    ~GiwBridge() {
+        _process.kill();
     }
 
 private:

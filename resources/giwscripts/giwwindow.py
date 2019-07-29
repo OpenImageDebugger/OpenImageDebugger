@@ -9,6 +9,7 @@ import ctypes.util
 import signal
 import threading
 import platform
+import sys
 
 from giwscripts.thirdparty.pysigset import pysigset
 
@@ -45,9 +46,6 @@ class GdbImageWatchWindow():
         self._lib.giw_exec.argtypes = [ctypes.c_void_p]
         self._lib.giw_exec.restype = None
 
-        self._lib.giw_destroy_window.argtypes = [ctypes.c_void_p]
-        self._lib.giw_destroy_window.restype = ctypes.c_int
-
         self._lib.giw_is_window_ready.argtypes = [ctypes.c_void_p]
         self._lib.giw_is_window_ready.restype = ctypes.c_bool
 
@@ -67,7 +65,7 @@ class GdbImageWatchWindow():
         self._lib.giw_plot_buffer.restype = None
 
         # UI handler
-        self._window_handler = None
+        self._native_handler = None
 
     @staticmethod
     def __get_library_name():
@@ -76,10 +74,12 @@ class GdbImageWatchWindow():
         is platform dependent.
         """
         platform_name = platform.system().lower()
+        python_version = '_python%d' % sys.version_info[0]
+
         if platform_name == 'linux':
-            return 'libgiwbridge.so'
+            return 'libgiwbridge%s.so' % python_version
         elif platform_name == 'darwin':
-            return 'libgiwbridge.dylib'
+            return 'libgiwbridge%s.dylib' % python_version
 
     def plot_variable(self, requested_symbol):
         """
@@ -104,7 +104,7 @@ class GdbImageWatchWindow():
             plot_callable = DeferredVariablePlotter(variable,
                                                     self._lib,
                                                     self._bridge,
-                                                    self._window_handler)
+                                                    self._native_handler)
             self._bridge.queue_request(plot_callable)
             return 1
         except Exception as err:
@@ -117,16 +117,16 @@ class GdbImageWatchWindow():
         """
         Returns True if the ImageWatch window has been loaded; False otherwise.
         """
-        if self._window_handler is None:
+        if self._native_handler is None:
             return False
 
-        return self._lib.giw_is_window_ready(self._window_handler)
+        return self._lib.giw_is_window_ready(self._native_handler)
 
     def terminate(self):
         """
         Request GIW to terminate application and close all windows
         """
-        self._lib.giw_cleanup()
+        self._lib.giw_cleanup(self._native_handler)
 
     def set_available_symbols(self, observable_symbols):
         """
@@ -134,24 +134,21 @@ class GdbImageWatchWindow():
         'observable_symbols'
         """
         self._lib.giw_set_available_symbols(
-            self._window_handler,
+            self._native_handler,
             observable_symbols)
 
     def get_observed_buffers(self):
         """
         Get a list with the currently observed symbols in the giw window
         """
-        return self._lib.giw_get_observed_buffers(self._window_handler)
+        return self._lib.giw_get_observed_buffers(self._native_handler)
 
     def initialize_window(self):
         # Initialize GIW lib
-        self._window_handler = self._lib.giw_initialize(
+        self._native_handler = self._lib.giw_initialize(
             FETCH_BUFFER_CBK_TYPE(self.plot_variable))
-        # Run UI loop
-        self._lib.giw_exec(app_handler)
-        # Cleanup GIW lib
-        self._lib.giw_destroy_window(self._window_handler)
-        self._lib.giw_cleanup(app_handler)
+        # Launch UI
+        self._lib.giw_exec(self._native_handler)
 
 
 class DeferredVariablePlotter():
@@ -160,11 +157,11 @@ class DeferredVariablePlotter():
     a buffer plot command. Useful for deferring the plot command to a safe
     thread.
     """
-    def __init__(self, variable, lib, bridge, window_handler):
+    def __init__(self, variable, lib, bridge, native_handler):
         self._variable = variable
         self._lib = lib
         self._bridge = bridge
-        self._window_handler = window_handler
+        self._native_handler = native_handler
 
     def __call__(self):
         try:
@@ -172,7 +169,7 @@ class DeferredVariablePlotter():
 
             if buffer_metadata is not None:
                 self._lib.giw_plot_buffer(
-                    self._window_handler,
+                    self._native_handler,
                     buffer_metadata)
         except Exception as err:
             import traceback
