@@ -24,12 +24,14 @@
  */
 
 #include <cmath>
+#include <iostream>
 
 #include <QDateTime>
 #include <QDebug>
 #include <QFontDatabase>
 #include <QSettings>
 #include <QShortcut>
+#include <QHostAddress>
 
 #include "main_window.h"
 
@@ -178,6 +180,14 @@ void MainWindow::initialize_shortcuts()
             SIGNAL(go_to_requested(float, float)),
             this,
             SLOT(go_to_pixel(float, float)));
+}
+
+
+void MainWindow::initialize_networking()
+{
+    socket_.connectToHost(QString(host_settings_.url.c_str()),
+                          host_settings_.port);
+    socket_.waitForConnected();
 }
 
 

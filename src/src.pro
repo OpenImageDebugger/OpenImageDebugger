@@ -1,6 +1,5 @@
 include($$PWD/../common.pri)
 
-CONFIG += $$BUILD_MODE
 message(GDB-ImageWatch UI build mode: $$BUILD_MODE)
 
 # Prevent strip from producing spurious error messages
@@ -25,33 +24,34 @@ linux-g++ {
 SOURCES += \
   giw_window.cpp \
   io/buffer_exporter.cpp \
+  ipc/message_exchange.cpp \
   math/assorted.cpp \
   math/linear_algebra.cpp \
+  ui/decorated_line_edit.cpp \
   ui/gl_canvas.cpp \
+  ui/gl_text_renderer.cpp \
+  ui/go_to_widget.cpp \
+  ui/main_window/auto_contrast.cpp \
+  ui/main_window/initialization.cpp \
+  ui/main_window/main_window.cpp \
+  ui/main_window/ui_events.cpp \
   ui/symbol_completer.cpp \
   ui/symbol_search_input.cpp \
-  ui/main_window/main_window.cpp \
-  ui/main_window/initialization.cpp \
-  ui/main_window/auto_contrast.cpp \
-  ui/main_window/ui_events.cpp \
-  visualization/events.cpp \
-  visualization/game_object.cpp \
-  visualization/shader.cpp \
-  visualization/stage.cpp \
   visualization/components/background.cpp \
   visualization/components/buffer.cpp \
   visualization/components/buffer_values.cpp \
   visualization/components/camera.cpp\
   visualization/components/component.cpp\
+  visualization/events.cpp \
+  visualization/game_object.cpp \
+  visualization/shader.cpp \
   visualization/shaders/background_fs.cpp \
   visualization/shaders/background_vs.cpp \
   visualization/shaders/buffer_fs.cpp \
   visualization/shaders/buffer_vs.cpp \
   visualization/shaders/text_fs.cpp \
   visualization/shaders/text_vs.cpp \
-  ui/gl_text_renderer.cpp \
-  ui/go_to_widget.cpp \
-  ui/decorated_line_edit.cpp
+  visualization/stage.cpp
 
 # Qt related headers
 HEADERS += \

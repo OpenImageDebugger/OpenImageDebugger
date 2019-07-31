@@ -25,16 +25,21 @@
 
 #include <string>
 #include <deque>
+#include <iostream>
 
 #include <signal.h>
 
 #include "giw_bridge.h"
-#include "debuggerinterface/buffer_request_message.h"
+#include "debuggerinterface/buffer_request_message.h" // TODO move py_copy_string to python_native_interface
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
+#include "ipc/message_exchange.h"
 
 #include <QProcess>
-#include <QSharedMemory>
+#include <QTcpServer>
+#include <QDataStream>
+#include <QTcpSocket>
+#include <QString>
 
 using namespace std;
 
@@ -44,16 +49,46 @@ class GiwBridge
 public:
     void start()
     {
+        // Initialize server
+        const uint16_t host_port = 9588; // TODO parameterize
+        if(!server_.listen(QHostAddress::Any, host_port)) {
+            // TODO escalate error
+            cerr << "[giw] Could not start TCP server" << endl;
+            return;
+        }
+
         // TODO get proper binary path at runtime
         QString program = "/Users/claudio.fernandes/workspace/pessoal/gdb-imagewatch/build/src/giwwindow.app/Contents/MacOS/giwwindow";
         QStringList arguments;
         arguments << "-style" << "fusion";
-        _process.start(program, arguments);
+        process_.setProcessChannelMode(QProcess::MergedChannels);
+        process_.start(program, arguments);
+
+        if(!server_.waitForNewConnection(10000)) {
+            cerr << "[giw] No clients connected to ImageWatch server" << endl;
+            return;
+        }
+        client_ = server_.nextPendingConnection();
+    }
+
+    void network_test() {
+        QByteArray block;
+        QDataStream data_stream(&block, QIODevice::WriteOnly);
+        data_stream.setVersion(QDataStream::Qt_4_0);
+        data_stream << QString("Olar teste!");
+
+        QTcpSocket* client = server_.nextPendingConnection();
+        if(client != nullptr) {
+            client->write(block);
+            client->waitForBytesWritten();
+            client->disconnectFromHost();
+            cerr << "mandei msg!!! :))"<<endl;
+        }
     }
 
     bool is_window_ready()
     {
-        return _process.processId() != 0 && kill(_process.processId(), 0) == 0;
+        return process_.processId() != 0 && kill(process_.processId(), 0) == 0;
     }
 
     deque<string> get_observed_symbols()
@@ -63,6 +98,10 @@ public:
 
     void set_available_symbols(const deque<string>& available_vars)
     {
+        MessageComposer message_composer;
+        message_composer.push(MessageType::SetAvailableSymbols);
+        message_composer.push(available_vars);
+        message_composer.send(client_);
     }
 
     void plot_buffer(const BufferRequestMessage& request)
@@ -70,12 +109,13 @@ public:
     }
 
     ~GiwBridge() {
-        _process.kill();
+        process_.kill();
     }
 
 private:
-    QProcess _process;
-    QSharedMemory _shared_memory;
+    QProcess process_;
+    QTcpServer server_;
+    QTcpSocket* client_;
 };
 
 AppHandler giw_initialize()

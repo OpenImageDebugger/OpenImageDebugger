@@ -7,7 +7,7 @@ Module developed for quick testing the ImageWatch shared library
 import math
 import time
 import threading
-import queue
+#import queue
 import array
 
 from giwscripts import giwwindow
@@ -145,7 +145,8 @@ class DummyDebugger(BridgeInterface):
         self._buffer_names = [name for name in self._buffers]
 
         self._is_running = True
-        self._request_queue = queue.Queue()
+        #self._request_queue = queue.Queue()
+        self._request_queue = []
         self._request_consumer_thread = threading.Thread(
             target=self._request_consumer,
             daemon=True)
@@ -153,8 +154,10 @@ class DummyDebugger(BridgeInterface):
 
     def _request_consumer(self):
         while self._is_running:
-            latest_request = self._request_queue.get(block=True, timeout=None)
-            latest_request()
+            #latest_request = self._request_queue.get(block=True, timeout=None)
+            if len(self._request_queue) > 0:
+                latest_request = self._request_queue.pop(-1)
+                latest_request()
 
     def kill(self):
         """
@@ -190,4 +193,5 @@ class DummyDebugger(BridgeInterface):
         return None
 
     def queue_request(self, callable_request):
-        self._request_queue.put(callable_request)
+        #self._request_queue.put(callable_request)
+        self._request_queue.append(callable_request)

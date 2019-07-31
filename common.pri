@@ -22,6 +22,9 @@ CONFIG += \
   link_pkgconfig \
   warn_on \
   c++11 \
-  no_keywords
+  no_keywords \
+
+QT += \
+  network
 
 VERSION = 2.0

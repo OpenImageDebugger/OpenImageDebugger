@@ -35,6 +35,7 @@
 #include "ui_main_window.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
+#include "ipc/message_exchange.h"
 
 
 using namespace std;
@@ -92,33 +93,34 @@ struct BufferRequestMessage
         return result;
     }
 
-    void send_buffer_plot_request(QSharedMemory& shared_memory) {
+    void send_buffer_plot_request(QTcpSocket& socket) {
         // TODO write
     }
-    bool retrieve_buffer_plot_request(QSharedMemory& shared_memory) {
-        QBuffer buffer;
-        QDataStream in(&buffer);
-
-        if(!shared_memory.attach()) {
-            // TODO display error message maybe?
-            //std::cerr << "[Error] Could not attach to shared memory" << std::endl;
-            return false;
-        }
-
+    bool retrieve_buffer_plot_request(QTcpSocket& socket) {
+        return false;
+        FILE* xow=fopen("/tmp/tst.log", "w");
         bool status = false;
 
-        shared_memory.lock();
-        buffer.setData(static_cast<const char*>(shared_memory.constData()), shared_memory.size());
-        buffer.open(QBuffer::ReadOnly);
-        qint8 qtype;
-        QByteArray buffer_content;
+        if(socket.bytesAvailable() == 0) {
+            fclose(xow);
+            return false;
+        }
+        fprintf(xow, "tem umas msgs pra mim...\n");
 
-        in >> qtype;
-        type = static_cast<BufferType>(qtype);
+        QDataStream data_stream(&socket);
+        data_stream.setVersion(QDataStream::Qt_4_0);
+        QString test;
+
+        do {
+            data_stream.startTransaction();
+            data_stream >> test;
+            fprintf(xow, "Got msg: [%s]\n", test.toStdString().c_str());
+        } while(!data_stream.commitTransaction());
+        fclose(xow);
+
         // TODO fill remaining fields
-
-        shared_memory.unlock();
-        shared_memory.detach();
+        /*
+        QByteArray buffer_content;
 
         if (type == BufferType::Float64) {
             managed_buffer = make_float_buffer_from_double(
@@ -127,6 +129,7 @@ struct BufferRequestMessage
         } else {
             managed_buffer = make_shared_buffer_object(buffer_content.constData());
         }
+        */
 
         return status;
     }
@@ -162,7 +165,8 @@ struct BufferRequestMessage
 
 
 
-MainWindow::MainWindow(QWidget* parent)
+MainWindow::MainWindow(const ConnectionSettings& host_settings,
+                       QWidget* parent)
     : QMainWindow(parent)
     , is_window_ready_(false)
     , request_render_update_(true)
@@ -173,8 +177,8 @@ MainWindow::MainWindow(QWidget* parent)
     , icon_height_base_(50)
     , currently_selected_stage_(nullptr)
     , ui_(new Ui::MainWindowUi)
+    , host_settings_(host_settings)
     , plot_callback_(nullptr)
-    , shared_memory_("GIWSharedMemory")
 {
     QCoreApplication::instance()->installEventFilter(this);
 
@@ -191,6 +195,7 @@ MainWindow::MainWindow(QWidget* parent)
     initialize_settings();
     initialize_go_to_widget();
     initialize_shortcuts();
+    initialize_networking();
 
     is_window_ready_ = true;
 }
@@ -260,6 +265,7 @@ bool MainWindow::is_window_ready()
 
 void MainWindow::set_available_symbols(const deque<string>& available_vars)
 {
+    // TODO get rid of this function
     std::unique_lock<std::mutex> lock(ui_mutex_);
 
     available_vars_.clear();
@@ -279,6 +285,62 @@ void MainWindow::set_available_symbols(const deque<string>& available_vars)
 }
 
 
+void MainWindow::decode_incoming_messages() {
+    FILE* xow=fopen("/tmp/tst.log", "w");
+
+    available_vars_.clear();
+
+    const auto decode_set_available_symbols = [&]() {
+        std::unique_lock<std::mutex> lock(ui_mutex_);
+        size_t number_symbols;
+
+        socket_.read(reinterpret_cast<char*>(&number_symbols),
+                     static_cast<qint64>(sizeof(number_symbols)));
+
+        for (int s = 0; s < number_symbols; ++s) {
+            size_t symbol_length;
+            socket_.read(reinterpret_cast<char*>(&symbol_length),
+                         static_cast<qint64>(sizeof(symbol_length)));
+
+            std::vector<char> symbol_value(symbol_length + 1, '\0');
+            socket_.read(symbol_value.data(),
+                         static_cast<qint64>(symbol_length));
+
+            // Add symbol name to autocomplete list
+            available_vars_.push_back(symbol_value.data());
+
+            // Plot buffer if it was available in the previous session
+            if (previous_session_buffers_.find(symbol_value.data()) !=
+                previous_session_buffers_.end()) {
+                plot_callback_(symbol_value.data());
+            }
+        }
+    };
+
+    if(socket_.bytesAvailable() == 0) {
+        fclose(xow);
+        return;
+    }
+    fprintf(xow, "tem umas msgs pra mim...\n");
+
+    MessageType header;
+    if(!socket_.read(reinterpret_cast<char*>(&header),
+                     static_cast<qint64>(sizeof(header)))) {
+        return;
+    }
+
+    switch(header) {
+    case MessageType::SetAvailableSymbols:
+        decode_set_available_symbols();
+        break;
+    }
+
+    fclose(xow);
+
+    completer_updated_ = true;
+}
+
+
 void MainWindow::loop()
 {
     // Buffer icon dimensions
@@ -287,9 +349,11 @@ void MainWindow::loop()
     int icon_height          = icon_size.height();
     const int bytes_per_line = icon_width * 3;
 
+    decode_incoming_messages();
+
     // Handle buffer plot requests
     BufferRequestMessage request;
-    if (request.retrieve_buffer_plot_request(shared_memory_))
+    if (request.retrieve_buffer_plot_request(socket_))
     {
 
         auto buffer_stage = stages_.find(request.variable_name_str);

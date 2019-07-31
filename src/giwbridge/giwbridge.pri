@@ -8,13 +8,15 @@ QT += \
 SOURCES += \
   ../giw_bridge.cpp \
   ../../debuggerinterface/python_native_interface.cpp \
-  ../../debuggerinterface/buffer_request_message.cpp
+  ../../debuggerinterface/buffer_request_message.cpp \
+  ../../ipc/message_exchange.cpp
 
 # Qt related headers
 HEADERS += \
   ../../debuggerinterface/preprocessor_directives.h \
-  ../../debuggerinterface/python_native_interface.h 
-  ../../debuggerinterface/buffer_request_message.h
+  ../../debuggerinterface/python_native_interface.h \
+  ../../debuggerinterface/buffer_request_message.h \
+  ../../ipc/message_exchange.h
 
 # Prevent strip from producing spurious error messages
 QMAKE_STRIP = echo "strip disabled: "

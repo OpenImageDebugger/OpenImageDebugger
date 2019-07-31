@@ -36,7 +36,7 @@
 #include <QListWidgetItem>
 #include <QMainWindow>
 #include <QTimer>
-#include <QSharedMemory>
+#include <QTcpSocket>
 
 #include "math/linear_algebra.h"
 #include "ui/go_to_widget.h"
@@ -49,6 +49,11 @@ namespace Ui
 class MainWindowUi;
 }
 
+struct ConnectionSettings {
+    std::string url;
+    uint16_t port;
+};
+
 
 class MainWindow : public QMainWindow
 {
@@ -57,7 +62,8 @@ class MainWindow : public QMainWindow
   public:
     ///
     // Constructor / destructor
-    explicit MainWindow(QWidget* parent = 0);
+    explicit MainWindow(const ConnectionSettings &host_settings,
+                        QWidget* parent = 0);
 
     ~MainWindow();
 
@@ -105,7 +111,7 @@ class MainWindow : public QMainWindow
 
     void closeEvent(QCloseEvent*);
 
-  public Q_SLOTS:
+public Q_SLOTS:
     ///
     // Assorted methods - slots - implemented in main_window.cpp
     void loop();
@@ -203,7 +209,8 @@ class MainWindow : public QMainWindow
     QLabel* status_bar_;
     GoToWidget* go_to_widget_;
 
-    QSharedMemory shared_memory_;
+    ConnectionSettings host_settings_;
+    QTcpSocket socket_;
 
     int (*plot_callback_)(const char*);
 
@@ -220,6 +227,8 @@ class MainWindow : public QMainWindow
     void set_currently_selected_stage(Stage* stage);
 
     vec4 get_stage_coordinates(float pos_window_x, float pos_window_y);
+
+    void decode_incoming_messages();
 
     ///
     // Auto contrast pane - private - implemented in auto_contrast.cpp
@@ -250,6 +259,8 @@ class MainWindow : public QMainWindow
     void initialize_settings();
 
     void initialize_go_to_widget();
+
+    void initialize_networking();
 };
 
 #endif // MAIN_WINDOW_H_

@@ -23,35 +23,8 @@
  * IN THE SOFTWARE.
  */
 
-#include <csignal>
+#include <iostream>
 
-#include <string>
-
-#include <QApplication>
-#include <QCommandLineParser>
-
-#include "debuggerinterface/preprocessor_directives.h"
-#include "ui/main_window/main_window.h"
-
-using namespace std;
+#include "message_exchange.h"
 
 
-int main(int argc, char *argv[])
-{
-    QApplication app(argc, argv);
-
-    QCommandLineParser parser;
-    parser.addOptions({
-        {"h", "hostname", "hostname", "127.0.0.1"},
-        {"p", "port", "port", "9588"},
-    });
-    parser.parse(QCoreApplication::arguments());
-
-    ConnectionSettings host_settings;
-    host_settings.url = parser.value("h").toStdString();
-    host_settings.port = static_cast<uint16_t>(parser.value("p").toUInt());
-
-    MainWindow window(host_settings);
-    window.show();
-    return app.exec();
-}

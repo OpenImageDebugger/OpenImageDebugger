@@ -11,9 +11,6 @@ import threading
 import platform
 import sys
 
-from giwscripts.thirdparty.pysigset import pysigset
-
-
 FETCH_BUFFER_CBK_TYPE = ctypes.CFUNCTYPE(ctypes.c_int,
                                          ctypes.c_char_p)
 
