@@ -44,6 +44,18 @@
 using namespace std;
 
 
+struct UiMessage {
+    virtual ~UiMessage() {}
+};
+
+struct GetObservedSymbolsResponseMessage : public UiMessage {
+    std::deque<string> observed_symbols;
+};
+
+struct PlotBufferRequestMessage : public UiMessage {
+    std::string buffer_name;
+};
+
 class GiwBridge
 {
 public:
@@ -64,26 +76,7 @@ public:
         process_.setProcessChannelMode(QProcess::MergedChannels);
         process_.start(program, arguments);
 
-        if(!server_.waitForNewConnection(10000)) {
-            cerr << "[giw] No clients connected to ImageWatch server" << endl;
-            return;
-        }
-        client_ = server_.nextPendingConnection();
-    }
-
-    void network_test() {
-        QByteArray block;
-        QDataStream data_stream(&block, QIODevice::WriteOnly);
-        data_stream.setVersion(QDataStream::Qt_4_0);
-        data_stream << QString("Olar teste!");
-
-        QTcpSocket* client = server_.nextPendingConnection();
-        if(client != nullptr) {
-            client->write(block);
-            client->waitForBytesWritten();
-            client->disconnectFromHost();
-            cerr << "mandei msg!!! :))"<<endl;
-        }
+        wait_for_client();
     }
 
     bool is_window_ready()
@@ -93,7 +86,34 @@ public:
 
     deque<string> get_observed_symbols()
     {
-        return {};
+        MessageComposer message_composer;
+        message_composer.push(MessageType::GetObservedSymbols);
+        message_composer.send(client_);
+
+        auto response = fetch_message(MessageType::GetObservedSymbolsResponse);
+        if(response != nullptr) {
+            return static_cast<GetObservedSymbolsResponseMessage*>(response.get())->observed_symbols;
+        } else {
+            return {};
+        }
+    }
+
+
+    unique_ptr<UiMessage> decode_plot_buffer_request()
+    {
+        auto response = new PlotBufferRequestMessage();
+        MessageDecoder::receive_string(client_, response->buffer_name);
+        return unique_ptr<UiMessage>(response);
+    }
+
+    unique_ptr<UiMessage> decode_get_observed_symbols_response()
+    {
+        auto response = new GetObservedSymbolsResponseMessage();
+
+        MessageDecoder::receive_symbol_list<std::deque<std::string>,
+                std::string>(client_, response->observed_symbols);
+
+        return unique_ptr<UiMessage>(response);
     }
 
     void set_available_symbols(const deque<string>& available_vars)
@@ -116,6 +136,57 @@ private:
     QProcess process_;
     QTcpServer server_;
     QTcpSocket* client_;
+    std::map<MessageType, std::unique_ptr<UiMessage>> received_messages_;
+
+    std::unique_ptr<UiMessage> try_get_stored_message(const MessageType& msg_type) {
+        auto find_msg_handler = received_messages_.find(msg_type);
+
+        if(find_msg_handler != received_messages_.end()) {
+            unique_ptr<UiMessage> result = std::move(find_msg_handler->second);
+            received_messages_.erase(find_msg_handler);
+            return result;
+        }
+
+        return nullptr;
+    }
+
+    std::unique_ptr<UiMessage> fetch_message(const MessageType& msg_type) {
+        // Return message if it was already received before
+        auto result = try_get_stored_message(msg_type);
+
+        if(result != nullptr) {
+            return result;
+        }
+
+        // Try to fetch message
+        client_->waitForReadyRead();
+
+        if (client_->bytesAvailable() > 0) {
+            MessageType header;
+            client_->read(reinterpret_cast<char*>(&header),
+                              static_cast<qint64>(sizeof(header)));
+
+            switch (header) {
+            case MessageType::PlotBufferRequest:
+                received_messages_[header] = decode_plot_buffer_request();
+                break;
+            case MessageType::GetObservedSymbolsResponse:
+                received_messages_[header] = decode_get_observed_symbols_response();
+                break;
+            }
+        }
+
+        return try_get_stored_message(msg_type);
+    }
+
+    void wait_for_client() {
+        if(client_ == nullptr) {
+            if(!server_.waitForNewConnection(10000)) {
+                cerr << "[giw] No clients connected to ImageWatch server" << endl;
+            }
+            client_ = server_.nextPendingConnection();
+        }
+    }
 };
 
 AppHandler giw_initialize()

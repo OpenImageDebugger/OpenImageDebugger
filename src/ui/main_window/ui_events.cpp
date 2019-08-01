@@ -263,7 +263,7 @@ void MainWindow::symbol_selected()
     QByteArray symbol_name_qba = ui_->symbolList->text().toLocal8Bit();
     const char* symbol_name    = symbol_name_qba.constData();
     if (ui_->symbolList->text().length() > 0) {
-        plot_callback_(symbol_name);
+        request_plot_buffer(symbol_name);
         // Clear symbol input
         ui_->symbolList->setText("");
     }
@@ -274,7 +274,7 @@ void MainWindow::symbol_completed(QString str)
 {
     if (str.length() > 0) {
         QByteArray symbol_name_qba = str.toLocal8Bit();
-        plot_callback_(symbol_name_qba.constData());
+        request_plot_buffer(symbol_name_qba.constData());
         // Clear symbol input
         ui_->symbolList->setText("");
         ui_->symbolList->clearFocus();

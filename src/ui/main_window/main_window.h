@@ -78,13 +78,7 @@ class MainWindow : public QMainWindow
     QSizeF get_icon_size();
 
     // External interface
-    void set_plot_callback(int (*plot_cbk)(const char*));
-
-    std::deque<std::string> get_observed_symbols();
-
     bool is_window_ready();
-
-    void set_available_symbols(const std::deque<std::string>& available_set);
 
     ///
     // Auto contrast pane - implemented in auto_contrast.cpp
@@ -212,7 +206,8 @@ public Q_SLOTS:
     ConnectionSettings host_settings_;
     QTcpSocket socket_;
 
-    int (*plot_callback_)(const char*);
+    void request_plot_buffer(const char* buffer_name);
+    void decode_incoming_messages();
 
     ///
     // Assorted methods - private - implemented in main_window.cpp
@@ -228,7 +223,6 @@ public Q_SLOTS:
 
     vec4 get_stage_coordinates(float pos_window_x, float pos_window_y);
 
-    void decode_incoming_messages();
 
     ///
     // Auto contrast pane - private - implemented in auto_contrast.cpp

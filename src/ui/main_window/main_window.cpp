@@ -24,6 +24,7 @@
  */
 
 #include <iomanip>
+#include <unistd.h> // TODO remove
 
 #include <QAction>
 #include <QDateTime>
@@ -40,6 +41,8 @@
 
 using namespace std;
 
+
+#define PRINT(...) {FILE*f=fopen("/tmp/tst.log", "a+"); fprintf(f, __VA_ARGS__); fclose(f);}
 
 Q_DECLARE_METATYPE(QList<QString>)
 
@@ -93,19 +96,13 @@ struct BufferRequestMessage
         return result;
     }
 
-    void send_buffer_plot_request(QTcpSocket& socket) {
-        // TODO write
-    }
     bool retrieve_buffer_plot_request(QTcpSocket& socket) {
         return false;
-        FILE* xow=fopen("/tmp/tst.log", "w");
         bool status = false;
 
         if(socket.bytesAvailable() == 0) {
-            fclose(xow);
             return false;
         }
-        fprintf(xow, "tem umas msgs pra mim...\n");
 
         QDataStream data_stream(&socket);
         data_stream.setVersion(QDataStream::Qt_4_0);
@@ -114,9 +111,7 @@ struct BufferRequestMessage
         do {
             data_stream.startTransaction();
             data_stream >> test;
-            fprintf(xow, "Got msg: [%s]\n", test.toStdString().c_str());
         } while(!data_stream.commitTransaction());
-        fclose(xow);
 
         // TODO fill remaining fields
         /*
@@ -178,7 +173,6 @@ MainWindow::MainWindow(const ConnectionSettings& host_settings,
     , currently_selected_stage_(nullptr)
     , ui_(new Ui::MainWindowUi)
     , host_settings_(host_settings)
-    , plot_callback_(nullptr)
 {
     QCoreApplication::instance()->installEventFilter(this);
 
@@ -239,89 +233,44 @@ QSizeF MainWindow::get_icon_size()
 }
 
 
-void MainWindow::set_plot_callback(int (*plot_cbk)(const char*))
-{
-    plot_callback_ = plot_cbk;
-}
-
-
-deque<string> MainWindow::get_observed_symbols()
-{
-    deque<string> observed_names;
-
-    for (const auto& name : held_buffers_) {
-        observed_names.push_back(name.first);
-    }
-
-    return observed_names;
-}
-
-
 bool MainWindow::is_window_ready()
 {
     return ui_->bufferPreview->is_ready() && is_window_ready_;
 }
 
 
-void MainWindow::set_available_symbols(const deque<string>& available_vars)
-{
-    // TODO get rid of this function
-    std::unique_lock<std::mutex> lock(ui_mutex_);
-
-    available_vars_.clear();
-
-    for (const auto& var_name : available_vars) {
-        // Add symbol name to autocomplete list
-        available_vars_.push_back(var_name.c_str());
-
-        // Plot buffer if it was available in the previous session
-        if (previous_session_buffers_.find(var_name) !=
-            previous_session_buffers_.end()) {
-            plot_callback_(var_name.c_str());
-        }
-    }
-
-    completer_updated_ = true;
-}
-
-
 void MainWindow::decode_incoming_messages() {
-    FILE* xow=fopen("/tmp/tst.log", "w");
-
     available_vars_.clear();
 
     const auto decode_set_available_symbols = [&]() {
         std::unique_lock<std::mutex> lock(ui_mutex_);
-        size_t number_symbols;
+        MessageDecoder::receive_symbol_list<QStringList,
+                QString>(&socket_, available_vars_);
 
-        socket_.read(reinterpret_cast<char*>(&number_symbols),
-                     static_cast<qint64>(sizeof(number_symbols)));
-
-        for (int s = 0; s < number_symbols; ++s) {
-            size_t symbol_length;
-            socket_.read(reinterpret_cast<char*>(&symbol_length),
-                         static_cast<qint64>(sizeof(symbol_length)));
-
-            std::vector<char> symbol_value(symbol_length + 1, '\0');
-            socket_.read(symbol_value.data(),
-                         static_cast<qint64>(symbol_length));
-
-            // Add symbol name to autocomplete list
-            available_vars_.push_back(symbol_value.data());
-
+        for(const auto& symbol_value: available_vars_) {
             // Plot buffer if it was available in the previous session
-            if (previous_session_buffers_.find(symbol_value.data()) !=
+            if (previous_session_buffers_.find(symbol_value.toStdString()) !=
                 previous_session_buffers_.end()) {
-                plot_callback_(symbol_value.data());
+                request_plot_buffer(symbol_value.toStdString().data());
             }
         }
+
+        completer_updated_ = true;
+    };
+
+    const auto respond_get_observed_symbols = [&]() {
+        MessageComposer message_composer;
+        message_composer.push(MessageType::GetObservedSymbolsResponse);
+        message_composer.push(held_buffers_.size());
+        for (const auto& name : held_buffers_) {
+            message_composer.push(name.first);
+        }
+        message_composer.send(&socket_);
     };
 
     if(socket_.bytesAvailable() == 0) {
-        fclose(xow);
         return;
     }
-    fprintf(xow, "tem umas msgs pra mim...\n");
 
     MessageType header;
     if(!socket_.read(reinterpret_cast<char*>(&header),
@@ -329,15 +278,30 @@ void MainWindow::decode_incoming_messages() {
         return;
     }
 
+    socket_.waitForReadyRead(100);
+
     switch(header) {
     case MessageType::SetAvailableSymbols:
+        PRINT("req: set available symbols\n")
         decode_set_available_symbols();
         break;
+    case MessageType::GetObservedSymbols:
+        PRINT("req: get observed symbols %lld\n", socket_.bytesAvailable())
+        respond_get_observed_symbols();
+        break;
+    default:
+        PRINT("got weird stuff: %d\n", header)
+        break;
     }
+}
 
-    fclose(xow);
 
-    completer_updated_ = true;
+void MainWindow::request_plot_buffer(const char* buffer_name)
+{
+    MessageComposer message_composer;
+    message_composer.push(MessageType::PlotBufferRequest);
+    message_composer.push(std::string(buffer_name));
+    message_composer.send(&socket_);
 }
 
 

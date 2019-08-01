@@ -28,15 +28,16 @@
 
 #include <deque>
 #include <memory>
+#include <iostream> // TODO remove
 
 #include <QTcpSocket>
 
 enum class MessageType {
     GetObservedSymbols = 0,
-    ReturnObservedSymbols = 1,
+    GetObservedSymbolsResponse = 1,
     SetAvailableSymbols = 2,
-    PlotContents = 3,
-    PlotRequest = 4
+    PlotBufferContents = 3,
+    PlotBufferRequest = 4
 };
 
 struct MessageBlock {
@@ -107,17 +108,17 @@ public:
     }
 
     template<>
+    MessageComposer& push<std::string>(const std::string& value) {
+        push(value.size());
+        message_blocks_.emplace_back(new StringBlock(value));
+        return *this;
+    }
+
+    template<>
     MessageComposer& push<std::deque<std::string>>(const std::deque<std::string>& container) {
-        message_blocks_.emplace_back(
-            new PrimitiveBlock<size_t>(container.size())
-        );
+        push(container.size());
         for(const auto& value: container) {
-            message_blocks_.emplace_back(
-                new PrimitiveBlock<size_t>(value.size())
-            );
-            message_blocks_.emplace_back(
-                new StringBlock(value)
-            );
+            push(value);
         }
         return *this;
     }
@@ -128,7 +129,7 @@ public:
         return *this;
     }
 
-    void send(QTcpSocket* socket) {
+    void send(QTcpSocket* socket) const {
         for(const auto& block: message_blocks_) {
             socket->write(reinterpret_cast<const char*>(block->data()),
                           static_cast<qint64>(block->size()));
@@ -136,8 +137,44 @@ public:
         socket->waitForBytesWritten();
     }
 
+    void clear() {
+        message_blocks_.clear();
+    }
+
 private:
     std::deque<std::unique_ptr<MessageBlock>> message_blocks_;
+};
+
+class MessageDecoder {
+public:
+    template<typename StringType>
+    static void receive_string(QTcpSocket *socket, StringType& value) {
+        size_t symbol_length;
+        socket->read(reinterpret_cast<char*>(&symbol_length),
+                     static_cast<qint64>(sizeof(symbol_length)));
+
+        std::vector<char> symbol_value(symbol_length + 1, '\0');
+        socket->read(symbol_value.data(),
+                     static_cast<qint64>(symbol_length));
+
+        value = StringType(symbol_value.data());
+    }
+
+    template<typename StringContainer, typename StringType>
+    static void receive_symbol_list(QTcpSocket* socket,
+                                    StringContainer& symbol_container) {
+        size_t number_symbols;
+
+        socket->read(reinterpret_cast<char*>(&number_symbols),
+                     static_cast<qint64>(sizeof(number_symbols)));
+
+        for (int s = 0; s < static_cast<int>(number_symbols); ++s) {
+            StringType symbol_value;
+            receive_string(socket, symbol_value);
+
+            symbol_container.push_back(symbol_value);
+        }
+    }
 };
 
 #endif // IPC_MESSAGE_EXCHANGE_H_
