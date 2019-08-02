@@ -153,6 +153,7 @@ public:
         socket->read(reinterpret_cast<char*>(&symbol_length),
                      static_cast<qint64>(sizeof(symbol_length)));
 
+        // TODO use a string straight away
         std::vector<char> symbol_value(symbol_length + 1, '\0');
         socket->read(symbol_value.data(),
                      static_cast<qint64>(symbol_length));

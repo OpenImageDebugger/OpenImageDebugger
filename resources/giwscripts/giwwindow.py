@@ -10,6 +10,7 @@ import signal
 import threading
 import platform
 import sys
+import time
 
 FETCH_BUFFER_CBK_TYPE = ctypes.CFUNCTYPE(ctypes.c_int,
                                          ctypes.c_char_p)
@@ -34,7 +35,7 @@ class GdbImageWatchWindow():
             script_path + '/' + GdbImageWatchWindow.__get_library_name())
 
         # libgiw API
-        self._lib.giw_initialize.argtypes = []
+        self._lib.giw_initialize.argtypes = [FETCH_BUFFER_CBK_TYPE]
         self._lib.giw_initialize.restype = ctypes.c_void_p
 
         self._lib.giw_cleanup.argtypes = [ctypes.c_void_p]
@@ -55,6 +56,9 @@ class GdbImageWatchWindow():
         ]
         self._lib.giw_set_available_symbols.restype = None
 
+        self._lib.giw_run_event_loop.argtypes = [ctypes.c_void_p]
+        self._lib.giw_run_event_loop.restype = None
+
         self._lib.giw_plot_buffer.argtypes = [
             ctypes.c_void_p,
             ctypes.py_object
@@ -63,6 +67,13 @@ class GdbImageWatchWindow():
 
         # UI handler
         self._native_handler = None
+        self._event_loop_wait_time = 1.0/60.0
+        self._previous_evloop_time = GdbImageWatchWindow.__get_time_ms()
+        self._plot_variable_c_callback = FETCH_BUFFER_CBK_TYPE(self.plot_variable)
+
+    @staticmethod
+    def __get_time_ms():
+        return int(time.time() * 1000.0)
 
     @staticmethod
     def __get_library_name():
@@ -134,6 +145,20 @@ class GdbImageWatchWindow():
             self._native_handler,
             observable_symbols)
 
+    def run_event_loop(self):
+        """
+        Run the debugger-side event loop, which consists of checking for new
+        user requests coming from the UI
+        """
+        current_time = GdbImageWatchWindow.__get_time_ms()
+        dt = current_time - self._previous_evloop_time
+        if dt > self._event_loop_wait_time:
+            self._lib.giw_run_event_loop(self._native_handler)
+            self._previous_evloop_time = current_time
+
+        # Schedule next run of the event loop
+        self._bridge.queue_request(self.run_event_loop)
+
     def get_observed_buffers(self):
         """
         Get a list with the currently observed symbols in the giw window
@@ -143,9 +168,13 @@ class GdbImageWatchWindow():
     def initialize_window(self):
         # Initialize GIW lib
         self._native_handler = self._lib.giw_initialize(
-            FETCH_BUFFER_CBK_TYPE(self.plot_variable))
+            self._plot_variable_c_callback)
+
         # Launch UI
         self._lib.giw_exec(self._native_handler)
+
+        # Schedule event loop
+        self._bridge.queue_request(self.run_event_loop)
 
 
 class DeferredVariablePlotter():

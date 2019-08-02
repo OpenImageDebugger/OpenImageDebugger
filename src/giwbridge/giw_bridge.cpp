@@ -43,7 +43,6 @@
 
 using namespace std;
 
-
 struct UiMessage {
     virtual ~UiMessage() {}
 };
@@ -59,14 +58,18 @@ struct PlotBufferRequestMessage : public UiMessage {
 class GiwBridge
 {
 public:
-    void start()
+    GiwBridge(int(*plot_callback)(const char*))
+        : client_(nullptr)
+        , plot_callback_(plot_callback) {}
+
+    bool start()
     {
         // Initialize server
         const uint16_t host_port = 9588; // TODO parameterize
         if(!server_.listen(QHostAddress::Any, host_port)) {
             // TODO escalate error
             cerr << "[giw] Could not start TCP server" << endl;
-            return;
+            return false;
         }
 
         // TODO get proper binary path at runtime
@@ -77,15 +80,21 @@ public:
         process_.start(program, arguments);
 
         wait_for_client();
+
+        return client_ != nullptr;
     }
 
     bool is_window_ready()
     {
-        return process_.processId() != 0 && kill(process_.processId(), 0) == 0;
+        return client_ != nullptr &&
+               process_.processId() != 0 &&
+               kill(process_.processId(), 0) == 0;
     }
 
     deque<string> get_observed_symbols()
     {
+        assert(client_ != nullptr);
+
         MessageComposer message_composer;
         message_composer.push(MessageType::GetObservedSymbols);
         message_composer.send(client_);
@@ -99,33 +108,28 @@ public:
     }
 
 
-    unique_ptr<UiMessage> decode_plot_buffer_request()
-    {
-        auto response = new PlotBufferRequestMessage();
-        MessageDecoder::receive_string(client_, response->buffer_name);
-        return unique_ptr<UiMessage>(response);
-    }
-
-    unique_ptr<UiMessage> decode_get_observed_symbols_response()
-    {
-        auto response = new GetObservedSymbolsResponseMessage();
-
-        MessageDecoder::receive_symbol_list<std::deque<std::string>,
-                std::string>(client_, response->observed_symbols);
-
-        return unique_ptr<UiMessage>(response);
-    }
-
     void set_available_symbols(const deque<string>& available_vars)
     {
+        assert(client_ != nullptr);
+
         MessageComposer message_composer;
         message_composer.push(MessageType::SetAvailableSymbols);
         message_composer.push(available_vars);
         message_composer.send(client_);
     }
 
-    void plot_buffer(const BufferRequestMessage& request)
+    void run_event_loop()
     {
+        try_read_incoming_messages(static_cast<int>(1000.0 / 5.0));
+
+        unique_ptr<UiMessage> plot_request_message;
+        while((plot_request_message = try_get_stored_message(
+                   MessageType::PlotBufferRequest)) != nullptr) {
+            const PlotBufferRequestMessage* msg =
+                    dynamic_cast<PlotBufferRequestMessage*>(
+                        plot_request_message.get());
+            plot_callback_(msg->buffer_name.c_str());
+        }
     }
 
     ~GiwBridge() {
@@ -136,6 +140,9 @@ private:
     QProcess process_;
     QTcpServer server_;
     QTcpSocket* client_;
+
+    int (*plot_callback_)(const char*);
+
     std::map<MessageType, std::unique_ptr<UiMessage>> received_messages_;
 
     std::unique_ptr<UiMessage> try_get_stored_message(const MessageType& msg_type) {
@@ -150,6 +157,57 @@ private:
         return nullptr;
     }
 
+
+    void try_read_incoming_messages(int msecs = 3000) {
+        assert(client_ != nullptr);
+
+        do {
+            client_->waitForReadyRead(msecs);
+
+            if (client_->bytesAvailable() == 0) {
+                break;
+            }
+
+            MessageType header;
+            client_->read(reinterpret_cast<char*>(&header),
+                          static_cast<qint64>(sizeof(header)));
+
+            switch (header) {
+            case MessageType::PlotBufferRequest:
+                received_messages_[header] = decode_plot_buffer_request();
+                break;
+            case MessageType::GetObservedSymbolsResponse:
+                received_messages_[header] = decode_get_observed_symbols_response();
+                break;
+            default:
+                cerr << "[giw] Received message with incorrect header" << endl;
+                break;
+            }
+        } while(client_->bytesAvailable() > 0);
+    }
+
+
+    unique_ptr<UiMessage> decode_plot_buffer_request()
+    {
+        assert(client_ != nullptr);
+
+        auto response = new PlotBufferRequestMessage();
+        MessageDecoder::receive_string(client_, response->buffer_name);
+        return unique_ptr<UiMessage>(response);
+    }
+
+    unique_ptr<UiMessage> decode_get_observed_symbols_response()
+    {
+        assert(client_ != nullptr);
+
+        auto response = new GetObservedSymbolsResponseMessage();
+
+        MessageDecoder::receive_symbol_list<std::deque<std::string>,
+                std::string>(client_, response->observed_symbols);
+
+        return unique_ptr<UiMessage>(response);
+    }
+
     std::unique_ptr<UiMessage> fetch_message(const MessageType& msg_type) {
         // Return message if it was already received before
         auto result = try_get_stored_message(msg_type);
@@ -159,25 +217,11 @@ private:
         }
 
         // Try to fetch message
-        client_->waitForReadyRead();
-
-        if (client_->bytesAvailable() > 0) {
-            MessageType header;
-            client_->read(reinterpret_cast<char*>(&header),
-                              static_cast<qint64>(sizeof(header)));
-
-            switch (header) {
-            case MessageType::PlotBufferRequest:
-                received_messages_[header] = decode_plot_buffer_request();
-                break;
-            case MessageType::GetObservedSymbolsResponse:
-                received_messages_[header] = decode_get_observed_symbols_response();
-                break;
-            }
-        }
+        try_read_incoming_messages();
 
         return try_get_stored_message(msg_type);
     }
+
 
     void wait_for_client() {
         if(client_ == nullptr) {
@@ -189,10 +233,10 @@ private:
     }
 };
 
-AppHandler giw_initialize()
+
+AppHandler giw_initialize(int(*plot_callback)(const char*))
 {
-    // TODO receive callback
-    GiwBridge *app = new GiwBridge();
+    GiwBridge *app = new GiwBridge(plot_callback);
     return static_cast<AppHandler>(app);
 }
 
@@ -296,6 +340,21 @@ void giw_set_available_symbols(AppHandler handler,
 }
 
 
+void giw_run_event_loop(AppHandler handler)
+{
+    GiwBridge* app = static_cast<GiwBridge*>(handler);
+
+    if(app == nullptr) {
+        RAISE_PY_EXCEPTION(PyExc_RuntimeError,
+                           "giw_run_event_loop received null application "
+                           "handler");
+        return;
+    }
+
+    app->run_event_loop();
+}
+
+
 void giw_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 {
     GiwBridge* app = static_cast<GiwBridge*>(handler);
@@ -382,5 +441,5 @@ void giw_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
                                  py_pixel_layout,
                                  transpose_buffer);
 
-    app->plot_buffer(request);
+    //app->plot_buffer(request);
 }
