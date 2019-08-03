@@ -145,12 +145,15 @@ class DummyDebugger(BridgeInterface):
         self._buffer_names = [name for name in self._buffers]
 
         self._is_running = True
-        self._request_queue = []
+        self._incoming_request_queue = []
 
     def run_event_loop(self):
-        while self._is_running:
-            if len(self._request_queue) > 0:
-                latest_request = self._request_queue.pop(-1)
+        if self._is_running:
+            request_queue = self._incoming_request_queue
+            self._incoming_request_queue = []
+
+            while len(request_queue) > 0:
+                latest_request = request_queue.pop(-1)
                 latest_request()
 
     def kill(self):
@@ -187,4 +190,4 @@ class DummyDebugger(BridgeInterface):
         return None
 
     def queue_request(self, callable_request):
-        self._request_queue.append(callable_request)
+        self._incoming_request_queue.append(callable_request)
