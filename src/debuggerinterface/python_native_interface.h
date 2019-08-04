@@ -26,6 +26,8 @@
 #ifndef PYTHON_NATIVE_INTERFACE_H_
 #define PYTHON_NATIVE_INTERFACE_H_
 
+#include <string>
+
 #include <Python.h>
 
 
@@ -36,5 +38,8 @@ int check_py_string_type(PyObject* obj);
 
 
 void* get_c_ptr_from_py_buffer(PyObject* obj);
+
+
+void copy_py_string(std::string& dst, PyObject* src);
 
 #endif // PYTHON_NATIVE_INTERFACE_H_

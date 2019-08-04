@@ -30,7 +30,6 @@
 #include <signal.h>
 
 #include "giw_bridge.h"
-#include "debuggerinterface/buffer_request_message.h" // TODO move py_copy_string to python_native_interface
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
 #include "ipc/message_exchange.h"
@@ -88,7 +87,7 @@ public:
     {
         return client_ != nullptr &&
                process_.processId() != 0 &&
-               kill(process_.processId(), 0) == 0;
+               kill(static_cast<pid_t>(process_.processId()), 0) == 0;
     }
 
     deque<string> get_observed_symbols()
@@ -96,8 +95,8 @@ public:
         assert(client_ != nullptr);
 
         MessageComposer message_composer;
-        message_composer.push(MessageType::GetObservedSymbols);
-        message_composer.send(client_);
+        message_composer.push(MessageType::GetObservedSymbols)
+            .send(client_);
 
         auto response = fetch_message(MessageType::GetObservedSymbolsResponse);
         if(response != nullptr) {
@@ -113,9 +112,9 @@ public:
         assert(client_ != nullptr);
 
         MessageComposer message_composer;
-        message_composer.push(MessageType::SetAvailableSymbols);
-        message_composer.push(available_vars);
-        message_composer.send(client_);
+        message_composer.push(MessageType::SetAvailableSymbols)
+            .push(available_vars)
+            .send(client_);
     }
 
     void run_event_loop()
@@ -130,6 +129,32 @@ public:
                         plot_request_message.get());
             plot_callback_(msg->buffer_name.c_str());
         }
+    }
+
+    void plot_buffer(const string& variable_name_str,
+                     const string& display_name_str,
+                     const string& pixel_layout_str,
+                     bool transpose_buffer,
+                     int buff_width,
+                     int buff_height,
+                     int buff_channels,
+                     int buff_stride,
+                     BufferType buff_type,
+                     uint8_t* buff_ptr,
+                     size_t buff_length) {
+        MessageComposer message_composer;
+        message_composer.push(MessageType::PlotBufferContents)
+            .push(variable_name_str)
+            .push(display_name_str)
+            .push(pixel_layout_str)
+            .push(transpose_buffer)
+            .push(buff_width)
+            .push(buff_height)
+            .push(buff_channels)
+            .push(buff_stride)
+            .push(buff_type)
+            .push(buff_ptr, buff_length)
+            .send(client_);
     }
 
     ~GiwBridge() {
@@ -192,7 +217,8 @@ private:
         assert(client_ != nullptr);
 
         auto response = new PlotBufferRequestMessage();
-        MessageDecoder::receive_string(client_, response->buffer_name);
+        MessageDecoder message_decoder(client_);
+        message_decoder.read(response->buffer_name);
         return unique_ptr<UiMessage>(response);
     }
 
@@ -202,8 +228,9 @@ private:
 
         auto response = new GetObservedSymbolsResponseMessage();
 
-        MessageDecoder::receive_symbol_list<std::deque<std::string>,
-                std::string>(client_, response->observed_symbols);
+        MessageDecoder message_decoder(client_);
+        message_decoder.read<std::deque<std::string>,
+                std::string>(response->observed_symbols);
 
         return unique_ptr<UiMessage>(response);
     }
@@ -295,7 +322,8 @@ PyObject* giw_get_observed_buffers(AppHandler handler)
     }
 
     auto observed_symbols         = app->get_observed_symbols();
-    PyObject* py_observed_symbols = PyList_New(observed_symbols.size());
+    PyObject* py_observed_symbols = PyList_New(
+                static_cast<Py_ssize_t>(observed_symbols.size()));
 
     int observed_symbols_sentinel = static_cast<int>(observed_symbols.size());
     for (int i = 0; i < observed_symbols_sentinel; ++i) {
@@ -427,19 +455,37 @@ void giw_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     CHECK_FIELD_TYPE(pixel_layout, check_py_string_type, "plot_buffer");
 
     /*
-     * Enqueue provided fields so the request can be processed in the main
-     * thread
+     * Send buffer contents
      */
-    BufferRequestMessage request(py_pointer,
-                                 py_variable_name,
-                                 py_display_name,
-                                 get_py_int(py_width),
-                                 get_py_int(py_height),
-                                 get_py_int(py_channels),
-                                 get_py_int(py_type),
-                                 get_py_int(py_row_stride),
-                                 py_pixel_layout,
-                                 transpose_buffer);
+    string variable_name_str;
+    string display_name_str;
+    string pixel_layout_str;
 
-    //app->plot_buffer(request);
+    copy_py_string(variable_name_str, py_variable_name);
+    copy_py_string(display_name_str, py_display_name);
+    copy_py_string(pixel_layout_str, py_pixel_layout);
+
+    int buff_width = get_py_int(py_width);
+    int buff_height = get_py_int(py_height);
+    int buff_channels = get_py_int(py_channels);
+    int buff_stride = get_py_int(py_row_stride);
+
+    uint8_t* buff_ptr = reinterpret_cast<uint8_t*>(
+                get_c_ptr_from_py_buffer(py_pointer));
+    BufferType buff_type = static_cast<BufferType>(get_py_int(py_type));
+
+    size_t buff_length = static_cast<size_t>(buff_width * buff_height *
+            buff_channels) * typesize(buff_type);
+
+    app->plot_buffer(variable_name_str,
+                     display_name_str,
+                     pixel_layout_str,
+                     transpose_buffer,
+                     buff_width,
+                     buff_height,
+                     buff_channels,
+                     buff_stride,
+                     buff_type,
+                     buff_ptr,
+                     buff_length);
 }

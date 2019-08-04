@@ -25,6 +25,7 @@ SOURCES += \
   giw_window.cpp \
   io/buffer_exporter.cpp \
   ipc/message_exchange.cpp \
+  ipc/raw_data_decode.cpp \
   math/assorted.cpp \
   math/linear_algebra.cpp \
   ui/decorated_line_edit.cpp \

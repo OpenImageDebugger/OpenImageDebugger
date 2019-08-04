@@ -63,7 +63,7 @@ class MainWindow : public QMainWindow
     ///
     // Constructor / destructor
     explicit MainWindow(const ConnectionSettings &host_settings,
-                        QWidget* parent = 0);
+                        QWidget* parent = nullptr);
 
     ~MainWindow();
 
@@ -186,7 +186,7 @@ public Q_SLOTS:
 
     Stage* currently_selected_stage_;
 
-    std::map<std::string, std::shared_ptr<uint8_t>> held_buffers_;
+    std::map<std::string, std::vector<uint8_t>> held_buffers_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
 
     std::set<std::string> previous_session_buffers_;
@@ -206,9 +206,6 @@ public Q_SLOTS:
     ConnectionSettings host_settings_;
     QTcpSocket socket_;
 
-    void request_plot_buffer(const char* buffer_name);
-    void decode_incoming_messages();
-
     ///
     // Assorted methods - private - implemented in main_window.cpp
     void update_status_bar();
@@ -223,6 +220,13 @@ public Q_SLOTS:
 
     vec4 get_stage_coordinates(float pos_window_x, float pos_window_y);
 
+    ///
+    // Networking communication with bridge
+    void decode_plot_buffer_contents();
+
+    void decode_incoming_messages();
+
+    void request_plot_buffer(const char* buffer_name);
 
     ///
     // Auto contrast pane - private - implemented in auto_contrast.cpp

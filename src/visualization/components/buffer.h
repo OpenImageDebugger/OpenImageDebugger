@@ -31,17 +31,7 @@
 
 #include "component.h"
 #include "visualization/shader.h"
-
-// TODO move somewhere more appropriate
-enum class BufferType {
-    UnsignedByte  = 0,
-    UnsignedShort = 2,
-    Short         = 3,
-    Int32         = 4,
-    Float32       = 5,
-    Float64       = 6
-};
-///
+#include "ipc/message_exchange.h"
 
 
 class Buffer : public Component

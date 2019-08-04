@@ -38,6 +38,20 @@ long get_py_int(PyObject* obj)
 }
 
 
+void copy_py_string(std::string& dst, PyObject* src)
+{
+    if (PyUnicode_Check(src)) {
+        // Unicode sring
+        PyObject* src_bytes = PyUnicode_AsEncodedString(src, "ASCII", "strict");
+        dst                 = PyBytes_AS_STRING(src_bytes);
+        Py_DECREF(src_bytes);
+    } else {
+        assert(PyBytes_Check(src));
+        dst = PyBytes_AS_STRING(src);
+    }
+}
+
+
 int check_py_string_type(PyObject* obj)
 {
     return PyUnicode_Check(obj) == 1 ? 1 : PyBytes_Check(obj);

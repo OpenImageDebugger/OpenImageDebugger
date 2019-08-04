@@ -25,7 +25,11 @@
 #ifndef GIW_WINDOW_H_
 #define GIW_WINDOW_H_
 
+// Ignore warnings from Python library
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-register"
 #include <Python.h>
+#pragma GCC diagnostic pop
 
 #ifndef GIW_API
 #  if __GNUC__ >= 4

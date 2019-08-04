@@ -28,9 +28,12 @@
 
 #include <deque>
 #include <memory>
-#include <iostream> // TODO remove
 
 #include <QTcpSocket>
+
+#include "raw_data_decode.h"
+
+#define PRINT(...) {FILE*f=fopen("/tmp/tst.log", "a+"); fprintf(f, __VA_ARGS__); fclose(f);}
 
 enum class MessageType {
     GetObservedSymbols = 0,
@@ -95,13 +98,23 @@ private:
     size_t length_;
 };
 
+template<typename PrimitiveType>
+void assert_primitive_type()
+{
+    static_assert(std::is_same<PrimitiveType, MessageType>::value ||
+                  std::is_same<PrimitiveType, int>::value ||
+                  std::is_same<PrimitiveType, BufferType>::value ||
+                  std::is_same<PrimitiveType, bool>::value ||
+                  std::is_same<PrimitiveType, size_t>::value,
+                  "this function must only be called with primitives");
+}
+
 class MessageComposer {
 public:
     template<typename PrimitiveType>
     MessageComposer& push(const PrimitiveType& value) {
-        static_assert(std::is_same<PrimitiveType, MessageType>::value ||
-                      std::is_same<PrimitiveType, size_t>::value,
-                      "push must only be called with primitives");
+        assert_primitive_type<PrimitiveType>();
+
         message_blocks_.emplace_back(new PrimitiveBlock<PrimitiveType>(value));
 
         return *this;
@@ -124,6 +137,7 @@ public:
     }
 
     MessageComposer& push(uint8_t* buffer, size_t size) {
+        push(size);
         message_blocks_.emplace_back(new BufferBlock(buffer, size));
 
         return *this;
@@ -131,9 +145,18 @@ public:
 
     void send(QTcpSocket* socket) const {
         for(const auto& block: message_blocks_) {
-            socket->write(reinterpret_cast<const char*>(block->data()),
-                          static_cast<qint64>(block->size()));
+            qint64 offset = 0;
+            do {
+                offset += socket->write(
+                    reinterpret_cast<const char*>(block->data()),
+                    static_cast<qint64>(block->size()));
+
+                if (offset < static_cast<qint64>(block->size())) {
+                    socket->waitForBytesWritten();
+                }
+            } while(offset < static_cast<qint64>(block->size()));
         }
+
         socket->waitForBytesWritten();
     }
 
@@ -147,34 +170,85 @@ private:
 
 class MessageDecoder {
 public:
-    template<typename StringType>
-    static void receive_string(QTcpSocket *socket, StringType& value) {
+    MessageDecoder(QTcpSocket* socket)
+        : socket_(socket) {}
+
+    template<typename PrimitiveType>
+    MessageDecoder& read(PrimitiveType& value) {
+        assert_primitive_type<PrimitiveType>();
+
+        read_impl(reinterpret_cast<char*>(&value), sizeof(PrimitiveType));
+
+        return *this;
+    }
+
+    template<>
+    MessageDecoder& read<std::vector<uint8_t>>(std::vector<uint8_t>& container)
+    {
+        size_t container_size;
+        read(container_size);
+
+        container.resize(container_size);
+        read_impl(reinterpret_cast<char*>(container.data()), container_size);
+
+        return *this;
+    }
+
+    template<>
+    MessageDecoder& read<std::string>(std::string& value) {
         size_t symbol_length;
-        socket->read(reinterpret_cast<char*>(&symbol_length),
-                     static_cast<qint64>(sizeof(symbol_length)));
+        read(symbol_length);
 
-        // TODO use a string straight away
-        std::vector<char> symbol_value(symbol_length + 1, '\0');
-        socket->read(symbol_value.data(),
-                     static_cast<qint64>(symbol_length));
+        value.resize(symbol_length);
+        read_impl(&value.front(), static_cast<qint64>(symbol_length));
 
-        value = StringType(symbol_value.data());
+        return *this;
+    }
+
+    template<>
+    MessageDecoder& read<QString>(QString& value) {
+        size_t symbol_length;
+        read(symbol_length);
+
+        std::vector<char> temp_string;
+        temp_string.resize(symbol_length + 1, '\0');
+        read_impl(reinterpret_cast<char*>(temp_string.data()),
+                  symbol_length);
+        value = QString(temp_string.data());
+
+        return *this;
     }
 
     template<typename StringContainer, typename StringType>
-    static void receive_symbol_list(QTcpSocket* socket,
-                                    StringContainer& symbol_container) {
+    MessageDecoder& read(StringContainer& symbol_container) {
         size_t number_symbols;
-
-        socket->read(reinterpret_cast<char*>(&number_symbols),
-                     static_cast<qint64>(sizeof(number_symbols)));
+        read(number_symbols);
 
         for (int s = 0; s < static_cast<int>(number_symbols); ++s) {
             StringType symbol_value;
-            receive_string(socket, symbol_value);
+            read(symbol_value);
 
             symbol_container.push_back(symbol_value);
         }
+
+        return *this;
+    }
+
+private:
+    QTcpSocket* socket_;
+
+    void read_impl(char* dst, size_t read_length)
+    {
+        size_t offset = 0;
+        do {
+            offset += socket_->read(
+                dst + offset,
+                static_cast<qint64>(read_length - offset));
+
+            if (offset < read_length) {
+                socket_->waitForReadyRead();
+            }
+        } while (offset < read_length);
     }
 };
 
