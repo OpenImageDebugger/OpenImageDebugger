@@ -33,6 +33,13 @@
 
 #include "raw_data_decode.h"
 
+#define LOG(...)                               \
+    {                                          \
+        FILE* f = fopen("/tmp/tst.log", "a+"); \
+        fprintf(f, __VA_ARGS__);               \
+        fclose(f);                             \
+    }
+
 enum class MessageType {
     GetObservedSymbols         = 0,
     GetObservedSymbolsResponse = 1,

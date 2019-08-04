@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
+ * Copyright (c) 2015-2019 GDB ImageWatch contributors
  * (github.com/csantosbh/gdb-imagewatch/)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -58,15 +58,17 @@ void MainWindow::scroll_callback(float delta)
 
     update_status_bar();
 
+#if defined(Q_OS_DARWIN)
+    ui_->bufferPreview->update();
+#endif
     request_render_update_ = true;
 }
 
 
 void MainWindow::mouse_drag_event(int mouse_x, int mouse_y)
 {
-    const qreal screen_dpi_scale = get_screen_dpi_scale();
-    const QPoint virtual_motion(mouse_x * screen_dpi_scale,
-                                mouse_y * screen_dpi_scale);
+    const QPoint virtual_motion(static_cast<int>(mouse_x),
+                                static_cast<int>(mouse_y));
 
     if (link_views_enabled_) {
         for (auto& stage : stages_)
@@ -178,7 +180,7 @@ void MainWindow::rotate_90_cw()
         Buffer* buffer_comp =
             buffer_obj->get_component<Buffer>("buffer_component");
 
-        buffer_comp->rotate(90.f * M_PI / 180.f);
+        buffer_comp->rotate(static_cast<float>(90.0 * M_PI / 180.0));
     };
 
     if (link_views_enabled_) {
@@ -202,7 +204,7 @@ void MainWindow::rotate_90_ccw()
         Buffer* buffer_comp =
             buffer_obj->get_component<Buffer>("buffer_component");
 
-        buffer_comp->rotate(-90.f * M_PI / 180.f);
+        buffer_comp->rotate(static_cast<float>(-90.0 * M_PI / 180.0));
     };
 
     if (link_views_enabled_) {
