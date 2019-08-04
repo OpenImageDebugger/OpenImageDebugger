@@ -4,6 +4,7 @@
 Module developed for quick testing the ImageWatch shared library
 """
 
+import sys
 import math
 import time
 import threading
@@ -101,8 +102,14 @@ def _gen_buffers(width, height):
 
     tex_arr1 = array.array(types[0]['array'], [int(val) for val in tex1])
     tex_arr2 = array.array(types[1]['array'], tex2)
-    mem1 = memoryview(tex_arr1)
-    mem2 = memoryview(tex_arr2)
+
+    if sys.version_info[0] == 2:
+        mem1 = tex_arr1.buffer_info()
+        mem2 = tex_arr2.buffer_info()
+    else:
+        mem1 = memoryview(tex_arr1)
+        mem2 = memoryview(tex_arr2)
+
     rowstride = width
 
     return {

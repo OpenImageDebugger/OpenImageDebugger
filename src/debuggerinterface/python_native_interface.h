@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
+ * Copyright (c) 2015-2019 GDB ImageWatch contributors
  * (github.com/csantosbh/gdb-imagewatch/)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,6 +31,13 @@
 #include <Python.h>
 
 
+#if PY_MAJOR_VERSION==2
+#define PY_INT_CHECK_FUNC PyInt_Check
+#else
+#define PY_INT_CHECK_FUNC PyLong_Check
+#endif
+
+
 long get_py_int(PyObject* obj);
 
 
@@ -38,6 +45,9 @@ int check_py_string_type(PyObject* obj);
 
 
 void* get_c_ptr_from_py_buffer(PyObject* obj);
+
+
+uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, int tuple_index);
 
 
 void copy_py_string(std::string& dst, PyObject* src);

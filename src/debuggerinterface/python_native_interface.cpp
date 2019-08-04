@@ -38,6 +38,13 @@ long get_py_int(PyObject* obj)
 }
 
 
+uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, int tuple_index)
+{
+    PyObject* tuple_item = PyTuple_GetItem(obj, tuple_index);
+    return reinterpret_cast<uint8_t*>(PyLong_AsVoidPtr(tuple_item));
+}
+
+
 void copy_py_string(std::string& dst, PyObject* src)
 {
     if (PyUnicode_Check(src)) {

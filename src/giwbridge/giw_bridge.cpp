@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
+ * Copyright (c) 2015-2019 GDB ImageWatch contributors
  * (github.com/csantosbh/gdb-imagewatch/)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,58 +23,69 @@
  * IN THE SOFTWARE.
  */
 
-#include <string>
 #include <deque>
 #include <iostream>
+#include <string>
 
 #include <signal.h>
 
-#include "giw_bridge.h"
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
+#include "giw_bridge.h"
 #include "ipc/message_exchange.h"
 
-#include <QProcess>
-#include <QTcpServer>
 #include <QDataStream>
-#include <QTcpSocket>
+#include <QProcess>
 #include <QString>
+#include <QTcpServer>
+#include <QTcpSocket>
+
 
 using namespace std;
 
-struct UiMessage {
-    virtual ~UiMessage() {}
+struct UiMessage
+{
+    virtual ~UiMessage()
+    {
+    }
 };
 
-struct GetObservedSymbolsResponseMessage : public UiMessage {
+struct GetObservedSymbolsResponseMessage : public UiMessage
+{
     std::deque<string> observed_symbols;
 };
 
-struct PlotBufferRequestMessage : public UiMessage {
+struct PlotBufferRequestMessage : public UiMessage
+{
     std::string buffer_name;
 };
 
 class GiwBridge
 {
-public:
-    GiwBridge(int(*plot_callback)(const char*))
+  public:
+    GiwBridge(int (*plot_callback)(const char*))
         : client_(nullptr)
-        , plot_callback_(plot_callback) {}
+        , plot_callback_(plot_callback)
+    {
+    }
 
     bool start()
     {
         // Initialize server
         const uint16_t host_port = 9588; // TODO parameterize
-        if(!server_.listen(QHostAddress::Any, host_port)) {
+        if (!server_.listen(QHostAddress::Any, host_port)) {
             // TODO escalate error
             cerr << "[giw] Could not start TCP server" << endl;
             return false;
         }
 
         // TODO get proper binary path at runtime
-        QString program = "/Users/claudio.fernandes/workspace/pessoal/gdb-imagewatch/build/src/giwwindow.app/Contents/MacOS/giwwindow";
+        QString program =
+            "/Users/claudio.fernandes/workspace/pessoal/gdb-imagewatch/build/"
+            "src/giwwindow.app/Contents/MacOS/giwwindow";
         QStringList arguments;
-        arguments << "-style" << "fusion";
+        arguments << "-style"
+                  << "fusion";
         process_.setProcessChannelMode(QProcess::MergedChannels);
         process_.start(program, arguments);
 
@@ -85,8 +96,7 @@ public:
 
     bool is_window_ready()
     {
-        return client_ != nullptr &&
-               process_.processId() != 0 &&
+        return client_ != nullptr && process_.processId() != 0 &&
                kill(static_cast<pid_t>(process_.processId()), 0) == 0;
     }
 
@@ -95,12 +105,13 @@ public:
         assert(client_ != nullptr);
 
         MessageComposer message_composer;
-        message_composer.push(MessageType::GetObservedSymbols)
-            .send(client_);
+        message_composer.push(MessageType::GetObservedSymbols).send(client_);
 
         auto response = fetch_message(MessageType::GetObservedSymbolsResponse);
-        if(response != nullptr) {
-            return static_cast<GetObservedSymbolsResponseMessage*>(response.get())->observed_symbols;
+        if (response != nullptr) {
+            return static_cast<GetObservedSymbolsResponseMessage*>(
+                       response.get())
+                ->observed_symbols;
         } else {
             return {};
         }
@@ -122,11 +133,11 @@ public:
         try_read_incoming_messages(static_cast<int>(1000.0 / 5.0));
 
         unique_ptr<UiMessage> plot_request_message;
-        while((plot_request_message = try_get_stored_message(
-                   MessageType::PlotBufferRequest)) != nullptr) {
+        while ((plot_request_message = try_get_stored_message(
+                    MessageType::PlotBufferRequest)) != nullptr) {
             const PlotBufferRequestMessage* msg =
-                    dynamic_cast<PlotBufferRequestMessage*>(
-                        plot_request_message.get());
+                dynamic_cast<PlotBufferRequestMessage*>(
+                    plot_request_message.get());
             plot_callback_(msg->buffer_name.c_str());
         }
     }
@@ -141,7 +152,8 @@ public:
                      int buff_stride,
                      BufferType buff_type,
                      uint8_t* buff_ptr,
-                     size_t buff_length) {
+                     size_t buff_length)
+    {
         MessageComposer message_composer;
         message_composer.push(MessageType::PlotBufferContents)
             .push(variable_name_str)
@@ -157,11 +169,12 @@ public:
             .send(client_);
     }
 
-    ~GiwBridge() {
+    ~GiwBridge()
+    {
         process_.kill();
     }
 
-private:
+  private:
     QProcess process_;
     QTcpServer server_;
     QTcpSocket* client_;
@@ -170,10 +183,12 @@ private:
 
     std::map<MessageType, std::unique_ptr<UiMessage>> received_messages_;
 
-    std::unique_ptr<UiMessage> try_get_stored_message(const MessageType& msg_type) {
+    std::unique_ptr<UiMessage>
+    try_get_stored_message(const MessageType& msg_type)
+    {
         auto find_msg_handler = received_messages_.find(msg_type);
 
-        if(find_msg_handler != received_messages_.end()) {
+        if (find_msg_handler != received_messages_.end()) {
             unique_ptr<UiMessage> result = std::move(find_msg_handler->second);
             received_messages_.erase(find_msg_handler);
             return result;
@@ -183,7 +198,8 @@ private:
     }
 
 
-    void try_read_incoming_messages(int msecs = 3000) {
+    void try_read_incoming_messages(int msecs = 3000)
+    {
         assert(client_ != nullptr);
 
         do {
@@ -202,13 +218,14 @@ private:
                 received_messages_[header] = decode_plot_buffer_request();
                 break;
             case MessageType::GetObservedSymbolsResponse:
-                received_messages_[header] = decode_get_observed_symbols_response();
+                received_messages_[header] =
+                    decode_get_observed_symbols_response();
                 break;
             default:
                 cerr << "[giw] Received message with incorrect header" << endl;
                 break;
             }
-        } while(client_->bytesAvailable() > 0);
+        } while (client_->bytesAvailable() > 0);
     }
 
 
@@ -229,17 +246,18 @@ private:
         auto response = new GetObservedSymbolsResponseMessage();
 
         MessageDecoder message_decoder(client_);
-        message_decoder.read<std::deque<std::string>,
-                std::string>(response->observed_symbols);
+        message_decoder.read<std::deque<std::string>, std::string>(
+            response->observed_symbols);
 
         return unique_ptr<UiMessage>(response);
     }
 
-    std::unique_ptr<UiMessage> fetch_message(const MessageType& msg_type) {
+    std::unique_ptr<UiMessage> fetch_message(const MessageType& msg_type)
+    {
         // Return message if it was already received before
         auto result = try_get_stored_message(msg_type);
 
-        if(result != nullptr) {
+        if (result != nullptr) {
             return result;
         }
 
@@ -250,10 +268,12 @@ private:
     }
 
 
-    void wait_for_client() {
-        if(client_ == nullptr) {
-            if(!server_.waitForNewConnection(10000)) {
-                cerr << "[giw] No clients connected to ImageWatch server" << endl;
+    void wait_for_client()
+    {
+        if (client_ == nullptr) {
+            if (!server_.waitForNewConnection(10000)) {
+                cerr << "[giw] No clients connected to ImageWatch server"
+                     << endl;
             }
             client_ = server_.nextPendingConnection();
         }
@@ -261,9 +281,9 @@ private:
 };
 
 
-AppHandler giw_initialize(int(*plot_callback)(const char*))
+AppHandler giw_initialize(int (*plot_callback)(const char*))
 {
-    GiwBridge *app = new GiwBridge(plot_callback);
+    GiwBridge* app = new GiwBridge(plot_callback);
     return static_cast<AppHandler>(app);
 }
 
@@ -321,9 +341,9 @@ PyObject* giw_get_observed_buffers(AppHandler handler)
         return nullptr;
     }
 
-    auto observed_symbols         = app->get_observed_symbols();
-    PyObject* py_observed_symbols = PyList_New(
-                static_cast<Py_ssize_t>(observed_symbols.size()));
+    auto observed_symbols = app->get_observed_symbols();
+    PyObject* py_observed_symbols =
+        PyList_New(static_cast<Py_ssize_t>(observed_symbols.size()));
 
     int observed_symbols_sentinel = static_cast<int>(observed_symbols.size());
     for (int i = 0; i < observed_symbols_sentinel; ++i) {
@@ -342,8 +362,7 @@ PyObject* giw_get_observed_buffers(AppHandler handler)
 }
 
 
-void giw_set_available_symbols(AppHandler handler,
-                               PyObject* available_vars_py)
+void giw_set_available_symbols(AppHandler handler, PyObject* available_vars_py)
 {
     assert(PyList_Check(available_vars_py));
 
@@ -372,7 +391,7 @@ void giw_run_event_loop(AppHandler handler)
 {
     GiwBridge* app = static_cast<GiwBridge*>(handler);
 
-    if(app == nullptr) {
+    if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
                            "giw_run_event_loop received null application "
                            "handler");
@@ -446,13 +465,25 @@ void giw_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
      */
     CHECK_FIELD_TYPE(variable_name, check_py_string_type, "plot_buffer");
     CHECK_FIELD_TYPE(display_name, check_py_string_type, "plot_buffer");
-    CHECK_FIELD_TYPE(pointer, PyMemoryView_Check, "plot_buffer");
-    CHECK_FIELD_TYPE(width, PyLong_Check, "plot_buffer");
-    CHECK_FIELD_TYPE(height, PyLong_Check, "plot_buffer");
-    CHECK_FIELD_TYPE(channels, PyLong_Check, "plot_buffer");
-    CHECK_FIELD_TYPE(type, PyLong_Check, "plot_buffer");
-    CHECK_FIELD_TYPE(row_stride, PyLong_Check, "plot_buffer");
+    CHECK_FIELD_TYPE(width, PY_INT_CHECK_FUNC, "plot_buffer");
+    CHECK_FIELD_TYPE(height, PY_INT_CHECK_FUNC, "plot_buffer");
+    CHECK_FIELD_TYPE(channels, PY_INT_CHECK_FUNC, "plot_buffer");
+    CHECK_FIELD_TYPE(type, PY_INT_CHECK_FUNC, "plot_buffer");
+    CHECK_FIELD_TYPE(row_stride, PY_INT_CHECK_FUNC, "plot_buffer");
     CHECK_FIELD_TYPE(pixel_layout, check_py_string_type, "plot_buffer");
+
+    // CHECK_FIELD_TYPE(pointer, PyMemoryView_Check, "plot_buffer");
+    uint8_t* buff_ptr;
+    if (PyMemoryView_Check(py_pointer) != 0) {
+        buff_ptr = reinterpret_cast<uint8_t*>(get_c_ptr_from_py_buffer(py_pointer));
+    }
+    else if (PyTuple_Check(py_pointer) != 0) {
+        buff_ptr = get_c_ptr_from_py_tuple(py_pointer, 0);
+    }
+    else {
+        RAISE_PY_EXCEPTION(PyExc_TypeError, "Key pointer is wrong TODO");
+        return;
+    }
 
     /*
      * Send buffer contents
@@ -465,17 +496,16 @@ void giw_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     copy_py_string(display_name_str, py_display_name);
     copy_py_string(pixel_layout_str, py_pixel_layout);
 
-    int buff_width = get_py_int(py_width);
-    int buff_height = get_py_int(py_height);
+    int buff_width    = get_py_int(py_width);
+    int buff_height   = get_py_int(py_height);
     int buff_channels = get_py_int(py_channels);
-    int buff_stride = get_py_int(py_row_stride);
+    int buff_stride   = get_py_int(py_row_stride);
 
-    uint8_t* buff_ptr = reinterpret_cast<uint8_t*>(
-                get_c_ptr_from_py_buffer(py_pointer));
     BufferType buff_type = static_cast<BufferType>(get_py_int(py_type));
 
-    size_t buff_length = static_cast<size_t>(buff_width * buff_height *
-            buff_channels) * typesize(buff_type);
+    size_t buff_length =
+        static_cast<size_t>(buff_width * buff_height * buff_channels) *
+        typesize(buff_type);
 
     app->plot_buffer(variable_name_str,
                      display_name_str,
