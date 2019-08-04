@@ -221,7 +221,11 @@ public Q_SLOTS:
     vec4 get_stage_coordinates(float pos_window_x, float pos_window_y);
 
     ///
-    // Networking communication with bridge
+    // Communication with debugger bridge
+    void decode_set_available_symbols();
+
+    void respond_get_observed_symbols();
+
     void decode_plot_buffer_contents();
 
     void decode_incoming_messages();

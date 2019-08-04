@@ -35,6 +35,7 @@ SOURCES += \
   ui/main_window/auto_contrast.cpp \
   ui/main_window/initialization.cpp \
   ui/main_window/main_window.cpp \
+  ui/main_window/message_processing.cpp \
   ui/main_window/ui_events.cpp \
   ui/symbol_completer.cpp \
   ui/symbol_search_input.cpp \
@@ -52,18 +53,18 @@ SOURCES += \
   visualization/shaders/buffer_vs.cpp \
   visualization/shaders/text_fs.cpp \
   visualization/shaders/text_vs.cpp \
-  visualization/stage.cpp
+  visualization/stage.cpp \
 
 # Qt related headers
 HEADERS += \
   debuggerinterface/preprocessor_directives.h \
+  ui/decorated_line_edit.h \
   ui/gl_canvas.h \
+  ui/gl_text_renderer.h \
+  ui/go_to_widget.h \
   ui/main_window/main_window.h \
   ui/symbol_completer.h \
   ui/symbol_search_input.h \
-  ui/gl_text_renderer.h \
-  ui/go_to_widget.h \
-  ui/decorated_line_edit.h
 
 TARGET = giwwindow
 TEMPLATE = app

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
+ * Copyright (c) 2015-2019 GDB ImageWatch contributors
  * (github.com/csantosbh/gdb-imagewatch/)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,4 +27,21 @@
 
 #include "message_exchange.h"
 
+MessageBlock::~MessageBlock()
+{
+}
 
+StringBlock::StringBlock(const std::string &value)
+    : data_(value)
+{
+}
+
+size_t StringBlock::size() const
+{
+    return data_.size();
+}
+
+const uint8_t *StringBlock::data() const
+{
+    return reinterpret_cast<const uint8_t*>(data_.data());
+}
