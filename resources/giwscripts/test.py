@@ -51,7 +51,9 @@ def _gen_color(pos, k, f_a, f_b):
     Generates a color for the pixel at (pos[0], pos[1]) with coefficients k[0]
     and k[1], and colouring functions f_a and f_b that map R->[-1, 1].
     """
-    return (f_a(pos[0] * f_b(pos[1]/k[0])/k[1]) + 1) * 255 / 2
+    p0 = float(pos[0])
+    p1 = float(pos[1])
+    return (f_a(p0 * f_b(p1/k[0])/k[1]) + 1.0) * 255.0 / 2.0
 
 
 def _gen_buffers(width, height):
@@ -78,11 +80,11 @@ def _gen_buffers(width, height):
             buffer_pos = pos_y * channels[0] * width + channels[0] * pos_x
 
             tex1[buffer_pos + 0] = _gen_color(
-                pixel_pos, [20, 80], math.cos, math.cos)
+                pixel_pos, [20.0, 80.0], math.cos, math.cos)
             tex1[buffer_pos + 1] = _gen_color(
-                pixel_pos, [50, 200], math.sin, math.cos)
+                pixel_pos, [50.0, 200.0], math.sin, math.cos)
             tex1[buffer_pos + 2] = _gen_color(
-                pixel_pos, [30, 120], math.cos, math.cos)
+                pixel_pos, [30.0, 120.0], math.cos, math.cos)
 
             # Buffer 2: Mandelbrot set
             pixel_pos = complex((pos_x-c_x), (pos_y-c_y)) * scale
@@ -104,8 +106,8 @@ def _gen_buffers(width, height):
     tex_arr2 = array.array(types[1]['array'], tex2)
 
     if sys.version_info[0] == 2:
-        mem1 = tex_arr1.buffer_info()
-        mem2 = tex_arr2.buffer_info()
+        mem1 = buffer(tex_arr1)
+        mem2 = buffer(tex_arr2)
     else:
         mem1 = memoryview(tex_arr1)
         mem2 = memoryview(tex_arr2)
