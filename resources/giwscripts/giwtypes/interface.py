@@ -40,7 +40,7 @@ def debug_symbol_observable(func):
 
     return wrapper
 
-class TypeInspectorInterface():
+class TypeInspectorInterface(object):
     """
     This interface defines methods to be implemented by type inspectors that
     extract information required for plotting buffers.

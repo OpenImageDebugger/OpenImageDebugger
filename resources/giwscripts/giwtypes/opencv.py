@@ -26,8 +26,6 @@ class Mat(interface.TypeInspectorInterface):
     """
     def get_buffer_metadata(self, obj_name, picked_obj, debugger_bridge):
         buffer = debugger_bridge.get_casted_pointer('char', picked_obj['data'])
-        if buffer == 0x0:
-            raise Exception('Received null buffer!')
 
         width = int(picked_obj['cols'])
         height = int(picked_obj['rows'])

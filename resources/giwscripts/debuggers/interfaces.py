@@ -30,7 +30,10 @@ class BridgeInterface():
     def register_event_handlers(self, events):
         """
         Register (callable) listeners to events defined in the dict 'events':
+        TODO update this doc. no longer a dict? what are the params for callables? and return types? what are these event handlers? how do they interact with this inteface?
          'stop': When a breakpoint is hit
+         exit_handler
+         plot_handler
         """
         raise NotImplementedError("Method is not implemented")
 

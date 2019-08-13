@@ -10,10 +10,11 @@ import importlib
 import pkgutil
 
 from giwscripts import giwtypes
+
 from giwscripts.giwtypes.interface import TypeInspectorInterface
 
 
-class TypeBridge:
+class TypeBridge(object):
     """
     Class responsible for loading and interfacing with all modules implementing
     the TypeInspectorInterface

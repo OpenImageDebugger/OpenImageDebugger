@@ -80,9 +80,6 @@ class EigenXX(interface.TypeInspectorInterface):
             buffer = debugger_bridge.get_casted_pointer(
                 current_type, picked_obj['m_storage']['m_data']['array'])
 
-        if buffer == 0x0:
-            raise Exception('Received null buffer!')
-
         # Set row stride and pixel layout
         pixel_layout = 'bgra'
         row_stride = width

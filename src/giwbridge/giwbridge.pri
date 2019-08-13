@@ -5,6 +5,9 @@ CONFIG += $$BUILD_MODE console
 QT += \
   core
 
+QT -= \
+  gui
+
 SOURCES += \
   ../giw_bridge.cpp \
   ../../debuggerinterface/python_native_interface.cpp \

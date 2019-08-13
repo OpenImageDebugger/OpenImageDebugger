@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import array
+from giwscripts import symbols
 
 """
 Classes related to exposing an interface to the ImageWatch window
@@ -70,6 +72,7 @@ class GdbImageWatchWindow():
         self._event_loop_wait_time = 1.0/60.0
         self._previous_evloop_time = GdbImageWatchWindow.__get_time_ms()
         self._plot_variable_c_callback = FETCH_BUFFER_CBK_TYPE(self.plot_variable)
+
 
     @staticmethod
     def __get_time_ms():

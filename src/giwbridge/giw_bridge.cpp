@@ -60,6 +60,28 @@ struct PlotBufferRequestMessage : public UiMessage
     std::string buffer_name;
 };
 
+class PyGILRAII
+{
+  public:
+    PyGILRAII()
+    {
+        _py_gil_state = PyGILState_Ensure();
+    }
+    PyGILRAII(const PyGILRAII&)  = delete;
+    PyGILRAII(const PyGILRAII&&) = delete;
+
+    PyGILRAII& operator=(const PyGILRAII&) = delete;
+    PyGILRAII& operator=(const PyGILRAII&&) = delete;
+
+    ~PyGILRAII()
+    {
+        PyGILState_Release(_py_gil_state);
+    }
+
+  private:
+    PyGILState_STATE _py_gil_state;
+};
+
 class GiwBridge
 {
   public:
@@ -283,6 +305,8 @@ class GiwBridge
 
 AppHandler giw_initialize(int (*plot_callback)(const char*))
 {
+    PyGILRAII py_gil_raii;
+
     GiwBridge* app = new GiwBridge(plot_callback);
     return static_cast<AppHandler>(app);
 }
@@ -290,6 +314,8 @@ AppHandler giw_initialize(int (*plot_callback)(const char*))
 
 void giw_cleanup(AppHandler handler)
 {
+    PyGILRAII py_gil_raii;
+
     GiwBridge* app = static_cast<GiwBridge*>(handler);
 
     if (app == nullptr) {
@@ -304,6 +330,8 @@ void giw_cleanup(AppHandler handler)
 
 void giw_exec(AppHandler handler)
 {
+    PyGILRAII py_gil_raii;
+
     GiwBridge* app = static_cast<GiwBridge*>(handler);
 
     if (app == nullptr) {
@@ -318,6 +346,8 @@ void giw_exec(AppHandler handler)
 
 int giw_is_window_ready(AppHandler handler)
 {
+    PyGILRAII py_gil_raii;
+
     GiwBridge* app = static_cast<GiwBridge*>(handler);
 
     if (app == nullptr) {
@@ -332,6 +362,8 @@ int giw_is_window_ready(AppHandler handler)
 
 PyObject* giw_get_observed_buffers(AppHandler handler)
 {
+    PyGILRAII py_gil_raii;
+
     GiwBridge* app = static_cast<GiwBridge*>(handler);
 
     if (app == nullptr) {
@@ -364,6 +396,8 @@ PyObject* giw_get_observed_buffers(AppHandler handler)
 
 void giw_set_available_symbols(AppHandler handler, PyObject* available_vars_py)
 {
+    PyGILRAII py_gil_raii;
+
     assert(PyList_Check(available_vars_py));
 
     GiwBridge* app = static_cast<GiwBridge*>(handler);
@@ -389,6 +423,8 @@ void giw_set_available_symbols(AppHandler handler, PyObject* available_vars_py)
 
 void giw_run_event_loop(AppHandler handler)
 {
+    PyGILRAII py_gil_raii;
+
     GiwBridge* app = static_cast<GiwBridge*>(handler);
 
     if (app == nullptr) {
@@ -404,6 +440,9 @@ void giw_run_event_loop(AppHandler handler)
 
 void giw_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 {
+    PyGILRAII py_gil_raii;
+
+
     GiwBridge* app = static_cast<GiwBridge*>(handler);
 
     if (app == nullptr) {
@@ -426,8 +465,8 @@ void giw_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
         PyDict_GetItemString(buffer_metadata, "variable_name");
     PyObject* py_display_name =
         PyDict_GetItemString(buffer_metadata, "display_name");
-    PyObject* py_pointer  = PyDict_GetItemString(buffer_metadata, "pointer");
-    PyObject* py_width    = PyDict_GetItemString(buffer_metadata, "width");
+    PyObject* py_pointer = PyDict_GetItemString(buffer_metadata, "pointer");
+    PyObject* py_width   = PyDict_GetItemString(buffer_metadata, "width");
     PyObject* py_height   = PyDict_GetItemString(buffer_metadata, "height");
     PyObject* py_channels = PyDict_GetItemString(buffer_metadata, "channels");
     PyObject* py_type     = PyDict_GetItemString(buffer_metadata, "type");
@@ -471,6 +510,7 @@ void giw_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     CHECK_FIELD_TYPE(type, PY_INT_CHECK_FUNC, "plot_buffer");
     CHECK_FIELD_TYPE(row_stride, PY_INT_CHECK_FUNC, "plot_buffer");
     CHECK_FIELD_TYPE(pixel_layout, check_py_string_type, "plot_buffer");
+
 
     // Retrieve pointer to buffer
     uint8_t* buff_ptr;
