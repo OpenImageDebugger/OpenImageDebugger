@@ -7,6 +7,7 @@ Code responsible with directly interacting with LLDB
 import lldb
 import time
 import threading
+import sys
 
 from giwscripts import sysinfo
 from giwscripts.debuggers.interfaces import BridgeInterface
@@ -82,7 +83,16 @@ class LldbBridge(BridgeInterface):
         # TODO determine frame index
         frame = thread.GetFrameAtIndex(0)
         process = thread.GetProcess()
-        picked_obj = frame.FindVariable(variable)
+
+        # TODO refactor out
+        field_sequence = variable.split('.')
+        picked_obj = frame.FindVariable(field_sequence[0])  # type: lldb.SBValue
+        for e in range(1, len(field_sequence)):
+            for m in range(picked_obj.GetNumChildren()):
+                child_member = picked_obj.GetChildAtIndex(m)
+                if child_member.name == field_sequence[e]:
+                    picked_obj = child_member
+                    break
 
         buffer_metadata = self._type_bridge.get_buffer_metadata(
             variable, SymbolWrapper(picked_obj), self)
@@ -109,7 +119,12 @@ class LldbBridge(BridgeInterface):
         # exception
 
         buffer_metadata['variable_name'] = variable
-        buffer_metadata['pointer'] = buffer(process.ReadMemory(\
+        # TODO check if memoryview works on python2; if it does, no need to use buffer
+        if sys.version_info[0] == 2:
+            buffer_metadata['pointer'] = buffer(process.ReadMemory(
+                    buffer_metadata['pointer'], bufsize, lldb.SBError()))
+        else:
+            buffer_metadata['pointer'] = memoryview(process.ReadMemory(
                 buffer_metadata['pointer'], bufsize, lldb.SBError()))
 
         return buffer_metadata
@@ -121,6 +136,18 @@ class LldbBridge(BridgeInterface):
     def get_casted_pointer(self, typename, lldb_object):
         return lldb_object.get_casted_pointer()
 
+    def _get_observable_children_members(self, symbol, owner_name, output_set):
+        # type: (LldbBridge, lldb.SBValue, str, set) -> None
+        for member_idx in range(symbol.GetNumChildren()):
+            symbol_member = symbol.GetChildAtIndex(member_idx)  # type: lldb.SBValue
+            symbol_wrapper = SymbolWrapper(symbol_member)
+            if self._type_bridge.is_symbol_observable(symbol_wrapper,
+                                                      symbol_member.name):
+                output_set.add('%s.%s' % (owner_name, symbol_member.name))
+            else:
+                appended_prefix = '%s.%s' % (owner_name, symbol_member.name)
+                self._get_observable_children_members(symbol_member, appended_prefix, output_set)
+
     def get_available_symbols(self):
         frame = self.get_frame()
         if not frame:
@@ -128,11 +155,12 @@ class LldbBridge(BridgeInterface):
 
         available_symbols = set()
 
-        # TODO recurse fields
         for symbol in frame.GetVariables(True, True, True, True):
             symbol_wrapper = SymbolWrapper(symbol)
             if self._type_bridge.is_symbol_observable(symbol_wrapper, symbol.name):
                 available_symbols.add(symbol.name)
+            # Check for members of current field, if it is a class
+            self._get_observable_children_members(symbol, symbol.name, available_symbols)
 
         return available_symbols
 

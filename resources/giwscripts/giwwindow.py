@@ -69,7 +69,7 @@ class GdbImageWatchWindow():
 
         # UI handler
         self._native_handler = None
-        self._event_loop_wait_time = 1.0/60.0
+        self._event_loop_wait_time = 1.0/30.0
         self._previous_evloop_time = GdbImageWatchWindow.__get_time_ms()
         self._plot_variable_c_callback = FETCH_BUFFER_CBK_TYPE(self.plot_variable)
 

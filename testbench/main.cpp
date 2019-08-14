@@ -252,6 +252,18 @@ void computeSumTable(int W, int H, int C, Mat& matrix) {
     return;
 }
 
+template<typename T>
+void doSimpleCalculation(int W, int H, int C, Mat& matrix) {
+    Mat::Iterator<T> out(matrix);
+    for(int y = 0; y < H; ++y) {
+        for(int x = 0; x < W; ++x) {
+            for(int c = 0; c < C; ++c) {
+                out(y, x, c) = x;
+            }
+        }
+    }
+}
+
 class TestFather {
 protected:
     Mat TestField;
@@ -293,7 +305,7 @@ private:
         i(0,0,2) = 0;
         ones<uint8_t>(W, H, 1, TestField);
         i(0,0,0) = 255;
-        computeSumTable<uint8_t>(W, H, C, TestField);
+        doSimpleCalculation<uint8_t>(W, H, C, TestField);
         return;
     }
 };
