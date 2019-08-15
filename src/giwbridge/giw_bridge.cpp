@@ -94,8 +94,7 @@ class GiwBridge
     bool start()
     {
         // Initialize server
-        const uint16_t host_port = 9588; // TODO parameterize
-        if (!server_.listen(QHostAddress::Any, host_port)) {
+        if (!server_.listen(QHostAddress::Any)) {
             // TODO escalate error
             cerr << "[giw] Could not start TCP server" << endl;
             return false;
@@ -106,8 +105,8 @@ class GiwBridge
             "/Users/claudio.fernandes/workspace/pessoal/gdb-imagewatch/build/"
             "src/giwwindow.app/Contents/MacOS/giwwindow";
         QStringList arguments;
-        arguments << "-style"
-                  << "fusion";
+        arguments << "-style" << "fusion"
+                  << "-p" << QString::number(server_.serverPort());
         process_.setProcessChannelMode(QProcess::MergedChannels);
         process_.start(program, arguments);
 

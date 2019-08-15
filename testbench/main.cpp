@@ -99,7 +99,11 @@ public:
         }
 
         T& operator()(int row, int col, int chan) {
-            return (static_cast<T*>(m.data))[row*m.step.buf[0]/sizeof(T) + col*m.step.buf[1] + chan];
+            size_t channels = m.step.buf[1];
+            size_t idx = row * m.cols * channels + col*channels + chan;
+            assert(idx >= 0);
+            assert(idx < m.rows * m.cols * m.step.buf[1]);
+            return (static_cast<T*>(m.data))[idx];
         }
 
         Mat &m;
