@@ -100,19 +100,22 @@ class GiwBridge
             return false;
         }
 
-        // TODO get proper binary path at runtime
-        QString program =
-            "/Users/claudio.fernandes/workspace/pessoal/gdb-imagewatch/build/"
-            "src/giwwindow.app/Contents/MacOS/giwwindow";
+        string windowBinaryPath = this->giw_path_ + "/giwwindow";
         QStringList arguments;
-        arguments << "-style" << "fusion"
+        arguments << "-style"
+                  << "fusion"
                   << "-p" << QString::number(server_.serverPort());
         process_.setProcessChannelMode(QProcess::MergedChannels);
-        process_.start(program, arguments);
+        process_.start(QString::fromStdString(windowBinaryPath), arguments);
 
         wait_for_client();
 
         return client_ != nullptr;
+    }
+
+    void set_path(const string& giw_path)
+    {
+        giw_path_ = giw_path;
     }
 
     bool is_window_ready()
@@ -199,6 +202,7 @@ class GiwBridge
     QProcess process_;
     QTcpServer server_;
     QTcpSocket* client_;
+    string giw_path_;
 
     int (*plot_callback_)(const char*);
 
@@ -302,11 +306,33 @@ class GiwBridge
 };
 
 
-AppHandler giw_initialize(int (*plot_callback)(const char*))
+AppHandler giw_initialize(int (*plot_callback)(const char*),
+                          PyObject* optional_parameters)
 {
     PyGILRAII py_gil_raii;
 
+    if (optional_parameters != nullptr && !PyDict_Check(optional_parameters)) {
+        RAISE_PY_EXCEPTION(
+            PyExc_TypeError,
+            "Invalid second parameter given to giw_initialize (was expecting"
+            " a dict).");
+        return nullptr;
+    }
+
+    /*
+     * Get optional fields
+     */
+    PyObject* py_giw_path =
+        PyDict_GetItemString(optional_parameters, "giw_path");
+
     GiwBridge* app = new GiwBridge(plot_callback);
+
+    if (py_giw_path) {
+        string giw_path_str;
+        copy_py_string(giw_path_str, py_giw_path);
+        app->set_path(giw_path_str);
+    }
+
     return static_cast<AppHandler>(app);
 }
 
@@ -464,8 +490,8 @@ void giw_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
         PyDict_GetItemString(buffer_metadata, "variable_name");
     PyObject* py_display_name =
         PyDict_GetItemString(buffer_metadata, "display_name");
-    PyObject* py_pointer = PyDict_GetItemString(buffer_metadata, "pointer");
-    PyObject* py_width   = PyDict_GetItemString(buffer_metadata, "width");
+    PyObject* py_pointer  = PyDict_GetItemString(buffer_metadata, "pointer");
+    PyObject* py_width    = PyDict_GetItemString(buffer_metadata, "width");
     PyObject* py_height   = PyDict_GetItemString(buffer_metadata, "height");
     PyObject* py_channels = PyDict_GetItemString(buffer_metadata, "channels");
     PyObject* py_type     = PyDict_GetItemString(buffer_metadata, "type");

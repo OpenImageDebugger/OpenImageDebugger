@@ -68,7 +68,7 @@ HEADERS += \
 
 TARGET = giwwindow
 TEMPLATE = app
-target.path = $$PREFIX/bin/gdb-imagewatch/
+target.path = $$PREFIX/gdb-imagewatch/
 
 INSTALLS += \
   target

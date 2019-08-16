@@ -52,10 +52,13 @@ typedef void* AppHandler;
  *
  * @param plot_callback  Callback function to be called when the user requests
  *     a symbol name from the giw window
+ * @param optional_parameters  Dictionary with the following optional members:
+ *   - giw_path  Path where the plugin is located
  * @return  Application context
  */
 GIW_API
-AppHandler giw_initialize(int(*plot_callback)(const char*));
+AppHandler giw_initialize(int (*plot_callback)(const char*),
+                          PyObject* optional_parameters);
 
 /**
  * Cleanup and close GIW user interface

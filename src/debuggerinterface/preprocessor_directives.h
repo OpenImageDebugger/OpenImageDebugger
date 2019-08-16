@@ -38,15 +38,18 @@
     PyGILState_Release(gstate);
 
 
-#define CHECK_FIELD_PROVIDED(name, current_ctx_name)                  \
+#define CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, ret)         \
     if (py_##name == nullptr) {                                       \
         RAISE_PY_EXCEPTION(                                           \
             PyExc_KeyError,                                           \
             "Missing key in dictionary provided to " current_ctx_name \
             ": Was expecting <" #name "> key");                       \
-        return;                                                       \
+        return ret;                                                   \
     }
 
+#define __EMPTY_PARAMETER
+#define CHECK_FIELD_PROVIDED(name, current_ctx_name) \
+    CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, __EMPTY_PARAMETER)
 
 #define CHECK_FIELD_TYPE(name, type_checker_funct, current_ctx_name)    \
     if (type_checker_funct(py_##name) == 0) {                           \

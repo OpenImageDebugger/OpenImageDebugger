@@ -7,8 +7,8 @@ PKGCONFIG += python2
 message(GDB-ImageWatch Python2 Bridge build mode: $$BUILD_MODE)
 
 TARGET = giwbridge_python2
-target.path = $$PREFIX/bin/gdb-imagewatch/
+target.path = $$BRIDGE_INSTALL_FOLDER
 
 INSTALLS += \
-  target
-
+  target \
+  $$SCRIPT_INSTALLS

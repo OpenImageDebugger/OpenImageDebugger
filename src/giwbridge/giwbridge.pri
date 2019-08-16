@@ -31,3 +31,13 @@ linux-g++ {
 
 INCLUDEPATH += \
   $$PWD/../
+
+# Deployment settings
+macx {
+    BRIDGE_INSTALL_FOLDER = $$PREFIX/gdb-imagewatch/giwwindow.app/Contents/MacOS
+}
+linux {
+    BRIDGE_INSTALL_FOLDER = $$PREFIX/gdb-imagewatch/
+}
+
+include($$PWD/../../resources/deployscripts.pri)

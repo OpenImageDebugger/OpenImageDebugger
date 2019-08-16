@@ -25,6 +25,7 @@ class GdbImageWatchWindow():
     """
     def __init__(self, script_path, bridge):
         self._bridge = bridge
+        self._script_path = script_path
 
         # Request ctypes to load libGL before the native giwwindow does; this
         # fixes an issue on Ubuntu machines with nvidia drivers. For more
@@ -37,7 +38,7 @@ class GdbImageWatchWindow():
             script_path + '/' + GdbImageWatchWindow.__get_library_name())
 
         # libgiw API
-        self._lib.giw_initialize.argtypes = [FETCH_BUFFER_CBK_TYPE]
+        self._lib.giw_initialize.argtypes = [FETCH_BUFFER_CBK_TYPE, ctypes.py_object]
         self._lib.giw_initialize.restype = ctypes.c_void_p
 
         self._lib.giw_cleanup.argtypes = [ctypes.c_void_p]
@@ -172,7 +173,8 @@ class GdbImageWatchWindow():
     def initialize_window(self):
         # Initialize GIW lib
         self._native_handler = self._lib.giw_initialize(
-            self._plot_variable_c_callback)
+            self._plot_variable_c_callback,
+            {'giw_path': self._script_path})
 
         # Launch UI
         self._lib.giw_exec(self._native_handler)
