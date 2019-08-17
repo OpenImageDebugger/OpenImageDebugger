@@ -8,8 +8,6 @@ Classes related to exposing an interface to the ImageWatch window
 
 import ctypes
 import ctypes.util
-import signal
-import threading
 import platform
 import sys
 import time
@@ -18,7 +16,7 @@ FETCH_BUFFER_CBK_TYPE = ctypes.CFUNCTYPE(ctypes.c_int,
                                          ctypes.c_char_p)
 
 
-class GdbImageWatchWindow():
+class GdbImageWatchWindow(object):
     """
     Python interface for the imagewatch window, which is implemented as a
     shared library.
@@ -183,7 +181,7 @@ class GdbImageWatchWindow():
         self._bridge.queue_request(self.run_event_loop)
 
 
-class DeferredVariablePlotter():
+class DeferredVariablePlotter(object):
     """
     Instances of this class are callable objects whose __call__ method triggers
     a buffer plot command. Useful for deferring the plot command to a safe

@@ -30,7 +30,9 @@ def lldb_stop_hook_handler(debugger, command, result, dict):
 
 def __lldb_init_module(debugger, internal_dict):
     from giwscripts.debuggers import lldbbridge
-    debugger.HandleCommand("command script add -f gdb_imagewatch.lldb_stop_hook_handler HandleHookStopOnTarget")
+    debugger.HandleCommand("command script add -f "
+                           "gdb_imagewatch.lldb_stop_hook_handler "
+                           "HandleHookStopOnTarget")
     debugger.HandleCommand('target stop-hook add -o "HandleHookStopOnTarget"')
 
 

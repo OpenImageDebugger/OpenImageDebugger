@@ -262,7 +262,7 @@ void doSimpleCalculation(int W, int H, int C, Mat& matrix) {
     for(int y = 0; y < H; ++y) {
         for(int x = 0; x < W; ++x) {
             for(int c = 0; c < C; ++c) {
-                out(y, x, c) = x;
+                out(y, x, c) = (sin(x / 64.0f)*0.5f + 0.5f)*255;
             }
         }
     }

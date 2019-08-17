@@ -72,7 +72,7 @@ class Mat(interface.TypeInspectorInterface):
         """
         # Check if symbol type is the expected buffer
         symbol_type = str(symbol.type)
-        type_regex = r'(const\s+)?cv::Mat(\s+?[*&])?'
+        type_regex = r'(const\s+)?cv::Mat(\s+?[*&])?$'
         return re.match(type_regex, symbol_type) is not None
 
 class CvMat(interface.TypeInspectorInterface):

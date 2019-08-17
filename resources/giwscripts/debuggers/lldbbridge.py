@@ -10,19 +10,22 @@ import threading
 import sys
 
 from giwscripts import sysinfo
-from giwscripts.debuggers.interfaces import BridgeInterface
+from giwscripts.debuggers.interfaces import BridgeInterface, \
+    DebuggerSymbolReference
 
 instance = None
+
 
 class LldbBridge(BridgeInterface):
     """
     LLDB Bridge class, exposing the common expected interface for the ImageWatch
     to access the required buffer data and interact with the debugger.
     """
+
     def __init__(self, type_bridge):
+        # type: (TypeInspectorInterface) -> None
         global instance
         instance = self
-
         self._type_bridge = type_bridge
         self._pending_requests = []
         self._lock = threading.Lock()
@@ -46,7 +49,7 @@ class LldbBridge(BridgeInterface):
 
             while pending_events:
                 event = pending_events.pop(0)
-                if event=='stop':
+                if event == 'stop':
                     self._event_handler.stop_handler(event)
 
             while requests_to_process:
@@ -56,21 +59,21 @@ class LldbBridge(BridgeInterface):
             time.sleep(0.1)
 
     def queue_request(self, callable_request):
+        # type: (Callable[[None],None]) -> None
         with self._lock:
             self._pending_requests.append(callable_request)
 
-    def get_frame(self):
+    def _get_frame(self):
+        # type: () -> lldb.SBFrame
         thread = self.get_thread(lldb.debugger)
         if not thread:
             return None
-        # TODO find out current frame
-        curr_frame = 0
-        return thread.GetFrameAtIndex(curr_frame)
+        return thread.GetSelectedFrame()
 
     def get_thread(self, debugger):
         for t in self.get_process(debugger):
             if t.GetStopReason() != lldb.eStopReasonNone and \
-               t.GetStopReason() != lldb.eStopReasonInvalid:
+                    t.GetStopReason() != lldb.eStopReasonInvalid:
                 return t
 
         return None
@@ -114,7 +117,7 @@ class LldbBridge(BridgeInterface):
         # TODO check if memoryview works on python2; if it does, no need to use buffer
         if sys.version_info[0] == 2:
             buffer_metadata['pointer'] = buffer(process.ReadMemory(
-                    buffer_metadata['pointer'], bufsize, lldb.SBError()))
+                buffer_metadata['pointer'], bufsize, lldb.SBError()))
         else:
             buffer_metadata['pointer'] = memoryview(process.ReadMemory(
                 buffer_metadata['pointer'], bufsize, lldb.SBError()))
@@ -128,14 +131,16 @@ class LldbBridge(BridgeInterface):
     def get_casted_pointer(self, typename, lldb_object):
         return lldb_object.get_casted_pointer()
 
-    def _get_observable_children_members(self, symbol, member_name_chain, output_set, visited_typenames=set()):
-        # type: (LldbBridge, lldb.SBValue, list[str], set, set) -> None
+    def _get_observable_children_members(self, symbol, member_name_chain,
+                                         output_set, visited_typenames=set()):
+        # type: (lldb.SBValue, list[str], set, set) -> None
         if symbol.GetTypeName() in visited_typenames:
             # Prevent endless recursion in cyclic data types
             return
 
         for member_idx in range(symbol.GetNumChildren()):
-            symbol_member = symbol.GetChildAtIndex(member_idx)  # type: lldb.SBValue
+            symbol_member = symbol.GetChildAtIndex(
+                member_idx)  # type: lldb.SBValue
             symbol_wrapper = SymbolWrapper(symbol_member)
             if self._type_bridge.is_symbol_observable(symbol_wrapper,
                                                       symbol_member.name):
@@ -145,10 +150,13 @@ class LldbBridge(BridgeInterface):
                 if symbol_member.name != symbol_member.GetTypeName():
                     member_name_chain.append(symbol_member.name)
                     visited_typenames.add(symbol_member.GetTypeName())
-                self._get_observable_children_members(symbol_member, member_name_chain, output_set, visited_typenames)
+                self._get_observable_children_members(symbol_member,
+                                                      member_name_chain,
+                                                      output_set,
+                                                      visited_typenames)
 
     def get_available_symbols(self):
-        frame = self.get_frame()
+        frame = self._get_frame()
         if not frame:
             return set()
 
@@ -156,11 +164,13 @@ class LldbBridge(BridgeInterface):
 
         for symbol in frame.GetVariables(True, True, True, True):
             symbol_wrapper = SymbolWrapper(symbol)
-            if self._type_bridge.is_symbol_observable(symbol_wrapper, symbol.name):
+            if self._type_bridge.is_symbol_observable(symbol_wrapper,
+                                                      symbol.name):
                 available_symbols.add(symbol.name)
             # Check for members of current field, if it is a class
             member_name_chain = [symbol.name] if symbol.name != 'this' else []
-            self._get_observable_children_members(symbol, member_name_chain, available_symbols)
+            self._get_observable_children_members(symbol, member_name_chain,
+                                                  available_symbols)
 
         return available_symbols
 
@@ -168,22 +178,11 @@ class LldbBridge(BridgeInterface):
         with self._lock:
             self._event_queue.append('stop')
 
-class SBDataWrapper:
-    def __init__(self, symbol, typename):
-        self._symbol = symbol
-        self.type = typename
 
-    def __str__(self):
-        return str(self._symbol.GetString())
-
-    def __int__(self):
-        error = lldb.SBError()
-        return self._symbol.GetUnsignedInt32(error, 0)
-
-class SymbolWrapper:
+class SymbolWrapper(DebuggerSymbolReference):
     def __init__(self, symbol):
-        self._symbol = symbol
-        self.type = symbol.GetTypeName()
+        self._symbol = symbol  # type: lldb.SBValue
+        self.type = symbol.GetTypeName()  # type: str
 
     def __str__(self):
         return str(self._symbol.GetValue())
@@ -192,21 +191,25 @@ class SymbolWrapper:
         string_value = self._symbol.GetValue()
         return int(string_value)
 
-    def __getitem__(self, member):
-        if isinstance(member, int):
-            array_value = self._symbol.GetPointeeData(member)
-            return SBDataWrapper(array_value, self._symbol.GetTypeName())
+    def __float__(self):
+        string_value = self._symbol.GetValue()
+        return float(string_value)
 
-        symbol_member = self._symbol.GetChildMemberWithName(member)
-        if self._symbol.GetIndexOfChildWithName(member) > self._symbol.GetNumChildren():
+    def __getitem__(self, member):
+        num_children = self._symbol.GetNumChildren()
+        if isinstance(member, int):
+            invalid_member_requested = member > num_children
+            get_symbol_child = self._symbol.GetChildAtIndex
+        elif isinstance(member, str):
+            invalid_member_requested = self._symbol.GetIndexOfChildWithName(
+                member) > num_children
+            get_symbol_child = self._symbol.GetChildMemberWithName
+
+        if invalid_member_requested:
             raise KeyError
 
-        if isinstance(symbol_member, lldb.SBValue):
-            return SymbolWrapper(symbol_member)
-        elif isinstance(symbol_member, lldb.SBData):
-            return SBDataWrapper(symbol_member)
-        else:
-            raise 'Unknown symbol type'
+        symbol_child = get_symbol_child(member)
+        return SymbolWrapper(symbol_child)
 
     def get_casted_pointer(self):
         if self._symbol.TypeIsPointerType():

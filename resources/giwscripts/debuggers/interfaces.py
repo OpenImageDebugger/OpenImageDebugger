@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
+import abc
 
 """
 Interfaces to be implemented by code that shall interact with the debugger
 """
 
 
-class BridgeInterface():
+class BridgeInterface(object):
+    __metaclass__ = abc.ABCMeta
+
     """
     This interface defines the methods to be implemented by a debugger bridge
     """
+
+    @abc.abstractmethod
     def queue_request(self, callable_request):
         """
         Given a callable object 'callable_request', request the debugger
@@ -18,6 +23,7 @@ class BridgeInterface():
         """
         raise NotImplementedError("Method is not implemented")
 
+    @abc.abstractmethod
     def get_buffer_metadata(self, variable):
         """
         Given a string defining a variable name, must return the following
@@ -27,6 +33,7 @@ class BridgeInterface():
         """
         raise NotImplementedError("Method is not implemented")
 
+    @abc.abstractmethod
     def register_event_handlers(self, events):
         """
         Register (callable) listeners to events defined in the dict 'events':
@@ -37,6 +44,7 @@ class BridgeInterface():
         """
         raise NotImplementedError("Method is not implemented")
 
+    @abc.abstractmethod
     def get_casted_pointer(self, typename, debugger_object):
         """
         Given the string 'typename' specifying any arbitrary type name of the
@@ -47,6 +55,7 @@ class BridgeInterface():
         """
         raise NotImplementedError("Method is not implemented")
 
+    @abc.abstractmethod
     def get_available_symbols(self):
         """
         Get all visible symbols in the current context of debugging.
@@ -54,10 +63,14 @@ class BridgeInterface():
         raise NotImplementedError("Method is not implemented")
 
 
-class BridgeEventHandlerInterface():
+class BridgeEventHandlerInterface(object):
+    __metaclass__ = abc.ABCMeta
+
     """
     This interface defines the events that can be raised by the debugger bridge
     """
+
+    @abc.abstractmethod
     def stop_handler(self, event):
         """
         Handler to be called whenever the debugger stops (e.g. when a
@@ -65,12 +78,14 @@ class BridgeEventHandlerInterface():
         """
         raise NotImplementedError("Method is not implemented")
 
+    @abc.abstractmethod
     def exit_handler(self, event):
         """
         Event raised whenever the inferior has exited.
         """
         raise NotImplementedError("Method is not implemented")
 
+    @abc.abstractmethod
     def refresh_handler(self, event):
         """
         Handler to be called by the IDE whenever the user performs some action
@@ -79,9 +94,53 @@ class BridgeEventHandlerInterface():
         """
         raise NotImplementedError("Method is not implemented")
 
+    @abc.abstractmethod
     def plot_handler(self, variable_name):
         """
         Handler to be called whenever the user actively calls the 'plot'
         command from the debugger console.
         """
         raise NotImplementedError("Method is not implemented")
+
+
+class DebuggerSymbolReference(object):
+    __metaclass__ = abc.ABCMeta
+
+    """
+    You can interact with fields provided by the debugger bridge through 
+    objects that implement this interface.
+    """
+
+    @abc.abstractmethod
+    def __str__(self):
+        # type: () -> str
+        """
+        :return: Runtime content of the symbol in string format
+        """
+        raise NotImplementedError("Method is not implemented")
+
+    @abc.abstractmethod
+    def __int__(self):
+        # type: () -> int
+        """
+        :return: Runtime content of the symbol in int format
+        """
+        raise NotImplementedError("Method is not implemented")
+
+    @abc.abstractmethod
+    def __float__(self):
+        # type: () -> float
+        """
+        :return: Runtime content of the symbol in float format
+        """
+        raise NotImplementedError("Method is not implemented")
+
+    @abc.abstractmethod
+    def __getitem__(self, member):
+        # type: (Union[str, int]) -> DebuggerSymbolReference
+        """
+        :param member: Member name or index value (in case of arrays)
+        :return: Debugger interface for requested member field
+        """
+        raise NotImplementedError("Method is not implemented")
+
