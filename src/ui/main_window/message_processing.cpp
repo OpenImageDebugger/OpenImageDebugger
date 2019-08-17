@@ -199,6 +199,11 @@ void MainWindow::decode_plot_buffer_contents()
 
 void MainWindow::decode_incoming_messages()
 {
+    // Close application if server has disconnected
+    if(socket_.state() == QTcpSocket::UnconnectedState) {
+        QApplication::quit();
+    }
+
     available_vars_.clear();
 
     if (socket_.bytesAvailable() == 0) {

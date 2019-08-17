@@ -84,15 +84,7 @@ class LldbBridge(BridgeInterface):
         frame = thread.GetFrameAtIndex(0)
         process = thread.GetProcess()
 
-        # TODO refactor out
-        field_sequence = variable.split('.')
-        picked_obj = frame.FindVariable(field_sequence[0])  # type: lldb.SBValue
-        for e in range(1, len(field_sequence)):
-            for m in range(picked_obj.GetNumChildren()):
-                child_member = picked_obj.GetChildAtIndex(m)
-                if child_member.name == field_sequence[e]:
-                    picked_obj = child_member
-                    break
+        picked_obj = frame.EvaluateExpression(variable)  # type: lldb.SBValue
 
         buffer_metadata = self._type_bridge.get_buffer_metadata(
             variable, SymbolWrapper(picked_obj), self)
@@ -136,17 +128,24 @@ class LldbBridge(BridgeInterface):
     def get_casted_pointer(self, typename, lldb_object):
         return lldb_object.get_casted_pointer()
 
-    def _get_observable_children_members(self, symbol, owner_name, output_set):
-        # type: (LldbBridge, lldb.SBValue, str, set) -> None
+    def _get_observable_children_members(self, symbol, member_name_chain, output_set, visited_typenames=set()):
+        # type: (LldbBridge, lldb.SBValue, list[str], set, set) -> None
+        if symbol.GetTypeName() in visited_typenames:
+            # Prevent endless recursion in cyclic data types
+            return
+
         for member_idx in range(symbol.GetNumChildren()):
             symbol_member = symbol.GetChildAtIndex(member_idx)  # type: lldb.SBValue
             symbol_wrapper = SymbolWrapper(symbol_member)
             if self._type_bridge.is_symbol_observable(symbol_wrapper,
                                                       symbol_member.name):
-                output_set.add('%s.%s' % (owner_name, symbol_member.name))
+                member_name_chain.append(symbol_member.name)
+                output_set.add('.'.join(member_name_chain))
             else:
-                appended_prefix = '%s.%s' % (owner_name, symbol_member.name)
-                self._get_observable_children_members(symbol_member, appended_prefix, output_set)
+                if symbol_member.name != symbol_member.GetTypeName():
+                    member_name_chain.append(symbol_member.name)
+                    visited_typenames.add(symbol_member.GetTypeName())
+                self._get_observable_children_members(symbol_member, member_name_chain, output_set, visited_typenames)
 
     def get_available_symbols(self):
         frame = self.get_frame()
@@ -160,7 +159,8 @@ class LldbBridge(BridgeInterface):
             if self._type_bridge.is_symbol_observable(symbol_wrapper, symbol.name):
                 available_symbols.add(symbol.name)
             # Check for members of current field, if it is a class
-            self._get_observable_children_members(symbol, symbol.name, available_symbols)
+            member_name_chain = [symbol.name] if symbol.name != 'this' else []
+            self._get_observable_children_members(symbol, member_name_chain, available_symbols)
 
         return available_symbols
 

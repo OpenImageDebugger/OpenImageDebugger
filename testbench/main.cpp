@@ -289,8 +289,8 @@ private:
 
     void nest() {
         // Breakpoints should go here!
-        int W = 1024;
-        int H = 1024;
+        const int W = 1024;
+        const int H = 1024;
         int C = 3;
         Mat::Iterator<uint8_t> i(TestField);
         ones<uint8_t>(W, H, 1, TestField);
@@ -307,7 +307,8 @@ private:
         i(0,0,0) = 255;
         i(0,0,1) = 0;
         i(0,0,2) = 0;
-        ones<uint8_t>(W, H, 1, TestField);
+        C = 1;
+        ones<uint8_t>(W, H, C, TestField);
         i(0,0,0) = 255;
         doSimpleCalculation<uint8_t>(W, H, C, TestField);
         return;
