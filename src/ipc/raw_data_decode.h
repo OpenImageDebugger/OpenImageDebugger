@@ -26,7 +26,10 @@
 #ifndef RAW_DATA_DECODE_H_
 #define RAW_DATA_DECODE_H_
 
-#include <vector>
+#include <cstddef> // for std::size_t
+#include <cstdint> // for std::uint8_t
+
+#include <vector> // for std::vector
 
 enum class BufferType {
     UnsignedByte  = 0,
@@ -37,9 +40,9 @@ enum class BufferType {
     Float64       = 6
 };
 
-std::vector<uint8_t>
-    make_float_buffer_from_double(const std::vector<uint8_t>& buff_double);
+std::vector<std::uint8_t>
+    make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double);
 
-size_t typesize(BufferType type);
+std::size_t typesize(BufferType type);
 
 #endif // RAW_DATA_DECODE_H_

@@ -25,11 +25,11 @@
 
 #include "raw_data_decode.h"
 
-std::vector<uint8_t>
-    make_float_buffer_from_double(const std::vector<uint8_t>& buff_double)
+std::vector<std::uint8_t>
+    make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
 {
     int element_count = buff_double.size() / sizeof(double);
-    std::vector<uint8_t> buff_float(element_count);
+    std::vector<std::uint8_t> buff_float(element_count);
 
     // Cast from double to float
     const double* src = reinterpret_cast<const double*>(buff_double.data());
@@ -55,6 +55,6 @@ size_t typesize(BufferType type)
     case BufferType::Float64:
         return sizeof(double);
     case BufferType::UnsignedByte:
-        return sizeof(uint8_t);
+        return sizeof(std::uint8_t);
     }
 }
