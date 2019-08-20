@@ -536,27 +536,29 @@ void giw_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     CHECK_FIELD_TYPE(row_stride, PY_INT_CHECK_FUNC, "plot_buffer");
     CHECK_FIELD_TYPE(pixel_layout, check_py_string_type, "plot_buffer");
 
-
-    // Retrieve pointer to buffer
-    uint8_t* buff_ptr;
-#if PY_MAJOR_VERSION == 3
-    if (PyMemoryView_Check(py_pointer) != 0) {
-        buff_ptr =
-            reinterpret_cast<uint8_t*>(get_c_ptr_from_py_buffer(py_pointer));
-#elif PY_MAJOR_VERSION == 2
+#if PY_MAJOR_VERSION == 2
     auto pybuffer_deleter = [](Py_buffer* buff) {
         PyBuffer_Release(buff);
         delete buff;
     };
     std::unique_ptr<Py_buffer, decltype(pybuffer_deleter)> py_buff(
         nullptr, pybuffer_deleter);
+#endif
 
-    if (PyBuffer_Check(py_pointer) != 0) {
+    // Retrieve pointer to buffer
+    uint8_t* buff_ptr;
+    if (PyMemoryView_Check(py_pointer) != 0) {
+        buff_ptr =
+            reinterpret_cast<uint8_t*>(get_c_ptr_from_py_buffer(py_pointer));
+    }
+#if PY_MAJOR_VERSION == 2
+    else if (PyBuffer_Check(py_pointer) != 0) {
         py_buff.reset(new Py_buffer());
         PyObject_GetBuffer(py_pointer, py_buff.get(), PyBUF_SIMPLE);
         buff_ptr = reinterpret_cast<uint8_t*>(py_buff->buf);
+    }
 #endif
-    } else {
+    else {
         RAISE_PY_EXCEPTION(PyExc_TypeError,
                            "Could not retrieve C pointer to provided buffer");
         return;

@@ -10,6 +10,7 @@ import threading
 import sys
 
 from giwscripts import sysinfo
+from giwscripts.typebridge import TypeInspectorInterface
 from giwscripts.debuggers.interfaces import BridgeInterface, \
     DebuggerSymbolReference
 
@@ -63,29 +64,28 @@ class LldbBridge(BridgeInterface):
         with self._lock:
             self._pending_requests.append(callable_request)
 
-    def _get_frame(self):
-        # type: () -> lldb.SBFrame
-        thread = self.get_thread(lldb.debugger)
+    def _get_process(self, debugger):
+        # type: (lldb.SBDebugger) -> lldb.SBProcess
+        return debugger.GetSelectedTarget().process
+
+    def _get_thread(self, process):
+        # type: () -> lldb.SBProcess
+        for t in process:
+            if t.GetStopReason() != lldb.eStopReasonNone and \
+                    t.GetStopReason() != lldb.eStopReasonInvalid:
+                return t
+        return None
+
+    def _get_frame(self, thread):
+        # type: () -> lldb.SBThread
         if not thread:
             return None
         return thread.GetSelectedFrame()
 
-    def get_thread(self, debugger):
-        for t in self.get_process(debugger):
-            if t.GetStopReason() != lldb.eStopReasonNone and \
-                    t.GetStopReason() != lldb.eStopReasonInvalid:
-                return t
-
-        return None
-
-    def get_process(self, debugger):
-        return debugger.GetSelectedTarget().process
-
     def get_buffer_metadata(self, variable):
-        thread = self.get_thread(lldb.debugger)
-        # TODO determine frame index
-        frame = thread.GetFrameAtIndex(0)
-        process = thread.GetProcess()
+        process = self._get_process(lldb.debugger)
+        thread = self._get_thread(process)
+        frame = self._get_frame(thread)
 
         picked_obj = frame.EvaluateExpression(variable)  # type: lldb.SBValue
 
@@ -104,23 +104,12 @@ class LldbBridge(BridgeInterface):
             raise Exception('Invalid null buffer pointer')
         if bufsize == 0:
             raise Exception('Invalid buffer of zero bytes')
-        # TODO implement for macos
-        """
-        elif bufsize >= sysinfo.get_memory_usage()['free'] / 10:
+        elif bufsize >= sysinfo.get_available_memory() / 10:
             raise Exception('Invalid buffer size larger than available memory')
-        """
-
-        # TODO Check if buffer is valid. If it isn't, this function will throw an
-        # exception
 
         buffer_metadata['variable_name'] = variable
-        # TODO check if memoryview works on python2; if it does, no need to use buffer
-        if sys.version_info[0] == 2:
-            buffer_metadata['pointer'] = buffer(process.ReadMemory(
-                buffer_metadata['pointer'], bufsize, lldb.SBError()))
-        else:
-            buffer_metadata['pointer'] = memoryview(process.ReadMemory(
-                buffer_metadata['pointer'], bufsize, lldb.SBError()))
+        buffer_metadata['pointer'] = memoryview(process.ReadMemory(
+            buffer_metadata['pointer'], bufsize, lldb.SBError()))
 
         return buffer_metadata
 
@@ -156,7 +145,8 @@ class LldbBridge(BridgeInterface):
                                                       visited_typenames)
 
     def get_available_symbols(self):
-        frame = self._get_frame()
+        frame = self._get_frame(
+            self._get_thread(self._get_process(lldb.debugger)))
         if not frame:
             return set()
 

@@ -111,7 +111,6 @@ class GdbImageWatchWindow(object):
             else:
                 variable = requested_symbol
 
-            # TODO get rid of DeferredVariablePlotter if single-threaded execution works out
             plot_callable = DeferredVariablePlotter(variable,
                                                     self._lib,
                                                     self._bridge,
