@@ -83,6 +83,7 @@ class LldbBridge(BridgeInterface):
         return thread.GetSelectedFrame()
 
     def get_buffer_metadata(self, variable):
+        # type: (str) -> dict
         process = self._get_process(lldb.debugger)
         thread = self._get_thread(process)
         frame = self._get_frame(thread)

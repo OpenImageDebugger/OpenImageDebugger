@@ -15,6 +15,7 @@ class BridgeInterface(object):
 
     @abc.abstractmethod
     def queue_request(self, callable_request):
+        # type: (Callable[[None],None]) -> None
         """
         Given a callable object 'callable_request', request the debugger
         backend to execute this object in its main execution thread.
@@ -25,11 +26,22 @@ class BridgeInterface(object):
 
     @abc.abstractmethod
     def get_buffer_metadata(self, variable):
+        # type: (str) -> dict
         """
         Given a string defining a variable name, must return the following
         information about it:
 
-        [mem, width, height, channels, type, step, pixel_layout]
+        type: (str) -> {
+            variable_name:str,
+            displat_name:str,
+            pointer:Union(memoryview, buffer),
+            width:int,
+            height:int,
+            channels:int,
+            type:int (see symbols.py),
+            row_stride:int,
+            pixel_layout:str,
+        }
         """
         raise NotImplementedError("Method is not implemented")
 
