@@ -118,9 +118,10 @@ void assert_primitive_type()
 {
     static_assert(std::is_same<PrimitiveType, MessageType>::value ||
                       std::is_same<PrimitiveType, int>::value ||
+                      std::is_same<PrimitiveType, unsigned char>::value ||
                       std::is_same<PrimitiveType, BufferType>::value ||
                       std::is_same<PrimitiveType, bool>::value ||
-                      std::is_same<PrimitiveType, size_t>::value,
+                      std::is_same<PrimitiveType, std::size_t>::value,
                   "this function must only be called with primitives");
 }
 
@@ -134,25 +135,6 @@ class MessageComposer
 
         message_blocks_.emplace_back(new PrimitiveBlock<PrimitiveType>(value));
 
-        return *this;
-    }
-
-    template <>
-    MessageComposer& push<std::string>(const std::string& value)
-    {
-        push(value.size());
-        message_blocks_.emplace_back(new StringBlock(value));
-        return *this;
-    }
-
-    template <>
-    MessageComposer&
-    push<std::deque<std::string>>(const std::deque<std::string>& container)
-    {
-        push(container.size());
-        for (const auto& value : container) {
-            push(value);
-        }
         return *this;
     }
 
@@ -209,44 +191,6 @@ class MessageDecoder
         return *this;
     }
 
-    template <>
-    MessageDecoder& read<std::vector<uint8_t>>(std::vector<uint8_t>& container)
-    {
-        size_t container_size;
-        read(container_size);
-
-        container.resize(container_size);
-        read_impl(reinterpret_cast<char*>(container.data()), container_size);
-
-        return *this;
-    }
-
-    template <>
-    MessageDecoder& read<std::string>(std::string& value)
-    {
-        size_t symbol_length;
-        read(symbol_length);
-
-        value.resize(symbol_length);
-        read_impl(&value.front(), static_cast<qint64>(symbol_length));
-
-        return *this;
-    }
-
-    template <>
-    MessageDecoder& read<QString>(QString& value)
-    {
-        size_t symbol_length;
-        read(symbol_length);
-
-        std::vector<char> temp_string;
-        temp_string.resize(symbol_length + 1, '\0');
-        read_impl(reinterpret_cast<char*>(temp_string.data()), symbol_length);
-        value = QString(temp_string.data());
-
-        return *this;
-    }
-
     template <typename StringContainer, typename StringType>
     MessageDecoder& read(StringContainer& symbol_container)
     {
@@ -279,5 +223,63 @@ class MessageDecoder
         } while (offset < read_length);
     }
 };
+
+template <> inline
+MessageComposer& MessageComposer::push<std::string>(const std::string& value)
+{
+    push(value.size());
+    message_blocks_.emplace_back(new StringBlock(value));
+    return *this;
+}
+
+template <> inline
+MessageComposer&
+MessageComposer::push<std::deque<std::string>>(const std::deque<std::string>& container)
+{
+    push(container.size());
+    for (const auto& value : container) {
+        push(value);
+    }
+    return *this;
+}
+
+template <> inline
+MessageDecoder& MessageDecoder::read<std::vector<uint8_t>>(std::vector<uint8_t>& container)
+{
+    size_t container_size;
+    read(container_size);
+
+    container.resize(container_size);
+    read_impl(reinterpret_cast<char*>(container.data()), container_size);
+
+    return *this;
+}
+
+template <> inline
+MessageDecoder& MessageDecoder::read<std::string>(std::string& value)
+{
+    size_t symbol_length;
+    read(symbol_length);
+
+    value.resize(symbol_length);
+    read_impl(&value.front(), static_cast<qint64>(symbol_length));
+
+    return *this;
+}
+
+template <> inline
+MessageDecoder& MessageDecoder::read<QString>(QString& value)
+{
+    size_t symbol_length;
+    read(symbol_length);
+
+    std::vector<char> temp_string;
+    temp_string.resize(symbol_length + 1, '\0');
+    read_impl(reinterpret_cast<char*>(temp_string.data()), symbol_length);
+    value = QString(temp_string.data());
+
+    return *this;
+}
+
 
 #endif // IPC_MESSAGE_EXCHANGE_H_
