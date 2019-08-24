@@ -30,14 +30,30 @@ def lldb_stop_hook_handler(debugger, command, result, dict):
 
 def __lldb_init_module(debugger, internal_dict):
     from giwscripts.debuggers import lldbbridge
+
+    def ide_prevents_stop_hook():
+        from giwscripts.ides import qtcreator
+        ide_checkers = [qtcreator.prevents_stop_hook]
+
+        for stop_hook_check in ide_checkers:
+            if stop_hook_check():
+                return True
+
+        return False
+
+    if ide_prevents_stop_hook():
+        return
+
     debugger.HandleCommand("command script add -f "
                            "gdb_imagewatch.lldb_stop_hook_handler "
                            "HandleHookStopOnTarget")
     debugger.HandleCommand('target stop-hook add -o "HandleHookStopOnTarget"')
 
 
-def register_ide_hooks(event_handler):
-    # type: (giwscripts.events.GdbImageWatchEvents) -> None
+def register_ide_hooks(debugger,  # type: giwscripts.debuggers.BridgeInterface
+                       event_handler  # type: giwscripts.events.GdbImageWatchEvents
+                       ):
+    # type: (...) -> None
     # TODO my __init__.py should probably contain references to the scripts for the above to work
     import traceback
     from giwscripts.ides import qtcreator
@@ -47,7 +63,7 @@ def register_ide_hooks(event_handler):
 
     for initializer in ide_initializers:
         try:
-            initializer(event_handler.refresh_handler)
+            initializer(debugger, event_handler.refresh_handler)
             return
         except Exception as err:
             error_traces.append(traceback.format_exc())
@@ -115,7 +131,7 @@ def main():
         window = giwwindow.GdbImageWatchWindow(script_path, debugger)
         event_handler = events.GdbImageWatchEvents(window, debugger)
 
-        register_ide_hooks(event_handler)
+        register_ide_hooks(debugger, event_handler)
 
         debugger.register_event_handlers(event_handler)
 

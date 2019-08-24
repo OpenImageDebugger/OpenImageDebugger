@@ -46,6 +46,14 @@ class BridgeInterface(object):
         raise NotImplementedError("Method is not implemented")
 
     @abc.abstractmethod
+    def get_backend_name(self):
+        # type: () -> str
+        """
+        Get the name of the underlying debugger.
+        """
+        raise NotImplementedError("Method is not implemented")
+
+    @abc.abstractmethod
     def register_event_handlers(self, events):
         """
         Register (callable) listeners to events defined in the dict 'events':

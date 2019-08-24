@@ -36,6 +36,13 @@ class LldbBridge(BridgeInterface):
         event_loop_thread.daemon = True
         event_loop_thread.start()
 
+    def get_lldb_backend(self):
+        # type: () -> lldb.SBDebugger
+        return lldb.debugger
+
+    def get_backend_name(self):
+        return 'lldb'
+
     def event_loop(self):
         while True:
             requests_to_process = []
@@ -69,7 +76,7 @@ class LldbBridge(BridgeInterface):
         return debugger.GetSelectedTarget().process
 
     def _get_thread(self, process):
-        # type: () -> lldb.SBProcess
+        # type: (lldb.SBProcess) -> lldb.SBThread
         for t in process:
             if t.GetStopReason() != lldb.eStopReasonNone and \
                     t.GetStopReason() != lldb.eStopReasonInvalid:
@@ -77,14 +84,14 @@ class LldbBridge(BridgeInterface):
         return None
 
     def _get_frame(self, thread):
-        # type: () -> lldb.SBThread
+        # type: (lldb.SBThread) -> lldb.SBThread
         if not thread:
             return None
         return thread.GetSelectedFrame()
 
     def get_buffer_metadata(self, variable):
         # type: (str) -> dict
-        process = self._get_process(lldb.debugger)
+        process = self._get_process(self.get_lldb_backend())
         thread = self._get_thread(process)
         frame = self._get_frame(thread)
 
@@ -147,7 +154,7 @@ class LldbBridge(BridgeInterface):
 
     def get_available_symbols(self):
         frame = self._get_frame(
-            self._get_thread(self._get_process(lldb.debugger)))
+            self._get_thread(self._get_process(self.get_lldb_backend())))
         if not frame:
             return set()
 
@@ -165,7 +172,7 @@ class LldbBridge(BridgeInterface):
 
         return available_symbols
 
-    def stop_hook(self, debugger, command, result, dict):
+    def stop_hook(self, *args):
         with self._lock:
             self._event_queue.append('stop')
 

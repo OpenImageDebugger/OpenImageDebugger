@@ -22,6 +22,9 @@ class GdbBridge(BridgeInterface):
     def queue_request(self, callable_request):
         return gdb.post_event(callable_request)
 
+    def get_backend_name(self):
+        return 'gdb'
+
     def get_buffer_metadata(self, variable):
         picked_obj = gdb.parse_and_eval(variable)
 
