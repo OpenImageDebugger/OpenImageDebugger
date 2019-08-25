@@ -198,5 +198,8 @@ class DummyDebugger(BridgeInterface):
 
         return None
 
+    def get_backend_name(self):  # type: () -> str
+        return 'dummy'
+
     def queue_request(self, callable_request):
         self._incoming_request_queue.append(callable_request)
