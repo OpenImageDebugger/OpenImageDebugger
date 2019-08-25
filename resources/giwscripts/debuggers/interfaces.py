@@ -33,7 +33,7 @@ class BridgeInterface(object):
 
         type: (str) -> {
             variable_name:str,
-            displat_name:str,
+            display_name:str,
             pointer:Union(memoryview, buffer),
             width:int,
             height:int,
@@ -86,31 +86,22 @@ class BridgeInterface(object):
 class BridgeEventHandlerInterface(object):
     __metaclass__ = abc.ABCMeta
 
-    """
-    This interface defines the events that can be raised by the debugger bridge
-    """
+    """This interface defines the events that may be raised by the debugger 
+    and can be handled by GIW """
 
     @abc.abstractmethod
-    def stop_handler(self, event):
+    def stop_handler(self):
         """
         Handler to be called whenever the debugger stops (e.g. when a
-        breakpoint is hit).
+        breakpoint is hit). May also be called when the user requests a change
+        in the stack position to the debugger.
         """
         raise NotImplementedError("Method is not implemented")
 
     @abc.abstractmethod
-    def exit_handler(self, event):
+    def exit_handler(self):
         """
         Event raised whenever the inferior has exited.
-        """
-        raise NotImplementedError("Method is not implemented")
-
-    @abc.abstractmethod
-    def refresh_handler(self, event):
-        """
-        Handler to be called by the IDE whenever the user performs some action
-        during a debug session that may require the list of available variables
-        to change (such as changing position in the stack).
         """
         raise NotImplementedError("Method is not implemented")
 

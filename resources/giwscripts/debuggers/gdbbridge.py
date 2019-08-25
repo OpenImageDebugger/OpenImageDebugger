@@ -8,6 +8,7 @@ import gdb
 
 from giwscripts import sysinfo
 from giwscripts.debuggers.interfaces import BridgeInterface
+from giwscripts.events import BridgeEventHandlerInterface
 
 
 class GdbBridge(BridgeInterface):
@@ -18,6 +19,10 @@ class GdbBridge(BridgeInterface):
     def __init__(self, type_bridge):
         self._type_bridge = type_bridge
         self._commands = dict(plot=PlotterCommand(self))
+        self._event_handler = None  # type: BridgeEventHandlerInterface
+
+        gdb.events.stop.connect(self._event_stop_handler)
+        gdb.events.exited.connect(self._event_exit_handler)
 
     def queue_request(self, callable_request):
         return gdb.post_event(callable_request)
@@ -30,6 +35,10 @@ class GdbBridge(BridgeInterface):
 
         buffer_metadata = self._type_bridge.get_buffer_metadata(
             variable, picked_obj, self)
+
+        if buffer_metadata is None:
+            # Invalid symbol for current frame
+            return None
 
         bufsize = sysinfo.get_buffer_size(
             buffer_metadata['height'],
@@ -57,9 +66,14 @@ class GdbBridge(BridgeInterface):
 
         return buffer_metadata
 
+    def _event_stop_handler(self, event):
+        self._event_handler.stop_handler()
+
+    def _event_exit_handler(self, event):
+        self._event_handler.exit_handler()
+
     def register_event_handlers(self, event_handler):
-        gdb.events.stop.connect(event_handler.stop_handler)
-        gdb.events.exited.connect(event_handler.exit_handler)
+        self._event_handler = event_handler
         self._commands['plot'].set_command_listener(event_handler.plot_handler)
 
     def get_fields_from_type(self, this_type, observable_symbols):

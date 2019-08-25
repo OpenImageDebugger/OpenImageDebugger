@@ -32,6 +32,8 @@ class LldbBridge(BridgeInterface):
         self._lock = threading.Lock()
         self._event_queue = []
         self._event_handler = None
+        self._last_thread_id = 0
+        self._last_frame_idx = 0
         event_loop_thread = threading.Thread(target=self.event_loop)
         event_loop_thread.daemon = True
         event_loop_thread.start()
@@ -43,8 +45,29 @@ class LldbBridge(BridgeInterface):
     def get_backend_name(self):
         return 'lldb'
 
+    def _check_frame_modification(self):
+        process = self._get_process(self.get_lldb_backend())
+        if process.is_stopped:
+            thread = self._get_thread(process)
+            frame = self._get_frame(thread)
+
+            thread_id = thread.id if thread is not None else 0
+            frame_idx = frame.idx if thread is not None else 0
+
+            frame_was_updated = thread_id != self._last_thread_id or \
+                                frame_idx != self._last_frame_idx
+
+            self._last_thread_id = thread_id
+            self._last_frame_idx = frame_idx
+
+            if frame_was_updated:
+                with self._lock:
+                    self._event_queue.append('stop')
+
     def event_loop(self):
         while True:
+            self._check_frame_modification()
+
             requests_to_process = []
             with self._lock:
                 requests_to_process = self._pending_requests
@@ -58,7 +81,7 @@ class LldbBridge(BridgeInterface):
             while pending_events:
                 event = pending_events.pop(0)
                 if event == 'stop':
-                    self._event_handler.stop_handler(event)
+                    self._event_handler.stop_handler()
 
             while requests_to_process:
                 callback = requests_to_process.pop(0)
@@ -84,7 +107,7 @@ class LldbBridge(BridgeInterface):
         return None
 
     def _get_frame(self, thread):
-        # type: (lldb.SBThread) -> lldb.SBThread
+        # type: (lldb.SBThread) -> lldb.SBFrame
         if not thread:
             return None
         return thread.GetSelectedFrame()
@@ -95,10 +118,18 @@ class LldbBridge(BridgeInterface):
         thread = self._get_thread(process)
         frame = self._get_frame(thread)
 
+        if frame is None:
+            # Could not fetch frame from debugger state
+            return None
+
         picked_obj = frame.EvaluateExpression(variable)  # type: lldb.SBValue
 
         buffer_metadata = self._type_bridge.get_buffer_metadata(
             variable, SymbolWrapper(picked_obj), self)
+
+        if buffer_metadata is None:
+            # Invalid symbol for current frame
+            return None
 
         bufsize = sysinfo.get_buffer_size(
             buffer_metadata['height'],

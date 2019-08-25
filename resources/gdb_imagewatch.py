@@ -12,6 +12,11 @@ import argparse
 import os
 import sys
 
+from giwscripts.giwwindow import GdbImageWatchWindow
+from giwscripts.test import giwtest
+from giwscripts.debuggers.interfaces import BridgeInterface
+from giwscripts.events import GdbImageWatchEvents
+
 
 def import_gdb(type_bridge):
     from giwscripts.debuggers import gdbbridge
@@ -50,11 +55,13 @@ def __lldb_init_module(debugger, internal_dict):
     debugger.HandleCommand('target stop-hook add -o "HandleHookStopOnTarget"')
 
 
-def register_ide_hooks(debugger,  # type: giwscripts.debuggers.BridgeInterface
-                       event_handler  # type: giwscripts.events.GdbImageWatchEvents
+def register_ide_hooks(debugger,  # type: BridgeInterface
+                       event_handler  # type: GdbImageWatchEvents
                        ):
     # type: (...) -> None
-    # TODO my __init__.py should probably contain references to the scripts for the above to work
+    """
+    Check if GIW was started from an IDE and sets up the required plugins
+    """
     import traceback
     from giwscripts.ides import qtcreator
 
@@ -63,7 +70,7 @@ def register_ide_hooks(debugger,  # type: giwscripts.debuggers.BridgeInterface
 
     for initializer in ide_initializers:
         try:
-            initializer(debugger, event_handler.refresh_handler)
+            initializer(debugger, event_handler)
             return
         except Exception as err:
             error_traces.append(traceback.format_exc())
@@ -74,8 +81,7 @@ def register_ide_hooks(debugger,  # type: giwscripts.debuggers.BridgeInterface
 
 def get_debugger_bridge():
     """
-    Instantiate the debugger bridge. If we ever decide to support other
-    debuggers, this will be the place to instantiate its bridge object.
+    Instantiate the debugger bridge.
     """
     import traceback
     from giwscripts import typebridge
@@ -108,9 +114,6 @@ def main():
     sys.path.append(script_path)
 
     # Load dependency modules
-    from giwscripts import events
-    from giwscripts import giwwindow
-    from giwscripts import test
 
     args = None
     try:
@@ -124,12 +127,12 @@ def main():
 
     if args is not None and args.test:
         # Test application
-        test.giwtest(script_path)
+        giwtest(script_path)
     else:
         # Setup GDB interface
         debugger = get_debugger_bridge()
-        window = giwwindow.GdbImageWatchWindow(script_path, debugger)
-        event_handler = events.GdbImageWatchEvents(window, debugger)
+        window = GdbImageWatchWindow(script_path, debugger)
+        event_handler = GdbImageWatchEvents(window, debugger)
 
         register_ide_hooks(debugger, event_handler)
 

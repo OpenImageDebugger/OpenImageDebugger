@@ -3,10 +3,12 @@
 """
 QtCreator integration module.
 """
+from giwscripts.debuggers.interfaces import BridgeInterface
+from giwscripts.events import GdbImageWatchEvents
 
 
-def gdb_fetch_hook(retrieve_symbols_callback):
-    # type: (Callable[[None],None]) -> None
+def gdb_fetch_hook(event_handler):
+    # type: (GdbImageWatchEvents) -> None
     """
     Hacks into Dumper and changes its fetchVariables method to a wrapper that
     calls stop_event_handler. This allows us to retrieve the list of locals
@@ -20,11 +22,11 @@ def gdb_fetch_hook(retrieve_symbols_callback):
     def fetch_variables_wrapper(self, args):
         """
         Acts as a proxy to QTCreator 'fetchVariables' method, calling the
-        event handler 'stop' method everytime 'fetchVariables' is called.
+        event handler 'stop' method every time 'fetchVariables' is called.
         """
         ret = original_fetch_variables(self, args)
 
-        retrieve_symbols_callback(None)
+        event_handler.stop_handler(None)
 
         return ret
 
@@ -32,7 +34,8 @@ def gdb_fetch_hook(retrieve_symbols_callback):
     imp.Dumper.fetchVariables = fetch_variables_wrapper
 
 
-def lldb_fetch_hook(debugger, retrieve_symbols_callback):
+def lldb_fetch_hook(debugger, event_handler):
+    # type: (BridgeInterface, GdbImageWatchEvents) -> None
     import lldb
 
     imp = __import__('lldbbridge')
@@ -42,7 +45,7 @@ def lldb_fetch_hook(debugger, retrieve_symbols_callback):
         return lldb.theDumper.debugger
 
     def handle_event_wrapper(self, args):
-        debugger.stop_hook()
+        event_handler.stop_handler()
         original_handle_event(self, args)
 
     debugger.get_lldb_backend = get_lldb_backend
@@ -56,13 +59,12 @@ def prevents_stop_hook():
     return is_running_from_qtcreator
 
 
-# TODO receive event handler instead of single event cbk
-def register_symbol_fetch_hook(debugger, retrieve_symbols_callback):
-    # type: (BridgeInterface, Callable[[None],None]) -> None
+def register_symbol_fetch_hook(debugger, event_handler):
+    # type: (BridgeInterface, GdbImageWatchEvents) -> None
     backend_name = debugger.get_backend_name()
     if backend_name == 'gdb':
-        gdb_fetch_hook(retrieve_symbols_callback)
+        gdb_fetch_hook(event_handler)
     elif backend_name == 'lldb':
-        lldb_fetch_hook(debugger, retrieve_symbols_callback)
+        lldb_fetch_hook(debugger, event_handler)
     else:
         raise Exception('Invalid debugger provided to qtcreator integration module')

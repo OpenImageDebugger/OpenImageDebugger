@@ -11,6 +11,7 @@
 #include <memory>
 #include <thread>
 #include <type_traits>
+#include <unistd.h>
 
 using namespace std;
 
@@ -291,10 +292,14 @@ void doSimpleCalculation(int W, int H, int C, float offset, Mat& matrix)
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
             for (int c = 0; c < C; ++c) {
-                out(y, x, c) = (sin(x / 64.0f + offset) * 0.5f + 0.5f) * 255;
+                out(y, x, c) = (sin(x / 64.0f + offset + y/(float)H*offset) * 0.5f + 0.5f) * 255;
             }
         }
     }
+}
+
+void changeStackOnPurpose() {
+    cout << "Changed stack position" << endl;
 }
 
 class TestFather
@@ -343,6 +348,8 @@ class Test : public TestFather
         for(int i = 0; i < 20; ++i) {
             float offset = i / 20.0f * M_PI * 4.f;
             doSimpleCalculation<uint8_t>(W, H, C, offset, TestField);
+            changeStackOnPurpose();
+            usleep(5 * 1e6);
             cout << "iteration done"<<endl;
         }
 

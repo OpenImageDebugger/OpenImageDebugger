@@ -26,13 +26,10 @@ class GdbImageWatchEvents(BridgeEventHandlerInterface):
         if self._window.is_ready():
             self._window.set_available_symbols(observable_symbols)
 
-    def refresh_handler(self, event):
-        self._set_symbol_complete_list()
-
-    def exit_handler(self, event):
+    def exit_handler(self):
         self._window.terminate()
 
-    def stop_handler(self, event):
+    def stop_handler(self):
         """
         The debugger has stopped (e.g. a breakpoint was hit). We must list all
         available buffers and pass it to the imagewatch window.
