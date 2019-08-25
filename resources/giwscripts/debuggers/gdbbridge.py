@@ -43,7 +43,7 @@ class GdbBridge(BridgeInterface):
             raise Exception('Invalid null buffer pointer')
         if bufsize == 0:
             raise Exception('Invalid buffer of zero bytes')
-        elif bufsize >= sysinfo.get_memory_usage()['free'] / 10:
+        elif bufsize >= sysinfo.get_available_memory() / 10:
             raise Exception('Invalid buffer size larger than available memory')
 
         # Check if buffer is valid. If it isn't, this function will throw an
