@@ -1,0 +1,16 @@
+kind: pipeline
+name: ubuntu1604
+
+steps:
+- name: submodules
+  image: docker:git
+  commands:
+    - git submodule update --init --recursive --remote
+- name: build
+  image: brunorosa/gdb-imagewatch_env:ubuntu1604
+  pull: always
+  commands:
+    - mkdir build
+    - cd build
+    - qmake ..
+    - make -j4
