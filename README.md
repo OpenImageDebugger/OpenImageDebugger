@@ -1,3 +1,5 @@
+[![Build Status](https://cloud.drone.io/api/badges/csantosbh/gdb-imagewatch/status.svg)](https://cloud.drone.io/csantosbh/gdb-imagewatch)
+
 # GDB ImageWatch: The advanced Image Debugger
 GDB ImageWatch is a tool for visualizing in-memory buffers during debug
 sessions using GDB. It works out of the box with instances of the OpenCV `Mat`
