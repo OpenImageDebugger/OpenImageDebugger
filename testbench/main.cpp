@@ -349,7 +349,7 @@ class Test : public TestFather
             float offset = i / 20.0f * M_PI * 4.f;
             doSimpleCalculation<uint8_t>(W, H, C, offset, TestField);
             changeStackOnPurpose();
-            usleep(5 * 1e6);
+            usleep(1 * 1e6);
             cout << "iteration done"<<endl;
         }
 

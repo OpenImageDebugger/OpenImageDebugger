@@ -23,11 +23,12 @@
  * IN THE SOFTWARE.
  */
 
+#include <signal.h>
+#include <spawn.h>
+
 #include <deque>
 #include <iostream>
 #include <string>
-
-#include <signal.h>
 
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
@@ -35,7 +36,6 @@
 #include "ipc/message_exchange.h"
 
 #include <QDataStream>
-#include <QProcess>
 #include <QString>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -45,20 +45,32 @@ using namespace std;
 
 struct UiMessage
 {
-    virtual ~UiMessage()
-    {
-    }
+    virtual ~UiMessage();
 };
+
+UiMessage::~UiMessage()
+{
+}
 
 struct GetObservedSymbolsResponseMessage : public UiMessage
 {
     std::deque<string> observed_symbols;
+    ~GetObservedSymbolsResponseMessage();
 };
+
+GetObservedSymbolsResponseMessage::~GetObservedSymbolsResponseMessage()
+{
+}
 
 struct PlotBufferRequestMessage : public UiMessage
 {
     std::string buffer_name;
+    ~PlotBufferRequestMessage();
 };
+
+PlotBufferRequestMessage::~PlotBufferRequestMessage()
+{
+}
 
 class PyGILRAII
 {
@@ -86,9 +98,23 @@ class GiwBridge
 {
   public:
     GiwBridge(int (*plot_callback)(const char*))
-        : client_(nullptr)
+        : ui_proc_id_(0)
+        , client_(nullptr)
         , plot_callback_(plot_callback)
     {
+    }
+
+    deque<vector<char>> pack_strings(const initializer_list<string>& strings)
+    {
+        deque<vector<char>> result;
+
+        for (const auto& string : strings) {
+            result.emplace_back(string.begin(), string.end());
+            // Add null ending character to buffer
+            result.back().push_back('\0');
+        }
+
+        return result;
     }
 
     bool start()
@@ -101,12 +127,23 @@ class GiwBridge
         }
 
         string windowBinaryPath = this->giw_path_ + "/giwwindow";
-        QStringList arguments;
-        arguments << "-style"
-                  << "fusion"
-                  << "-p" << QString::number(server_.serverPort());
-        process_.setProcessChannelMode(QProcess::MergedChannels);
-        process_.start(QString::fromStdString(windowBinaryPath), arguments);
+        string portStdString    = std::to_string(server_.serverPort());
+
+        auto packed_parameters =
+            pack_strings({"-style", "fusion", "-p", portStdString});
+        char* argv[] = {packed_parameters[0].data(),
+                        packed_parameters[1].data(),
+                        packed_parameters[2].data(),
+                        packed_parameters[3].data(),
+                        nullptr};
+        extern char** environ;
+
+        posix_spawn(&ui_proc_id_,
+                    windowBinaryPath.c_str(),
+                    nullptr, // TODO consider passing something here
+                    nullptr, // and here
+                    argv,
+                    environ);
 
         wait_for_client();
 
@@ -120,8 +157,8 @@ class GiwBridge
 
     bool is_window_ready()
     {
-        return client_ != nullptr && process_.processId() != 0 &&
-               kill(static_cast<pid_t>(process_.processId()), 0) == 0;
+        return client_ != nullptr && ui_proc_id_ != 0 &&
+               kill(static_cast<pid_t>(ui_proc_id_), 0) == 0;
     }
 
     deque<string> get_observed_symbols()
@@ -195,11 +232,11 @@ class GiwBridge
 
     ~GiwBridge()
     {
-        process_.kill();
+        kill(ui_proc_id_, SIGKILL);
     }
 
   private:
-    QProcess process_;
+    pid_t ui_proc_id_;
     QTcpServer server_;
     QTcpSocket* client_;
     string giw_path_;

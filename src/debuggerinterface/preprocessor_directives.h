@@ -47,9 +47,9 @@
         return ret;                                                   \
     }
 
-#define __EMPTY_PARAMETER
+#define GIW_EMPTY_PARAMETER
 #define CHECK_FIELD_PROVIDED(name, current_ctx_name) \
-    CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, __EMPTY_PARAMETER)
+    CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, GIW_EMPTY_PARAMETER)
 
 #define CHECK_FIELD_TYPE(name, type_checker_funct, current_ctx_name)    \
     if (type_checker_funct(py_##name) == 0) {                           \
@@ -59,9 +59,5 @@
             "have the expected type (" #type_checker_funct " failed)"); \
         return;                                                         \
     }
-
-#define FALSE 0
-
-#define TRUE (!FALSE)
 
 #endif // PREPROCESSOR_DIRECTIVES_H_

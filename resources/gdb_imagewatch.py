@@ -12,6 +12,12 @@ import argparse
 import os
 import sys
 
+# TODO there is probably a smarter way to do this
+# Add script path to Python PATH so submodules can be found
+script_path = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(script_path)
+
+# Load dependency modules
 from giwscripts.giwwindow import GdbImageWatchWindow
 from giwscripts.test import giwtest
 from giwscripts.debuggers.interfaces import BridgeInterface
@@ -109,12 +115,6 @@ def main():
     """
     Main entry point.
     """
-    # Add script path to Python PATH so submodules can be found
-    script_path = os.path.dirname(os.path.realpath(__file__))
-    sys.path.append(script_path)
-
-    # Load dependency modules
-
     args = None
     try:
         parser = argparse.ArgumentParser()

@@ -5,6 +5,8 @@ Code responsible with directly interacting with GDB
 """
 
 import gdb
+import time
+import threading
 
 from giwscripts import sysinfo
 from giwscripts.debuggers.interfaces import BridgeInterface
@@ -21,11 +23,33 @@ class GdbBridge(BridgeInterface):
         self._commands = dict(plot=PlotterCommand(self))
         self._event_handler = None  # type: BridgeEventHandlerInterface
 
+        self._pending_requests = []
+        self._lock = threading.Lock()
+
         gdb.events.stop.connect(self._event_stop_handler)
         gdb.events.exited.connect(self._event_exit_handler)
 
+        event_loop_thread = threading.Thread(target=self.event_loop)
+        event_loop_thread.daemon = True
+        event_loop_thread.start()
+
+    def event_loop(self):
+        while True:
+            requests_to_process = []
+            with self._lock:
+                requests_to_process = self._pending_requests
+                self._pending_requests = []
+
+            while requests_to_process:
+                callback = requests_to_process.pop(0)
+                gdb.post_event(callback)
+
+            time.sleep(0.1)
+        pass
+
     def queue_request(self, callable_request):
-        return gdb.post_event(callable_request)
+        with self._lock:
+            self._pending_requests.append(callable_request)
 
     def get_backend_name(self):
         return 'gdb'
