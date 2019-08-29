@@ -6,6 +6,7 @@ steps:
   image: docker:git
   commands:
     - git submodule update --init --recursive --remote
+
 - name: build
   image: brunorosa/gdb-imagewatch_env:ubuntu1604
   pull: always
@@ -14,3 +15,23 @@ steps:
     - cd build
     - qmake ..
     - make -j4
+
+---
+
+kind: pipeline
+name: ubuntu1804
+
+steps:
+- name: submodules
+  image: docker:git
+  commands:
+    - git submodule update --init --recursive --remote
+
+- name: build
+  imahe: brunorosa/gdb-imagewatch_env:ubuntu1804
+  pull: always
+  commands:
+      - mkdir build
+      - cd build
+      - qmake ..
+      - make -j4
