@@ -28,7 +28,7 @@ steps:
     - git submodule update --init --recursive --remote
 
 - name: build
-  imahe: brunorosa/gdb-imagewatch_env:ubuntu1804
+  image: brunorosa/gdb-imagewatch_env:ubuntu1804
   pull: always
   commands:
       - mkdir build
