@@ -1,0 +1,25 @@
+language: cpp
+
+os: osx
+
+addons:
+  homebrew:
+    packages:
+      - qt5
+    update: true
+# TODO: try to use ubuntu images    
+#  apt:    
+#    sourceline: ppa:beineri/opt-qt-5.11.0-xenial
+#    packages:
+#      - qt5-default
+#      - python3-dev
+#      - pkg-config
+#    update: true
+
+before_install:
+  - brew link qt5 --force
+
+script:
+  - mkdir build && cd build
+  - qmake ..
+  - make -j4
