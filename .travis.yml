@@ -1,23 +1,28 @@
 language: cpp
 
-os: osx
+os:
+ - linux
+ - osx
+
+dist:
+ - xenial
 
 addons:
   homebrew:
     packages:
       - qt5
     update: true
-# TODO: try to use ubuntu images    
-#  apt:    
-#    sourceline: ppa:beineri/opt-qt-5.11.0-xenial
-#    packages:
-#      - qt5-default
-#      - python3-dev
-#      - pkg-config
-#    update: true
+  apt:    
+    sourceline: ppa:beineri/opt-qt-5.11.0-xenial
+    packages:
+      - qt5-default
+      - libqt5opengl5-dev
+      - python3-dev
+      - pkg-config
+    update: true
 
 before_install:
-  - brew link qt5 --force
+  - if [ $TRAVIS_OS_NAME = osx ]; then brew link qt5 --force; fi
 
 script:
   - mkdir build && cd build
