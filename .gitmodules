@@ -1,4 +1,4 @@
 [submodule "src/thirdparty/Eigen"]
 	path = src/thirdparty/Eigen
-	url = https://github.com/csantosbh/eigen.git
+	url = https://github.com/OpenImageDebugger/eigen.git
 	branch = v3.4
