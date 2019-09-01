@@ -1,19 +1,21 @@
 language: cpp
 
-os:
- - linux
- - osx
-
-dist:
- - xenial
+matrix:
+ include:
+  - os: osx
+  
+  - os: linux
+    dist: xenial
+    
+  - os: linux
+    dist: bionic
 
 addons:
   homebrew:
     packages:
       - qt5
     update: true
-  apt:    
-    sourceline: ppa:beineri/opt-qt-5.11.0-xenial
+  apt:
     packages:
       - qt5-default
       - libqt5opengl5-dev
@@ -22,6 +24,7 @@ addons:
     update: true
 
 before_install:
+ # Allow qmake to be called via CLI on MacOS
   - if [ $TRAVIS_OS_NAME = osx ]; then brew link qt5 --force; fi
 
 script:
