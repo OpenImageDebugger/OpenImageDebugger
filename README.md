@@ -1,4 +1,4 @@
-[![Build Status](https://cloud.drone.io/api/badges/OpenImageDebugger/OpenImageDebugger/status.svg)](https://cloud.drone.io/csantosbh/gdb-imagewatch)
+[![Build Status](https://cloud.drone.io/api/badges/OpenImageDebugger/OpenImageDebugger/status.svg)](https://cloud.drone.io/OpenImageDebugger/OpenImageDebugger)
 [![Build Status](https://travis-ci.com/csantosbh/OpenImageDebugger.svg?branch=master)](https://travis-ci.com/OpenImageDebugger/OpenImageDebugger)
 
 # GDB ImageWatch: The advanced Image Debugger
