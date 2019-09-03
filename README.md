@@ -1,21 +1,21 @@
 [![Build Status](https://cloud.drone.io/api/badges/OpenImageDebugger/OpenImageDebugger/status.svg)](https://cloud.drone.io/OpenImageDebugger/OpenImageDebugger)
 [![Build Status](https://travis-ci.com/OpenImageDebugger/OpenImageDebugger.svg?branch=wip%2Fdarwin-support)](https://travis-ci.com/OpenImageDebugger/OpenImageDebugger)
 
-# GDB ImageWatch: The advanced Image Debugger
-GDB ImageWatch is a tool for visualizing in-memory buffers during debug
-sessions using GDB. It works out of the box with instances of the OpenCV `Mat`
-class, but can also be customized to work with any arbitrary data structure.
+# Open Image Debugger
+Open Image Debugger is a tool for visualizing in-memory buffers during debug
+sessions, compatible with both GDB and LLDB. It works out of the box with
+instances of the OpenCV `Mat` class and `Eigen` matrices, but can also be
+customized to work with any arbitrary data structure.
 
 ![](doc/sample_window.png)
 
-## Features
+### Features
 
 * GUI interactivity:
     * Scroll to zoom, left click+drag to move the buffer around;
     * Rotate buffers 90&deg; clockwise or counterclockwise;
     * Go-to widget that quickly takes you to any arbitrary pixel location;
-* Buffer values: Zoom in close enough to see the numerical values of the
-  buffer.
+* Buffer values: Zoom in close enough to inspect the numerical contents of any pixel.
 * Auto update: Whenever a breakpoint is hit, the buffer view is automatically
   updated.
 * Auto contrast: The entire range of values present in the buffer can be
@@ -37,109 +37,95 @@ class, but can also be customized to work with any arbitrary data structure.
 * Auto-load buffers being visualized in the previous debug session
 * Designed to scale well for HighDPI displays
 
-## Requirements
+### Requirements
 
- * An OpenGL 2.1+ compliant GPU
  * A C++11 compliant compiler (gcc-5 or later is recommended)
- * GDB 7.10+ **compiled with python 3 support**
- * Qt 5.6+ (required due to the HighDPI display support - download it
+ * GDB **7.10+** or LLDB 6+
+ * Qt **5.6+** (required due to the HighDPI display support - download it
    [here](https://info.qt.io/download-qt-for-application-development))
- * Python 3+ with its development packages
+ * Python development packages
+ * OpenGL 2.1+ support
 
 ## Installation
 
-### Dependencies
+### Ubuntu Linux dependencies
 
 On Ubuntu, you can install most of the dependencies with the following command:
 
-    sudo apt-get install libpython3-dev python3-dev
-
-
-#### Check GDB version
-Before installing the gdb-imagewatch plugin, you need to first check if your
-GDB version is >= 7.10:
-
 ```shell
-$ gdb --version
+sudo apt-get install build-essential libpython3-dev python3-dev libpython2.7-dev python2-dev
 ```
 
-On Ubuntu 16.04.3, this will print `GNU gdb (Ubuntu 7.11.1-0ubuntu1~16.5)
-7.11.1`, which is good enough.
-
-You also need to make sure that your GDB was compiled with Python 3 support.
-For that, run the `gdb` command, and inside the gdb console, run the following
-command:
-
-```gdb
-(gdb) python import sys; print(sys.version)
-```
-
-On Ubuntu 16.04.3, this will print `3.5.2 (default, Nov 23 2017, 16:37:01)`,
-which meets the requirements.
-
-
-#### GDB 7.10+ with Python 3
-If your GDB version is not supported, you need to download and install a
-compatible version of GDB with python3 support. Here are the commands for GDB
-7.10:
-
-```shell
-$ wget http://ftp.gnu.org/gnu/gdb/gdb-7.10.tar.gz
-$ tar -zxvf gdb-7.10.tar.gz
-$ cd gdb-7.10
-$ ./configure --with-python=python3 --disable-werror
-$ make -j8
-```
-
-Notice that if you already have an older version of GDB, you will need to
-either reconfigure your environment running `update-alternatives` or
-reconfigure your IDE to use the updated version (which, by default, will be
-installed on `/usr/local/bin/gdb`).
-
-After the installation, you can remove both the file `gdb-7.10.tar.gz` and the
-folder `gdb-7.10`.
-
-#### Downloading GDB ImageWatch
-Clone the GDB ImageWatch plugin to any folder you prefer and initialize the
+### Building the Open Image Debugger
+Clone the source code to any folder you prefer and initialize the
 submodules:
 
 ```shell
-$ git clone https://github.com/csantosbh/gdb-imagewatch
-$ cd gdb-imagewatch
-$ git submodule init
-$ git submodule update
+git clone git@github.com:OpenImageDebugger/OpenImageDebugger.git
+cd OpenImageDebugger
+git submodule init
+git submodule update
 ```
 
-### Ubuntu 16.04 manual installation with QtCreator
-
-Ubuntu 16.04 comes with qt4, which is not compatible with GDB ImageWatch. In
-order to compile it, you need to install qt5
-([get it here](https://info.qt.io/download-qt-for-application-development)) and
-use its corresponding qmake during the compilation step.
-
-If you are using QtCreator, you can change your Qt version under
-Tools->Options->Build & Run->Kits, by setting Qt version to any Qt version >=
-5.
-
-### Build plugin and configure GDB
-
-To build this plugin, run:
+Now run the following commands to build it:
 
 ```shell
-$ mkdir build && cd build
-$ qmake .. BUILD_MODE=release PREFIX=/path/to/installation/folder
-$ make -j4
-$ make install
+mkdir build && cd build
+qmake .. BUILD_MODE=release PREFIX=/path/to/installation/folder
+make -j4
+sudo make install
 ```
 
-The installation step is optional; you can simply use the plugin from the build
-folder instead. If you choose to install the plugin, it will be placed under
-`/path/to/installation/folder/bin/gdb-imagewatch/`.
+**GDB integration:** Edit the file `~/.gdbinit` (create it if it doesn't exist)
+and append the following line:
+```
+source /path/to/OpenImageDebugger/openimagedebugger.py
+```
 
-By default, the `PREFIX` variable is `/usr/local`.
+**LLDB integration:** Edit the file `~/.lldbinit` (create it if it doesn't
+exist) and append the following line:
+```
+command script import /path/to/OpenImageDebugger/openimagedebugger.py
+```
 
+### Ubuntu 16.04 Automated Installation
 
-### libGL troubleshooting
+The script `configure_ubuntu_16.sh` automates some of the installation steps
+for Open Image Debugger on Ubuntu 16.04.  From the root directory of this project,
+execute the following:
+
+```shell
+bash configure_ubuntu_16.sh
+```
+
+Note that this script will not instal Qt 5.6+. If you don't have this
+package, the best choice is to get it from Qt website.
+
+When you are done, follow the instructions below in the section `Testing your
+installation`.
+
+### Testing your installation
+
+After compiling the plugin, you can test it by opening a console in the
+installation folder and running the following command from the root project
+directory:
+
+```shell
+python /path/to/OpenImageDebugger/openimagedebugger.py --test
+```
+
+If the installation was succesful, you should see the Open Image Debugger window
+with the same `sample_buffer_1` and `sample_buffer_2` buffers from the image on
+the header of this page.
+
+## Troubleshooting
+
+### QtCreator configuration
+
+If you are using QtCreator, you can change your Qt version under
+Tools->Options->Build & Run->Kits. Make sure you have Qt >= 5.6 selected.
+
+### libGL linking issues on Linux
 Some users might experience a linking error if the libGL.so is not found by
 qmake, especially when using a nvidia graphics card. This issue will usually
 present itself with the message `cannot find -lGL`.
@@ -148,8 +134,8 @@ To fix that, you need to find the location for your libGL.so file. The
 following commands should help you find it:
 
 ```shell
-$ sudo updatedb
-$ locate -i libgl.so
+sudo updatedb
+locate -i libgl.so
 ```
 
 If you have installed the proprietary drivers, you don't want to use the mesa
@@ -171,7 +157,7 @@ In this case, since I'm using the proprietary nvidia drivers, I'll choose the
 folder `/usr/lib/nvidia-384`.
 
 Copy the name of the folder you found, and paste it in the file
-`gdb-imagewatch.pro` under the definition of the `QMAKE_LFLAGS` variable. In my
+`openimagedebugger.pro` under the definition of the `QMAKE_LFLAGS` variable. In my
 case, this variable now looks like this:
 
 ```
@@ -185,49 +171,13 @@ QMAKE_LFLAGS += \
 Now, just run the build steps again, including the `qmake` command, as
 described above.
 
-#### Loading pugin
-
-In order to load the GDB-ImageWatch plugin, simply edit the `~/.gdbinit` file
-(create it if it doesn't exist) and append the following line:
-
-    source /path/to/gdb-imagewatch/gdb-imagewatch.py
-
-This way, GDB will automatically load the GDB imagewatch plugin every time it
-starts.
-
-### Ubuntu 16.04 Automated Installation without QtCreator
-
-The script `configure_ubuntu_16.sh` automates some of the installation steps
-for GDB ImageWatch on Ubuntu 16.04.  From the root directory of this project,
-    execute the following:
-
-    bash configure_ubuntu_16.sh
-
-Note that this script will not instal Qt 5.6+ and GDB with python 3 support. If
-you don't have these packages, please follow the instructions above.
-
-When you are done, follow the instructions below in the section `Testing your
-installation`.
-
-## Testing your installation
-
-After compiling the plugin, you can test it by opening a console in the
-installation folder and running the following command from the root project
-directory:
-
-    python3 /path/to/gdb-imagewatch/gdb-imagewatch.py --test
-
-If the installation was succesful, you should see the GDB ImageWatch window
-with the same `sample_buffer_1` and `sample_buffer_2` buffers from the image on
-the header of this page.
-
 ## Using plugin
 
-When GDB hits a breakpoint, the GDB ImageWatch window will be opened. You only
+When GDB hits a breakpoint, the Open Image Debugger window will be opened. You only
 need to type the name of the buffer to be watched in the "add symbols" input,
 and press `<enter>`.
 
-Alternatively, you can also invoke the GDB ImageWatch window directly from GDB
+Alternatively, you can also invoke the Open Image Debugger window directly from GDB
 with the following command:
 
     plot variable_name
@@ -235,7 +185,7 @@ with the following command:
 ### <img src="doc/auto-contrast.svg" width="20"/> Auto-contrast and manual contrast
 
 The (min) and (max) fields on top of the buffer view can be changed to control
-autocontrast settings. By default, GDB ImageWatch will automatically fill these
+autocontrast settings. By default, Open Image Debugger will automatically fill these
 fields with the mininum and maximum values inside the entire buffer, and the
 channel values will be normalized from these values to the range [0, 1] inside
 the renderer.
@@ -273,7 +223,7 @@ Sometimes you may want to export your buffers to be able to process them in an
 external tool. In order to do that, right click the thumbnail corresponding to
 the buffer you wish to export on the left pane and select "export buffer".
 
-GDB ImageWatch supports two export modes. You can save your buffer as a PNG
+Open Image Debugger supports two export modes. You can save your buffer as a PNG
 (which may result in loss of data if your buffer type is not `uint8_t`) or as a
 binary file that can be opened with any tool.
 
@@ -289,12 +239,12 @@ folder to Octave/Matlab `path` variable and call
 If you're not using gdb from the command line, make sure that your IDE is
 correctly configured to use GDB 7.10. On QtCreator, go to
 `Tools`->`Options`->`Build & Run`->`Debuggers` and make sure that the
-configured path references a compatible GDB version.
+configured path references a compatible GDB or LLDB version.
 
 ## Basic configuration
 
 The settings file for the plugin can be located under
-`$HOME/.config/gdbimagewatch.ini`. You can change the following settings:
+`$HOME/.config/openimagedebugger.ini`. You can change the following settings:
 
  * **Rendering**
     * *maximum_framerate* Determines the maximum framerate for the buffer
@@ -313,7 +263,7 @@ involves implementing a class with the methods `get_buffer_metadata()` and
 The function `get_buffer_metadata()` must return a dictionary with the following
 fields:
 
- * **display_name** Name of the buffer as it must appear in the ImageWatch
+ * **display_name** Name of the buffer as it must appear in the Open Image Debugger
    window. Can be customized to also show its typename, for instance.
  * **pointer** Pointer to the buffer
  * **width**  Width of the ROI
