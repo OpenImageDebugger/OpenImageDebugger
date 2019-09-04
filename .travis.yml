@@ -30,4 +30,5 @@ before_install:
 script:
   - mkdir build && cd build
   - qmake ..
-  - make -j4
+  - make -j8
+  - make install
