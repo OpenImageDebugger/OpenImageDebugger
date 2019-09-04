@@ -1,7 +1,7 @@
 [![Build Status](https://cloud.drone.io/api/badges/OpenImageDebugger/OpenImageDebugger/status.svg)](https://cloud.drone.io/OpenImageDebugger/OpenImageDebugger)
 [![Build Status](https://travis-ci.com/OpenImageDebugger/OpenImageDebugger.svg?branch=wip%2Fdarwin-support)](https://travis-ci.com/OpenImageDebugger/OpenImageDebugger)
 
-# Open Image Debugger
+# Open Image Debugger: Enabling visualization of in-memory buffers on GDB/LLDB
 Open Image Debugger is a tool for visualizing in-memory buffers during debug
 sessions, compatible with both GDB and LLDB. It works out of the box with
 instances of the OpenCV `Mat` class and `Eigen` matrices, but can also be
@@ -36,11 +36,12 @@ customized to work with any arbitrary data structure.
   files (unprocessed).
 * Auto-load buffers being visualized in the previous debug session
 * Designed to scale well for HighDPI displays
+* Works on Linux and macOS X
 
 ### Requirements
 
  * A C++11 compliant compiler (gcc-5 or later is recommended)
- * GDB **7.10+** or LLDB 6+
+ * GDB **7.10+** or LLDB **6+**
  * Qt **5.6+** (required due to the HighDPI display support - download it
    [here](https://info.qt.io/download-qt-for-application-development))
  * Python development packages
@@ -61,7 +62,7 @@ Clone the source code to any folder you prefer and initialize the
 submodules:
 
 ```shell
-git clone git@github.com:OpenImageDebugger/OpenImageDebugger.git
+git clone https://github.com:OpenImageDebugger/OpenImageDebugger.git
 cd OpenImageDebugger
 git submodule init
 git submodule update
@@ -79,13 +80,13 @@ sudo make install
 **GDB integration:** Edit the file `~/.gdbinit` (create it if it doesn't exist)
 and append the following line:
 ```
-source /path/to/OpenImageDebugger/openimagedebugger.py
+source /path/to/OpenImageDebugger/oid.py
 ```
 
 **LLDB integration:** Edit the file `~/.lldbinit` (create it if it doesn't
 exist) and append the following line:
 ```
-command script import /path/to/OpenImageDebugger/openimagedebugger.py
+command script import /path/to/OpenImageDebugger/oid.py
 ```
 
 ### Ubuntu 16.04 Automated Installation
@@ -106,29 +107,25 @@ installation`.
 
 ### Testing your installation
 
-After compiling the plugin, you can test it by opening a console in the
-installation folder and running the following command from the root project
-directory:
+After compiling the plugin, you can test it by running the following command:
 
 ```shell
-python /path/to/OpenImageDebugger/openimagedebugger.py --test
+python /path/to/OpenImageDebugger/oid.py --test
 ```
 
 If the installation was succesful, you should see the Open Image Debugger window
-with the same `sample_buffer_1` and `sample_buffer_2` buffers from the image on
-the header of this page.
+with the buffers `sample_buffer_1` and `sample_buffer_2`.
 
 ## Troubleshooting
 
 ### QtCreator configuration
-
 If you are using QtCreator, you can change your Qt version under
 Tools->Options->Build & Run->Kits. Make sure you have Qt >= 5.6 selected.
 
 ### libGL linking issues on Linux
-Some users might experience a linking error if the libGL.so is not found by
-qmake, especially when using a nvidia graphics card. This issue will usually
-present itself with the message `cannot find -lGL`.
+Some linux users might experience a linking error if the libGL.so is not
+found by qmake, especially when using a nvidia graphics card. This issue will
+usually present itself with the message `cannot find -lGL`.
 
 To fix that, you need to find the location for your libGL.so file. The
 following commands should help you find it:
@@ -157,7 +154,7 @@ In this case, since I'm using the proprietary nvidia drivers, I'll choose the
 folder `/usr/lib/nvidia-384`.
 
 Copy the name of the folder you found, and paste it in the file
-`openimagedebugger.pro` under the definition of the `QMAKE_LFLAGS` variable. In my
+`oid.pro` under the definition of the `QMAKE_LFLAGS` variable. In my
 case, this variable now looks like this:
 
 ```
@@ -173,14 +170,9 @@ described above.
 
 ## Using plugin
 
-When GDB hits a breakpoint, the Open Image Debugger window will be opened. You only
-need to type the name of the buffer to be watched in the "add symbols" input,
-and press `<enter>`.
-
-Alternatively, you can also invoke the Open Image Debugger window directly from GDB
-with the following command:
-
-    plot variable_name
+When the debugger hits a breakpoint, the Open Image Debugger window will be
+opened. You only need to type the name of the buffer to be watched in the
+"add symbols" input, and press `<enter>`.
 
 ### <img src="doc/auto-contrast.svg" width="20"/> Auto-contrast and manual contrast
 
@@ -234,17 +226,10 @@ Buffers exported in the `Octave matrix` format can be loaded with the function
 folder to Octave/Matlab `path` variable and call
 `giw_load('/path/to/buffer.dump')`.
 
-### Configure your IDE to use GDB 7.10
-
-If you're not using gdb from the command line, make sure that your IDE is
-correctly configured to use GDB 7.10. On QtCreator, go to
-`Tools`->`Options`->`Build & Run`->`Debuggers` and make sure that the
-configured path references a compatible GDB or LLDB version.
-
 ## Basic configuration
 
 The settings file for the plugin can be located under
-`$HOME/.config/openimagedebugger.ini`. You can change the following settings:
+`$HOME/.config/OpenImageDebugger.ini`. You can change the following settings:
 
  * **Rendering**
     * *maximum_framerate* Determines the maximum framerate for the buffer
@@ -256,9 +241,11 @@ By default, the plugin works with several data types, including OpenCV's `Mat`
 and `CvMat` and Eigen's `Matrix`.
 
 If you use a different buffer type, you can create a python parser inside the
-folder `resources/giwscripts/giwtypes`. This is actually pretty simple and only
-involves implementing a class with the methods `get_buffer_metadata()` and
-`is_symbol_observable()`.
+folder `resources/giwscripts/giwtypes`. This is actually pretty simple and
+only involves implementing a class according to the interface
+`TypeInspectorInterface` defined in
+`resources/giwscripts/giwtypes/interface.py`. This interface only defines the
+methods `get_buffer_metadata()` and `is_symbol_observable()`.
 
 The function `get_buffer_metadata()` must return a dictionary with the following
 fields:
@@ -278,7 +265,6 @@ fields:
    * `GIW_TYPES_INT32` = 4
    * `GIW_TYPES_FLOAT32` = 5
    * `GIW_TYPES_FLOAT64` = 6
-
  * **row_stride** Number of pixels you have to skip in order to reach the pixel
    right below any arbitrary pixel. In other words, this can be thought of as
    the width, in pixels, of the underlying containing buffer. If the ROI is the
@@ -292,7 +278,7 @@ fields:
    buffer in the interface. Can be very useful if your data structure represents
    transposition with an internal metadata.
 
-The function `is_symbol_observable()` receives a gdb symbol and a string
+The function `is_symbol_observable()` receives a symbol and a string
 containing the variable name, and must only return `True` if that symbol is of
 the observable type (the buffer you are dealing with).
 
@@ -301,6 +287,3 @@ decorators `@interface.debug_buffer_metadata` and
 `@interface.debug_symbol_observable` in the methods `get_buffer_metadata` and
 `is_symbol_observable`, respectively. This will print information about all
 analyzed symbols in the debugger console every time a breakpoint is hit.
-
-For more information on how to customize this file, check out this [more
-detailed blog post](https://csantosbh.wordpress.com/2016/10/15/configuring-gdb-imagewatch-to-visualize-custom-buffer-types/).
