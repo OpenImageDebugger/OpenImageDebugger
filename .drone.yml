@@ -13,9 +13,9 @@ steps:
   commands:
     - mkdir build
     - cd build
-    - qmake ..
+    - qmake .. PREFIX=/tmp
     - make -j8
-    - sudo make install
+    - make install
 
 ---
 
@@ -34,6 +34,6 @@ steps:
   commands:
       - mkdir build
       - cd build
-      - qmake ..
+      - qmake .. PREFIX=/tmp
       - make -j8
-      - sudo make install
+      - make install

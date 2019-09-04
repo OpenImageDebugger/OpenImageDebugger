@@ -29,6 +29,6 @@ before_install:
 
 script:
   - mkdir build && cd build
-  - qmake ..
+  - qmake .. PREFIX=/tmp
   - make -j8
-  - sudo make install
+  - make install
