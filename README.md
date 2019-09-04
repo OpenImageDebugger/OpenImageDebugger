@@ -62,7 +62,7 @@ Clone the source code to any folder you prefer and initialize the
 submodules:
 
 ```shell
-git clone https://github.com:OpenImageDebugger/OpenImageDebugger.git
+git clone https://github.com/OpenImageDebugger/OpenImageDebugger.git
 cd OpenImageDebugger
 git submodule init
 git submodule update
