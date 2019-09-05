@@ -57,29 +57,29 @@ struct Mat
         rows = rows_;
         step = {cols_ * channels_ * static_cast<int>(sizeof(T)), channels_};
 
-        const int GIW_TYPES_UINT8   = 0;
-        const int GIW_TYPES_UINT16  = 2;
-        const int GIW_TYPES_INT16   = 3;
-        const int GIW_TYPES_INT32   = 4;
-        const int GIW_TYPES_FLOAT32 = 5;
-        const int GIW_TYPES_FLOAT64 = 6;
+        const int OID_TYPES_UINT8   = 0;
+        const int OID_TYPES_UINT16  = 2;
+        const int OID_TYPES_INT16   = 3;
+        const int OID_TYPES_INT32   = 4;
+        const int OID_TYPES_FLOAT32 = 5;
+        const int OID_TYPES_FLOAT64 = 6;
 
         const int CV_CN_SHIFT = 3;
 
         flags = (channels_ - 1) << CV_CN_SHIFT;
 
         if (is_same<T, uint8_t>::value) {
-            flags |= GIW_TYPES_UINT8;
+            flags |= OID_TYPES_UINT8;
         } else if (is_same<T, uint16_t>::value) {
-            flags |= GIW_TYPES_UINT16;
+            flags |= OID_TYPES_UINT16;
         } else if (is_same<T, int16_t>::value) {
-            flags |= GIW_TYPES_INT16;
+            flags |= OID_TYPES_INT16;
         } else if (is_same<T, int32_t>::value) {
-            flags |= GIW_TYPES_INT32;
+            flags |= OID_TYPES_INT32;
         } else if (is_same<T, float>::value) {
-            flags |= GIW_TYPES_FLOAT32;
+            flags |= OID_TYPES_FLOAT32;
         } else if (is_same<T, double>::value) {
-            flags |= GIW_TYPES_FLOAT64;
+            flags |= OID_TYPES_FLOAT64;
         }
 
         dataMgr = shared_ptr<T>(new T[rows * cols * channels_],
