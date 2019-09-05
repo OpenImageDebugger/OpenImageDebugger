@@ -159,7 +159,7 @@ void MainWindow::persist_settings()
 
     QSettings settings(QSettings::Format::IniFormat,
                        QSettings::Scope::UserScope,
-                       "gdbimagewatch");
+                       "OpenImageDebugger");
 
     QList<BufferExpiration> persisted_session_buffers;
 

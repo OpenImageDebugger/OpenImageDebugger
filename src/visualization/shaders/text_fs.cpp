@@ -43,7 +43,7 @@ float round_float(float f) {
 }
 
 
-bool giw_isnan(float val) {
+bool oid_isnan(float val) {
     return (val < 0.0 || 0.0 < val || val == 0.0) ? false : true;
 }
 
@@ -56,7 +56,7 @@ void main()
     buff_color = buff_color * brightness_contrast[0].x +
                               brightness_contrast[1].x;
 
-    if (giw_isnan(buff_color)) {
+    if (oid_isnan(buff_color)) {
         buff_color = 0.0;
     }
 

@@ -9,7 +9,7 @@ QT -= \
   gui
 
 SOURCES += \
-  ../giw_bridge.cpp \
+  ../oid_bridge.cpp \
   ../../debuggerinterface/python_native_interface.cpp \
   ../../ipc/message_exchange.cpp \
   ../../ipc/raw_data_decode.cpp
@@ -34,10 +34,10 @@ INCLUDEPATH += \
 
 # Deployment settings
 macx {
-    BRIDGE_INSTALL_FOLDER = $$PREFIX/gdb-imagewatch/giwwindow.app/Contents/MacOS
+    BRIDGE_INSTALL_FOLDER = $$PREFIX/OpenImageDebugger/oidwindow.app/Contents/MacOS
 }
 linux {
-    BRIDGE_INSTALL_FOLDER = $$PREFIX/gdb-imagewatch/
+    BRIDGE_INSTALL_FOLDER = $$PREFIX/OpenImageDebugger/
 }
 
 include($$PWD/../../resources/deployscripts.pri)

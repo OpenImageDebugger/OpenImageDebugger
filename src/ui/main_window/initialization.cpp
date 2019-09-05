@@ -47,7 +47,7 @@ void MainWindow::initialize_settings()
 
     QSettings settings(QSettings::Format::IniFormat,
                        QSettings::Scope::UserScope,
-                       "gdbimagewatch");
+                       "OpenImageDebugger");
 
     settings.sync();
 

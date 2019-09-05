@@ -23,8 +23,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GIW_SHADERS_H_
-#define GIW_SHADERS_H_
+#ifndef OID_SHADERS_H_
+#define OID_SHADERS_H_
 
 
 namespace shader
@@ -39,4 +39,4 @@ extern const char* background_frag_shader;
 
 } // namespace shader
 
-#endif // GIW_SHADERS_H_
+#endif // OID_SHADERS_H_

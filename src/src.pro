@@ -1,6 +1,6 @@
 include($$PWD/../common.pri)
 
-message(GDB-ImageWatch UI build mode: $$BUILD_MODE)
+message(OpenImageDebugger UI build mode: $$BUILD_MODE)
 
 # Prevent strip from producing spurious error messages
 QMAKE_STRIP = echo "strip disabled: "
@@ -22,7 +22,7 @@ linux-g++ {
 }
 
 SOURCES += \
-  giw_window.cpp \
+  oid_window.cpp \
   io/buffer_exporter.cpp \
   ipc/message_exchange.cpp \
   ipc/raw_data_decode.cpp \
@@ -66,9 +66,9 @@ HEADERS += \
   ui/symbol_completer.h \
   ui/symbol_search_input.h \
 
-TARGET = giwwindow
+TARGET = oidwindow
 TEMPLATE = app
-target.path = $$PREFIX/gdb-imagewatch/
+target.path = $$PREFIX/OpenImageDebugger/
 
 INSTALLS += \
   target

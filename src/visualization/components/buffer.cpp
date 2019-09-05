@@ -31,7 +31,7 @@
 
 #include "camera.h"
 #include "visualization/game_object.h"
-#include "visualization/shaders/giw_shaders.h"
+#include "visualization/shaders/oid_shaders.h"
 #include "visualization/stage.h"
 
 using namespace std;

@@ -27,7 +27,7 @@
 #include <QPixmap>
 
 #include "gl_text_renderer.h"
-#include "visualization/shaders/giw_shaders.h"
+#include "visualization/shaders/oid_shaders.h"
 
 
 GLTextRenderer::GLTextRenderer(GLCanvas* gl_canvas)

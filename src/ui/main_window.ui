@@ -16,7 +16,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>GDB ImageWatch</string>
+   <string>Open Image Debugger</string>
   </property>
   <property name="styleSheet">
    <string notr="true">QFrame#frame { border: 0; }

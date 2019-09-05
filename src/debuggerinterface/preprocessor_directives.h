@@ -47,9 +47,9 @@
         return ret;                                                   \
     }
 
-#define GIW_EMPTY_PARAMETER
+#define OID_EMPTY_PARAMETER
 #define CHECK_FIELD_PROVIDED(name, current_ctx_name) \
-    CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, GIW_EMPTY_PARAMETER)
+    CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, OID_EMPTY_PARAMETER)
 
 #define CHECK_FIELD_TYPE(name, type_checker_funct, current_ctx_name)    \
     if (type_checker_funct(py_##name) == 0) {                           \

@@ -238,7 +238,7 @@ void BufferExporter::export_buffer(const Buffer* buffer,
             break;
         }
     } else {
-        // Matlab/Octave matrix (load with the giw_load.m function)
+        // Matlab/Octave matrix (load with the oid_load.m function)
         switch (buffer->type) {
         case BufferType::UnsignedByte:
             export_binary<uint8_t>(path.c_str(), buffer);

@@ -32,7 +32,7 @@
 
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
-#include "giw_bridge.h"
+#include "oid_bridge.h"
 #include "ipc/message_exchange.h"
 
 #include <QDataStream>
@@ -94,10 +94,10 @@ class PyGILRAII
     PyGILState_STATE _py_gil_state;
 };
 
-class GiwBridge
+class OidBridge
 {
   public:
-    GiwBridge(int (*plot_callback)(const char*))
+    OidBridge(int (*plot_callback)(const char*))
         : ui_proc_id_(0)
         , client_(nullptr)
         , plot_callback_(plot_callback)
@@ -122,11 +122,11 @@ class GiwBridge
         // Initialize server
         if (!server_.listen(QHostAddress::Any)) {
             // TODO escalate error
-            cerr << "[giw] Could not start TCP server" << endl;
+            cerr << "[OpenImageDebugger] Could not start TCP server" << endl;
             return false;
         }
 
-        string windowBinaryPath = this->giw_path_ + "/giwwindow";
+        string windowBinaryPath = this->oid_path_ + "/oidwindow";
         string portStdString    = std::to_string(server_.serverPort());
 
         auto packed_parameters =
@@ -150,9 +150,9 @@ class GiwBridge
         return client_ != nullptr;
     }
 
-    void set_path(const string& giw_path)
+    void set_path(const string& oid_path)
     {
-        giw_path_ = giw_path;
+        oid_path_ = oid_path;
     }
 
     bool is_window_ready()
@@ -230,7 +230,7 @@ class GiwBridge
             .send(client_);
     }
 
-    ~GiwBridge()
+    ~OidBridge()
     {
         kill(ui_proc_id_, SIGKILL);
     }
@@ -239,7 +239,7 @@ class GiwBridge
     pid_t ui_proc_id_;
     QTcpServer server_;
     QTcpSocket* client_;
-    string giw_path_;
+    string oid_path_;
 
     int (*plot_callback_)(const char*);
 
@@ -284,7 +284,7 @@ class GiwBridge
                     decode_get_observed_symbols_response();
                 break;
             default:
-                cerr << "[giw] Received message with incorrect header" << endl;
+                cerr << "[OpenImageDebugger] Received message with incorrect header" << endl;
                 break;
             }
         } while (client_->bytesAvailable() > 0);
@@ -334,7 +334,7 @@ class GiwBridge
     {
         if (client_ == nullptr) {
             if (!server_.waitForNewConnection(10000)) {
-                cerr << "[giw] No clients connected to ImageWatch server"
+                cerr << "[OpenImageDebugger] No clients connected to OpenImageDebugger server"
                      << endl;
             }
             client_ = server_.nextPendingConnection();
@@ -343,7 +343,7 @@ class GiwBridge
 };
 
 
-AppHandler giw_initialize(int (*plot_callback)(const char*),
+AppHandler oid_initialize(int (*plot_callback)(const char*),
                           PyObject* optional_parameters)
 {
     PyGILRAII py_gil_raii;
@@ -351,7 +351,7 @@ AppHandler giw_initialize(int (*plot_callback)(const char*),
     if (optional_parameters != nullptr && !PyDict_Check(optional_parameters)) {
         RAISE_PY_EXCEPTION(
             PyExc_TypeError,
-            "Invalid second parameter given to giw_initialize (was expecting"
+            "Invalid second parameter given to oid_initialize (was expecting"
             " a dict).");
         return nullptr;
     }
@@ -359,30 +359,30 @@ AppHandler giw_initialize(int (*plot_callback)(const char*),
     /*
      * Get optional fields
      */
-    PyObject* py_giw_path =
-        PyDict_GetItemString(optional_parameters, "giw_path");
+    PyObject* py_oid_path =
+        PyDict_GetItemString(optional_parameters, "oid_path");
 
-    GiwBridge* app = new GiwBridge(plot_callback);
+    OidBridge* app = new OidBridge(plot_callback);
 
-    if (py_giw_path) {
-        string giw_path_str;
-        copy_py_string(giw_path_str, py_giw_path);
-        app->set_path(giw_path_str);
+    if (py_oid_path) {
+        string oid_path_str;
+        copy_py_string(oid_path_str, py_oid_path);
+        app->set_path(oid_path_str);
     }
 
     return static_cast<AppHandler>(app);
 }
 
 
-void giw_cleanup(AppHandler handler)
+void oid_cleanup(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    GiwBridge* app = static_cast<GiwBridge*>(handler);
+    OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "giw_terminate received null application handler");
+                           "oid_terminate received null application handler");
         return;
     }
 
@@ -390,15 +390,15 @@ void giw_cleanup(AppHandler handler)
 }
 
 
-void giw_exec(AppHandler handler)
+void oid_exec(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    GiwBridge* app = static_cast<GiwBridge*>(handler);
+    OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "giw_exec received null application handler");
+                           "oid_exec received null application handler");
         return;
     }
 
@@ -406,15 +406,15 @@ void giw_exec(AppHandler handler)
 }
 
 
-int giw_is_window_ready(AppHandler handler)
+int oid_is_window_ready(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    GiwBridge* app = static_cast<GiwBridge*>(handler);
+    OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "giw_exec received null application handler");
+                           "oid_exec received null application handler");
         return 0;
     }
 
@@ -422,15 +422,15 @@ int giw_is_window_ready(AppHandler handler)
 }
 
 
-PyObject* giw_get_observed_buffers(AppHandler handler)
+PyObject* oid_get_observed_buffers(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    GiwBridge* app = static_cast<GiwBridge*>(handler);
+    OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_Exception,
-                           "giw_get_observed_buffers received null "
+                           "oid_get_observed_buffers received null "
                            "application handler");
         return nullptr;
     }
@@ -456,17 +456,17 @@ PyObject* giw_get_observed_buffers(AppHandler handler)
 }
 
 
-void giw_set_available_symbols(AppHandler handler, PyObject* available_vars_py)
+void oid_set_available_symbols(AppHandler handler, PyObject* available_vars_py)
 {
     PyGILRAII py_gil_raii;
 
     assert(PyList_Check(available_vars_py));
 
-    GiwBridge* app = static_cast<GiwBridge*>(handler);
+    OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "giw_set_available_symbols received null "
+                           "oid_set_available_symbols received null "
                            "application handler");
         return;
     }
@@ -483,15 +483,15 @@ void giw_set_available_symbols(AppHandler handler, PyObject* available_vars_py)
 }
 
 
-void giw_run_event_loop(AppHandler handler)
+void oid_run_event_loop(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    GiwBridge* app = static_cast<GiwBridge*>(handler);
+    OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "giw_run_event_loop received null application "
+                           "oid_run_event_loop received null application "
                            "handler");
         return;
     }
@@ -500,16 +500,16 @@ void giw_run_event_loop(AppHandler handler)
 }
 
 
-void giw_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
+void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 {
     PyGILRAII py_gil_raii;
 
 
-    GiwBridge* app = static_cast<GiwBridge*>(handler);
+    OidBridge* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
-                           "giw_plot_buffer received null application handler");
+                           "oid_plot_buffer received null application handler");
         return;
     }
 
