@@ -222,9 +222,9 @@ binary file that can be opened with any tool.
 ### Loading exported buffers on Octave/Matlab
 
 Buffers exported in the `Octave matrix` format can be loaded with the function
-`giw_load.m`, which is available in the `matlab` folder. To use it, add this
+`oid_load.m`, which is available in the `matlab` folder. To use it, add this
 folder to Octave/Matlab `path` variable and call
-`giw_load('/path/to/buffer.dump')`.
+`oid_load('/path/to/buffer.dump')`.
 
 ## Basic configuration
 
@@ -241,10 +241,10 @@ By default, the plugin works with several data types, including OpenCV's `Mat`
 and `CvMat` and Eigen's `Matrix`.
 
 If you use a different buffer type, you can create a python parser inside the
-folder `resources/giwscripts/giwtypes`. This is actually pretty simple and
+folder `resources/oidscripts/oidtypes`. This is actually pretty simple and
 only involves implementing a class according to the interface
 `TypeInspectorInterface` defined in
-`resources/giwscripts/giwtypes/interface.py`. This interface only defines the
+`resources/oidscripts/oidtypes/interface.py`. This interface only defines the
 methods `get_buffer_metadata()` and `is_symbol_observable()`.
 
 The function `get_buffer_metadata()` must return a dictionary with the following
@@ -258,13 +258,13 @@ fields:
  * **channels** Number of color channels (Must be in the range `1 <= channels
    <= 3`)
  * **type** Identifier for the type of the underlying buffer. The supported
-   values, defined under `resources/giwscripts/symbols.py`, are:
-   * `GIW_TYPES_UINT8` = 0
-   * `GIW_TYPES_UINT16` = 2
-   * `GIW_TYPES_INT16` = 3
-   * `GIW_TYPES_INT32` = 4
-   * `GIW_TYPES_FLOAT32` = 5
-   * `GIW_TYPES_FLOAT64` = 6
+   values, defined under `resources/oidscripts/symbols.py`, are:
+   * `OID_TYPES_UINT8` = 0
+   * `OID_TYPES_UINT16` = 2
+   * `OID_TYPES_INT16` = 3
+   * `OID_TYPES_INT32` = 4
+   * `OID_TYPES_FLOAT32` = 5
+   * `OID_TYPES_FLOAT64` = 6
  * **row_stride** Number of pixels you have to skip in order to reach the pixel
    right below any arbitrary pixel. In other words, this can be thought of as
    the width, in pixels, of the underlying containing buffer. If the ROI is the
