@@ -1,7 +1,7 @@
 %%
-% Loads a binary file saved from gdb-imagewatch.
+% Loads a binary file saved from Open Image Debugger
 
-function buffer = giw_load(fname)
+function buffer = oid_load(fname)
 
     fid = fopen(fname, 'r');
 

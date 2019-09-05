@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Module developed for quick testing the ImageWatch shared library
+Module developed for quick testing the OpenImageDebugger shared library
 """
 
 import sys
@@ -10,19 +10,19 @@ import time
 import threading
 import array
 
-from giwscripts import giwwindow
-from giwscripts import symbols
-from giwscripts.debuggers.interfaces import BridgeInterface
+from oidscripts import oidwindow
+from oidscripts import symbols
+from oidscripts.debuggers.interfaces import BridgeInterface
 
 
-def giwtest(script_path):
+def oidtest(script_path):
     """
     Entry point for the testing mode.
     """
 
     dummy_debugger = DummyDebugger()
 
-    window = giwwindow.GdbImageWatchWindow(script_path, dummy_debugger)
+    window = oidwindow.OpenImageDebuggerWindow(script_path, dummy_debugger)
     window.initialize_window()
 
     try:
@@ -62,8 +62,8 @@ def _gen_buffers(width, height):
     """
     channels = [3, 1]
 
-    types = [{'array': 'B', 'giw': symbols.GIW_TYPES_UINT8},
-             {'array': 'f', 'giw': symbols.GIW_TYPES_FLOAT32}]
+    types = [{'array': 'B', 'oid': symbols.OID_TYPES_UINT8},
+             {'array': 'f', 'oid': symbols.OID_TYPES_FLOAT32}]
 
     tex1 = [0] * width * height * channels[0]
     tex2 = [0] * width * height * channels[1]
@@ -122,7 +122,7 @@ def _gen_buffers(width, height):
             'width': width,
             'height': height,
             'channels': channels[0],
-            'type': types[0]['giw'],
+            'type': types[0]['oid'],
             'row_stride': rowstride,
             'pixel_layout': 'rgba',
             'transpose_buffer': False
@@ -134,7 +134,7 @@ def _gen_buffers(width, height):
             'width': width,
             'height': height,
             'channels': channels[1],
-            'type': types[1]['giw'],
+            'type': types[1]['oid'],
             'row_stride': rowstride,
             'pixel_layout': 'rgba',
             'transpose_buffer': False

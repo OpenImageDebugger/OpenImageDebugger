@@ -3,12 +3,12 @@
 """
 QtCreator integration module.
 """
-from giwscripts.debuggers.interfaces import BridgeInterface
-from giwscripts.events import GdbImageWatchEvents
+from oidscripts.debuggers.interfaces import BridgeInterface
+from oidscripts.events import OpenImageDebuggerEvents
 
 
 def gdb_fetch_hook(event_handler):
-    # type: (GdbImageWatchEvents) -> None
+    # type: (OpenImageDebuggerEvents) -> None
     """
     Hacks into Dumper and changes its fetchVariables method to a wrapper that
     calls stop_event_handler. This allows us to retrieve the list of locals
@@ -35,7 +35,7 @@ def gdb_fetch_hook(event_handler):
 
 
 def lldb_fetch_hook(debugger, event_handler):
-    # type: (BridgeInterface, GdbImageWatchEvents) -> None
+    # type: (BridgeInterface, OpenImageDebuggerEvents) -> None
     import lldb
 
     imp = __import__('lldbbridge')
@@ -60,7 +60,7 @@ def prevents_stop_hook():
 
 
 def register_symbol_fetch_hook(debugger, event_handler):
-    # type: (BridgeInterface, GdbImageWatchEvents) -> None
+    # type: (BridgeInterface, OpenImageDebuggerEvents) -> None
     backend_name = debugger.get_backend_name()
     if backend_name == 'gdb':
         gdb_fetch_hook(event_handler)

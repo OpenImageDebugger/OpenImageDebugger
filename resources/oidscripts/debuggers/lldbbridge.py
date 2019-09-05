@@ -9,9 +9,9 @@ import time
 import threading
 import sys
 
-from giwscripts import sysinfo
-from giwscripts.typebridge import TypeInspectorInterface
-from giwscripts.debuggers.interfaces import BridgeInterface, \
+from oidscripts import sysinfo
+from oidscripts.typebridge import TypeInspectorInterface
+from oidscripts.debuggers.interfaces import BridgeInterface, \
     DebuggerSymbolReference
 
 instance = None
@@ -19,7 +19,7 @@ instance = None
 
 class LldbBridge(BridgeInterface):
     """
-    LLDB Bridge class, exposing the common expected interface for the ImageWatch
+    LLDB Bridge class, exposing the common expected interface for the OpenImageDebugger
     to access the required buffer data and interact with the debugger.
     """
 

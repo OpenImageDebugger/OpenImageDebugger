@@ -3,12 +3,12 @@
 """
 This module is concerned with the analysis of each variable found by the
 debugger, as well as identifying and describing the buffers that should be
-plotted in the ImageWatch window.
+plotted in the OpenImageDebugger window.
 """
 
 import abc
 
-from giwscripts import debuggers
+from oidscripts import debuggers
 
 
 def debug_buffer_metadata(func):
@@ -16,10 +16,10 @@ def debug_buffer_metadata(func):
         try:
             metadata = func(self, obj_name, picked_obj, debugger_bridge)
 
-            print('[%s] [%s] was parsed by giwtype [%s]' %
+            print('[%s] [%s] was parsed by oidtype [%s]' %
                   (str(picked_obj.type), obj_name, type(self).__name__))
         except Exception as error:
-            print('[%s] [%s] raised exception when parsed by giwtype [%s]:' %
+            print('[%s] [%s] raised exception when parsed by oidtype [%s]:' %
                   (str(picked_obj.type), obj_name, type(self).__name__))
             print('    %s' % str(error))
 
@@ -74,8 +74,8 @@ class TypeInspectorInterface(object):
          * transpose_buffer
 
          For information about these fields, consult the documentation for
-         giw_plot_buffer in the file $ROOT/src/giw_window.h. The module
-         giwtypes.opencv shows an example implementation for the OpenCV Mat
+         oid_plot_buffer in the file $ROOT/src/oid_window.h. The module
+         oidtypes.opencv shows an example implementation for the OpenCV Mat
          type.
         """
         pass

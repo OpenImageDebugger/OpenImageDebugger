@@ -3,13 +3,13 @@
 """
 This module is concerned with the analysis of each variable found by the
 debugger, as well as identifying and describing the buffers that should be
-plotted in the ImageWatch window.
+plotted in the OpenImageDebugger window.
 """
 
 import re
 
-from giwscripts import symbols
-from giwscripts.giwtypes import interface
+from oidscripts import symbols
+from oidscripts.oidtypes import interface
 
 
 # OpenCV constants
@@ -43,13 +43,13 @@ class Mat(interface.TypeInspectorInterface):
 
         type_value = (cvtype & 7)
 
-        if (type_value == symbols.GIW_TYPES_UINT16 or
-            type_value == symbols.GIW_TYPES_INT16):
+        if (type_value == symbols.OID_TYPES_UINT16 or
+            type_value == symbols.OID_TYPES_INT16):
             row_stride = int(row_stride / 2)
-        elif (type_value == symbols.GIW_TYPES_INT32 or
-              type_value == symbols.GIW_TYPES_FLOAT32):
+        elif (type_value == symbols.OID_TYPES_INT32 or
+              type_value == symbols.OID_TYPES_FLOAT32):
             row_stride = int(row_stride / 4)
-        elif type_value == symbols.GIW_TYPES_FLOAT64:
+        elif type_value == symbols.OID_TYPES_FLOAT64:
             row_stride = int(row_stride / 8)
 
         return {
@@ -100,13 +100,13 @@ class CvMat(interface.TypeInspectorInterface):
 
         type_value = (cvtype & 7)
 
-        if (type_value == symbols.GIW_TYPES_UINT16 or
-            type_value == symbols.GIW_TYPES_INT16):
+        if (type_value == symbols.OID_TYPES_UINT16 or
+            type_value == symbols.OID_TYPES_INT16):
             row_stride = int(row_stride / 2)
-        elif (type_value == symbols.GIW_TYPES_INT32 or
-              type_value == symbols.GIW_TYPES_FLOAT32):
+        elif (type_value == symbols.OID_TYPES_INT32 or
+              type_value == symbols.OID_TYPES_FLOAT32):
             row_stride = int(row_stride / 4)
-        elif type_value == symbols.GIW_TYPES_FLOAT64:
+        elif type_value == symbols.OID_TYPES_FLOAT64:
             row_stride = int(row_stride / 8)
 
         return {

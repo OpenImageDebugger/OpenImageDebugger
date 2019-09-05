@@ -8,7 +8,7 @@ import subprocess
 import re
 from sys import platform
 
-from giwscripts import symbols
+from oidscripts import symbols
 
 
 def _get_available_memory_linux():
@@ -71,13 +71,13 @@ def get_buffer_size(height, channels, typevalue, rowstride):
     Compute the buffer size in bytes
     """
     channel_size = 1
-    if (typevalue == symbols.GIW_TYPES_UINT16 or
-            typevalue == symbols.GIW_TYPES_INT16):
+    if (typevalue == symbols.OID_TYPES_UINT16 or
+            typevalue == symbols.OID_TYPES_INT16):
         channel_size = 2  # 2 bytes per element
-    elif (typevalue == symbols.GIW_TYPES_INT32 or
-          typevalue == symbols.GIW_TYPES_FLOAT32):
+    elif (typevalue == symbols.OID_TYPES_INT32 or
+          typevalue == symbols.OID_TYPES_FLOAT32):
         channel_size = 4  # 4 bytes per element
-    elif typevalue == symbols.GIW_TYPES_FLOAT64:
+    elif typevalue == symbols.OID_TYPES_FLOAT64:
         channel_size = 8  # 8 bytes per element
 
     return channel_size * channels * rowstride * height

@@ -3,13 +3,13 @@
 """
 This module is concerned with the analysis of each variable found by the
 debugger, as well as identifying and describing the buffers that should be
-plotted in the ImageWatch window.
+plotted in the OpenImageDebugger window.
 """
 
 import re
 
-from giwscripts import symbols
-from giwscripts.giwtypes import interface
+from oidscripts import symbols
+from oidscripts.oidtypes import interface
 
 
 class EigenXX(interface.TypeInspectorInterface):
@@ -59,15 +59,15 @@ class EigenXX(interface.TypeInspectorInterface):
         if transpose_buffer:
             width, height = height, width
 
-        # Assign the GIW type according to underlying type
+        # Assign the OpenImageDebugger type according to underlying type
         if current_type == 'short':
-            type_value = symbols.GIW_TYPES_INT16
+            type_value = symbols.OID_TYPES_INT16
         elif current_type == 'float':
-            type_value = symbols.GIW_TYPES_FLOAT32
+            type_value = symbols.OID_TYPES_FLOAT32
         elif current_type == 'double':
-            type_value = symbols.GIW_TYPES_FLOAT64
+            type_value = symbols.OID_TYPES_FLOAT64
         elif current_type == 'int':
-            type_value = symbols.GIW_TYPES_INT32
+            type_value = symbols.OID_TYPES_INT32
 
         # Differentiate between Map and dynamic/static Matrices
         if is_eigen_map:

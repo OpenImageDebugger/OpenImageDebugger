@@ -8,14 +8,14 @@ import gdb
 import time
 import threading
 
-from giwscripts import sysinfo
-from giwscripts.debuggers.interfaces import BridgeInterface
-from giwscripts.events import BridgeEventHandlerInterface
+from oidscripts import sysinfo
+from oidscripts.debuggers.interfaces import BridgeInterface
+from oidscripts.events import BridgeEventHandlerInterface
 
 
 class GdbBridge(BridgeInterface):
     """
-    GDB Bridge class, exposing the common expected interface for the ImageWatch
+    GDB Bridge class, exposing the common expected interface for the OpenImageDebugger
     to access the required buffer data and interact with the debugger.
     """
     def __init__(self, type_bridge):
@@ -115,7 +115,7 @@ class GdbBridge(BridgeInterface):
                 try:
                     observable_symbols.add(field_name)
                 except Exception:
-                    print('[gdb-imagewatch] Info: Member %s is not observable'
+                    print('[OpenImageDebugger] Info: Member %s is not observable'
                           % field_name)
         return observable_symbols
 
@@ -150,7 +150,7 @@ class GdbBridge(BridgeInterface):
                         try:
                             observable_symbols.add(name)
                         except Exception:
-                            print('[gdb-imagewatch] Info: Field %s is not'
+                            print('[OpenImageDebugger] Info: Field %s is not'
                                   'observable' % name)
 
             block = block.superblock

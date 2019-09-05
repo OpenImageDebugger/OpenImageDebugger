@@ -6,10 +6,10 @@ Implementation of handlers for events raised by the debugger
 
 import time
 
-from giwscripts.debuggers.interfaces import BridgeEventHandlerInterface
+from oidscripts.debuggers.interfaces import BridgeEventHandlerInterface
 
 
-class GdbImageWatchEvents(BridgeEventHandlerInterface):
+class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
     """
     Handles events raised by the debugger bridge
     """
@@ -19,7 +19,7 @@ class GdbImageWatchEvents(BridgeEventHandlerInterface):
 
     def _set_symbol_complete_list(self):
         """
-        Retrieve the list of available symbols and provide it to the GIW window
+        Retrieve the list of available symbols and provide it to the OID window
         for autocompleting.
         """
         observable_symbols = list(self._debugger.get_available_symbols())
@@ -32,7 +32,7 @@ class GdbImageWatchEvents(BridgeEventHandlerInterface):
     def stop_handler(self):
         """
         The debugger has stopped (e.g. a breakpoint was hit). We must list all
-        available buffers and pass it to the imagewatch window.
+        available buffers and pass it to the Open Image Debugger window.
         """
         # Block until the window is up and running
         if not self._window.is_ready():

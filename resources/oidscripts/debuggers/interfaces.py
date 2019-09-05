@@ -87,7 +87,7 @@ class BridgeEventHandlerInterface(object):
     __metaclass__ = abc.ABCMeta
 
     """This interface defines the events that may be raised by the debugger 
-    and can be handled by GIW """
+    and can be handled by OpenImageDebugger """
 
     @abc.abstractmethod
     def stop_handler(self):
