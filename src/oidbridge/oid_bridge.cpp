@@ -612,10 +612,10 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     copy_py_string(display_name_str, py_display_name);
     copy_py_string(pixel_layout_str, py_pixel_layout);
 
-    int buff_width    = get_py_int(py_width);
-    int buff_height   = get_py_int(py_height);
-    int buff_channels = get_py_int(py_channels);
-    int buff_stride   = get_py_int(py_row_stride);
+    auto buff_width    = static_cast<int>(get_py_int(py_width));
+    auto buff_height   = static_cast<int>(get_py_int(py_height));
+    auto buff_channels = static_cast<int>(get_py_int(py_channels));
+    auto buff_stride   = static_cast<int>(get_py_int(py_row_stride));
 
     BufferType buff_type = static_cast<BufferType>(get_py_int(py_type));
 
