@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -26,15 +26,30 @@
 #ifndef PYTHON_NATIVE_INTERFACE_H_
 #define PYTHON_NATIVE_INTERFACE_H_
 
+#include <string>
+
 #include <Python.h>
 
 
-int get_py_int(PyObject* obj);
+#if PY_MAJOR_VERSION==2
+#define PY_INT_CHECK_FUNC PyInt_Check
+#else
+#define PY_INT_CHECK_FUNC PyLong_Check
+#endif
+
+
+long get_py_int(PyObject* obj);
 
 
 int check_py_string_type(PyObject* obj);
 
 
 void* get_c_ptr_from_py_buffer(PyObject* obj);
+
+
+uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, int tuple_index);
+
+
+void copy_py_string(std::string& dst, PyObject* src);
 
 #endif // PYTHON_NATIVE_INTERFACE_H_

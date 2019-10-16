@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -26,9 +26,36 @@
 #include "python_native_interface.h"
 
 
-int get_py_int(PyObject* obj)
+long get_py_int(PyObject* obj)
 {
+#if PY_MAJOR_VERSION==2
+    return PyLong_AsLong(obj);
+#elif PY_MAJOR_VERSION==3
     return PyLong_AS_LONG(obj);
+#else
+#error "Unsupported Python version"
+#endif
+}
+
+
+uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, int tuple_index)
+{
+    PyObject* tuple_item = PyTuple_GetItem(obj, tuple_index);
+    return reinterpret_cast<uint8_t*>(PyLong_AsVoidPtr(tuple_item));
+}
+
+
+void copy_py_string(std::string& dst, PyObject* src)
+{
+    if (PyUnicode_Check(src)) {
+        // Unicode sring
+        PyObject* src_bytes = PyUnicode_AsEncodedString(src, "ASCII", "strict");
+        dst                 = PyBytes_AS_STRING(src_bytes);
+        Py_DECREF(src_bytes);
+    } else {
+        assert(PyBytes_Check(src));
+        dst = PyBytes_AS_STRING(src);
+    }
 }
 
 

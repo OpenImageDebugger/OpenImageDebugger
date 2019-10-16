@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -31,27 +31,3 @@
 using namespace std;
 
 
-shared_ptr<uint8_t> make_shared_py_object(PyObject* obj)
-{
-    Py_INCREF(obj);
-
-    return shared_ptr<uint8_t>(
-        reinterpret_cast<uint8_t*>(obj),
-        [](uint8_t* obj) { Py_DECREF(reinterpret_cast<PyObject*>(obj)); });
-}
-
-
-shared_ptr<uint8_t> make_float_buffer_from_double(double* buff, int length)
-{
-    shared_ptr<uint8_t> result(
-        reinterpret_cast<uint8_t*>(new float[length]),
-        [](uint8_t* buff) { delete[] reinterpret_cast<float*>(buff); });
-
-    // Cast from double to float
-    float* dst = reinterpret_cast<float*>(result.get());
-    for (int i = 0; i < length; ++i) {
-        dst[i] = static_cast<float>(buff[i]);
-    }
-
-    return result;
-}

@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -29,11 +29,12 @@
 #include <memory>
 
 #include <Python.h>
+#include <QByteArray>
 
 
-std::shared_ptr<uint8_t> make_shared_py_object(PyObject* obj);
+std::shared_ptr<uint8_t> make_shared_buffer_object(const QByteArray& obj);
 
-std::shared_ptr<uint8_t> make_float_buffer_from_double(double* buff,
+std::shared_ptr<uint8_t> make_float_buffer_from_double(const double* buff,
                                                        int length);
 
 #endif // MANAGED_POINTER_H_

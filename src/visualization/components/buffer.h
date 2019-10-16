@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -31,21 +31,13 @@
 
 #include "component.h"
 #include "visualization/shader.h"
+#include "ipc/message_exchange.h"
 
 
 class Buffer : public Component
 {
   public:
     Buffer(GameObject* game_object, GLCanvas* gl_canvas);
-
-    enum class BufferType {
-        UnsignedByte  = 0,
-        UnsignedShort = 2,
-        Short         = 3,
-        Int32         = 4,
-        Float32       = 5,
-        Float64       = 6
-    };
 
     const int max_texture_size = 2048;
 
@@ -61,7 +53,7 @@ class Buffer : public Component
 
     BufferType type;
 
-    uint8_t* buffer;
+    const uint8_t* buffer;
 
     bool transpose;
 

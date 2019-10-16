@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -32,11 +32,10 @@
 
 #include "main_window.h"
 
-#include "debuggerinterface/managed_pointer.h"
-#include "debuggerinterface/python_native_interface.h"
 #include "ui_main_window.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
+#include "ipc/message_exchange.h"
 
 
 using namespace std;
@@ -45,7 +44,8 @@ using namespace std;
 Q_DECLARE_METATYPE(QList<QString>)
 
 
-MainWindow::MainWindow(QWidget* parent)
+MainWindow::MainWindow(const ConnectionSettings& host_settings,
+                       QWidget* parent)
     : QMainWindow(parent)
     , is_window_ready_(false)
     , request_render_update_(true)
@@ -56,7 +56,7 @@ MainWindow::MainWindow(QWidget* parent)
     , icon_height_base_(50)
     , currently_selected_stage_(nullptr)
     , ui_(new Ui::MainWindowUi)
-    , plot_callback_(nullptr)
+    , host_settings_(host_settings)
 {
     QCoreApplication::instance()->installEventFilter(this);
 
@@ -73,6 +73,7 @@ MainWindow::MainWindow(QWidget* parent)
     initialize_settings();
     initialize_go_to_widget();
     initialize_shortcuts();
+    initialize_networking();
 
     is_window_ready_ = true;
 }
@@ -89,7 +90,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::show()
 {
-    update_timer_.start(1000.0 / render_framerate_);
+    update_timer_.start(static_cast<int>(1000.0 / render_framerate_));
     QMainWindow::show();
 }
 
@@ -116,173 +117,15 @@ QSizeF MainWindow::get_icon_size()
 }
 
 
-void MainWindow::set_plot_callback(int (*plot_cbk)(const char*))
-{
-    plot_callback_ = plot_cbk;
-}
-
-
-void MainWindow::plot_buffer(const BufferRequestMessage& buffer_metadata)
-{
-    std::unique_lock<std::mutex> lock(ui_mutex_);
-    pending_updates_.push_back(buffer_metadata);
-}
-
-
-deque<string> MainWindow::get_observed_symbols()
-{
-    deque<string> observed_names;
-
-    for (const auto& name : held_buffers_) {
-        observed_names.push_back(name.first);
-    }
-
-    return observed_names;
-}
-
-
 bool MainWindow::is_window_ready()
 {
     return ui_->bufferPreview->is_ready() && is_window_ready_;
 }
 
 
-void MainWindow::set_available_symbols(const deque<string>& available_vars)
-{
-    std::unique_lock<std::mutex> lock(ui_mutex_);
-
-    available_vars_.clear();
-
-    for (const auto& var_name : available_vars) {
-        // Add symbol name to autocomplete list
-        available_vars_.push_back(var_name.c_str());
-
-        // Plot buffer if it was available in the previous session
-        if (previous_session_buffers_.find(var_name) !=
-            previous_session_buffers_.end()) {
-            plot_callback_(var_name.c_str());
-        }
-    }
-
-    completer_updated_ = true;
-}
-
-
 void MainWindow::loop()
 {
-    // Buffer icon dimensions
-    QSizeF icon_size         = get_icon_size();
-    int icon_width           = icon_size.width();
-    int icon_height          = icon_size.height();
-    const int bytes_per_line = icon_width * 3;
-
-    // Handle buffer plot requests
-    while (!pending_updates_.empty()) {
-        const BufferRequestMessage& request = pending_updates_.front();
-
-        uint8_t* srcBuffer;
-        shared_ptr<uint8_t> managedBuffer;
-        if (request.type == Buffer::BufferType::Float64) {
-            managedBuffer = make_float_buffer_from_double(
-                static_cast<double*>(
-                    get_c_ptr_from_py_buffer(request.py_buffer)),
-                request.width_i * request.height_i * request.channels);
-            srcBuffer = managedBuffer.get();
-        } else {
-            managedBuffer = make_shared_py_object(request.py_buffer);
-            srcBuffer     = static_cast<uint8_t*>(
-                get_c_ptr_from_py_buffer(request.py_buffer));
-        }
-
-        auto buffer_stage = stages_.find(request.variable_name_str);
-        held_buffers_[request.variable_name_str] = managedBuffer;
-
-        if (buffer_stage == stages_.end()) { // New buffer request
-            shared_ptr<Stage> stage = make_shared<Stage>(this);
-            if (!stage->initialize(srcBuffer,
-                                   request.width_i,
-                                   request.height_i,
-                                   request.channels,
-                                   request.type,
-                                   request.step,
-                                   request.pixel_layout,
-                                   request.transpose_buffer)) {
-                cerr << "[error] Could not initialize opengl canvas!" << endl;
-            }
-            stage->contrast_enabled            = ac_enabled_;
-            stages_[request.variable_name_str] = stage;
-
-            ui_->bufferPreview->render_buffer_icon(
-                stage.get(), icon_width, icon_height);
-
-            QImage bufferIcon(stage->buffer_icon.data(),
-                              icon_width,
-                              icon_height,
-                              bytes_per_line,
-                              QImage::Format_RGB888);
-
-            stringstream label;
-            label << request.display_name_str << "\n["
-                  << request.get_visualized_width() << "x"
-                  << request.get_visualized_height() << "]\n"
-                  << get_type_label(request.type, request.channels);
-            QListWidgetItem* item =
-                new QListWidgetItem(QPixmap::fromImage(bufferIcon),
-                                    label.str().c_str(),
-                                    ui_->imageList);
-            item->setData(Qt::UserRole,
-                          QString(request.variable_name_str.c_str()));
-            item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
-                           Qt::ItemIsDragEnabled);
-            ui_->imageList->addItem(item);
-
-            persist_settings_deferred();
-        } else { // Update buffer request
-            buffer_stage->second->buffer_update(srcBuffer,
-                                                request.width_i,
-                                                request.height_i,
-                                                request.channels,
-                                                request.type,
-                                                request.step,
-                                                request.pixel_layout,
-                                                request.transpose_buffer);
-            // Update buffer icon
-            shared_ptr<Stage>& stage = stages_[request.variable_name_str];
-            ui_->bufferPreview->render_buffer_icon(
-                stage.get(), icon_width, icon_height);
-
-            // Looking for corresponding item...
-            QImage bufferIcon(stage->buffer_icon.data(),
-                              icon_width,
-                              icon_height,
-                              bytes_per_line,
-                              QImage::Format_RGB888);
-            stringstream label;
-            label << request.display_name_str << "\n["
-                  << request.get_visualized_width() << "x"
-                  << request.get_visualized_height() << "]\n"
-                  << get_type_label(request.type, request.channels);
-
-            for (int i = 0; i < ui_->imageList->count(); ++i) {
-                QListWidgetItem* item = ui_->imageList->item(i);
-                if (item->data(Qt::UserRole) ==
-                    request.variable_name_str.c_str()) {
-                    item->setIcon(QPixmap::fromImage(bufferIcon));
-                    item->setText(label.str().c_str());
-                    break;
-                }
-            }
-
-            // Update AC values
-            if (currently_selected_stage_ != nullptr) {
-                reset_ac_min_labels();
-                reset_ac_max_labels();
-            }
-        }
-
-        pending_updates_.pop_front();
-        request_render_update_ = true;
-    }
+    decode_incoming_messages();
 
     if (completer_updated_) {
         // Update auto-complete suggestion list
@@ -316,7 +159,7 @@ void MainWindow::persist_settings()
 
     QSettings settings(QSettings::Format::IniFormat,
                        QSettings::Scope::UserScope,
-                       "gdbimagewatch");
+                       "OpenImageDebugger");
 
     QList<BufferExpiration> persisted_session_buffers;
 
@@ -384,8 +227,8 @@ vec4 MainWindow::get_stage_coordinates(float pos_window_x, float pos_window_y)
 
     float win_w = ui_->bufferPreview->width();
     float win_h = ui_->bufferPreview->height();
-    vec4 mouse_pos_ndc(2.0 * (pos_window_x - win_w / 2) / win_w,
-                       -2.0 * (pos_window_y - win_h / 2) / win_h,
+    vec4 mouse_pos_ndc(2.0f * (pos_window_x - win_w / 2) / win_w,
+                       -2.0f * (pos_window_y - win_h / 2) / win_h,
                        0,
                        1);
     mat4 view      = cam_obj->get_pose().inv();
@@ -421,11 +264,13 @@ void MainWindow::update_status_bar()
         message << std::fixed << std::setprecision(3) << "("
                 << static_cast<int>(floor(mouse_pos.x())) << ", "
                 << static_cast<int>(floor(mouse_pos.y())) << ")\t"
-                << cam->compute_zoom() * 100.0 << "%";
+                << cam->compute_zoom() * 100.0f << "%";
         message << " val=";
 
         buffer->get_pixel_info(
-            message, floor(mouse_pos.x()), floor(mouse_pos.y()));
+            message,
+            static_cast<int>(floor(mouse_pos.x())),
+            static_cast<int>(floor(mouse_pos.y())));
 
         status_bar_->setText(message.str().c_str());
     }
@@ -438,20 +283,20 @@ qreal MainWindow::get_screen_dpi_scale()
 }
 
 
-string MainWindow::get_type_label(Buffer::BufferType type, int channels)
+string MainWindow::get_type_label(BufferType type, int channels)
 {
     stringstream result;
-    if (type == Buffer::BufferType::Float32) {
+    if (type == BufferType::Float32) {
         result << "float32";
-    } else if (type == Buffer::BufferType::UnsignedByte) {
+    } else if (type == BufferType::UnsignedByte) {
         result << "uint8";
-    } else if (type == Buffer::BufferType::Short) {
+    } else if (type == BufferType::Short) {
         result << "int16";
-    } else if (type == Buffer::BufferType::UnsignedShort) {
+    } else if (type == BufferType::UnsignedShort) {
         result << "uint16";
-    } else if (type == Buffer::BufferType::Int32) {
+    } else if (type == BufferType::Int32) {
         result << "int32";
-    } else if (type == Buffer::BufferType::Float64) {
+    } else if (type == BufferType::Float64) {
         result << "float64";
     }
     result << "x" << channels;

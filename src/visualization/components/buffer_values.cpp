@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -22,6 +22,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
+
+#include <array>
 
 #include <QFontMetrics>
 
@@ -54,29 +56,29 @@ int BufferValues::render_index() const
 }
 
 
-inline void pix2str(const Buffer::BufferType& type,
+inline void pix2str(const BufferType& type,
                     const uint8_t* buffer,
                     const int& pos,
                     const int& channel,
                     const int label_length,
                     char* pix_label)
 {
-    if (type == Buffer::BufferType::Float32 ||
-        type == Buffer::BufferType::Float64) {
+    if (type == BufferType::Float32 ||
+        type == BufferType::Float64) {
         float fpix = reinterpret_cast<const float*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%.3f", fpix);
         if (strlen(pix_label) > 7)
             snprintf(pix_label, label_length, "%.3e", fpix);
-    } else if (type == Buffer::BufferType::UnsignedByte) {
+    } else if (type == BufferType::UnsignedByte) {
         snprintf(pix_label, label_length, "%d", buffer[pos + channel]);
-    } else if (type == Buffer::BufferType::Short) {
+    } else if (type == BufferType::Short) {
         short fpix = reinterpret_cast<const short*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%d", fpix);
-    } else if (type == Buffer::BufferType::UnsignedShort) {
+    } else if (type == BufferType::UnsignedShort) {
         unsigned short fpix =
             reinterpret_cast<const unsigned short*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%d", fpix);
-    } else if (type == Buffer::BufferType::Int32) {
+    } else if (type == BufferType::Int32) {
         int fpix = reinterpret_cast<const int*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%d", fpix);
         if (strlen(pix_label) > 7)
@@ -100,8 +102,8 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
         float buffer_height_f   = buffer_component->buffer_height_f;
         int step                = buffer_component->step;
         int channels            = buffer_component->channels;
-        Buffer::BufferType type = buffer_component->type;
-        uint8_t* buffer         = buffer_component->buffer;
+        BufferType type = buffer_component->type;
+        const uint8_t* buffer         = buffer_component->buffer;
 
         vec4 tl_ndc(-1, 1, 0, 1);
         vec4 br_ndc(1, -1, 0, 1);

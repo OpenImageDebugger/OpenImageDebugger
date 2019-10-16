@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -36,8 +36,8 @@
 #include <QListWidgetItem>
 #include <QMainWindow>
 #include <QTimer>
+#include <QTcpSocket>
 
-#include "debuggerinterface/buffer_request_message.h"
 #include "math/linear_algebra.h"
 #include "ui/go_to_widget.h"
 #include "ui/symbol_completer.h"
@@ -49,6 +49,11 @@ namespace Ui
 class MainWindowUi;
 }
 
+struct ConnectionSettings {
+    std::string url;
+    uint16_t port;
+};
+
 
 class MainWindow : public QMainWindow
 {
@@ -57,7 +62,8 @@ class MainWindow : public QMainWindow
   public:
     ///
     // Constructor / destructor
-    explicit MainWindow(QWidget* parent = 0);
+    explicit MainWindow(const ConnectionSettings &host_settings,
+                        QWidget* parent = nullptr);
 
     ~MainWindow();
 
@@ -72,15 +78,7 @@ class MainWindow : public QMainWindow
     QSizeF get_icon_size();
 
     // External interface
-    void set_plot_callback(int (*plot_cbk)(const char*));
-
-    void plot_buffer(const BufferRequestMessage& buffer_metadata);
-
-    std::deque<std::string> get_observed_symbols();
-
     bool is_window_ready();
-
-    void set_available_symbols(const std::deque<std::string>& available_set);
 
     ///
     // Auto contrast pane - implemented in auto_contrast.cpp
@@ -107,7 +105,7 @@ class MainWindow : public QMainWindow
 
     void closeEvent(QCloseEvent*);
 
-  public Q_SLOTS:
+public Q_SLOTS:
     ///
     // Assorted methods - slots - implemented in main_window.cpp
     void loop();
@@ -188,13 +186,11 @@ class MainWindow : public QMainWindow
 
     Stage* currently_selected_stage_;
 
-    std::map<std::string, std::shared_ptr<uint8_t>> held_buffers_;
+    std::map<std::string, std::vector<uint8_t>> held_buffers_;
     std::map<std::string, std::shared_ptr<Stage>> stages_;
 
     std::set<std::string> previous_session_buffers_;
     std::set<std::string> removed_buffer_names_;
-
-    std::deque<BufferRequestMessage> pending_updates_;
 
     QStringList available_vars_;
 
@@ -207,7 +203,8 @@ class MainWindow : public QMainWindow
     QLabel* status_bar_;
     GoToWidget* go_to_widget_;
 
-    int (*plot_callback_)(const char*);
+    ConnectionSettings host_settings_;
+    QTcpSocket socket_;
 
     ///
     // Assorted methods - private - implemented in main_window.cpp
@@ -215,13 +212,25 @@ class MainWindow : public QMainWindow
 
     qreal get_screen_dpi_scale();
 
-    std::string get_type_label(Buffer::BufferType type, int channels);
+    std::string get_type_label(BufferType type, int channels);
 
     void persist_settings_deferred();
 
     void set_currently_selected_stage(Stage* stage);
 
     vec4 get_stage_coordinates(float pos_window_x, float pos_window_y);
+
+    ///
+    // Communication with debugger bridge
+    void decode_set_available_symbols();
+
+    void respond_get_observed_symbols();
+
+    void decode_plot_buffer_contents();
+
+    void decode_incoming_messages();
+
+    void request_plot_buffer(const char* buffer_name);
 
     ///
     // Auto contrast pane - private - implemented in auto_contrast.cpp
@@ -252,6 +261,8 @@ class MainWindow : public QMainWindow
     void initialize_settings();
 
     void initialize_go_to_widget();
+
+    void initialize_networking();
 };
 
 #endif // MAIN_WINDOW_H_

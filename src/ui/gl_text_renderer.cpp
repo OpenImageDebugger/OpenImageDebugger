@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -27,7 +27,7 @@
 #include <QPixmap>
 
 #include "gl_text_renderer.h"
-#include "visualization/shaders/giw_shaders.h"
+#include "visualization/shaders/oid_shaders.h"
 
 
 GLTextRenderer::GLTextRenderer(GLCanvas* gl_canvas)

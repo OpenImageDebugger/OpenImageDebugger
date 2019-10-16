@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -97,7 +97,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
         }
     }
 
-    const T* in_ptr  = reinterpret_cast<T*>(buffer->buffer);
+    const T* in_ptr  = reinterpret_cast<const T*>(buffer->buffer);
     int input_stride = buffer->channels * buffer->step;
     uint8_t unformatted_pixel[4];
 
@@ -194,7 +194,7 @@ void export_binary(const char* fname, const Buffer* buffer)
     int width_i  = static_cast<int>(buffer->buffer_width_f);
     int height_i = static_cast<int>(buffer->buffer_height_f);
 
-    const T* in_ptr = reinterpret_cast<T*>(buffer->buffer);
+    const T* in_ptr = reinterpret_cast<const T*>(buffer->buffer);
 
     FILE* fhandle = fopen(fname, "wb");
 
@@ -220,40 +220,40 @@ void BufferExporter::export_buffer(const Buffer* buffer,
 {
     if (type == OutputType::Bitmap) {
         switch (buffer->type) {
-        case Buffer::BufferType::UnsignedByte:
+        case BufferType::UnsignedByte:
             export_bitmap<uint8_t>(path.c_str(), buffer);
             break;
-        case Buffer::BufferType::UnsignedShort:
+        case BufferType::UnsignedShort:
             export_bitmap<uint16_t>(path.c_str(), buffer);
             break;
-        case Buffer::BufferType::Short:
+        case BufferType::Short:
             export_bitmap<int16_t>(path.c_str(), buffer);
             break;
-        case Buffer::BufferType::Int32:
+        case BufferType::Int32:
             export_bitmap<int32_t>(path.c_str(), buffer);
             break;
-        case Buffer::BufferType::Float32:
-        case Buffer::BufferType::Float64:
+        case BufferType::Float32:
+        case BufferType::Float64:
             export_bitmap<float>(path.c_str(), buffer);
             break;
         }
     } else {
-        // Matlab/Octave matrix (load with the giw_load.m function)
+        // Matlab/Octave matrix (load with the oid_load.m function)
         switch (buffer->type) {
-        case Buffer::BufferType::UnsignedByte:
+        case BufferType::UnsignedByte:
             export_binary<uint8_t>(path.c_str(), buffer);
             break;
-        case Buffer::BufferType::UnsignedShort:
+        case BufferType::UnsignedShort:
             export_binary<uint16_t>(path.c_str(), buffer);
             break;
-        case Buffer::BufferType::Short:
+        case BufferType::Short:
             export_binary<int16_t>(path.c_str(), buffer);
             break;
-        case Buffer::BufferType::Int32:
+        case BufferType::Int32:
             export_binary<int32_t>(path.c_str(), buffer);
             break;
-        case Buffer::BufferType::Float32:
-        case Buffer::BufferType::Float64:
+        case BufferType::Float32:
+        case BufferType::Float64:
             export_binary<float>(path.c_str(), buffer);
             break;
         }

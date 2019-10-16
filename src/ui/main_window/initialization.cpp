@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -24,12 +24,14 @@
  */
 
 #include <cmath>
+#include <iostream>
 
 #include <QDateTime>
 #include <QDebug>
 #include <QFontDatabase>
 #include <QSettings>
 #include <QShortcut>
+#include <QHostAddress>
 
 #include "main_window.h"
 
@@ -45,7 +47,7 @@ void MainWindow::initialize_settings()
 
     QSettings settings(QSettings::Format::IniFormat,
                        QSettings::Scope::UserScope,
-                       "gdbimagewatch");
+                       "OpenImageDebugger");
 
     settings.sync();
 
@@ -178,6 +180,14 @@ void MainWindow::initialize_shortcuts()
             SIGNAL(go_to_requested(float, float)),
             this,
             SLOT(go_to_pixel(float, float)));
+}
+
+
+void MainWindow::initialize_networking()
+{
+    socket_.connectToHost(QString(host_settings_.url.c_str()),
+                          host_settings_.port);
+    socket_.waitForConnected();
 }
 
 

@@ -1,8 +1,8 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2017 GDB ImageWatch contributors
- * (github.com/csantosbh/gdb-imagewatch/)
+ * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -38,15 +38,18 @@
     PyGILState_Release(gstate);
 
 
-#define CHECK_FIELD_PROVIDED(name, current_ctx_name)                  \
+#define CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, ret)         \
     if (py_##name == nullptr) {                                       \
         RAISE_PY_EXCEPTION(                                           \
             PyExc_KeyError,                                           \
             "Missing key in dictionary provided to " current_ctx_name \
             ": Was expecting <" #name "> key");                       \
-        return;                                                       \
+        return ret;                                                   \
     }
 
+#define OID_EMPTY_PARAMETER
+#define CHECK_FIELD_PROVIDED(name, current_ctx_name) \
+    CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, OID_EMPTY_PARAMETER)
 
 #define CHECK_FIELD_TYPE(name, type_checker_funct, current_ctx_name)    \
     if (type_checker_funct(py_##name) == 0) {                           \
@@ -56,10 +59,5 @@
             "have the expected type (" #type_checker_funct " failed)"); \
         return;                                                         \
     }
-
-
-#define FALSE 0
-
-#define TRUE (!FALSE)
 
 #endif // PREPROCESSOR_DIRECTIVES_H_
