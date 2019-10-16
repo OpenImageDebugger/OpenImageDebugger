@@ -26,6 +26,8 @@
 #ifndef OID_WINDOW_H_
 #define OID_WINDOW_H_
 
+#include <cstdint>
+
 #include <Python.h>
 
 #ifndef OID_API
