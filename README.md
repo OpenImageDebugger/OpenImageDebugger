@@ -105,6 +105,11 @@ package, the best choice is to get it from Qt website.
 When you are done, follow the instructions below in the section `Testing your
 installation`.
 
+### MacOS Installation
+For information on how to build the plugin on MacOS, refer to the wiki page
+[Building on
+MacOS](https://github.com/OpenImageDebugger/OpenImageDebugger/wiki/Building-on-MacOS).
+
 ### Testing your installation
 
 After compiling the plugin, you can test it by running the following command:
