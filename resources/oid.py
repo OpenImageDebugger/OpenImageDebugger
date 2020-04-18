@@ -82,7 +82,8 @@ def register_ide_hooks(debugger,  # type: BridgeInterface
             error_traces.append(traceback.format_exc())
 
     print('[OpenImageDebugger] Info: Could not activate hooks for any IDEs')
-    print('\n'.join(error_traces))
+    # To find out more about this issue, uncomment the line below:
+    # print('\n'.join(error_traces))
 
 
 def get_debugger_bridge():
