@@ -80,7 +80,7 @@ class LldbBridge(BridgeInterface):
 
             while pending_events:
                 event = pending_events.pop(0)
-                if event == 'stop':
+                if event == 'stop' and self._event_handler is not None:
                     self._event_handler.stop_handler()
 
             while requests_to_process:
