@@ -3,10 +3,6 @@ language: cpp
 matrix:
  include:
   - os: osx
-  
-  # Deprecated! Support for xenial will be dropped as soon as we are able to support focal
-  - os: linux
-    dist: xenial
     
   - os: linux
     dist: bionic
