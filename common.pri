@@ -18,6 +18,8 @@ CONFIG += $$BUILD_MODE
 # Prevent strip from producing spurious error messages
 QMAKE_STRIP = echo "strip disabled: "
 
+QT_CONFIG -= no-pkg-config
+
 CONFIG += \
   link_pkgconfig \
   warn_on \

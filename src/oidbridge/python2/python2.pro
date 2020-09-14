@@ -2,7 +2,7 @@ include($$PWD/../oidbridge.pri)
 
 # On MacOS, run the following before qmake:
 # export PKG_CONFIG_PATH=/System/Library/Frameworks/Python.framework/Versions/2.7/lib/pkgconfig/
-PKGCONFIG += python2
+PKGCONFIG += python-2.7
 
 message(OpenImageDebugger Python2 Bridge build mode: $$BUILD_MODE)
 
