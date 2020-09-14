@@ -3,12 +3,12 @@ language: cpp
 matrix:
  include:
   - os: osx
-  
-  - os: linux
-    dist: xenial
     
   - os: linux
     dist: bionic
+    
+  - os: linux
+    dist: focal
 
 addons:
   homebrew:
@@ -19,6 +19,7 @@ addons:
     packages:
       - qt5-default
       - libqt5opengl5-dev
+      - python2.7-dev
       - python3-dev
       - pkg-config
     update: true
