@@ -1,4 +1,3 @@
-[![Build Status](https://cloud.drone.io/api/badges/OpenImageDebugger/OpenImageDebugger/status.svg)](https://cloud.drone.io/OpenImageDebugger/OpenImageDebugger)
 [![Build Status](https://travis-ci.com/OpenImageDebugger/OpenImageDebugger.svg?branch=master)](https://travis-ci.com/OpenImageDebugger/OpenImageDebugger)
 
 # Open Image Debugger: Enabling visualization of in-memory buffers on GDB/LLDB
