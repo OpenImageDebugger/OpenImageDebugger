@@ -99,8 +99,8 @@ class OidBridge
   public:
     OidBridge(int (*plot_callback)(const char*))
         : ui_process_{}
-        , client_(nullptr)
-        , plot_callback_(plot_callback)
+        , client_{nullptr}
+        , plot_callback_{plot_callback}
     {
     }
 
