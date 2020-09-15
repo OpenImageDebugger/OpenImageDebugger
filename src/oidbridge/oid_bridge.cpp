@@ -24,7 +24,6 @@
  */
 
 #include <signal.h>
-#include <spawn.h>
 
 #include <deque>
 #include <iostream>
@@ -36,6 +35,7 @@
 #include "ipc/message_exchange.h"
 
 #include <QDataStream>
+#include <QProcess>
 #include <QString>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -98,7 +98,7 @@ class OidBridge
 {
   public:
     OidBridge(int (*plot_callback)(const char*))
-        : ui_proc_id_(0)
+        : ui_process_{}
         , client_(nullptr)
         , plot_callback_(plot_callback)
     {
@@ -126,24 +126,13 @@ class OidBridge
             return false;
         }
 
-        string windowBinaryPath = this->oid_path_ + "/oidwindow";
-        string portStdString    = std::to_string(server_.serverPort());
+        const auto windowBinaryPath{this->oid_path_ + "/oidwindow"};
+        const auto portStdString{std::to_string(server_.serverPort())};
+        const QString qWindowBinary{windowBinaryPath.c_str()};
+        const QStringList arguments{"-style", "fusion", "-p", portStdString.c_str()};
 
-        auto packed_parameters =
-            pack_strings({"-style", "fusion", "-p", portStdString});
-        char* argv[] = {packed_parameters[0].data(),
-                        packed_parameters[1].data(),
-                        packed_parameters[2].data(),
-                        packed_parameters[3].data(),
-                        nullptr};
-        extern char** environ;
-
-        posix_spawn(&ui_proc_id_,
-                    windowBinaryPath.c_str(),
-                    nullptr, // TODO consider passing something here
-                    nullptr, // and here
-                    argv,
-                    environ);
+        // Spawn a new process using QT
+        ui_process_.start(qWindowBinary, arguments);
 
         wait_for_client();
 
@@ -157,8 +146,7 @@ class OidBridge
 
     bool is_window_ready()
     {
-        return client_ != nullptr && ui_proc_id_ != 0 &&
-               kill(static_cast<pid_t>(ui_proc_id_), 0) == 0;
+        return client_ != nullptr;
     }
 
     deque<string> get_observed_symbols()
@@ -232,11 +220,11 @@ class OidBridge
 
     ~OidBridge()
     {
-        kill(ui_proc_id_, SIGKILL);
+      // TODO: gracefully kill the spawned process
     }
 
   private:
-    pid_t ui_proc_id_;
+    QProcess ui_process_;
     QTcpServer server_;
     QTcpSocket* client_;
     string oid_path_;
