@@ -146,7 +146,9 @@ class OidBridge
 
     bool is_window_ready()
     {
-        return client_ != nullptr;
+        const auto is_client_created{client_ != nullptr};
+        const auto is_ui_process_running{ui_process_.state() == QProcess::Running};
+        return is_client_created && is_ui_process_running;
     }
 
     deque<string> get_observed_symbols()
@@ -220,7 +222,7 @@ class OidBridge
 
     ~OidBridge()
     {
-      // TODO: gracefully kill the spawned process
+	ui_process_.kill();
     }
 
   private:
