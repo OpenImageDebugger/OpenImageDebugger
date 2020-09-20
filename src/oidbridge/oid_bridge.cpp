@@ -126,14 +126,13 @@ class OidBridge
             return false;
         }
 
-        const auto windowBinaryPath{this->oid_path_ + "/oidwindow"};
         const auto portStdString{std::to_string(server_.serverPort())};
-        const QString qWindowBinary{windowBinaryPath.c_str()};
+        const QString windowBinaryPath{QString::fromStdString(this->oid_path_ + "/oidwindow")};
         const QStringList arguments{"-style", "fusion", "-p", portStdString.c_str()};
 
         // Spawn a new process using QT
         ui_process_ = new QProcess();
-        ui_process_->start(qWindowBinary, arguments);
+        ui_process_->start(windowBinaryPath, arguments);
         if (!ui_process_->waitForStarted()) {
             return false;
         }
