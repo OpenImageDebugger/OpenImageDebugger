@@ -3,7 +3,11 @@ language: cpp
 matrix:
  include:
   - os: osx
-    
+
+  # TODO: deprecated: remove as soon as oid fully works in focal
+  - os: linux
+    dist: xenial
+
   - os: linux
     dist: bionic
     
