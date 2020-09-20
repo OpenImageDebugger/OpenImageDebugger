@@ -81,7 +81,7 @@ class GdbBridge(BridgeInterface):
 
         # Check if buffer is valid. If it isn't, this function will throw an
         # exception
-        gdb.execute('x '+str(int(buffer_metadata['pointer'])))
+        gdb.execute('x ' + str(int(buffer_metadata['pointer'].cast(gdb.lookup_type('long')))))
 
         inferior = gdb.selected_inferior()
         buffer_metadata['variable_name'] = variable
