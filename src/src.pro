@@ -78,7 +78,7 @@ INCLUDEPATH += \
   $$PWD \
   $$PWD/thirdparty/Khronos/
 
-FORMS += ui/main_window.ui
+FORMS += ui/main_window/main_window.ui
 
 RESOURCES += resources/resources.qrc
 
