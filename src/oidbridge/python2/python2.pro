@@ -9,7 +9,26 @@ macx {
     PKG_CONFIG_PATH=/System/Library/Frameworks/Python.framework/Versions/2.7/lib/pkgconfig/
 }
 
-PKGCONFIG += python-2.7
+
+linux|macx {
+    PKGCONFIG += python-2.7
+}
+
+
+win32 {
+    PYTHON_BIN = $$system(which python)
+    PYTHON_DIR = $$system(dirname $$PYTHON_BIN)
+
+    PYTHON_LIB = $$system_path($$PYTHON_DIR/libpython2.7.dll)
+    PYTHON_INCLUDE = $$system_path($$PYTHON_DIR/../include/python2.7)
+
+    PYTHON_LIB = $$replace(PYTHON_LIB, \\\c, C:)
+    PYTHON_INCLUDE = $$replace(PYTHON_INCLUDE, \\\c, C:)
+
+    INCLUDEPATH += $$PYTHON_INCLUDE
+    LIBS += $$PYTHON_LIB
+}
+
 
 message(OpenImageDebugger Python2 Bridge build mode: $$BUILD_MODE)
 
