@@ -212,14 +212,14 @@ void BufferValues::draw_text(const mat4& projection,
     gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, text_renderer->text_vbo);
     gl_canvas_->glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
-    glActiveTexture(GL_TEXTURE0);
+    gl_canvas_->glActiveTexture(GL_TEXTURE0);
     GLuint buff_tex = buffer_component->sub_texture_id_at_coord(
         x + buffer_component->buffer_width_f / 2.f,
         y + buffer_component->buffer_height_f / 2.f);
     glBindTexture(GL_TEXTURE_2D, buff_tex);
     text_renderer->text_prog.uniform1i("buff_sampler", 0);
 
-    glActiveTexture(GL_TEXTURE1);
+    gl_canvas_->glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, text_renderer->text_tex);
     text_renderer->text_prog.uniform1i("text_sampler", 1);
 
