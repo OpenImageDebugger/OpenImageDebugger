@@ -17,6 +17,9 @@ QMAKE_LFLAGS += \
   # replace the folder by the location of your libGL.so
   #-L/path/to/your/opengl/folder
 
+# Windows needs to be explicitly linked to opengl
+win32:LIBS += -lopengl32
+
 linux-g++ {
     QMAKE_LFLAGS += -Wl,--exclude-libs,ALL
 }

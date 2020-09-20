@@ -77,7 +77,7 @@ void GLTextRenderer::generate_glyphs_texture()
 
     QFontMetrics g(font);
 
-    glActiveTexture(GL_TEXTURE0);
+    gl_canvas_->glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, text_tex);
 
     // Generate text bitmap
