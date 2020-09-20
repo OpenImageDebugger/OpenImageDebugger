@@ -53,6 +53,8 @@ def _get_available_memory_darwin():
         vm_stats[(row_elements[0])] = int(row_elements[1].strip('\.')) * 4096
     return vm_stats["Pages free"]
 
+def _get_available_memory_win32():
+    return 2 * 1024 * 1024 * 1024
 
 def get_available_memory():
     """
@@ -62,8 +64,10 @@ def get_available_memory():
         return _get_available_memory_linux()
     elif platform == 'darwin':
         return _get_available_memory_darwin()
+    elif platform == 'win32':
+        return _get_available_memory_win32()
     else:
-        raise Exception('Platform not supported')
+        raise Exception('Platform %s not supported' % platform)
 
 
 def get_buffer_size(height, channels, typevalue, rowstride):
