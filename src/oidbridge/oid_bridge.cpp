@@ -98,7 +98,7 @@ class OidBridge
 {
   public:
     OidBridge(int (*plot_callback)(const char*))
-        : ui_process_{}
+        : ui_process_{nullptr}
         , client_{nullptr}
         , plot_callback_{plot_callback}
     {
@@ -132,8 +132,11 @@ class OidBridge
         const QStringList arguments{"-style", "fusion", "-p", portStdString.c_str()};
 
         // Spawn a new process using QT
-        ui_process_.start(qWindowBinary, arguments);
-
+        ui_process_ = new QProcess();
+        ui_process_->start(qWindowBinary, arguments);
+        if (!ui_process_->waitForStarted()) {
+            return false;
+        }
         wait_for_client();
 
         return client_ != nullptr;
@@ -147,7 +150,7 @@ class OidBridge
     bool is_window_ready()
     {
         const auto is_client_created{client_ != nullptr};
-        const auto is_ui_process_running{ui_process_.state() == QProcess::Running};
+        const auto is_ui_process_running{ui_process_->state() == QProcess::Running};
         return is_client_created && is_ui_process_running;
     }
 
@@ -222,11 +225,11 @@ class OidBridge
 
     ~OidBridge()
     {
-	ui_process_.kill();
+        ui_process_->kill();
     }
 
   private:
-    QProcess ui_process_;
+    QProcess* ui_process_;
     QTcpServer server_;
     QTcpSocket* client_;
     string oid_path_;
