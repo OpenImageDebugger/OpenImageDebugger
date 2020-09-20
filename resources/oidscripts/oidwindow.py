@@ -90,6 +90,8 @@ class OpenImageDebuggerWindow(object):
             return 'liboidbridge%s.so' % python_version
         elif platform_name == 'darwin':
             return 'liboidbridge%s.dylib' % python_version
+        elif platform_name == 'windows':
+            return 'liboidbridge%s.dll' % python_version
 
     def plot_variable(self, requested_symbol):
         """
