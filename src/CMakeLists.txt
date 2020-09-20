@@ -4,6 +4,7 @@ project(oidwindow)
 
 #include($$PWD/../common.pri)
 
+find_package(OpenGL REQUIRED)
 find_package(Threads REQUIRED)
 
 set(CMAKE_AUTOMOC ON)
@@ -59,7 +60,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_compile_options(${PROJECT_NAME} PRIVATE "$<$<PLATFORM_ID:UNIX>:-Wl,--exclude-libs,ALL>")
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core Qt5::Gui Qt5::OpenGL Qt5::Network Qt5::Widgets Threads::Threads GL)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core Qt5::Gui Qt5::OpenGL Qt5::Network Qt5::Widgets Threads::Threads ${OPENGL_gl_LIBRARY})
 
 
 # target.path = $$PREFIX/OpenImageDebugger/
