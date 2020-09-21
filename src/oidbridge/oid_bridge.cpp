@@ -24,6 +24,7 @@
  */
 
 #include <signal.h>
+#include <spawn.h>
 
 #include <deque>
 #include <iostream>
@@ -35,7 +36,6 @@
 #include "ipc/message_exchange.h"
 
 #include <QDataStream>
-#include <QProcess>
 #include <QString>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -98,9 +98,9 @@ class OidBridge
 {
   public:
     OidBridge(int (*plot_callback)(const char*))
-        : ui_process_{nullptr}
-        , client_{nullptr}
-        , plot_callback_{plot_callback}
+        : ui_proc_id_(0)
+        , client_(nullptr)
+        , plot_callback_(plot_callback)
     {
     }
 
@@ -126,16 +126,25 @@ class OidBridge
             return false;
         }
 
-        const auto portStdString{std::to_string(server_.serverPort())};
-        const QString windowBinaryPath{QString::fromStdString(this->oid_path_ + "/oidwindow")};
-        const QStringList arguments{"-style", "fusion", "-p", portStdString.c_str()};
+        string windowBinaryPath = this->oid_path_ + "/oidwindow";
+        string portStdString    = std::to_string(server_.serverPort());
 
-        // Spawn a new process using QT
-        ui_process_ = new QProcess();
-        ui_process_->start(windowBinaryPath, arguments);
-        if (!ui_process_->waitForStarted()) {
-            return false;
-        }
+        auto packed_parameters =
+            pack_strings({"-style", "fusion", "-p", portStdString});
+        char* argv[] = {packed_parameters[0].data(),
+                        packed_parameters[1].data(),
+                        packed_parameters[2].data(),
+                        packed_parameters[3].data(),
+                        nullptr};
+        extern char** environ;
+
+        posix_spawn(&ui_proc_id_,
+                    windowBinaryPath.c_str(),
+                    nullptr, // TODO consider passing something here
+                    nullptr, // and here
+                    argv,
+                    environ);
+
         wait_for_client();
 
         return client_ != nullptr;
@@ -148,9 +157,8 @@ class OidBridge
 
     bool is_window_ready()
     {
-        const auto is_client_created{client_ != nullptr};
-        const auto is_ui_process_running{ui_process_->state() == QProcess::Running};
-        return is_client_created && is_ui_process_running;
+        return client_ != nullptr && ui_proc_id_ != 0 &&
+               kill(static_cast<pid_t>(ui_proc_id_), 0) == 0;
     }
 
     deque<string> get_observed_symbols()
@@ -224,11 +232,11 @@ class OidBridge
 
     ~OidBridge()
     {
-        ui_process_->kill();
+        kill(ui_proc_id_, SIGKILL);
     }
 
   private:
-    QProcess* ui_process_;
+    pid_t ui_proc_id_;
     QTcpServer server_;
     QTcpSocket* client_;
     string oid_path_;
