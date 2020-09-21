@@ -9,11 +9,7 @@ macx {
     PKG_CONFIG_PATH=/System/Library/Frameworks/Python.framework/Versions/2.7/lib/pkgconfig/
 }
 
-
-linux|macx {
-    PKGCONFIG += python-2.7
-}
-
+linux|macx:PKGCONFIG += python-2.7
 
 win32 {
     PYTHON_BIN = $$system(which python)
