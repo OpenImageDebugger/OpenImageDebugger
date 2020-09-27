@@ -4,4 +4,4 @@ project(OpenImageDebugger)
 
 add_subdirectory(src)
 add_subdirectory(src/oidbridge/python2)
-#add_subdirectory(src/oidbridge/python3)
+add_subdirectory(src/oidbridge/python3)

@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.10.0)
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/../oidbridge.cmake)
+
+project(oidbridge_python2)
+
+if(NOT WIN32)
+    find_package(PythonLibs 3.6 REQUIRED)
+
+    # TARGET = oidbridge_python2
+    # target.path = $$BRIDGE_INSTALL_FOLDER
+
+    # INSTALLS += \
+    #   target \
+    #   $$SCRIPT_INSTALLS
+    add_library(${PROJECT_NAME} SHARED ${SOURCES})
+
+    target_include_directories(${PROJECT_NAME} PRIVATE
+                                ${CMAKE_CURRENT_SOURCE_DIR}
+                                ${PYTHON_INCLUDE_DIR})
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core Qt5::Network Threads::Threads ${PYTHON_LIBRARY})
+else()
+    message(WARNING "Python3 is currently not supported on Windows")
+endif()
