@@ -10,6 +10,3 @@ find_package(Threads REQUIRED)
 find_package(Qt5 COMPONENTS Network REQUIRED)
 
 add_compile_options(-fvisibility=hidden)
-
-# Prevent strip from producing spurious error messages
-# QMAKE_STRIP = echo "strip disabled: "
