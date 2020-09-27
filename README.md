@@ -53,7 +53,7 @@ customized to work with any arbitrary data structure.
 On Ubuntu, you can install most of the dependencies with the following command:
 
 ```shell
-sudo apt-get install build-essential libpython3-dev python3-dev libpython2.7-dev python2-dev
+sudo apt install build-essential libpython3-dev python3-dev libpython2.7-dev python2-dev
 ```
 
 ### Building the Open Image Debugger
@@ -87,6 +87,24 @@ exist) and append the following line:
 ```
 command script import /path/to/OpenImageDebugger/oid.py
 ```
+
+#### Building with CMake (experimental - not tested on MacOS)
+Alternatively, it is possible to compile OID using CMake.
+
+First, install cmake:
+```shell
+sudo apt install cmake
+```
+Then run the following commands:
+
+```shell
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=/path/to/installation/folder
+make -j4
+sudo make install
+```
+
+The integration steps remain the same.
 
 ### Ubuntu 16.04 Automated Installation
 
