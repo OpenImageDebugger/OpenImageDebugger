@@ -9,9 +9,7 @@ set(CXX_STANDARD_REQUIRED True)
 find_package(Threads REQUIRED)
 find_package(Qt5 COMPONENTS Network REQUIRED)
 
-set(CMAKE_CXX_FLAGS
-    ${CMAKE_CXX_FLAGS}
-    "-fvisibility=hidden")
+add_compile_options(-fvisibility=hidden)
 
 # Prevent strip from producing spurious error messages
 # QMAKE_STRIP = echo "strip disabled: "
