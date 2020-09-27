@@ -4,7 +4,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../oidbridge.cmake)
 
 project(oidbridge_python2)
 
-find_package(PythonLibs 2.7 REQUIRED)
+find_package(PythonLibs 2 EXACT)
 
 # TARGET = oidbridge_python2
 # target.path = $$BRIDGE_INSTALL_FOLDER
@@ -19,3 +19,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
                             ${PYTHON_INCLUDE_DIR})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core Qt5::Network Threads::Threads ${PYTHON_LIBRARY})
+
+# Need to unset these vars to trigger find_package with a different required version
+unset(PYTHON_INCLUDE_DIR CACHE)
+unset(PYTHON_LIBRARY CACHE)
