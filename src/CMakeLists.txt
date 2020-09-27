@@ -52,8 +52,8 @@ set(SOURCES
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Khronos)
+                            ${CMAKE_CURRENT_SOURCE_DIR}
+                            ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Khronos)
 
 target_compile_options(${PROJECT_NAME} PRIVATE "$<$<PLATFORM_ID:UNIX>:-Wl,--exclude-libs,ALL>")
 
