@@ -59,9 +59,6 @@ target_compile_options(${PROJECT_NAME} PRIVATE "$<$<PLATFORM_ID:UNIX>:-Wl,--excl
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core Qt5::Gui Qt5::OpenGL Qt5::Network Qt5::Widgets Threads::Threads ${OPENGL_gl_LIBRARY})
 
-
-# target.path = $$PREFIX/OpenImageDebugger/
-
-# INSTALLS +=
-#   target
+install(TARGETS ${PROJECT_NAME}
+        RUNTIME DESTINATION OpenImageDebugger)
 
