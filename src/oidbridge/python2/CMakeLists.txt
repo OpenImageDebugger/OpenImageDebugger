@@ -4,7 +4,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../oidbridge.cmake)
 
 project(oidbridge_python2)
 
-find_package(PythonLibs REQUIRED)
+find_package(PythonLibs 2.7 REQUIRED)
 # # For some reason, on Focal, pkg-config does not find python2 libs by default
 # linux {
 #     PKG_CONFIG_PATH += /usr/lib/x86_64-linux-gnu/pkgconfig/
@@ -24,7 +24,7 @@ find_package(PythonLibs REQUIRED)
 # INSTALLS += \
 #   target \
 #   $$SCRIPT_INSTALLS
-add_library(${PROJECT_NAME} ${SOURCES})
+add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
                             ${CMAKE_CURRENT_SOURCE_DIR}
