@@ -23,7 +23,6 @@ set(SOURCES
     ui/gl_canvas.cpp
     ui/gl_text_renderer.cpp
     ui/go_to_widget.cpp
-    ui/main_window/main_window.ui
     ui/main_window/auto_contrast.cpp
     ui/main_window/initialization.cpp
     ui/main_window/main_window.cpp
@@ -31,7 +30,6 @@ set(SOURCES
     ui/main_window/ui_events.cpp
     ui/symbol_completer.cpp
     ui/symbol_search_input.cpp
-    resources/resources.qrc
     visualization/components/background.cpp
     visualization/components/buffer.cpp
     visualization/components/buffer_values.cpp
@@ -49,7 +47,10 @@ set(SOURCES
     visualization/stage.cpp
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+set(QT_FORMS ui/main_window/main_window.ui)
+set(QT_RESOURCES resources/resources.qrc)
+
+add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
                             ${CMAKE_CURRENT_SOURCE_DIR}
@@ -57,7 +58,14 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_compile_options(${PROJECT_NAME} PRIVATE "$<$<PLATFORM_ID:UNIX>:-Wl,--exclude-libs,ALL>")
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core Qt5::Gui Qt5::OpenGL Qt5::Network Qt5::Widgets Threads::Threads ${OPENGL_gl_LIBRARY})
+target_link_libraries(${PROJECT_NAME} PRIVATE
+                      Qt5::Core
+                      Qt5::Gui
+                      Qt5::OpenGL
+                      Qt5::Network
+                      Qt5::Widgets
+                      Threads::Threads
+                      ${OPENGL_gl_LIBRARY})
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)

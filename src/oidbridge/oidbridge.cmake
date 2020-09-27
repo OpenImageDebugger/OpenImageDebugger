@@ -18,12 +18,6 @@ add_compile_options("$<$<PLATFORM_ID:UNIX>:-Wl,--exclude-libs,ALL>")
 unset(PYTHON_INCLUDE_DIR CACHE)
 unset(PYTHON_LIBRARY CACHE)
 
-# # Deployment settings
-# macx {
-#     BRIDGE_INSTALL_FOLDER = $$PREFIX/OpenImageDebugger/oidwindow.app/Contents/MacOS
-# }
-# linux {
-#     BRIDGE_INSTALL_FOLDER = $$PREFIX/OpenImageDebugger/
-# }
+# TODO: deal with macos installation
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../../resources/deployscripts.cmake)

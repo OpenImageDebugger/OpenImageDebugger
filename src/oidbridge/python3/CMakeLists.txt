@@ -6,18 +6,16 @@ project(oidbridge_python3)
 
 find_package(PythonLibs 3 EXACT)
 
-# TARGET = oidbridge_python2
-# target.path = $$BRIDGE_INSTALL_FOLDER
-
-# INSTALLS += \
-#   target \
-#   $$SCRIPT_INSTALLS
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
                            ${CMAKE_CURRENT_SOURCE_DIR}
                            ${PYTHON_INCLUDE_DIR})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core Qt5::Network Threads::Threads ${PYTHON_LIBRARY})
+target_link_libraries(${PROJECT_NAME} PRIVATE
+                      Qt5::Core
+                      Qt5::Network
+                      Threads::Threads
+                      ${PYTHON_LIBRARY})
 
 install(TARGETS ${PROJECT_NAME} DESTINATION OpenImageDebugger)
