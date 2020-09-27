@@ -2,18 +2,15 @@ cmake_minimum_required(VERSION 3.10.0)
 
 project(oidwindow)
 
-#include($$PWD/../common.pri)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../commom.cmake)
 
 find_package(OpenGL REQUIRED)
-find_package(Threads REQUIRED)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-message(OpenImageDebugger UI build mode: $$BUILD_MODE)
-
-find_package(Qt5 COMPONENTS Core Gui OpenGL Network Widgets REQUIRED)
+find_package(Qt5 COMPONENTS Core Gui OpenGL Widgets REQUIRED)
 
 set(SOURCES
     oid_window.cpp 
