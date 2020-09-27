@@ -4,26 +4,22 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../oidbridge.cmake)
 
 project(oidbridge_python3)
 
-if(NOT WIN32)
-    find_package(PythonLibs 3 EXACT)
+find_package(PythonLibs 3 EXACT)
 
-    # TARGET = oidbridge_python2
-    # target.path = $$BRIDGE_INSTALL_FOLDER
+# TARGET = oidbridge_python2
+# target.path = $$BRIDGE_INSTALL_FOLDER
 
-    # INSTALLS += \
-    #   target \
-    #   $$SCRIPT_INSTALLS
-    add_library(${PROJECT_NAME} SHARED ${SOURCES})
+# INSTALLS += \
+#   target \
+#   $$SCRIPT_INSTALLS
+add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
-    target_include_directories(${PROJECT_NAME} PRIVATE
-                                ${CMAKE_CURRENT_SOURCE_DIR}
-                                ${PYTHON_INCLUDE_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE
+                            ${CMAKE_CURRENT_SOURCE_DIR}
+                            ${PYTHON_INCLUDE_DIR})
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core Qt5::Network Threads::Threads ${PYTHON_LIBRARY})
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Core Qt5::Network Threads::Threads ${PYTHON_LIBRARY})
 
-    # Need to unset these vars to trigger find_package with a different required version
-    unset(PYTHON_INCLUDE_DIR CACHE)
-    unset(PYTHON_LIBRARY CACHE)
-else()
-    message(WARNING "Python3 is currently not supported on Windows")
-endif()
+# Need to unset these vars to trigger find_package with a different required version
+unset(PYTHON_INCLUDE_DIR CACHE)
+unset(PYTHON_LIBRARY CACHE)
