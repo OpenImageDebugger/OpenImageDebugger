@@ -3,10 +3,10 @@ message(Open Image Debugger Resources)
 QMAKE_STRIP = echo "strip disabled: "
 
 # Copy resource files to build folder
-install_matlab_scripts.files = $$shell_path($$PWD\\matlab)
+install_matlab_scripts.files = $$system_path($$PWD/matlab)
 install_debugger_scripts.files = \
-  $$shell_path($$PWD\\oid.py) \
-  $$shell_path($$PWD\\oidscripts)
+  $$system_path($$PWD/oid.py) \
+  $$system_path($$PWD/oidscripts)
 
 macx {
     install_matlab_scripts.path = $$PREFIX/OpenImageDebugger/oidwindow.app/Contents/MacOS/
