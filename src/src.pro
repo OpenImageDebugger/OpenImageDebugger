@@ -20,9 +20,7 @@ QMAKE_LFLAGS += \
 # Windows needs to be explicitly linked to opengl
 win32:LIBS += -lopengl32
 
-linux-g++ {
-    QMAKE_LFLAGS += -Wl,--exclude-libs,ALL
-}
+linux-g++:QMAKE_LFLAGS += -Wl,--exclude-libs,ALL
 
 SOURCES += \
   oid_window.cpp \

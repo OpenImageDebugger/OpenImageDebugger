@@ -13,7 +13,7 @@ macx {
     install_debugger_scripts.path = $$PREFIX/OpenImageDebugger/oidwindow.app/Contents/MacOS/
 }
 
-linux {
+linux|win32 {
     install_matlab_scripts.path = $$PREFIX/OpenImageDebugger/
     install_debugger_scripts.path = $$PREFIX/OpenImageDebugger/
 }
