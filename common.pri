@@ -28,5 +28,3 @@ CONFIG += \
 
 QT += \
   network
-
-VERSION = 2.0

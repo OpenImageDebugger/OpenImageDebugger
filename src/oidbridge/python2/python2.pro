@@ -22,6 +22,9 @@ win32 {
 }
 
 TARGET = oidbridge_python2
+# Add the 'lib' prefix to the library when compiling with mingw-g++ on Windows
+win32-g++:TARGET = lib$$TARGET
+
 target.path = $$BRIDGE_INSTALL_FOLDER
 
 INSTALLS += \
