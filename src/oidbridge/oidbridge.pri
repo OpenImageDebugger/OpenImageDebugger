@@ -1,6 +1,7 @@
 include($$PWD/../../common.pri)
 
-CONFIG += $$BUILD_MODE console
+# 'plugin' is used to generate only the .so/.dll file
+CONFIG += $$BUILD_MODE console plugin
 
 QT += \
   core
