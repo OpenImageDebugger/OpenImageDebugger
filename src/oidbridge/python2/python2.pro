@@ -9,17 +9,13 @@ linux|macx:PKGCONFIG += python-2.7
 
 win32 {
     # Poor man's findpackage(PythonLibs)
-    PYTHON_BIN = $$system(which python)
+
+    # Use Windows' where instead of issue because of path issues
+    PYTHON_BIN = $$system(where python)
     PYTHON_DIR = $$system(dirname $$PYTHON_BIN)
 
     PYTHON_LIB = $$system_path($$PYTHON_DIR/libpython2.7.dll)
-    PYTHON_INCLUDE = $$system_path($$PYTHON_DIR/../include/python2.7)
-
-    # TODO: maybe improve this by extracting and converting the drive letter to lowercase...
-    #       ... or move completely to CMake instead
-    # Currently we assume that python is installed somewhere in the C: drive
-    PYTHON_LIB = $$replace(PYTHON_LIB, \\\c, C:)
-    PYTHON_INCLUDE = $$replace(PYTHON_INCLUDE, \\\c, C:)
+    PYTHON_INCLUDE = $$clean_path($$PYTHON_DIR/../include/python2.7)
 
     INCLUDEPATH += $$PYTHON_INCLUDE
     LIBS += $$PYTHON_LIB
