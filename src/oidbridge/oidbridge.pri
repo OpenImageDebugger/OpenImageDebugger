@@ -25,19 +25,14 @@ QMAKE_STRIP = echo "strip disabled: "
 
 TEMPLATE = lib
 
-linux-g++ {
-    QMAKE_LFLAGS += -Wl,--exclude-libs,ALL
-}
+linux-g++:QMAKE_LFLAGS += -Wl,--exclude-libs,ALL
 
 INCLUDEPATH += \
   $$PWD/../
 
 # Deployment settings
-macx {
-    BRIDGE_INSTALL_FOLDER = $$PREFIX/OpenImageDebugger/oidwindow.app/Contents/MacOS
-}
-linux {
-    BRIDGE_INSTALL_FOLDER = $$PREFIX/OpenImageDebugger/
-}
+macx:BRIDGE_INSTALL_FOLDER = $$PREFIX/OpenImageDebugger/oidwindow.app/Contents/MacOS
+
+linux|win32:BRIDGE_INSTALL_FOLDER = $$PREFIX/OpenImageDebugger/
 
 include($$PWD/../../resources/deployscripts.pri)

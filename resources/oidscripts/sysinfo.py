@@ -53,6 +53,37 @@ def _get_available_memory_darwin():
         vm_stats[(row_elements[0])] = int(row_elements[1].strip('\.')) * 4096
     return vm_stats["Pages free"]
 
+def _get_available_memory_win32():
+    # type: () -> int
+
+    # We are using windll from ctypes
+    import ctypes
+
+    # Binding return struct from GlobalMemoryStatusEx
+    class MEMORYSTATUSEX(ctypes.Structure):
+        # dwLength should be set to the size of the struct
+        # dwMemoryLoad is in %
+        # The remaining members are in bytes
+        _fields_ = [
+            ("dwLength", ctypes.c_ulong),
+            ("dwMemoryLoad", ctypes.c_ulong),
+            ("ullTotalPhys", ctypes.c_ulonglong),
+            ("ullAvailPhys", ctypes.c_ulonglong),
+            ("ullTotalPageFile", ctypes.c_ulonglong),
+            ("ullAvailPageFile", ctypes.c_ulonglong),
+            ("ullTotalVirtual", ctypes.c_ulonglong),
+            ("ullAvailVirtual", ctypes.c_ulonglong),
+            ("sullAvailExtendedVirtual", ctypes.c_ulonglong),
+        ]
+
+        def __init__(self):
+            self.dwLength = ctypes.sizeof(self)
+            super(MEMORYSTATUSEX, self).__init__()
+
+    stat = MEMORYSTATUSEX()
+    # TODO: add a try-except block
+    ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat))
+    return int(stat.ullAvailPhys)
 
 def get_available_memory():
     """
@@ -62,8 +93,10 @@ def get_available_memory():
         return _get_available_memory_linux()
     elif platform == 'darwin':
         return _get_available_memory_darwin()
+    elif platform == 'win32':
+        return _get_available_memory_win32()
     else:
-        raise Exception('Platform not supported')
+        raise Exception('Platform %s not supported' % platform)
 
 
 def get_buffer_size(height, channels, typevalue, rowstride):

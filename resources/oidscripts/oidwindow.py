@@ -16,6 +16,9 @@ FETCH_BUFFER_CBK_TYPE = ctypes.CFUNCTYPE(ctypes.c_int,
                                          ctypes.c_char_p)
 
 
+PLATFORM_NAME = platform.system().lower()
+
+
 class OpenImageDebuggerWindow(object):
     """
     Python interface for the OpenImageDebugger window, which is implemented as a
@@ -29,7 +32,8 @@ class OpenImageDebuggerWindow(object):
         # fixes an issue on Ubuntu machines with nvidia drivers. For more
         # information, please refer to
         # https://github.com/csantosbh/gdb-imagewatch/issues/28
-        ctypes.CDLL(ctypes.util.find_library('GL'), ctypes.RTLD_GLOBAL)
+        lib_opengl = 'opengl32' if PLATFORM_NAME == 'windows' else 'GL'
+        ctypes.CDLL(ctypes.util.find_library(lib_opengl), ctypes.RTLD_GLOBAL)
 
         # Load OpenImageDebugger library and set up its API
         self._lib = ctypes.cdll.LoadLibrary(
@@ -83,13 +87,14 @@ class OpenImageDebuggerWindow(object):
         Return the name of the binary library, including its extension, which
         is platform dependent.
         """
-        platform_name = platform.system().lower()
         python_version = '_python%d' % sys.version_info[0]
 
-        if platform_name == 'linux':
+        if PLATFORM_NAME == 'linux':
             return 'liboidbridge%s.so' % python_version
-        elif platform_name == 'darwin':
+        elif PLATFORM_NAME == 'darwin':
             return 'liboidbridge%s.dylib' % python_version
+        elif PLATFORM_NAME == 'windows':
+            return 'liboidbridge%s.dll' % python_version
 
     def plot_variable(self, requested_symbol):
         """
