@@ -49,6 +49,14 @@ public:
         impl_->kill();
     }
 
+    void waitForStart() {
+        for (;;) {
+            if (impl_->isRunning()) {
+                break;
+            }
+        }
+    }
+
     void createImpl();
 private:
     std::shared_ptr<ProcessImpl> impl_;

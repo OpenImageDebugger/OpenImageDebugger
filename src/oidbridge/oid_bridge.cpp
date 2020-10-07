@@ -131,6 +131,14 @@ class OidBridge
 
         ui_proc_.start(command);
 
+        for(;;) {
+            if (ui_proc_.isRunning()) {
+                break;
+            }
+        }
+
+        ui_proc_.waitForStart();
+
         wait_for_client();
 
         return client_ != nullptr;
