@@ -23,7 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-#ifdef unix
+#if defined(unix) || defined(__APPLE__)
 
 #include "process_impl.h"
 #include "process.h"
@@ -81,4 +81,4 @@ void Process::createImpl() {
     impl_ = make_shared<ProcessImplUnix>();
 }
 
-#endif // __unix__
+#endif // defined(unix) || defined(__APPLE__)

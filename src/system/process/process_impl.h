@@ -29,14 +29,28 @@
 #include <string>
 #include <vector>
 
+/**
+ * Interface to process calling classes
+ */
 class ProcessImpl {
 public:
     ~ProcessImpl() = default;
 
+    /**
+     * Start the process represented by its path and arguments
+     * @param command binary and path and its arguments
+     */
     virtual void start(const std::vector<std::string>& command) = 0;
 
+    /**
+     * Check if the process is running
+     * @return true if running, false otherwise
+     */
     virtual bool isRunning() = 0;
 
+    /**
+     * Kill the process
+     */
     virtual void kill() = 0;
 };
 

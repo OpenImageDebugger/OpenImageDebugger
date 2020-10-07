@@ -37,18 +37,34 @@ public:
     Process() {
         createImpl();
     }
+
+    /**
+     * Start the process represented by its path and arguments
+     * @param command binary and path and its arguments
+     */
     void start(const std::vector<std::string>& command) {
         impl_->start(command);
     }
 
+    /**
+     * Check if the process is running
+     * @return true if running, false otherwise
+     */
     bool isRunning() {
         return impl_->isRunning();
     }
 
+    /**
+     * Kill the process
+     */
     void kill() {
         impl_->kill();
     }
 
+
+    /**
+     * Busy waiting until the process starts
+     */
     void waitForStart() {
         for (;;) {
             if (impl_->isRunning()) {
@@ -57,8 +73,13 @@ public:
         }
     }
 
+    /**
+     * Initialize pimpl according to platform
+     */
     void createImpl();
+
 private:
+    // pimpl idiom
     std::shared_ptr<ProcessImpl> impl_;
 };
 
