@@ -6,7 +6,9 @@ SET(SOURCES
     ../oid_bridge.cpp
     ../../debuggerinterface/python_native_interface.cpp
     ../../ipc/message_exchange.cpp
-    ../../ipc/raw_data_decode.cpp)
+    ../../ipc/raw_data_decode.cpp
+    ../../system/process/process_unix.cpp
+    ../../system/process/process_win32.cpp)
 
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}
