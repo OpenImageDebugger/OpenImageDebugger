@@ -96,9 +96,9 @@ class OidBridge
 {
   public:
     OidBridge(int (*plot_callback)(const char*))
-        : ui_proc_()
-        , client_(nullptr)
-        , plot_callback_(plot_callback)
+        : ui_proc_{}
+        , client_{nullptr}
+        , plot_callback_{plot_callback}
     {
     }
 
@@ -117,12 +117,6 @@ class OidBridge
         const vector<string> command {windowBinaryPath, "-style", "fusion", "-p", portStdString};
 
         ui_proc_.start(command);
-
-        for(;;) {
-            if (ui_proc_.isRunning()) {
-                break;
-            }
-        }
 
         ui_proc_.waitForStart();
 
