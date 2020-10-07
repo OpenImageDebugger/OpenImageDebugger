@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.com/OpenImageDebugger/OpenImageDebugger.svg?branch=master)](https://travis-ci.com/OpenImageDebugger/OpenImageDebugger)
+[![Build Status](https://travis-ci.com/OpenImageDebugger/OpenImageDebugger.svg?branch=master)](https://travis-ci.com/OpenImageDebugger/OpenImageDebugger) 
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/OpenImageDebugger/OpenImageDebugger.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/OpenImageDebugger/OpenImageDebugger/alerts/)
 
 # Open Image Debugger: Enabling visualization of in-memory buffers on GDB/LLDB
 Open Image Debugger is a tool for visualizing in-memory buffers during debug
