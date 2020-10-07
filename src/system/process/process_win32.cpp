@@ -25,4 +25,47 @@
 
 #if defined(_WIN32)
 
+#include "process.h"
+#include "process_impl.h"
+
+#include <memory>
+
+#include <QProcess>
+#include <QString>
+
+using namespace std;
+
+class ProcessImplWin32 final: public ProcessImpl {
+public:
+    ProcessImplWin32()
+        : proc_()
+    {}
+
+    void start(const std::vector<std::string> &command) override {
+        const auto program = QString::fromStdString(command[0]);
+        QStringList args;
+        for (size_t i = 1; i < command.size(); i++) {
+            args.append(QString::fromStdString(command[i]));
+        }
+
+        proc_.start(program, args);
+        proc_.waitForStarted();
+    }
+
+    bool isRunning() override {
+        return proc_.state() == QProcess::Running;
+    }
+
+    void kill() override {
+        proc_.kill();
+    }
+
+private:
+    QProcess proc_;
+};
+
+void Process::createImpl() {
+    impl_ = make_shared<ProcessImplWin32>();
+}
+
 #endif

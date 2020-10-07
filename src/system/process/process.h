@@ -73,12 +73,13 @@ public:
         }
     }
 
+
+private:
     /**
      * Initialize pimpl according to platform
      */
     void createImpl();
 
-private:
     // pimpl idiom
     std::shared_ptr<ProcessImpl> impl_;
 };
