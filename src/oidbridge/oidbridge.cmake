@@ -7,6 +7,7 @@ SET(SOURCES
     ../../debuggerinterface/python_native_interface.cpp
     ../../ipc/message_exchange.cpp
     ../../ipc/raw_data_decode.cpp
+    ../../system/process/process.cpp
     ../../system/process/process_unix.cpp
     ../../system/process/process_win32.cpp)
 

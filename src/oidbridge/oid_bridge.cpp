@@ -102,19 +102,6 @@ class OidBridge
     {
     }
 
-    deque<vector<char>> pack_strings(const initializer_list<string>& strings)
-    {
-        deque<vector<char>> result;
-
-        for (const auto& string : strings) {
-            result.emplace_back(string.begin(), string.end());
-            // Add null ending character to buffer
-            result.back().push_back('\0');
-        }
-
-        return result;
-    }
-
     bool start()
     {
         // Initialize server

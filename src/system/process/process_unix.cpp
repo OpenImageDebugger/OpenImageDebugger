@@ -35,17 +35,20 @@
 
 using namespace std;
 
-class ProcessImplUnix final : public ProcessImpl {
+class ProcessImplUnix final : public ProcessImpl
+{
 public:
     ProcessImplUnix()
         : pid_{0}
     {}
 
-    ~ProcessImplUnix() {
+    ~ProcessImplUnix()
+    {
         kill();
     }
 
-    void start(const std::vector<std::string>& command) override {
+    void start(const std::vector<std::string>& command) override
+    {
         const auto windowBinaryPath = command[0];
 
         vector<char*> argv;
@@ -65,11 +68,13 @@ public:
                     environ);
     }
 
-    bool isRunning() override {
+    bool isRunning() override
+    {
         return pid_ != 0 && ::kill(pid_, 0) == 0;
     }
 
-    void kill() override {
+    void kill() override
+    {
         ::kill(pid_, SIGTERM);
     }
 
@@ -77,7 +82,8 @@ private:
     pid_t pid_;
 };
 
-void Process::createImpl() {
+void Process::createImpl()
+{
     impl_ = make_shared<ProcessImplUnix>();
 }
 

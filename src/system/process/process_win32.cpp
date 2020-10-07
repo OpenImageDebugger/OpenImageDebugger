@@ -35,13 +35,15 @@
 
 using namespace std;
 
-class ProcessImplWin32 final: public ProcessImpl {
+class ProcessImplWin32 final: public ProcessImpl
+{
 public:
     ProcessImplWin32()
         : proc_()
     {}
 
-    void start(const std::vector<std::string> &command) override {
+    void start(const std::vector<std::string> &command) override
+    {
         const auto program = QString::fromStdString(command[0]);
         QStringList args;
         for (size_t i = 1; i < command.size(); i++) {
@@ -52,11 +54,13 @@ public:
         proc_.waitForStarted();
     }
 
-    bool isRunning() override {
+    bool isRunning() override
+    {
         return proc_.state() == QProcess::Running;
     }
 
-    void kill() override {
+    void kill() override
+    {
         proc_.kill();
     }
 
@@ -64,7 +68,8 @@ private:
     QProcess proc_;
 };
 
-void Process::createImpl() {
+void Process::createImpl()
+{
     impl_ = make_shared<ProcessImplWin32>();
 }
 

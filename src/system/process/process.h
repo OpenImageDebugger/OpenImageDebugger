@@ -30,49 +30,33 @@
 #include <string>
 #include <vector>
 
-#include "process_impl.h"
+class ProcessImpl;
 
 class Process {
 public:
-    Process() {
-        createImpl();
-    }
+    Process();
 
     /**
      * Start the process represented by its path and arguments
      * @param command binary and path and its arguments
      */
-    void start(const std::vector<std::string>& command) {
-        impl_->start(command);
-    }
+    void start(const std::vector<std::string>& command);
 
     /**
      * Check if the process is running
      * @return true if running, false otherwise
      */
-    bool isRunning() {
-        return impl_->isRunning();
-    }
+    bool isRunning();
 
     /**
      * Kill the process
      */
-    void kill() {
-        impl_->kill();
-    }
-
+    void kill();
 
     /**
      * Busy waiting until the process starts
      */
-    void waitForStart() {
-        for (;;) {
-            if (impl_->isRunning()) {
-                break;
-            }
-        }
-    }
-
+    void waitForStart();
 
 private:
     /**

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2020 OpenImageDebugger
+ * Copyright (c) 2015-2019 OpenImageDebugger
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,34 +23,38 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef SYSTEM_PROCESS_IMPL_H_
-#define SYSTEM_PROCESS_IMPL_H_
-
 #include <string>
 #include <vector>
 
-/**
- * Interface to process calling classes
- */
-class ProcessImpl {
-public:
+#include "process.h"
+#include "process_impl.h"
 
-    /**
-     * Start the process represented by its path and arguments
-     * @param command binary and path and its arguments
-     */
-    virtual void start(const std::vector<std::string>& command) = 0;
+Process::Process()
+{
+    createImpl();
+}
 
-    /**
-     * Check if the process is running
-     * @return true if running, false otherwise
-     */
-    virtual bool isRunning() = 0;
+void Process::start(const std::vector<std::string>& command)
+{
+    impl_->start(command);
+}
 
-    /**
-     * Kill the process
-     */
-    virtual void kill() = 0;
-};
 
-#endif // #ifndef SYSTEM_PROCESS_IMPL_H_
+bool Process::isRunning()
+{
+    return impl_->isRunning();
+}
+
+void Process::kill()
+{
+    impl_->kill();
+}
+
+void Process::waitForStart()
+{
+    for (;;) {
+        if (impl_->isRunning()) {
+            break;
+        }
+    }
+}
