@@ -23,9 +23,6 @@
  * IN THE SOFTWARE.
  */
 
-#include <signal.h>
-#include <spawn.h>
-
 #include <deque>
 #include <iostream>
 #include <string>
@@ -34,6 +31,7 @@
 #include "debuggerinterface/python_native_interface.h"
 #include "oid_bridge.h"
 #include "ipc/message_exchange.h"
+#include "system/process/process.h"
 
 #include <QDataStream>
 #include <QString>
@@ -98,7 +96,7 @@ class OidBridge
 {
   public:
     OidBridge(int (*plot_callback)(const char*))
-        : ui_proc_id_(0)
+        : ui_proc_()
         , client_(nullptr)
         , plot_callback_(plot_callback)
     {
@@ -129,21 +127,17 @@ class OidBridge
         string windowBinaryPath = this->oid_path_ + "/oidwindow";
         string portStdString    = std::to_string(server_.serverPort());
 
-        auto packed_parameters =
-            pack_strings({"-style", "fusion", "-p", portStdString});
-        char* argv[] = {packed_parameters[0].data(),
-                        packed_parameters[1].data(),
-                        packed_parameters[2].data(),
-                        packed_parameters[3].data(),
-                        nullptr};
-        extern char** environ;
+        const vector<string> command {windowBinaryPath, "-style", "fusion", "-p", portStdString};
 
-        posix_spawn(&ui_proc_id_,
-                    windowBinaryPath.c_str(),
-                    nullptr, // TODO consider passing something here
-                    nullptr, // and here
-                    argv,
-                    environ);
+        ui_proc_.start(command);
+
+        for(;;) {
+            if (ui_proc_.isRunning()) {
+                break;
+            }
+        }
+
+        ui_proc_.waitForStart();
 
         wait_for_client();
 
@@ -157,8 +151,7 @@ class OidBridge
 
     bool is_window_ready()
     {
-        return client_ != nullptr && ui_proc_id_ != 0 &&
-               kill(static_cast<pid_t>(ui_proc_id_), 0) == 0;
+        return client_ != nullptr && ui_proc_.isRunning();
     }
 
     deque<string> get_observed_symbols()
@@ -232,11 +225,11 @@ class OidBridge
 
     ~OidBridge()
     {
-        kill(ui_proc_id_, SIGKILL);
+        ui_proc_.kill();
     }
 
   private:
-    pid_t ui_proc_id_;
+    Process ui_proc_;
     QTcpServer server_;
     QTcpSocket* client_;
     string oid_path_;

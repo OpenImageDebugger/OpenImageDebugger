@@ -35,7 +35,7 @@ customized to work with any arbitrary data structure.
   files (unprocessed).
 * Auto-load buffers being visualized in the previous debug session
 * Designed to scale well for HighDPI displays
-* Works on Linux and macOS X
+* Works on Linux, macOS X and Windows (experimental)
 
 ### Requirements
 
@@ -89,6 +89,8 @@ command script import /path/to/OpenImageDebugger/oid.py
 ```
 
 #### Building with CMake (experimental - not tested on MacOS)
+**Note**: We recommed using cmake to build on Windows
+
 Alternatively, it is possible to compile OID using CMake.
 
 First, install cmake:
