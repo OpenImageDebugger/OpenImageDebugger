@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../../../common.cmake)
-
 SET(SOURCES
     ../oid_bridge.cpp
     ../../debuggerinterface/python_native_interface.cpp
