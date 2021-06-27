@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.10.0)
 
 project(oidwindow)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../commom.cmake)
-
 find_package(OpenGL REQUIRED)
 
 set(CMAKE_AUTOMOC ON)
