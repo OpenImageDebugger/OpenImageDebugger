@@ -5,10 +5,6 @@ matrix:
   - os: osx
     osx_image: xcode12.5
 
-  # TODO: deprecated: remove as soon as oid fully works in focal
-  - os: linux
-    dist: xenial
-
   - os: linux
     dist: bionic
     
@@ -41,3 +37,4 @@ script:
     else: cmake .. -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=/tmp
   - make -j8
   - make install
+
