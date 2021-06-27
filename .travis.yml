@@ -30,6 +30,6 @@ before_install:
 
 script:
   - mkdir build && cd build
-  - qmake .. PREFIX=/tmp
+  - cmake .. -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=/tmp
   - make -j8
   - make install
