@@ -38,11 +38,9 @@ using namespace std;
 class ProcessImplUnix final : public ProcessImpl
 {
 public:
-    ProcessImplUnix()
-        : pid_{0}
-    {}
+    ProcessImplUnix() = default;
 
-    ~ProcessImplUnix()
+    ~ProcessImplUnix() noexcept
     {
         kill();
     }
@@ -68,7 +66,7 @@ public:
                     environ);
     }
 
-    bool isRunning() override
+    bool isRunning() const override
     {
         return pid_ != 0 && ::kill(pid_, 0) == 0;
     }
@@ -79,7 +77,7 @@ public:
     }
 
 private:
-    pid_t pid_;
+    pid_t pid_{0};
 };
 
 void Process::createImpl()

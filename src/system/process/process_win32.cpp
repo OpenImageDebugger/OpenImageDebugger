@@ -54,7 +54,7 @@ public:
         proc_.waitForStarted();
     }
 
-    bool isRunning() override
+    bool isRunning() const override
     {
         return proc_.state() == QProcess::Running;
     }
