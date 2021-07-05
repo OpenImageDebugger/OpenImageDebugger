@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2020 OpenImageDebugger
+ * Copyright (c) 2015-2021 OpenImageDebugger
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,8 +22,6 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-
-#if defined(__unix__) || defined(__APPLE__)
 
 #include "process_impl.h"
 #include "process.h"
@@ -86,5 +84,3 @@ void Process::createImpl()
 {
     impl_ = make_shared<ProcessImplUnix>();
 }
-
-#endif // defined(__unix__) || defined(__APPLE__)

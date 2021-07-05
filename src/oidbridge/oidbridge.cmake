@@ -1,17 +1,16 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-SET(SOURCES
-    ../oid_bridge.cpp
-    ../../debuggerinterface/python_native_interface.cpp
-    ../../ipc/message_exchange.cpp
-    ../../ipc/raw_data_decode.cpp
-    ../../system/process/process.cpp
-    ../../system/process/process_unix.cpp
-    ../../system/process/process_win32.cpp)
+add_library(${PROJECT_NAME} SHARED
+            ../oid_bridge.cpp
+            ../../debuggerinterface/python_native_interface.cpp
+            ../../ipc/message_exchange.cpp
+            ../../ipc/raw_data_decode.cpp
+            ../../system/process/process.cpp
+            $<$<BOOL:${UNIX}>:../../system/process/process_unix.cpp>
+            $<$<BOOL:${WIN32}>:../../system/process/process_win32.cpp>)
 
-add_library(${PROJECT_NAME} SHARED ${SOURCES})
-
-add_compile_options("$<$<PLATFORM_ID:UNIX>:-Wl,--exclude-libs,ALL>")
+target_compile_options(${PROJECT_NAME}
+                       PUBLIC "$<$<PLATFORM_ID:UNIX>:-Wl,--exclude-libs,ALL>")
 
 target_include_directories(${PROJECT_NAME}
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../..)
