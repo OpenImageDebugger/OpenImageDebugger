@@ -45,7 +45,7 @@ void MainWindow::decode_set_available_symbols()
     }
 
     completer_updated_ = true;
-};
+}
 
 
 void MainWindow::respond_get_observed_symbols()
@@ -57,7 +57,7 @@ void MainWindow::respond_get_observed_symbols()
         message_composer.push(name.first);
     }
     message_composer.send(&socket_);
-};
+}
 
 
 void MainWindow::decode_plot_buffer_contents()

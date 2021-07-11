@@ -77,6 +77,7 @@ INSTALLS += \
 # Assorted configuration
 INCLUDEPATH += \
   $$PWD \
+  $$PWD/thirdparty/Eigen/ \
   $$PWD/thirdparty/Khronos/
 
 FORMS += ui/main_window/main_window.ui

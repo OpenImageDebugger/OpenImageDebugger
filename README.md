@@ -54,7 +54,7 @@ customized to work with any arbitrary data structure.
 On Ubuntu, you can install most of the dependencies with the following command:
 
 ```shell
-sudo apt install build-essential libpython3-dev python3-dev libpython2.7-dev python2-dev
+sudo apt install build-essential libpython3-dev python3-dev libpython2.7-dev python2-dev cmake
 ```
 
 ### Building the Open Image Debugger
@@ -72,7 +72,7 @@ Now run the following commands to build it:
 
 ```shell
 mkdir build && cd build
-qmake .. BUILD_MODE=release PREFIX=/path/to/installation/folder
+cmake .. -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=/path/to/installation/folder
 make -j4
 sudo make install
 ```
@@ -89,41 +89,18 @@ exist) and append the following line:
 command script import /path/to/OpenImageDebugger/oid.py
 ```
 
-#### Building with CMake (experimental - not tested on MacOS)
-**Note**: We recommed using cmake to build on Windows
+#### Building with qmake - DEPRECATED
 
-Alternatively, it is possible to compile OID using CMake.
-
-First, install cmake:
-```shell
-sudo apt install cmake
-```
-Then run the following commands:
+Historically OID has been compiled using qmake, but now it has been deprecated and this way of building will be removed soon.
 
 ```shell
 mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=/path/to/installation/folder
+qmake .. BUILD_MODE=release PREFIX=/path/to/installation/folder
 make -j4
 sudo make install
 ```
 
 The integration steps remain the same.
-
-### Ubuntu 16.04 Automated Installation
-
-The script `configure_ubuntu_16.sh` automates some of the installation steps
-for Open Image Debugger on Ubuntu 16.04.  From the root directory of this project,
-execute the following:
-
-```shell
-bash configure_ubuntu_16.sh
-```
-
-Note that this script will not instal Qt 5.6+. If you don't have this
-package, the best choice is to get it from Qt website.
-
-When you are done, follow the instructions below in the section `Testing your
-installation`.
 
 ### MacOS Installation
 For information on how to build the plugin on MacOS, refer to the wiki page

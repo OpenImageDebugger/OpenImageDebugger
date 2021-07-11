@@ -1,3 +1,4 @@
+# !!! qmake build is deprecated and will be removed soon !!!
 TEMPLATE = subdirs
 SUBDIRS = src src/oidbridge/python2 src/oidbridge/python3
 

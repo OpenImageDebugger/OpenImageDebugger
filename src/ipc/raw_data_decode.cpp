@@ -25,6 +25,8 @@
 
 #include "raw_data_decode.h"
 
+#include <cassert>
+
 std::vector<std::uint8_t>
     make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
 {
@@ -47,7 +49,7 @@ size_t typesize(BufferType type)
     switch(type) {
     case BufferType::Int32:
         return sizeof(int32_t);
-    case BufferType::Short:
+    case BufferType::Short: // fall-through
     case BufferType::UnsignedShort:
         return sizeof(int16_t);
     case BufferType::Float32:
@@ -55,6 +57,9 @@ size_t typesize(BufferType type)
     case BufferType::Float64:
         return sizeof(double);
     case BufferType::UnsignedByte:
+        return sizeof(std::uint8_t);
+    default:
+        assert("unknow BufferType received");
         return sizeof(std::uint8_t);
     }
 }

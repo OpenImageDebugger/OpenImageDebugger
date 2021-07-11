@@ -23,14 +23,15 @@
 
 cmake_minimum_required(VERSION 3.1.0)
 
-project(OpenImageDebugger)
+set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type")
+set(CMAKE_INSTALL_PREFIX /usr/local CACHE PATH "Install path")
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
+# We want to be as strict as possible with the standards
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_EXTENSIONS False)
 
-add_subdirectory(src)
-add_subdirectory(src/oidbridge/python2)
-if(NOT WIN32)
-    add_subdirectory(src/oidbridge/python3)
-else()
-    message(WARNING "Python3 is currently not supported on Windows")
-endif()
+find_package(Threads REQUIRED)
+find_package(Qt5 COMPONENTS Network REQUIRED)
+
+add_compile_options(-Wall -Wextra -pedantic -fvisibility=hidden)
