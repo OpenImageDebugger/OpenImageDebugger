@@ -102,22 +102,6 @@ sudo make install
 
 The integration steps remain the same.
 
-### Ubuntu 16.04 Automated Installation
-
-The script `configure_ubuntu_16.sh` automates some of the installation steps
-for Open Image Debugger on Ubuntu 16.04.  From the root directory of this project,
-execute the following:
-
-```shell
-bash configure_ubuntu_16.sh
-```
-
-Note that this script will not instal Qt 5.6+. If you don't have this
-package, the best choice is to get it from Qt website.
-
-When you are done, follow the instructions below in the section `Testing your
-installation`.
-
 ### MacOS Installation
 For information on how to build the plugin on MacOS, refer to the wiki page
 [Building on
