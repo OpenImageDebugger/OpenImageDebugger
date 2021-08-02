@@ -44,6 +44,7 @@ customized to work with any arbitrary data structure.
  * GDB **7.10+** or LLDB **6+**
  * Qt **5.6+** (required due to the HighDPI display support - download it
    [here](https://info.qt.io/download-qt-for-application-development))
+ * CMake **3.1.0+**
  * Python development packages
  * OpenGL 2.1+ support
 
