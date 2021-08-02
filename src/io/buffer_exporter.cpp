@@ -206,7 +206,7 @@ void export_binary(const char* fname, const Buffer* buffer)
         for (int y = 0; y < height_i; ++y) {
             fwrite(in_ptr + y * buffer->step * buffer->channels,
                    sizeof(T),
-                   width_i * buffer->channels,
+                   static_cast<size_t>(width_i) * static_cast<size_t>(buffer->channels),
                    fhandle);
         }
         fclose(fhandle);
