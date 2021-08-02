@@ -45,7 +45,6 @@ class GdbBridge(BridgeInterface):
                 gdb.post_event(callback)
 
             time.sleep(0.1)
-        pass
 
     def queue_request(self, callable_request):
         with self._lock:

@@ -7,7 +7,6 @@ Code responsible with directly interacting with LLDB
 import lldb
 import time
 import threading
-import sys
 
 from oidscripts import sysinfo
 from oidscripts.typebridge import TypeInspectorInterface
@@ -154,7 +153,6 @@ class LldbBridge(BridgeInterface):
 
     def register_event_handlers(self, event_handler):
         self._event_handler = event_handler
-        pass
 
     def get_casted_pointer(self, typename, lldb_object):
         return lldb_object.get_casted_pointer()
