@@ -38,10 +38,18 @@ vec4::vec4(float x, float y, float z, float w)
 {
 }
 
-
-void vec4::operator=(const vec4& b)
+vec4::vec4(const vec4& b)
 {
     vec = b.vec;
+}
+
+
+vec4& vec4::operator=(const vec4& b)
+{
+    if (this != &b) {
+        vec = b.vec;
+    }
+    return *this;
 }
 
 
