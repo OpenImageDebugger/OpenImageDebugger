@@ -10,12 +10,20 @@ class Camera : public Component
   public:
     Camera(GameObject* game_object, GLCanvas* gl_canvas);
 
+    ~Camera() = default;
+
+    Camera(const Camera& cam);
+
+    Camera(Camera&& cam) = default;
+
+    Camera& operator=(const Camera& cam);
+
+    Camera& operator=(Camera&& cam) = default;
+
     static constexpr float zoom_factor = 1.1;
     mat4 projection;
 
     vec4 mouse_position = vec4::zero();
-
-    Camera& operator=(const Camera& cam);
 
     virtual void update();
 
