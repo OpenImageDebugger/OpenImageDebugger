@@ -222,22 +222,23 @@ void Buffer::compute_contrast_brightness_parameters()
 
     for (int c = 0; c < channels; ++c) {
         float maxIntensity = 1.0f;
-        if (type == BufferType::UnsignedByte)
+        if (type == BufferType::UnsignedByte) {
             maxIntensity = 255.0f;
-        else if (type ==
-                 BufferType::Short) // All non-real values have max color 255
-            maxIntensity = std::numeric_limits<short>::max();
-        else if (type == BufferType::UnsignedShort)
-            maxIntensity = std::numeric_limits<unsigned short>::max();
-        else if (type == BufferType::Int32)
-            maxIntensity = std::numeric_limits<int>::max();
-        else if (type == BufferType::Float32 || type == BufferType::Float64)
+        } else if (type ==
+                 BufferType::Short) {// All non-real values have max color 255
+            maxIntensity = static_cast<float>(std::numeric_limits<short>::max());
+        } else if (type == BufferType::UnsignedShort) {
+            maxIntensity = static_cast<float>(std::numeric_limits<unsigned short>::max());
+        } else if (type == BufferType::Int32) {
+            maxIntensity = static_cast<float>(std::numeric_limits<int>::max());
+        } else if (type == BufferType::Float32 || type == BufferType::Float64) {
             maxIntensity = 1.0f;
-
+        }
         float upp_minus_low = upper[c] - lowest[c];
 
-        if (upp_minus_low == 0)
+        if (upp_minus_low == 0) {
             upp_minus_low = 1.0;
+        }
 
         auto_buffer_contrast[c] = maxIntensity / upp_minus_low;
         auto_buffer_brightness[c] =

@@ -39,6 +39,19 @@ Camera::Camera(GameObject* game_object, GLCanvas* gl_canvas)
 }
 
 
+Camera::Camera(const Camera& cam) :
+    Component(cam)
+{
+    zoom_power_    = cam.zoom_power_;
+    camera_pos_x_  = cam.camera_pos_x_;
+    camera_pos_y_  = cam.camera_pos_y_;
+    canvas_width_  = cam.canvas_width_;
+    canvas_height_ = cam.canvas_height_;
+    scale_         = cam.scale_;
+
+    update_object_pose();
+}
+
 Camera& Camera::operator=(const Camera& cam)
 {
     zoom_power_    = cam.zoom_power_;

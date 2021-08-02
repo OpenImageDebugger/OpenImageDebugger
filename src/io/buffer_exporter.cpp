@@ -66,8 +66,8 @@ float get_max_intensity<float>()
 template <typename T>
 void export_bitmap(const char* fname, const Buffer* buffer)
 {
-    int width_i  = static_cast<int>(buffer->buffer_width_f);
-    int height_i = static_cast<int>(buffer->buffer_height_f);
+    const auto width_i  = static_cast<size_t>(buffer->buffer_width_f);
+    const auto height_i = static_cast<size_t>(buffer->buffer_height_f);
 
     vector<uint8_t> processed_buffer(4 * width_i * height_i);
     uint8_t default_channel_vals[] = {0, 0, 0, 255};
@@ -101,8 +101,8 @@ void export_bitmap(const char* fname, const Buffer* buffer)
     int input_stride = buffer->channels * buffer->step;
     uint8_t unformatted_pixel[4];
 
-    for (int y = 0; y < height_i; ++y) {
-        for (int x = 0; x < width_i; ++x) {
+    for (size_t y = 0; y < height_i; ++y) {
+        for (size_t x = 0; x < width_i; ++x) {
             int col_offset = x * buffer->channels;
             int c;
 
@@ -206,7 +206,7 @@ void export_binary(const char* fname, const Buffer* buffer)
         for (int y = 0; y < height_i; ++y) {
             fwrite(in_ptr + y * buffer->step * buffer->channels,
                    sizeof(T),
-                   width_i * buffer->channels,
+                   static_cast<size_t>(width_i) * static_cast<size_t>(buffer->channels),
                    fhandle);
         }
         fclose(fhandle);

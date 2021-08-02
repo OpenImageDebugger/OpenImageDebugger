@@ -34,7 +34,7 @@
  */
 class ProcessImpl {
 public:
-
+    virtual ~ProcessImpl() noexcept = default;
     /**
      * Start the process represented by its path and arguments
      * @param command binary and path and its arguments
@@ -45,7 +45,7 @@ public:
      * Check if the process is running
      * @return true if running, false otherwise
      */
-    virtual bool isRunning() = 0;
+    virtual bool isRunning() const = 0;
 
     /**
      * Kill the process

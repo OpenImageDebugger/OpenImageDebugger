@@ -41,7 +41,16 @@ class vec4
 
   public:
     vec4();
-    void operator=(const vec4& b);
+
+    ~vec4() = default;
+
+    vec4(const vec4& b);
+
+    vec4(vec4&& b) = default;
+
+    vec4& operator=(const vec4& b);
+
+    vec4& operator=(vec4&& b) = default;
 
     vec4& operator+=(const vec4& b);
 

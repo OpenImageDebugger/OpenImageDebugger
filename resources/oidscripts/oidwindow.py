@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import array
 from oidscripts import symbols
 
 """
