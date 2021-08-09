@@ -8,13 +8,12 @@ plotted in the OpenImageDebugger window.
 
 import abc
 
-from oidscripts import debuggers
-
 
 def debug_buffer_metadata(func):
     def wrapper(self, obj_name, picked_obj, debugger_bridge):
         try:
-            metadata = func(self, obj_name, picked_obj, debugger_bridge)
+            # metadata is used for debugging purposed, so we are supressing the next lgtm alert
+            metadata = func(self, obj_name, picked_obj, debugger_bridge) # lgtm [py/unused-local-variable]
 
             print('[%s] [%s] was parsed by oidtype [%s]' %
                   (str(picked_obj.type), obj_name, type(self).__name__))

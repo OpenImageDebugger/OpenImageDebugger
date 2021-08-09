@@ -117,14 +117,11 @@ def main():
     Main entry point.
     """
     args = None
-    try:
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--test',
-                            help='Open a test window with sample buffers',
-                            action='store_true')
-        args = parser.parse_args()
-    except:
-        pass
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--test',
+                        help='Open a test window with sample buffers',
+                        action='store_true')
+    args = parser.parse_args()
 
     if args is not None and args.test:
         # Test application

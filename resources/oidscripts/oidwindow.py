@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from oidscripts import symbols
 
 """
 Classes related to exposing an interface to the OpenImageDebugger window
