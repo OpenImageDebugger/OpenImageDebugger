@@ -39,7 +39,7 @@ def _get_available_memory_darwin():
         row_elements = sep.split(row_text)
         try:
             rss = float(row_elements[0]) * 1024
-        except:
+        except IndexError:
             rss = 0  # ignore...
         rss_total += rss
 
