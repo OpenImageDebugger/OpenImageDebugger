@@ -8,8 +8,6 @@ plotted in the OpenImageDebugger window.
 
 import abc
 
-from oidscripts import debuggers
-
 
 def debug_buffer_metadata(func):
     def wrapper(self, obj_name, picked_obj, debugger_bridge):
