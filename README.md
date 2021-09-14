@@ -92,19 +92,6 @@ exist) and append the following line:
 command script import /path/to/OpenImageDebugger/oid.py
 ```
 
-#### Building with qmake - DEPRECATED
-
-Historically OID has been compiled using qmake, but now it has been deprecated and this way of building will be removed soon.
-
-```shell
-mkdir build && cd build
-qmake .. BUILD_MODE=release PREFIX=/path/to/installation/folder
-make -j4
-sudo make install
-```
-
-The integration steps remain the same.
-
 ### MacOS Installation
 For information on how to build the plugin on MacOS, refer to the wiki page
 [Building on
@@ -127,7 +114,9 @@ with the buffers `sample_buffer_1` and `sample_buffer_2`.
 If you are using QtCreator, you can change your Qt version under
 Tools->Options->Build & Run->Kits. Make sure you have Qt >= 5.6 selected.
 
-### libGL linking issues on Linux
+### [DEPRECATED] libGL linking issues on Linux
+!!! This section needs to be reviewed !!!
+
 Some linux users might experience a linking error if the libGL.so is not
 found by qmake, especially when using a nvidia graphics card. This issue will
 usually present itself with the message `cannot find -lGL`.
