@@ -28,7 +28,13 @@ project(OpenImageDebugger)
 include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
 
 add_subdirectory(src)
-add_subdirectory(src/oidbridge/python2)
+
+if(NOT APPLE)
+    add_subdirectory(src/oidbridge/python2)
+else()
+    message(STATUS "Python2 is unavailable on MacOS")
+endif()
+
 if(NOT WIN32)
     add_subdirectory(src/oidbridge/python3)
 else()
