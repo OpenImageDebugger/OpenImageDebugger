@@ -33,13 +33,17 @@ class LldbBridge(BridgeInterface):
         self._event_handler = None
         self._last_thread_id = 0
         self._last_frame_idx = 0
+
+        # Store debugger from the main thread since it isn't available from an event loop.
+        self._debugger = lldb.debugger
+
         event_loop_thread = threading.Thread(target=self.event_loop)
         event_loop_thread.daemon = True
         event_loop_thread.start()
 
     def get_lldb_backend(self):
         # type: () -> lldb.SBDebugger
-        return lldb.debugger
+        return self._debugger
 
     def get_backend_name(self):
         return 'lldb'
