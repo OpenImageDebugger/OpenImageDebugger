@@ -5,30 +5,40 @@ project(oidbridge_python3)
 if(NOT APPLE)
     find_package(PythonLibs 3 EXACT)
 else()
-    set(LLDB_PYTHON3_VERSION "" CACHE FILEPATH "Version of python3 library, used by lldb.
+    set(LLDB_PYTHON3_INFO "
     In order to properly compile the plugin, you must make sure it is linked against the same python lib binary used by lldb.
+    Take into consideration that your IDE may use custom lldb which differs from system-one.
     Run:
         lldb
         (lldb) script
         Python Interactive Interpreter. To exit, type 'quit()', 'exit()' or Ctrl-D.
-        >>> import sys; print(sys.path)
-    Examine output and insert python version here. For example: 3.8")
+        >>> import sys; print(sys.path)")
 
-    if (LLDB_PYTHON3_VERSION STREQUAL "")
-        message(SEND_ERROR "Version of python3 library, used by lldb, isn't set. Verify correctness of LLDB_PYTHON3_VERSION variable")
+    set(LLDB_PYTHON3_INCLUDE_DIR "" CACHE FILEPATH "Path to python3 include directory. ${LLDB_PYTHON3_INFO}
+    Examine output and insert path to include directory here.
+    Several examples:
+        - /Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.8/include/python3.8 (system-one, used by lldb command)
+        - /usr/local/Frameworks/Python.framework/Versions/3.9/include/python3.9 (instaled by user)")
+
+    set(LLDB_PYTHON3_LIBRARY "" CACHE FILEPATH "Path to python3 library file. ${LLDB_PYTHON3_INFO}
+    Examine output and insert path to library file here.
+    Several examples:
+        - /Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.8/lib/libpython3.8.dylib (system-one, used by lldb command)
+        - /usr/local/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib (instaled by user)
+        - ~/.vscode/extensions/vadimcn.vscode-lldb-1.6.10/lldb/lib/libpython39.dylib (used by CodeLLDB)")
+
+    if(NOT EXISTS ${LLDB_PYTHON3_INCLUDE_DIR})
+        message(SEND_ERROR "Python include directory wasn't found: ${LLDB_PYTHON3_INCLUDE_DIR}
+        Verify correctness of LLDB_PYTHON3_INCLUDE_DIR variable")
     endif()
 
-    set(PYTHON_INCLUDE_DIR "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/${LLDB_PYTHON3_VERSION}/include/python${LLDB_PYTHON3_VERSION}")
-    set(PYTHON_LIBRARY "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/${LLDB_PYTHON3_VERSION}/lib/libpython${LLDB_PYTHON3_VERSION}.dylib")
+    if(NOT EXISTS ${LLDB_PYTHON3_LIBRARY})
+        message(SEND_ERROR "Python library file wasn't found: ${LLDB_PYTHON3_LIBRARY}
+        Verify correctness of LLDB_PYTHON3_LIBRARY variable")
+    endif()
 
-    if(NOT EXISTS ${PYTHON_INCLUDE_DIR})
-        message(SEND_ERROR "Python include directory wasn't found: ${PYTHON_INCLUDE_DIR}
-        Verify correctness of LLDB_PYTHON3_VERSION variable")
-    endif()
-    if(NOT EXISTS ${PYTHON_LIBRARY})
-        message(SEND_ERROR "Python library file wasn't found: ${PYTHON_LIBRARY}
-        Verify correctness of LLDB_PYTHON3_VERSION variable")
-    endif()
+    set(PYTHON_INCLUDE_DIR ${LLDB_PYTHON3_INCLUDE_DIR})
+    set(PYTHON_LIBRARY ${LLDB_PYTHON3_LIBRARY})
 endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../oidbridge.cmake)
