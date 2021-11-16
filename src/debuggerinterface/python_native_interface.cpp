@@ -64,9 +64,10 @@ int check_py_string_type(PyObject* obj)
     return PyUnicode_Check(obj) == 1 ? 1 : PyBytes_Check(obj);
 }
 
-
-void* get_c_ptr_from_py_buffer(PyObject* obj)
+void get_c_ptr_from_py_buffer(PyObject* obj, uint8_t*& buffer_ptr, size_t& buffer_size)
 {
     assert(PyMemoryView_Check(obj));
-    return PyMemoryView_GET_BUFFER(obj)->buf;
+    const auto py_buff = PyMemoryView_GET_BUFFER(obj);
+    buffer_ptr = reinterpret_cast<uint8_t*>(py_buff->buf);
+    buffer_size = static_cast<size_t>(py_buff->len);
 }
