@@ -146,9 +146,15 @@ class OpenImageDebuggerWindow(object):
         Set the autocomplete list of symbols with the list of string
         'observable_symbols'
         """
+
+        # Perform two-level sorting:
+        #    1. By amount of nodes.
+        #    2. By variable name.
+        sorted_observable_symbols = sorted(observable_symbols, key=lambda symbol: (symbol.count('.'), symbol))
+
         self._lib.oid_set_available_symbols(
             self._native_handler,
-            observable_symbols)
+            sorted_observable_symbols)
 
     def run_event_loop(self):
         """
@@ -199,10 +205,13 @@ class DeferredVariablePlotter(object):
         try:
             buffer_metadata = self._bridge.get_buffer_metadata(self._variable)
 
-            if buffer_metadata is not None:
-                self._lib.oid_plot_buffer(
-                    self._native_handler,
-                    buffer_metadata)
+            if buffer_metadata is None:
+                return
+
+            self._lib.oid_plot_buffer(
+                self._native_handler,
+                buffer_metadata)
+
         except Exception as err:
             import traceback
             print('[OpenImageDebugger] Error: Could not plot variable')

@@ -167,17 +167,20 @@ class LldbBridge(BridgeInterface):
         for member_idx in range(symbol.GetNumChildren()):
             symbol_member = symbol.GetChildAtIndex(
                 member_idx)  # type: lldb.SBValue
+
+            member_name_chain_current = member_name_chain.copy()
+            member_name_chain_current.append(symbol_member.name)
+
             symbol_wrapper = SymbolWrapper(symbol_member)
             if self._type_bridge.is_symbol_observable(symbol_wrapper,
                                                       symbol_member.name):
-                member_name_chain.append(symbol_member.name)
-                output_set.add('.'.join(member_name_chain))
+                member_name_current = '.'.join(member_name_chain_current)
+                output_set.add(member_name_current)
             else:
                 if symbol_member.name != symbol_member.GetTypeName():
-                    member_name_chain.append(symbol_member.name)
                     visited_typenames.add(symbol_member.GetTypeName())
                 self._get_observable_children_members(symbol_member,
-                                                      member_name_chain,
+                                                      member_name_chain_current,
                                                       output_set,
                                                       visited_typenames)
 
