@@ -242,6 +242,8 @@ public Q_SLOTS:
     // Initialization - private - implemented in initialization.cpp
     void initialize_ui_icons();
 
+    void initialize_ui_settings();
+
     void initialize_timers();
 
     void initialize_shortcuts();

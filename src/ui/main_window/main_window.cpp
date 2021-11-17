@@ -29,6 +29,7 @@
 #include <QDateTime>
 #include <QScreen>
 #include <QSettings>
+#include <QSplitter>
 
 #include "main_window.h"
 
@@ -63,6 +64,7 @@ MainWindow::MainWindow(const ConnectionSettings& host_settings,
     ui_->setupUi(this);
 
     initialize_ui_icons();
+    initialize_ui_settings();
     initialize_timers();
     initialize_symbol_completer();
     initialize_left_pane();
@@ -203,6 +205,12 @@ void MainWindow::persist_settings()
     // Write previous session symbols
     settings.setValue("PreviousSession/buffers",
                       QVariant::fromValue(persisted_session_buffers));
+
+    // Write UI geometry.
+    settings.beginGroup("UI");
+    settings.setValue("splitter", ui_->splitter->saveState());
+    settings.setValue("minmax_visible", ui_->acEdit->isChecked());
+    settings.endGroup();
 
     // Write window position/size
     settings.beginGroup("MainWindow");

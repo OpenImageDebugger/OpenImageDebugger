@@ -84,6 +84,15 @@ void MainWindow::initialize_settings()
     resize(settings.value("size", size()).toSize());
     move(settings.value("pos", pos()).toPoint());
     settings.endGroup();
+
+
+    // Load UI geometry.
+    settings.beginGroup("UI");
+    if (settings.contains("splitter"))
+        ui_->splitter->restoreState(settings.value("splitter").toByteArray());
+    if (settings.contains("minmax_visible"))
+        ui_->acEdit->setChecked(settings.value("minmax_visible").toBool());
+    settings.endGroup();
 }
 
 
@@ -136,6 +145,18 @@ void MainWindow::initialize_ui_icons()
     SET_VECTOR_ICON(ui_->label_alpha_max, "label_alpha_channel.svg", 10, 10);
 
     SET_VECTOR_ICON(ui_->label_minmax, "lower_upper_bound.svg", 8, 35);
+}
+
+
+void MainWindow::initialize_ui_settings()
+{
+    connect(ui_->splitter, &QSplitter::splitterMoved,
+            this,
+            &MainWindow::persist_settings_deferred);
+
+    connect(ui_->acEdit, &QAbstractButton::clicked,
+            this,
+            &MainWindow::persist_settings_deferred);
 }
 
 
