@@ -25,6 +25,7 @@
 
 #include <deque>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "debuggerinterface/preprocessor_directives.h"
