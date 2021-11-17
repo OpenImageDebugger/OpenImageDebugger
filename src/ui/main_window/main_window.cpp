@@ -53,7 +53,7 @@ MainWindow::MainWindow(const ConnectionSettings& host_settings,
     , ac_enabled_(true)
     , link_views_enabled_(false)
     , icon_width_base_(100)
-    , icon_height_base_(50)
+    , icon_height_base_(75)
     , currently_selected_stage_(nullptr)
     , ui_(new Ui::MainWindowUi)
     , host_settings_(host_settings)

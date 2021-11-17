@@ -126,9 +126,6 @@ void MainWindow::initialize_ui_icons()
     SET_FONT_ICON(ui_->ac_reset_min, "\ue808");
     SET_FONT_ICON(ui_->ac_reset_max, "\ue808");
 
-    SET_FONT_ICON(ui_->label_min, "\ue806");
-    SET_FONT_ICON(ui_->label_max, "\ue807");
-
     SET_VECTOR_ICON(ui_->label_red_min, "label_red_channel.svg", 10, 10);
     SET_VECTOR_ICON(ui_->label_red_max, "label_red_channel.svg", 10, 10);
     SET_VECTOR_ICON(ui_->label_green_min, "label_green_channel.svg", 10, 10);
@@ -138,9 +135,7 @@ void MainWindow::initialize_ui_icons()
     SET_VECTOR_ICON(ui_->label_alpha_min, "label_alpha_channel.svg", 10, 10);
     SET_VECTOR_ICON(ui_->label_alpha_max, "label_alpha_channel.svg", 10, 10);
 
-    QLabel* label_min_max = new QLabel(ui_->minMaxEditor);
-    SET_VECTOR_ICON(label_min_max, "lower_upper_bound.svg", 12.f, 52.f);
-    ui_->gridLayout->addWidget(label_min_max, 0, 0, 2, 1);
+    SET_VECTOR_ICON(ui_->label_minmax, "lower_upper_bound.svg", 8, 35);
 }
 
 

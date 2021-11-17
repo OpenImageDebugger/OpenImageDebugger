@@ -112,6 +112,15 @@ void MainWindow::decode_plot_buffer_contents()
         visualized_height = buff_width;
     }
 
+    string label_str;
+    {
+        stringstream label_ss;
+        label_ss << display_name_str;
+        label_ss << "\n[" << visualized_width << "x" << visualized_height << "]";
+        label_ss << "\n" << get_type_label(buff_type, buff_channels);
+        label_str = label_ss.str();
+    }
+
     if (buffer_stage == stages_.end()) { // New buffer request
         shared_ptr<Stage> stage = make_shared<Stage>(this);
         if (!stage->initialize(held_buffers_[variable_name_str].data(),
@@ -136,13 +145,9 @@ void MainWindow::decode_plot_buffer_contents()
                           bytes_per_line,
                           QImage::Format_RGB888);
 
-        stringstream label;
-        label << display_name_str << "\n[" << visualized_width << "x"
-              << visualized_height << "]\n"
-              << get_type_label(buff_type, buff_channels);
         QListWidgetItem* item =
             new QListWidgetItem(QPixmap::fromImage(bufferIcon),
-                                label.str().c_str(),
+                                label_str.c_str(),
                                 ui_->imageList);
         item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
         item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
@@ -172,16 +177,12 @@ void MainWindow::decode_plot_buffer_contents()
                           icon_height,
                           bytes_per_line,
                           QImage::Format_RGB888);
-        stringstream label;
-        label << display_name_str << "\n[" << visualized_width << "x"
-              << visualized_height << "]\n"
-              << get_type_label(buff_type, buff_channels);
 
         for (int i = 0; i < ui_->imageList->count(); ++i) {
             QListWidgetItem* item = ui_->imageList->item(i);
             if (item->data(Qt::UserRole) == variable_name_str.c_str()) {
                 item->setIcon(QPixmap::fromImage(bufferIcon));
-                item->setText(label.str().c_str());
+                item->setText(label_str.c_str());
                 break;
             }
         }
