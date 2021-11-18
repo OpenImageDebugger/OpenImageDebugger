@@ -45,6 +45,9 @@ QStatusBar::item { border: 0; };</string>
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
+      <property name="childrenCollapsible">
+       <bool>false</bool>
+      </property>
       <widget class="QFrame" name="frame_list">
        <property name="lineWidth">
         <number>0</number>
