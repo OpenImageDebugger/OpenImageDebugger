@@ -57,30 +57,30 @@ void MainWindow::reset_ac_min_labels()
     Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
     float* ac_min  = buffer->min_buffer_values();
 
-    ui_->ac_red_min->setText(QString::number(ac_min[0]));
+    ui_->ac_c1_min->setText(QString::number(ac_min[0]));
 
     if (buffer->channels == 4) {
-        enable_inputs({ui_->ac_green_min, ui_->ac_blue_min, ui_->ac_alpha_min});
+        enable_inputs({ui_->ac_c2_min, ui_->ac_c3_min, ui_->ac_c4_min});
 
-        ui_->ac_green_min->setText(QString::number(ac_min[1]));
-        ui_->ac_blue_min->setText(QString::number(ac_min[2]));
-        ui_->ac_alpha_min->setText(QString::number(ac_min[3]));
+        ui_->ac_c2_min->setText(QString::number(ac_min[1]));
+        ui_->ac_c3_min->setText(QString::number(ac_min[2]));
+        ui_->ac_c4_min->setText(QString::number(ac_min[3]));
     } else if (buffer->channels == 3) {
-        enable_inputs({ui_->ac_green_min, ui_->ac_blue_min});
+        enable_inputs({ui_->ac_c2_min, ui_->ac_c3_min});
 
-        ui_->ac_alpha_min->setEnabled(false);
+        ui_->ac_c4_min->setEnabled(false);
 
-        ui_->ac_green_min->setText(QString::number(ac_min[1]));
-        ui_->ac_blue_min->setText(QString::number(ac_min[2]));
+        ui_->ac_c2_min->setText(QString::number(ac_min[1]));
+        ui_->ac_c3_min->setText(QString::number(ac_min[2]));
     } else if (buffer->channels == 2) {
-        ui_->ac_green_min->setEnabled(true);
+        ui_->ac_c2_min->setEnabled(true);
 
-        disable_inputs({ui_->ac_blue_min, ui_->ac_alpha_min});
+        disable_inputs({ui_->ac_c3_min, ui_->ac_c4_min});
 
-        ui_->ac_green_min->setText(QString::number(ac_min[1]));
+        ui_->ac_c2_min->setText(QString::number(ac_min[1]));
     } else {
         disable_inputs(
-            {ui_->ac_green_min, ui_->ac_blue_min, ui_->ac_alpha_min});
+            {ui_->ac_c2_min, ui_->ac_c3_min, ui_->ac_c4_min});
     }
 }
 
@@ -91,78 +91,78 @@ void MainWindow::reset_ac_max_labels()
     Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
     float* ac_max  = buffer->max_buffer_values();
 
-    ui_->ac_red_max->setText(QString::number(ac_max[0]));
+    ui_->ac_c1_max->setText(QString::number(ac_max[0]));
     if (buffer->channels == 4) {
-        enable_inputs({ui_->ac_green_max, ui_->ac_blue_max, ui_->ac_alpha_max});
+        enable_inputs({ui_->ac_c2_max, ui_->ac_c3_max, ui_->ac_c4_max});
 
-        ui_->ac_green_max->setText(QString::number(ac_max[1]));
-        ui_->ac_blue_max->setText(QString::number(ac_max[2]));
-        ui_->ac_alpha_max->setText(QString::number(ac_max[3]));
+        ui_->ac_c2_max->setText(QString::number(ac_max[1]));
+        ui_->ac_c3_max->setText(QString::number(ac_max[2]));
+        ui_->ac_c4_max->setText(QString::number(ac_max[3]));
     } else if (buffer->channels == 3) {
-        enable_inputs({ui_->ac_green_max, ui_->ac_blue_max});
+        enable_inputs({ui_->ac_c2_max, ui_->ac_c3_max});
 
-        ui_->ac_alpha_max->setEnabled(false);
+        ui_->ac_c4_max->setEnabled(false);
 
-        ui_->ac_green_max->setText(QString::number(ac_max[1]));
-        ui_->ac_blue_max->setText(QString::number(ac_max[2]));
+        ui_->ac_c2_max->setText(QString::number(ac_max[1]));
+        ui_->ac_c3_max->setText(QString::number(ac_max[2]));
     } else if (buffer->channels == 2) {
-        ui_->ac_green_max->setEnabled(true);
+        ui_->ac_c2_max->setEnabled(true);
 
-        disable_inputs({ui_->ac_blue_max, ui_->ac_alpha_max});
+        disable_inputs({ui_->ac_c3_max, ui_->ac_c4_max});
 
-        ui_->ac_green_max->setText(QString::number(ac_max[1]));
+        ui_->ac_c2_max->setText(QString::number(ac_max[1]));
     } else {
         disable_inputs(
-            {ui_->ac_green_max, ui_->ac_blue_max, ui_->ac_alpha_max});
+            {ui_->ac_c2_max, ui_->ac_c3_max, ui_->ac_c4_max});
     }
 }
 
 
-void MainWindow::ac_red_min_update()
+void MainWindow::ac_c1_min_update()
 {
-    set_ac_min_value(0, ui_->ac_red_min->text().toFloat());
+    set_ac_min_value(0, ui_->ac_c1_min->text().toFloat());
 }
 
 
-void MainWindow::ac_green_min_update()
+void MainWindow::ac_c2_min_update()
 {
-    set_ac_min_value(1, ui_->ac_green_min->text().toFloat());
+    set_ac_min_value(1, ui_->ac_c2_min->text().toFloat());
 }
 
 
-void MainWindow::ac_blue_min_update()
+void MainWindow::ac_c3_min_update()
 {
-    set_ac_min_value(2, ui_->ac_blue_min->text().toFloat());
+    set_ac_min_value(2, ui_->ac_c3_min->text().toFloat());
 }
 
 
-void MainWindow::ac_alpha_min_update()
+void MainWindow::ac_c4_min_update()
 {
-    set_ac_min_value(3, ui_->ac_alpha_min->text().toFloat());
+    set_ac_min_value(3, ui_->ac_c4_min->text().toFloat());
 }
 
 
-void MainWindow::ac_red_max_update()
+void MainWindow::ac_c1_max_update()
 {
-    set_ac_max_value(0, ui_->ac_red_max->text().toFloat());
+    set_ac_max_value(0, ui_->ac_c1_max->text().toFloat());
 }
 
 
-void MainWindow::ac_green_max_update()
+void MainWindow::ac_c2_max_update()
 {
-    set_ac_max_value(1, ui_->ac_green_max->text().toFloat());
+    set_ac_max_value(1, ui_->ac_c2_max->text().toFloat());
 }
 
 
-void MainWindow::ac_blue_max_update()
+void MainWindow::ac_c3_max_update()
 {
-    set_ac_max_value(2, ui_->ac_blue_max->text().toFloat());
+    set_ac_max_value(2, ui_->ac_c3_max->text().toFloat());
 }
 
 
-void MainWindow::ac_alpha_max_update()
+void MainWindow::ac_c4_max_update()
 {
-    set_ac_max_value(3, ui_->ac_alpha_max->text().toFloat());
+    set_ac_max_value(3, ui_->ac_c4_max->text().toFloat());
 }
 
 

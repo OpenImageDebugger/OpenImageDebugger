@@ -114,21 +114,21 @@ public Q_SLOTS:
 
     ///
     // Auto contrast pane - slots - implemented in auto_contrast.cpp
-    void ac_red_min_update();
+    void ac_c1_min_update();
 
-    void ac_green_min_update();
+    void ac_c2_min_update();
 
-    void ac_blue_min_update();
+    void ac_c3_min_update();
 
-    void ac_alpha_min_update();
+    void ac_c4_min_update();
 
-    void ac_red_max_update();
+    void ac_c1_max_update();
 
-    void ac_green_max_update();
+    void ac_c2_max_update();
 
-    void ac_blue_max_update();
+    void ac_c3_max_update();
 
-    void ac_alpha_max_update();
+    void ac_c4_max_update();
 
     void ac_min_reset();
 

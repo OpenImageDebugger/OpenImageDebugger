@@ -195,14 +195,14 @@ void MainWindow::initialize_ui_icons()
     SET_FONT_ICON(ui_->ac_reset_min, "\ue808");
     SET_FONT_ICON(ui_->ac_reset_max, "\ue808");
 
-    SET_VECTOR_ICON(ui_->label_red_min, "label_red_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_red_max, "label_red_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_green_min, "label_green_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_green_max, "label_green_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_blue_min, "label_blue_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_blue_max, "label_blue_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_alpha_min, "label_alpha_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_alpha_max, "label_alpha_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_c1_min, "label_red_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_c1_max, "label_red_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_c2_min, "label_green_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_c2_max, "label_green_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_c3_min, "label_blue_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_c3_max, "label_blue_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_c4_min, "label_alpha_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_c4_max, "label_alpha_channel.svg", 10, 10);
 
     SET_VECTOR_ICON(ui_->label_minmax, "lower_upper_bound.svg", 8, 35);
 }
@@ -307,46 +307,46 @@ void MainWindow::initialize_left_pane()
 void MainWindow::initialize_auto_contrast_form()
 {
     // Configure auto contrast inputs
-    ui_->ac_red_min->setValidator(new QDoubleValidator(ui_->ac_red_min));
-    ui_->ac_green_min->setValidator(new QDoubleValidator(ui_->ac_green_min));
-    ui_->ac_blue_min->setValidator(new QDoubleValidator(ui_->ac_blue_min));
+    ui_->ac_c1_min->setValidator(new QDoubleValidator(ui_->ac_c1_min));
+    ui_->ac_c2_min->setValidator(new QDoubleValidator(ui_->ac_c2_min));
+    ui_->ac_c3_min->setValidator(new QDoubleValidator(ui_->ac_c3_min));
 
-    ui_->ac_red_max->setValidator(new QDoubleValidator(ui_->ac_red_max));
-    ui_->ac_green_max->setValidator(new QDoubleValidator(ui_->ac_green_max));
-    ui_->ac_blue_max->setValidator(new QDoubleValidator(ui_->ac_blue_max));
+    ui_->ac_c1_max->setValidator(new QDoubleValidator(ui_->ac_c1_max));
+    ui_->ac_c2_max->setValidator(new QDoubleValidator(ui_->ac_c2_max));
+    ui_->ac_c3_max->setValidator(new QDoubleValidator(ui_->ac_c3_max));
 
-    connect(ui_->ac_red_min,
+    connect(ui_->ac_c1_min,
             SIGNAL(editingFinished()),
             this,
-            SLOT(ac_red_min_update()));
-    connect(ui_->ac_red_max,
+            SLOT(ac_c1_min_update()));
+    connect(ui_->ac_c1_max,
             SIGNAL(editingFinished()),
             this,
-            SLOT(ac_red_max_update()));
-    connect(ui_->ac_green_min,
+            SLOT(ac_c1_max_update()));
+    connect(ui_->ac_c2_min,
             SIGNAL(editingFinished()),
             this,
-            SLOT(ac_green_min_update()));
-    connect(ui_->ac_green_max,
+            SLOT(ac_c2_min_update()));
+    connect(ui_->ac_c2_max,
             SIGNAL(editingFinished()),
             this,
-            SLOT(ac_green_max_update()));
-    connect(ui_->ac_blue_min,
+            SLOT(ac_c2_max_update()));
+    connect(ui_->ac_c3_min,
             SIGNAL(editingFinished()),
             this,
-            SLOT(ac_blue_min_update()));
-    connect(ui_->ac_blue_max,
+            SLOT(ac_c3_min_update()));
+    connect(ui_->ac_c3_max,
             SIGNAL(editingFinished()),
             this,
-            SLOT(ac_blue_max_update()));
-    connect(ui_->ac_alpha_min,
+            SLOT(ac_c3_max_update()));
+    connect(ui_->ac_c4_min,
             SIGNAL(editingFinished()),
             this,
-            SLOT(ac_alpha_min_update()));
-    connect(ui_->ac_alpha_max,
+            SLOT(ac_c4_min_update()));
+    connect(ui_->ac_c4_max,
             SIGNAL(editingFinished()),
             this,
-            SLOT(ac_alpha_max_update()));
+            SLOT(ac_c4_max_update()));
 
     connect(ui_->ac_reset_min, SIGNAL(clicked()), this, SLOT(ac_min_reset()));
     connect(ui_->ac_reset_max, SIGNAL(clicked()), this, SLOT(ac_max_reset()));
