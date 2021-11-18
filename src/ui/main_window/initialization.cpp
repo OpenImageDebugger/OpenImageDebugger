@@ -59,12 +59,14 @@ void MainWindow::initialize_settings()
     }
 
     // Default save suffix: Image
-    if (settings.contains("Export/default_export_suffix")) {
+    settings.beginGroup("Export");
+    if (settings.contains("default_export_suffix")) {
         default_export_suffix_ =
-            settings.value("Export/default_export_suffix").value<QString>();
+            settings.value("default_export_suffix").value<QString>();
     } else {
         default_export_suffix_ = "Image File (*.png)";
     }
+    settings.endGroup();
 
     // Load previous session symbols
     QDateTime now = QDateTime::currentDateTime();
@@ -88,8 +90,27 @@ void MainWindow::initialize_settings()
 
     // Load UI geometry.
     settings.beginGroup("UI");
-    if (settings.contains("splitter"))
-        ui_->splitter->restoreState(settings.value("splitter").toByteArray());
+    if (settings.contains("list_position")) {
+
+        const QString position_str = settings.value("list_position", "left").toString();
+
+        if (position_str == "top" || position_str == "bottom")
+            ui_->splitter->setOrientation(Qt::Vertical);
+
+        if (position_str == "right" || position_str == "bottom")
+            ui_->splitter->insertWidget(-1, ui_->frame_list);
+
+        ui_->splitter->repaint();
+    }
+    if (settings.contains("splitter")) {
+
+        const QList<QVariant> listSizesVariant = settings.value("splitter").toList();
+        QList<int> listSizesInt;
+        for (QVariant size : listSizesVariant)
+            listSizesInt.append(size.toInt());
+
+        ui_->splitter->setSizes(listSizesInt);
+    }
     if (settings.contains("minmax_visible"))
         ui_->acEdit->setChecked(settings.value("minmax_visible").toBool());
     settings.endGroup();

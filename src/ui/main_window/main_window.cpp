@@ -208,7 +208,15 @@ void MainWindow::persist_settings()
 
     // Write UI geometry.
     settings.beginGroup("UI");
-    settings.setValue("splitter", ui_->splitter->saveState());
+    {
+        const QList<int> listSizesInt = ui_->splitter->sizes();
+
+        QList<QVariant> listSizesVariant;
+        for (int size : listSizesInt)
+            listSizesVariant.append(size);
+
+        settings.setValue("splitter", listSizesVariant);
+    }
     settings.setValue("minmax_visible", ui_->acEdit->isChecked());
     settings.endGroup();
 
