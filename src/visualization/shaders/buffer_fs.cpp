@@ -78,8 +78,12 @@ void main()
         float horizontal_border = clamp(abs(-1.0 / alpha * y_ + 0.5 / alpha) -
                                            (0.5 / alpha - 1.0), 0.0, 1.0);
 
-        color.rgb += vec3(vertical_border +
-                          horizontal_border);
+        float ratio_a = max(vertical_border, horizontal_border);
+        float ratio_b = 1.0 - ratio_a;
+
+        color.r = color.r * ratio_b + 0.5 * ratio_a;
+        color.g = color.g * ratio_b + 0.5 * ratio_a;
+        color.b = color.b * ratio_b + 0.5 * ratio_a;
     }
 
     gl_FragColor = color.PIXEL_LAYOUT;
