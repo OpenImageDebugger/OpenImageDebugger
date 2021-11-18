@@ -81,9 +81,13 @@ void MainWindow::initialize_settings()
         }
     }
 
-    // Load window position/size
+
+    // Load window position/size.
+    // Window is loaded with a fixed size and restored in timer.
+    // This is needed to give application some time to run event loop
+    // and redraw all widgets without changing overall geometry.
     settings.beginGroup("MainWindow");
-    resize(settings.value("size", size()).toSize());
+    setFixedSize(settings.value("size", size()).toSize());
     move(settings.value("pos", pos()).toPoint());
     settings.endGroup();
 
@@ -139,6 +143,16 @@ void MainWindow::initialize_settings()
     if (settings.contains("minmax_visible"))
         ui_->acEdit->setChecked(settings.value("minmax_visible").toBool());
     settings.endGroup();
+
+
+    // Restore possibility to resize application in timer.
+    // This is needed to give application some time to run event loop
+    // and redraw all widgets without changing overall geometry.
+    QTimer::singleShot(100, [this](){
+
+        setMinimumSize(0, 0);
+        setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+    });
 }
 
 
