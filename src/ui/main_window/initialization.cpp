@@ -111,6 +111,31 @@ void MainWindow::initialize_settings()
 
         ui_->splitter->setSizes(listSizesInt);
     }
+    if (settings.contains("minmax_compact")) {
+        if (settings.value("minmax_compact").toBool()) {
+
+            bool isMinMaxVisible = true;
+            if (settings.contains("minmax_visible"))
+                isMinMaxVisible = settings.value("minmax_visible").toBool();
+
+            if (isMinMaxVisible) {
+
+                ui_->gridLayout_toolbar->addWidget(ui_->acToggle, 0, 0);
+                ui_->gridLayout_toolbar->addWidget(ui_->linkViewsToggle, 0, 1);
+                ui_->gridLayout_toolbar->addWidget(ui_->reposition_buffer, 0, 2);
+                ui_->gridLayout_toolbar->addWidget(ui_->go_to_pixel, 1, 0);
+                ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_ccw, 1, 1);
+                ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_cw, 1, 2);
+            }
+
+            ui_->horizontalLayout_container_toolbar->addWidget(ui_->minMaxEditor, 2);
+            ui_->horizontalLayout_container_toolbar->setStretch(0, 0);
+            ui_->horizontalLayout_container_toolbar->setStretch(1, 1);
+            ui_->horizontalLayout_container_toolbar->setStretch(2, 0);
+
+            ui_->acEdit->hide();
+        }
+    }
     if (settings.contains("minmax_visible"))
         ui_->acEdit->setChecked(settings.value("minmax_visible").toBool());
     settings.endGroup();
