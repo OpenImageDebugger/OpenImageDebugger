@@ -746,6 +746,12 @@ QStatusBar::item { border: 0; };</string>
         </item>
         <item>
          <widget class="GLCanvas" name="bufferPreview" native="true">
+          <property name="minimumSize">
+           <size>
+            <width>200</width>
+            <height>200</height>
+           </size>
+          </property>
           <property name="mouseTracking">
            <bool>true</bool>
           </property>
