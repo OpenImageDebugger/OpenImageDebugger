@@ -206,6 +206,11 @@ public Q_SLOTS:
     ConnectionSettings host_settings_;
     QTcpSocket socket_;
 
+    QString name_channel_1_;
+    QString name_channel_2_;
+    QString name_channel_3_;
+    QString name_channel_4_;
+
     ///
     // Assorted methods - private - implemented in main_window.cpp
     void update_status_bar();

@@ -142,6 +142,23 @@ void MainWindow::initialize_settings()
     }
     if (settings.contains("minmax_visible"))
         ui_->acEdit->setChecked(settings.value("minmax_visible").toBool());
+    {
+        QString colorspace_str = settings.value("colorspace").toString();
+        if (colorspace_str == "bgra") {
+
+            name_channel_1_ = "blue";
+            name_channel_2_ = "green";
+            name_channel_3_ = "red";
+            name_channel_4_ = "alpha";
+        }
+        else {
+
+            name_channel_1_ = "red";
+            name_channel_2_ = "green";
+            name_channel_3_ = "blue";
+            name_channel_4_ = "alpha";
+        }
+    }
     settings.endGroup();
 
 
@@ -169,7 +186,7 @@ void MainWindow::initialize_ui_icons()
     ui_element->setMinimumHeight(std::round(height));              \
     ui_element->setMaximumHeight(std::round(height));              \
     ui_element->setPixmap(                                         \
-        QIcon(":/resources/icons/" icon_file_name)                 \
+        QIcon(QString(":/resources/icons/%1").arg(icon_file_name)) \
             .pixmap(QSize(std::round(width* screen_dpi_scale),     \
                           std::round(height* screen_dpi_scale)))); \
     ui_element->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -195,14 +212,14 @@ void MainWindow::initialize_ui_icons()
     SET_FONT_ICON(ui_->ac_reset_min, "\ue808");
     SET_FONT_ICON(ui_->ac_reset_max, "\ue808");
 
-    SET_VECTOR_ICON(ui_->label_c1_min, "label_red_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_c1_max, "label_red_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_c2_min, "label_green_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_c2_max, "label_green_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_c3_min, "label_blue_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_c3_max, "label_blue_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_c4_min, "label_alpha_channel.svg", 10, 10);
-    SET_VECTOR_ICON(ui_->label_c4_max, "label_alpha_channel.svg", 10, 10);
+    SET_VECTOR_ICON(ui_->label_c1_min, QString("label_%1_channel.svg").arg(name_channel_1_), 10, 10);
+    SET_VECTOR_ICON(ui_->label_c1_max, QString("label_%1_channel.svg").arg(name_channel_1_), 10, 10);
+    SET_VECTOR_ICON(ui_->label_c2_min, QString("label_%1_channel.svg").arg(name_channel_2_), 10, 10);
+    SET_VECTOR_ICON(ui_->label_c2_max, QString("label_%1_channel.svg").arg(name_channel_2_), 10, 10);
+    SET_VECTOR_ICON(ui_->label_c3_min, QString("label_%1_channel.svg").arg(name_channel_3_), 10, 10);
+    SET_VECTOR_ICON(ui_->label_c3_max, QString("label_%1_channel.svg").arg(name_channel_3_), 10, 10);
+    SET_VECTOR_ICON(ui_->label_c4_min, QString("label_%1_channel.svg").arg(name_channel_4_), 10, 10);
+    SET_VECTOR_ICON(ui_->label_c4_max, QString("label_%1_channel.svg").arg(name_channel_4_), 10, 10);
 
     SET_VECTOR_ICON(ui_->label_minmax, "lower_upper_bound.svg", 8, 35);
 }

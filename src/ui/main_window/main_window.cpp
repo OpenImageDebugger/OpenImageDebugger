@@ -63,6 +63,7 @@ MainWindow::MainWindow(const ConnectionSettings& host_settings,
 
     ui_->setupUi(this);
 
+    initialize_settings();
     initialize_ui_icons();
     initialize_ui_settings();
     initialize_timers();
@@ -72,7 +73,6 @@ MainWindow::MainWindow(const ConnectionSettings& host_settings,
     initialize_toolbar();
     initialize_status_bar();
     initialize_visualization_pane();
-    initialize_settings();
     initialize_go_to_widget();
     initialize_shortcuts();
     initialize_networking();
