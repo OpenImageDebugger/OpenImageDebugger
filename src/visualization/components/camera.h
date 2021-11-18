@@ -45,13 +45,15 @@ class Camera : public Component
 
     void mouse_drag_event(int mouse_x, int mouse_y);
 
-    float compute_zoom();
+    float compute_zoom() const;
 
     void move_to(float x, float y);
 
     vec4 get_position();
 
 private:
+    std::pair<float, float> get_buffer_initial_dimensions() const;
+
     void update_object_pose();
 
     void scale_at(const vec4& center_ndc, float delta);

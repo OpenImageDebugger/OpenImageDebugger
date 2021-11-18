@@ -97,6 +97,21 @@ void Camera::update()
 }
 
 
+std::pair<float, float> Camera::get_buffer_initial_dimensions() const
+{
+    GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
+    Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+
+    vec4 buf_dim = buffer_obj->get_pose() *
+                   vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1);
+
+    const float x = std::abs(buf_dim.x());
+    const float y = std::abs(buf_dim.y());
+
+    return std::make_pair(x, y);
+}
+
+
 void Camera::update_object_pose()
 {
     if (game_object_ != nullptr) {
@@ -201,6 +216,51 @@ EventProcessCode Camera::key_press_event(int)
 
 void Camera::scale_at(const vec4& center_ndc, float delta)
 {
+    // Check if lowest zoom value has been reached.
+    if (delta < 0) {
+
+        // Ratio which defines farthest zoom limit. (0; 1].
+        // 1 forbids to zoom farther then window size.
+        // 0 allows unlimited zoom-out.
+        const static float ratio_lowest = 0.75f;
+
+        // Get initial dimensions of buffer (without zoom).
+        const auto pair_dim = get_buffer_initial_dimensions();
+
+        // Find lowest allowed zoom ratio.
+        const float zoom_lowest_x = ratio_lowest * canvas_width_ / pair_dim.first;
+        const float zoom_lowest_y = ratio_lowest * canvas_height_ / pair_dim.second;
+        const float zoom_lowest = std::min(zoom_lowest_x, zoom_lowest_y);
+
+        // Find lowest allowed zoom power.
+        const float zoom_power_lowest = std::log(zoom_lowest) / std::log(zoom_factor);
+
+        // Find lowest allowed delta.
+        const float delta_lowest = zoom_power_lowest - zoom_power_;
+        if (delta_lowest >= 0)
+            return;
+
+        // Update delta if view matrix is near its lowest zoom.
+        delta = std::max(delta, delta_lowest);
+    }
+
+    // Check if greatest zoom value has been reached.
+    if (delta > 0) {
+
+        // Closest zoom power. It may be any positive value.
+        // 1 forbids to zoom closer then original matrix scale.
+        // infinity allows unlimited zoom-in.
+        const static float zoom_power_greatest = 50.0f;
+
+        // Find greatest allowed delta.
+        const float delta_greatest = zoom_power_greatest - zoom_power_;
+        if (delta_greatest <= 0)
+            return;
+
+        // Update delta if view matrix is near its greatest zoom.
+        delta = std::min(delta, delta_greatest);
+    }
+
     mat4 vp_inv = game_object_->get_pose() * projection.inv();
 
     float delta_zoom = std::pow(zoom_factor, -delta);
@@ -236,39 +296,36 @@ void Camera::scale_at(const vec4& center_ndc, float delta)
 
 void Camera::set_initial_zoom()
 {
-    GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
-    Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+    const static float zoom_power_step = 0.1f;
 
-    vec4 buf_dim = buffer_obj->get_pose() *
-                   vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1);
 
-    buf_dim.x() = std::abs(buf_dim.x());
-    buf_dim.y() = std::abs(buf_dim.y());
+    // Get initial dimensions of buffer (without zoom).
+    const auto pair_dim = get_buffer_initial_dimensions();
 
     zoom_power_ = 0.0;
 
-    if (canvas_width_ > buf_dim.x() && canvas_height_ > buf_dim.y()) {
+    if (canvas_width_ > pair_dim.first && canvas_height_ > pair_dim.second) {
         // Zoom in
-        zoom_power_ += 1.0;
+        zoom_power_ += zoom_power_step;
         float new_zoom = compute_zoom();
 
         // Iterate until buffer can fit inside the canvas
-        while (canvas_width_ > new_zoom * buf_dim.x() &&
-               canvas_height_ > new_zoom * buf_dim.y()) {
-            zoom_power_ += 1.0;
+        while (canvas_width_ > new_zoom * pair_dim.first &&
+               canvas_height_ > new_zoom * pair_dim.second) {
+            zoom_power_ += zoom_power_step;
             new_zoom = compute_zoom();
         }
 
-        zoom_power_ -= 1.0;
-    } else if (canvas_width_ < buf_dim.x() || canvas_height_ < buf_dim.y()) {
+        zoom_power_ -= zoom_power_step;
+    } else if (canvas_width_ < pair_dim.first || canvas_height_ < pair_dim.second) {
         // Zoom out
-        zoom_power_ -= 1.0;
+        zoom_power_ -= zoom_power_step;
         float new_zoom = compute_zoom();
 
         // Iterate until buffer can fit inside the canvas
-        while (canvas_width_ < new_zoom * buf_dim.x() ||
-               canvas_height_ < new_zoom * buf_dim.y()) {
-            zoom_power_ -= 1.0;
+        while (canvas_width_ < new_zoom * pair_dim.first ||
+               canvas_height_ < new_zoom * pair_dim.second) {
+            zoom_power_ -= zoom_power_step;
             new_zoom = compute_zoom();
         }
     }
@@ -278,7 +335,7 @@ void Camera::set_initial_zoom()
 }
 
 
-float Camera::compute_zoom()
+float Camera::compute_zoom() const
 {
     return std::pow(zoom_factor, zoom_power_);
 }
