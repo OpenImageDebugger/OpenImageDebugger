@@ -32,6 +32,7 @@
 #include <set>
 #include <string>
 
+#include <QAbstractButton>
 #include <QLabel>
 #include <QListWidgetItem>
 #include <QMainWindow>
@@ -245,6 +246,8 @@ public Q_SLOTS:
 
     ///
     // Initialization - private - implemented in initialization.cpp
+    void setFontIcon(QAbstractButton* ui_element, QString unicode_id);
+    void setVectorIcon(QLabel* ui_element, QString icon_file_name, int width, int height);
     void initialize_ui_icons();
 
     void initialize_ui_settings();

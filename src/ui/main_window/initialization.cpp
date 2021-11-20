@@ -173,55 +173,63 @@ void MainWindow::initialize_settings()
 }
 
 
+void MainWindow::setFontIcon(QAbstractButton* ui_element, QString unicode_id)
+{
+    QFont icons_font;
+    icons_font.setFamily("fontello");
+    icons_font.setPointSizeF(10.f);
+
+    ui_element->setFont(icons_font);
+    ui_element->setText(unicode_id);
+}
+
+
+void MainWindow::setVectorIcon(QLabel* ui_element, QString icon_file_name, int width, int height)
+{
+    qreal screen_dpi_scale = get_screen_dpi_scale();
+
+    ui_element->setScaledContents(true);
+    ui_element->setMinimumWidth(std::round(width));
+    ui_element->setMaximumWidth(std::round(width));
+    ui_element->setMinimumHeight(std::round(height));
+    ui_element->setMaximumHeight(std::round(height));
+    ui_element->setPixmap(
+        QIcon(QString(":/resources/icons/%1").arg(icon_file_name))
+            .pixmap(QSize(std::round(width* screen_dpi_scale),
+                          std::round(height* screen_dpi_scale))));
+    ui_element->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+}
+
+
 void MainWindow::initialize_ui_icons()
 {
-#define SET_FONT_ICON(ui_element, unicode_id) \
-    ui_element->setFont(icons_font);          \
-    ui_element->setText(unicode_id);
-
-#define SET_VECTOR_ICON(ui_element, icon_file_name, width, height) \
-    ui_element->setScaledContents(true);                           \
-    ui_element->setMinimumWidth(std::round(width));                \
-    ui_element->setMaximumWidth(std::round(width));                \
-    ui_element->setMinimumHeight(std::round(height));              \
-    ui_element->setMaximumHeight(std::round(height));              \
-    ui_element->setPixmap(                                         \
-        QIcon(QString(":/resources/icons/%1").arg(icon_file_name)) \
-            .pixmap(QSize(std::round(width* screen_dpi_scale),     \
-                          std::round(height* screen_dpi_scale)))); \
-    ui_element->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-
     if (QFontDatabase::addApplicationFont(":/resources/icons/fontello.ttf") <
         0) {
         qWarning() << "Could not load ionicons font file!";
     }
 
-    qreal screen_dpi_scale = get_screen_dpi_scale();
-    QFont icons_font;
-    icons_font.setFamily("fontello");
-    icons_font.setPointSizeF(10.f);
 
-    SET_FONT_ICON(ui_->acEdit, "\ue803");
-    SET_FONT_ICON(ui_->acToggle, "\ue804");
-    SET_FONT_ICON(ui_->reposition_buffer, "\ue800");
-    SET_FONT_ICON(ui_->linkViewsToggle, "\ue805");
-    SET_FONT_ICON(ui_->rotate_90_cw, "\ue801");
-    SET_FONT_ICON(ui_->rotate_90_ccw, "\ue802");
-    SET_FONT_ICON(ui_->go_to_pixel, "\uf031");
+    setFontIcon(ui_->acEdit, "\ue803");
+    setFontIcon(ui_->acToggle, "\ue804");
+    setFontIcon(ui_->reposition_buffer, "\ue800");
+    setFontIcon(ui_->linkViewsToggle, "\ue805");
+    setFontIcon(ui_->rotate_90_cw, "\ue801");
+    setFontIcon(ui_->rotate_90_ccw, "\ue802");
+    setFontIcon(ui_->go_to_pixel, "\uf031");
 
-    SET_FONT_ICON(ui_->ac_reset_min, "\ue808");
-    SET_FONT_ICON(ui_->ac_reset_max, "\ue808");
+    setFontIcon(ui_->ac_reset_min, "\ue808");
+    setFontIcon(ui_->ac_reset_max, "\ue808");
 
-    SET_VECTOR_ICON(ui_->label_c1_min, QString("label_%1_channel.svg").arg(name_channel_1_), 10, 10);
-    SET_VECTOR_ICON(ui_->label_c1_max, QString("label_%1_channel.svg").arg(name_channel_1_), 10, 10);
-    SET_VECTOR_ICON(ui_->label_c2_min, QString("label_%1_channel.svg").arg(name_channel_2_), 10, 10);
-    SET_VECTOR_ICON(ui_->label_c2_max, QString("label_%1_channel.svg").arg(name_channel_2_), 10, 10);
-    SET_VECTOR_ICON(ui_->label_c3_min, QString("label_%1_channel.svg").arg(name_channel_3_), 10, 10);
-    SET_VECTOR_ICON(ui_->label_c3_max, QString("label_%1_channel.svg").arg(name_channel_3_), 10, 10);
-    SET_VECTOR_ICON(ui_->label_c4_min, QString("label_%1_channel.svg").arg(name_channel_4_), 10, 10);
-    SET_VECTOR_ICON(ui_->label_c4_max, QString("label_%1_channel.svg").arg(name_channel_4_), 10, 10);
+    setVectorIcon(ui_->label_c1_min, QString("label_%1_channel.svg").arg(name_channel_1_), 10, 10);
+    setVectorIcon(ui_->label_c1_max, QString("label_%1_channel.svg").arg(name_channel_1_), 10, 10);
+    setVectorIcon(ui_->label_c2_min, QString("label_%1_channel.svg").arg(name_channel_2_), 10, 10);
+    setVectorIcon(ui_->label_c2_max, QString("label_%1_channel.svg").arg(name_channel_2_), 10, 10);
+    setVectorIcon(ui_->label_c3_min, QString("label_%1_channel.svg").arg(name_channel_3_), 10, 10);
+    setVectorIcon(ui_->label_c3_max, QString("label_%1_channel.svg").arg(name_channel_3_), 10, 10);
+    setVectorIcon(ui_->label_c4_min, QString("label_%1_channel.svg").arg(name_channel_4_), 10, 10);
+    setVectorIcon(ui_->label_c4_max, QString("label_%1_channel.svg").arg(name_channel_4_), 10, 10);
 
-    SET_VECTOR_ICON(ui_->label_minmax, "lower_upper_bound.svg", 8, 35);
+    setVectorIcon(ui_->label_minmax, "lower_upper_bound.svg", 8, 35);
 }
 
 
