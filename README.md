@@ -229,7 +229,11 @@ The settings file for the plugin can be located under
     * *maximum_framerate* Determines the maximum framerate for the buffer
     rendering backend. Must be greater than 0.
  * **UI**
-    * *list_position* Determines the position of symbols list. Must one of the following: "left", "right", "top", ""bottom". Default value is "left".
+    * *list_position* Determines the position of symbols list.
+        * `left` Default value.
+        * `right`
+        * `top`
+        * `bottom`
     * *minmax_compact* Changes the position of min/max intensity controller.
         * `true` Places min/max intensity controller in the sam row with the toolbar.
         * `false` Places min/max intensity controller below the toolbar. Default value.
