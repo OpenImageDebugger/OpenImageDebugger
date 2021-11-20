@@ -29,7 +29,6 @@
 #include <QDateTime>
 #include <QDebug>
 #include <QFontDatabase>
-#include <QSettings>
 #include <QShortcut>
 #include <QHostAddress>
 
@@ -37,6 +36,127 @@
 
 #include "ui_main_window.h"
 
+
+void MainWindow::initialize_settings_ui_list_position(QSettings& settings)
+{
+    const QVariant variant = settings.value("list_position");
+    if (variant.type() != QVariant::Type::String)
+        return;
+
+    const QString position_str = variant.toString();
+
+    if (position_str == "top" || position_str == "bottom")
+        ui_->splitter->setOrientation(Qt::Vertical);
+
+    if (position_str == "right" || position_str == "bottom")
+        ui_->splitter->insertWidget(-1, ui_->frame_list);
+
+    ui_->splitter->repaint();
+}
+
+void MainWindow::initialize_settings_ui_splitter(QSettings& settings)
+{
+    const QVariant variant = settings.value("splitter");
+    if (variant.type() != QVariant::Type::List)
+        return;
+
+    QList<int> listSizes;
+    foreach (const QVariant& size, variant.toList())
+        listSizes.append(size.toInt());
+
+    ui_->splitter->setSizes(listSizes);
+}
+
+void MainWindow::initialize_settings_ui_minmax_compact(QSettings& settings)
+{
+    bool is_minmax_compact = false;
+    {
+        const QVariant variant = settings.value("minmax_compact");
+        if (variant.type() != QVariant::Type::Bool)
+            return;
+
+        is_minmax_compact = variant.toBool();
+    }
+
+    if (!is_minmax_compact)
+        return;
+
+    bool is_minmax_visible = true;
+    {
+        const QVariant variant = settings.value("minmax_visible");
+        if (variant.type() != QVariant::Type::Bool)
+            return;
+
+        is_minmax_visible = variant.toBool();
+    }
+
+    if (is_minmax_visible) {
+
+        ui_->gridLayout_toolbar->addWidget(ui_->acToggle, 0, 0);
+        ui_->gridLayout_toolbar->addWidget(ui_->linkViewsToggle, 0, 1);
+        ui_->gridLayout_toolbar->addWidget(ui_->reposition_buffer, 0, 2);
+        ui_->gridLayout_toolbar->addWidget(ui_->go_to_pixel, 1, 0);
+        ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_ccw, 1, 1);
+        ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_cw, 1, 2);
+    }
+
+    ui_->horizontalLayout_container_toolbar->addWidget(ui_->minMaxEditor, 2);
+    ui_->horizontalLayout_container_toolbar->setStretch(0, 0);
+    ui_->horizontalLayout_container_toolbar->setStretch(1, 1);
+    ui_->horizontalLayout_container_toolbar->setStretch(2, 0);
+
+    ui_->acEdit->hide();
+}
+
+QString MainWindow::initialize_settings_ui_colorspace_channel(const QChar& character)
+{
+    switch (character.toLatin1()) {
+
+    case 'b':
+        return "blue";
+    case 'g':
+        return "green";
+    case 'r':
+        return "red";
+    case 'a':
+        return "alpha";
+    default:
+        return QString();
+    }
+}
+
+void MainWindow::initialize_settings_ui_colorspace(QSettings& settings)
+{
+    const QVariant variant = settings.value("colorspace");
+    if (variant.type() != QVariant::Type::String)
+        return;
+
+    const QString colorspace_str = variant.toString();
+
+    if (colorspace_str.size() > 0)
+        name_channel_1_ = initialize_settings_ui_colorspace_channel(colorspace_str.at(0));
+    if (colorspace_str.size() > 1)
+        name_channel_2_ = initialize_settings_ui_colorspace_channel(colorspace_str.at(1));
+    if (colorspace_str.size() > 2)
+        name_channel_3_ = initialize_settings_ui_colorspace_channel(colorspace_str.at(2));
+    if (colorspace_str.size() > 3)
+        name_channel_4_ = initialize_settings_ui_colorspace_channel(colorspace_str.at(3));
+}
+
+void MainWindow::initialize_settings_ui(QSettings& settings)
+{
+    settings.beginGroup("UI");
+
+    initialize_settings_ui_list_position(settings);
+    initialize_settings_ui_splitter(settings);
+    initialize_settings_ui_minmax_compact(settings);
+    initialize_settings_ui_colorspace(settings);
+
+    if (settings.contains("minmax_visible"))
+        ui_->acEdit->setChecked(settings.value("minmax_visible").toBool());
+
+    settings.endGroup();
+}
 
 void MainWindow::initialize_settings()
 {
@@ -74,7 +194,7 @@ void MainWindow::initialize_settings()
         settings.value("PreviousSession/buffers")
             .value<QList<BufferExpiration>>();
 
-    for (const auto& previous_buffer : previous_buffers) {
+    foreach (const auto& previous_buffer, previous_buffers) {
         if (previous_buffer.second >= now) {
             previous_session_buffers_.insert(
                 previous_buffer.first.toStdString());
@@ -93,79 +213,13 @@ void MainWindow::initialize_settings()
 
 
     // Load UI geometry.
-    settings.beginGroup("UI");
-    if (settings.contains("list_position")) {
-
-        const QString position_str = settings.value("list_position", "left").toString();
-
-        if (position_str == "top" || position_str == "bottom")
-            ui_->splitter->setOrientation(Qt::Vertical);
-
-        if (position_str == "right" || position_str == "bottom")
-            ui_->splitter->insertWidget(-1, ui_->frame_list);
-
-        ui_->splitter->repaint();
-    }
-    if (settings.contains("splitter")) {
-
-        const QList<QVariant> listSizesVariant = settings.value("splitter").toList();
-        QList<int> listSizesInt;
-        for (QVariant size : listSizesVariant)
-            listSizesInt.append(size.toInt());
-
-        ui_->splitter->setSizes(listSizesInt);
-    }
-    if (settings.contains("minmax_compact")) {
-        if (settings.value("minmax_compact").toBool()) {
-
-            bool isMinMaxVisible = true;
-            if (settings.contains("minmax_visible"))
-                isMinMaxVisible = settings.value("minmax_visible").toBool();
-
-            if (isMinMaxVisible) {
-
-                ui_->gridLayout_toolbar->addWidget(ui_->acToggle, 0, 0);
-                ui_->gridLayout_toolbar->addWidget(ui_->linkViewsToggle, 0, 1);
-                ui_->gridLayout_toolbar->addWidget(ui_->reposition_buffer, 0, 2);
-                ui_->gridLayout_toolbar->addWidget(ui_->go_to_pixel, 1, 0);
-                ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_ccw, 1, 1);
-                ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_cw, 1, 2);
-            }
-
-            ui_->horizontalLayout_container_toolbar->addWidget(ui_->minMaxEditor, 2);
-            ui_->horizontalLayout_container_toolbar->setStretch(0, 0);
-            ui_->horizontalLayout_container_toolbar->setStretch(1, 1);
-            ui_->horizontalLayout_container_toolbar->setStretch(2, 0);
-
-            ui_->acEdit->hide();
-        }
-    }
-    if (settings.contains("minmax_visible"))
-        ui_->acEdit->setChecked(settings.value("minmax_visible").toBool());
-    {
-        QString colorspace_str = settings.value("colorspace").toString();
-        if (colorspace_str == "bgra") {
-
-            name_channel_1_ = "blue";
-            name_channel_2_ = "green";
-            name_channel_3_ = "red";
-            name_channel_4_ = "alpha";
-        }
-        else {
-
-            name_channel_1_ = "red";
-            name_channel_2_ = "green";
-            name_channel_3_ = "blue";
-            name_channel_4_ = "alpha";
-        }
-    }
-    settings.endGroup();
+    initialize_settings_ui(settings);
 
 
     // Restore possibility to resize application in timer.
     // This is needed to give application some time to run event loop
     // and redraw all widgets without changing overall geometry.
-    QTimer::singleShot(100, [this](){
+    QTimer::singleShot(100, this, [this](){
 
         setMinimumSize(0, 0);
         setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
@@ -233,7 +287,7 @@ void MainWindow::initialize_ui_icons()
 }
 
 
-void MainWindow::initialize_ui_settings()
+void MainWindow::initialize_ui_signals()
 {
     connect(ui_->splitter, &QSplitter::splitterMoved,
             this,

@@ -65,7 +65,7 @@ MainWindow::MainWindow(const ConnectionSettings& host_settings,
 
     initialize_settings();
     initialize_ui_icons();
-    initialize_ui_settings();
+    initialize_ui_signals();
     initialize_timers();
     initialize_symbol_completer();
     initialize_left_pane();

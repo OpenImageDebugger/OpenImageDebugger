@@ -38,6 +38,7 @@
 #include <QMainWindow>
 #include <QTimer>
 #include <QTcpSocket>
+#include <QSettings>
 
 #include "math/linear_algebra.h"
 #include "ui/go_to_widget.h"
@@ -246,11 +247,19 @@ public Q_SLOTS:
 
     ///
     // Initialization - private - implemented in initialization.cpp
+    void initialize_settings_ui_list_position(QSettings& settings);
+    void initialize_settings_ui_splitter(QSettings& settings);
+    void initialize_settings_ui_minmax_compact(QSettings& settings);
+    QString initialize_settings_ui_colorspace_channel(const QChar& character);
+    void initialize_settings_ui_colorspace(QSettings& settings);
+    void initialize_settings_ui(QSettings& settings);
+    void initialize_settings();
+
     void setFontIcon(QAbstractButton* ui_element, QString unicode_id);
     void setVectorIcon(QLabel* ui_element, QString icon_file_name, int width, int height);
     void initialize_ui_icons();
 
-    void initialize_ui_settings();
+    void initialize_ui_signals();
 
     void initialize_timers();
 
@@ -267,8 +276,6 @@ public Q_SLOTS:
     void initialize_status_bar();
 
     void initialize_visualization_pane();
-
-    void initialize_settings();
 
     void initialize_go_to_widget();
 
