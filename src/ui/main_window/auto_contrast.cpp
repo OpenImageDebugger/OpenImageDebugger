@@ -200,9 +200,9 @@ void MainWindow::ac_max_reset()
 }
 
 
-void MainWindow::ac_toggle()
+void MainWindow::ac_toggle(bool is_checked)
 {
-    ac_enabled_ = !ac_enabled_;
+    ac_enabled_ = is_checked;
     for (auto& stage : stages_)
         stage.second->contrast_enabled = ac_enabled_;
 

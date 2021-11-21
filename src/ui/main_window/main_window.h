@@ -136,7 +136,7 @@ public Q_SLOTS:
 
     void ac_max_reset();
 
-    void ac_toggle();
+    void ac_toggle(bool is_checked);
 
     ///
     // General UI Events - slots - implemented in ui_events.cpp
@@ -252,6 +252,8 @@ public Q_SLOTS:
     void initialize_settings_ui_minmax_compact(QSettings& settings);
     QString initialize_settings_ui_colorspace_channel(const QChar& character);
     void initialize_settings_ui_colorspace(QSettings& settings);
+    void initialize_settings_ui_minmax_visible(QSettings& settings);
+    void initialize_settings_ui_contrast_enabled(QSettings& settings);
     void initialize_settings_ui(QSettings& settings);
     void initialize_settings();
 

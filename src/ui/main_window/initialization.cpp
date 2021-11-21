@@ -145,6 +145,26 @@ void MainWindow::initialize_settings_ui_colorspace(QSettings& settings)
         name_channel_4_ = initialize_settings_ui_colorspace_channel(colorspace_str.at(3));
 }
 
+void MainWindow::initialize_settings_ui_minmax_visible(QSettings& settings)
+{
+    const QVariant variant = settings.value("minmax_visible");
+    if (!variant.canConvert(QVariant::Type::Bool))
+        return;
+
+    const bool is_minmax_visible = variant.toBool();
+    ui_->acEdit->setChecked(is_minmax_visible);
+}
+
+void MainWindow::initialize_settings_ui_contrast_enabled(QSettings& settings)
+{
+    const QVariant variant = settings.value("contrast_enabled");
+    if (!variant.canConvert(QVariant::Type::Bool))
+        return;
+
+    ac_enabled_ = variant.toBool();
+    ui_->acToggle->setChecked(ac_enabled_);
+}
+
 void MainWindow::initialize_settings_ui(QSettings& settings)
 {
     settings.beginGroup("UI");
@@ -153,9 +173,8 @@ void MainWindow::initialize_settings_ui(QSettings& settings)
     initialize_settings_ui_splitter(settings);
     initialize_settings_ui_minmax_compact(settings);
     initialize_settings_ui_colorspace(settings);
-
-    if (settings.contains("minmax_visible"))
-        ui_->acEdit->setChecked(settings.value("minmax_visible").toBool());
+    initialize_settings_ui_minmax_visible(settings);
+    initialize_settings_ui_contrast_enabled(settings);
 
     settings.endGroup();
 }
@@ -298,6 +317,10 @@ void MainWindow::initialize_ui_signals()
     connect(ui_->acEdit, &QAbstractButton::clicked,
             this,
             &MainWindow::persist_settings_deferred);
+
+    connect(ui_->acToggle, &QAbstractButton::clicked,
+            this,
+            &MainWindow::persist_settings_deferred);
 }
 
 
@@ -436,7 +459,7 @@ void MainWindow::initialize_auto_contrast_form()
 
 void MainWindow::initialize_toolbar()
 {
-    connect(ui_->acToggle, SIGNAL(clicked()), this, SLOT(ac_toggle()));
+    connect(ui_->acToggle, &QToolButton::toggled, this, &MainWindow::ac_toggle);
 
     connect(ui_->reposition_buffer,
             SIGNAL(clicked()),

@@ -51,7 +51,7 @@ MainWindow::MainWindow(const ConnectionSettings& host_settings,
     , is_window_ready_(false)
     , request_render_update_(true)
     , completer_updated_(false)
-    , ac_enabled_(true)
+    , ac_enabled_(false)
     , link_views_enabled_(false)
     , icon_width_base_(100)
     , icon_height_base_(75)
@@ -218,6 +218,7 @@ void MainWindow::persist_settings()
         settings.setValue("splitter", listSizesVariant);
     }
     settings.setValue("minmax_visible", ui_->acEdit->isChecked());
+    settings.setValue("contrast_enabled", ui_->acToggle->isChecked());
     settings.endGroup();
 
     // Write window position/size
