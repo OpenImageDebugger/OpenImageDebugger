@@ -40,7 +40,7 @@
 void MainWindow::initialize_settings_ui_list_position(QSettings& settings)
 {
     const QVariant variant = settings.value("list_position");
-    if (variant.type() != QVariant::Type::String)
+    if (!variant.canConvert(QVariant::Type::String))
         return;
 
     const QString position_str = variant.toString();
@@ -57,11 +57,13 @@ void MainWindow::initialize_settings_ui_list_position(QSettings& settings)
 void MainWindow::initialize_settings_ui_splitter(QSettings& settings)
 {
     const QVariant variant = settings.value("splitter");
-    if (variant.type() != QVariant::Type::List)
+    if (!variant.canConvert(QVariant::Type::List))
         return;
 
+    QVariantList listVariants = variant.toList();
+
     QList<int> listSizes;
-    foreach (const QVariant& size, variant.toList())
+    foreach (const QVariant& size, listVariants)
         listSizes.append(size.toInt());
 
     ui_->splitter->setSizes(listSizes);
@@ -72,7 +74,7 @@ void MainWindow::initialize_settings_ui_minmax_compact(QSettings& settings)
     bool is_minmax_compact = false;
     {
         const QVariant variant = settings.value("minmax_compact");
-        if (variant.type() != QVariant::Type::Bool)
+        if (!variant.canConvert(QVariant::Type::Bool))
             return;
 
         is_minmax_compact = variant.toBool();
@@ -84,7 +86,7 @@ void MainWindow::initialize_settings_ui_minmax_compact(QSettings& settings)
     bool is_minmax_visible = true;
     {
         const QVariant variant = settings.value("minmax_visible");
-        if (variant.type() != QVariant::Type::Bool)
+        if (!variant.canConvert(QVariant::Type::Bool))
             return;
 
         is_minmax_visible = variant.toBool();
@@ -128,7 +130,7 @@ QString MainWindow::initialize_settings_ui_colorspace_channel(const QChar& chara
 void MainWindow::initialize_settings_ui_colorspace(QSettings& settings)
 {
     const QVariant variant = settings.value("colorspace");
-    if (variant.type() != QVariant::Type::String)
+    if (!variant.canConvert(QVariant::Type::String))
         return;
 
     const QString colorspace_str = variant.toString();
