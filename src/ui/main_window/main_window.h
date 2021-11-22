@@ -113,6 +113,7 @@ public Q_SLOTS:
     void loop();
 
     void request_render_update();
+    void request_icons_update();
 
     ///
     // Auto contrast pane - slots - implemented in auto_contrast.cpp
@@ -172,6 +173,7 @@ public Q_SLOTS:
   private:
     bool is_window_ready_;
     bool request_render_update_;
+    bool request_icons_update_;
     bool completer_updated_;
     bool ac_enabled_;
     bool link_views_enabled_;

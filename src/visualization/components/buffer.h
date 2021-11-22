@@ -100,6 +100,8 @@ class Buffer : public Component
 
     void rotate(float angle);
 
+    void set_icon_drawing_mode(bool is_enabled);
+
   private:
     void create_shader_program();
 

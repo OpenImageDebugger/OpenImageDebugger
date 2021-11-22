@@ -179,6 +179,7 @@ void MainWindow::ac_min_reset()
         reset_ac_min_labels();
 
         request_render_update_ = true;
+        request_icons_update_ = true;
     }
 }
 
@@ -196,6 +197,7 @@ void MainWindow::ac_max_reset()
         reset_ac_max_labels();
 
         request_render_update_ = true;
+        request_icons_update_ = true;
     }
 }
 
@@ -207,6 +209,7 @@ void MainWindow::ac_toggle(bool is_checked)
         stage.second->contrast_enabled = ac_enabled_;
 
     request_render_update_ = true;
+    request_icons_update_ = true;
 }
 
 
@@ -220,6 +223,7 @@ void MainWindow::set_ac_min_value(int idx, float value)
         buff->compute_contrast_brightness_parameters();
 
         request_render_update_ = true;
+        request_icons_update_ = true;
     }
 }
 
@@ -234,5 +238,6 @@ void MainWindow::set_ac_max_value(int idx, float value)
         buff->compute_contrast_brightness_parameters();
 
         request_render_update_ = true;
+        request_icons_update_ = true;
     }
 }

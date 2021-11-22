@@ -80,6 +80,8 @@ class Stage
 
     void go_to_pixel(float x, float y);
 
+    void set_icon_drawing_mode(bool is_enabled);
+
   private:
     std::map<std::string, std::shared_ptr<GameObject>> all_game_objects;
 };

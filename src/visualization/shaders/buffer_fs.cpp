@@ -32,6 +32,7 @@ uniform sampler2D sampler;
 uniform vec4 brightness_contrast[2];
 uniform vec2 buffer_dimension;
 uniform int enable_borders;
+uniform int enable_icon_mode;
 
 // Ouput data
 varying vec2 uv;
@@ -65,7 +66,7 @@ void main()
 
     vec2 buffer_position = uv * buffer_dimension;
 
-    if(enable_borders == 1) {
+    if(enable_icon_mode == 0 && enable_borders != 0) {
         float alpha = max(abs(dFdx(buffer_position.x)),
                           abs(dFdx(buffer_position.y)));
 

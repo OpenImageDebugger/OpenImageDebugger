@@ -111,6 +111,14 @@ void Buffer::rotate(float angle)
 }
 
 
+void Buffer::set_icon_drawing_mode(bool is_enabled)
+{
+    buff_prog.use();
+
+    buff_prog.uniform1i("enable_icon_mode", is_enabled ? 1 : 0);
+}
+
+
 void Buffer::recompute_min_color_values()
 {
     int buffer_width_i  = static_cast<int>(buffer_width_f);
@@ -378,11 +386,14 @@ void Buffer::create_shader_program()
                      shader::buff_frag_shader,
                      channel_type,
                      pixel_layout_,
-                     {"mvp",
-                      "sampler",
-                      "brightness_contrast",
-                      "buffer_dimension",
-                      "enable_borders"});
+                     {
+                         "mvp",
+                         "sampler",
+                         "brightness_contrast",
+                         "buffer_dimension",
+                         "enable_borders",
+                         "enable_icon_mode"
+                     });
 }
 
 

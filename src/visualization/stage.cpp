@@ -123,8 +123,13 @@ bool Stage::buffer_update(const uint8_t* buffer,
                           bool transpose_buffer)
 {
     GameObject* buffer_obj = all_game_objects["buffer"].get();
+    if (buffer_obj == nullptr)
+        return false;
+
     Buffer* buffer_component =
         buffer_obj->get_component<Buffer>("buffer_component");
+    if (buffer_component == nullptr)
+        return false;
 
     buffer_component->buffer          = buffer;
     buffer_component->channels        = channels;
@@ -262,4 +267,19 @@ void Stage::go_to_pixel(float x, float y)
         cam_obj->get_component<Camera>("camera_component");
 
     camera_component->move_to(x, y);
+}
+
+
+void Stage::set_icon_drawing_mode(bool is_enabled)
+{
+    GameObject* buffer_obj = all_game_objects["buffer"].get();
+    if (buffer_obj == nullptr)
+        return;
+
+    Buffer* buffer_component =
+        buffer_obj->get_component<Buffer>("buffer_component");
+    if (buffer_component == nullptr)
+        return;
+
+    buffer_component->set_icon_drawing_mode(is_enabled);
 }

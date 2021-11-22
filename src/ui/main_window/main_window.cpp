@@ -50,6 +50,7 @@ MainWindow::MainWindow(const ConnectionSettings& host_settings,
     : QMainWindow(parent)
     , is_window_ready_(false)
     , request_render_update_(true)
+    , request_icons_update_(true)
     , completer_updated_(false)
     , ac_enabled_(false)
     , link_views_enabled_(false)
@@ -143,11 +144,16 @@ void MainWindow::loop()
     // Update visualization pane
     if (request_render_update_) {
         ui_->bufferPreview->update();
+        request_render_update_ = false;
+    }
+
+    // Update an icon of every entry in image list
+    if (request_icons_update_) {
 
         for (auto& pair_stage : stages_)
             repaint_image_list_icon(pair_stage.first);
 
-        request_render_update_ = false;
+        request_icons_update_ = false;
     }
 }
 
@@ -155,6 +161,12 @@ void MainWindow::loop()
 void MainWindow::request_render_update()
 {
     request_render_update_ = true;
+}
+
+
+void MainWindow::request_icons_update()
+{
+    request_icons_update_ = true;
 }
 
 

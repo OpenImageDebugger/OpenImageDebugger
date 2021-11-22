@@ -188,6 +188,9 @@ void GLCanvas::render_buffer_icon(Stage* stage, const int icon_width, const int 
     // Reposition buffer in the center of the canvas
     cam->recenter_camera();
 
+    // Enable icon drawing mode (forbids pixel borders drawing)
+    stage->set_icon_drawing_mode(true);
+
     stage->draw();
     stage->buffer_icon.resize(3 * static_cast<size_t>(icon_width) * static_cast<size_t>(icon_height));
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -200,6 +203,7 @@ void GLCanvas::render_buffer_icon(Stage* stage, const int icon_width, const int 
                  stage->buffer_icon.data());
 
     // Reset stage camera
+    stage->set_icon_drawing_mode(false);
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
     glViewport(0, 0, width(), height());
     *cam = original_pose;
