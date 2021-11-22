@@ -140,9 +140,12 @@ void MainWindow::loop()
         currently_selected_stage_->update();
     }
 
+    // Update visualization pane
     if (request_render_update_) {
-        // Update visualization pane
         ui_->bufferPreview->update();
+
+        for (auto& pair_stage : stages_)
+            repaint_image_list_icon(pair_stage.first);
 
         request_render_update_ = false;
     }

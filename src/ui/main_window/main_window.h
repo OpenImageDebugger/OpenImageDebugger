@@ -233,6 +233,9 @@ public Q_SLOTS:
 
     void respond_get_observed_symbols();
 
+    QListWidgetItem* find_image_list_item(const std::string& variable_name_str);
+    void repaint_image_list_icon(const std::string& variable_name_str);
+    void update_image_list_label(const std::string& variable_name_str, const std::string& label_str);
     void decode_plot_buffer_contents();
 
     void decode_incoming_messages();
