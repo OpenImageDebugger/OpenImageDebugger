@@ -94,12 +94,13 @@ void MainWindow::initialize_settings_ui_minmax_compact(QSettings& settings)
 
     if (is_minmax_visible) {
 
-        ui_->gridLayout_toolbar->addWidget(ui_->acToggle, 0, 0);
-        ui_->gridLayout_toolbar->addWidget(ui_->linkViewsToggle, 0, 1);
-        ui_->gridLayout_toolbar->addWidget(ui_->reposition_buffer, 0, 2);
-        ui_->gridLayout_toolbar->addWidget(ui_->go_to_pixel, 1, 0);
-        ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_ccw, 1, 1);
-        ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_cw, 1, 2);
+        ui_->gridLayout_toolbar->addWidget(ui_->linkViewsToggle, 0, 0);
+        ui_->gridLayout_toolbar->addWidget(ui_->reposition_buffer, 0, 1);
+        ui_->gridLayout_toolbar->addWidget(ui_->go_to_pixel, 0, 2);
+
+        ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_ccw, 1, 0);
+        ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_cw, 1, 1);
+        ui_->gridLayout_toolbar->addWidget(ui_->acToggle, 1, 2);
     }
 
     ui_->horizontalLayout_container_toolbar->addWidget(ui_->minMaxEditor, 2);
@@ -153,6 +154,7 @@ void MainWindow::initialize_settings_ui_minmax_visible(QSettings& settings)
 
     const bool is_minmax_visible = variant.toBool();
     ui_->acEdit->setChecked(is_minmax_visible);
+    ui_->minMaxEditor->setVisible(is_minmax_visible);
 }
 
 void MainWindow::initialize_settings_ui_contrast_enabled(QSettings& settings)
@@ -163,6 +165,7 @@ void MainWindow::initialize_settings_ui_contrast_enabled(QSettings& settings)
 
     ac_enabled_ = variant.toBool();
     ui_->acToggle->setChecked(ac_enabled_);
+    ui_->minMaxEditor->setEnabled(ac_enabled_);
 }
 
 void MainWindow::initialize_settings_ui(QSettings& settings)

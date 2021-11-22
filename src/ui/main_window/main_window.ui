@@ -237,7 +237,7 @@ QStatusBar::item { border: 0; };</string>
                 </size>
                </property>
                <property name="toolTip">
-                <string>Toggle Auto Contrast</string>
+                <string>Toggle Contrast Modifications</string>
                </property>
                <property name="checkable">
                 <bool>true</bool>
@@ -977,12 +977,28 @@ Larger values will be clamped at this level when auto contrast is enabled</strin
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>332</x>
-     <y>43</y>
+     <x>290</x>
+     <y>44</y>
     </hint>
     <hint type="destinationlabel">
-     <x>991</x>
-     <y>91</y>
+     <x>640</x>
+     <y>100</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>acToggle</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>minMaxEditor</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>314</x>
+     <y>32</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>320</x>
+     <y>77</y>
     </hint>
    </hints>
   </connection>
