@@ -55,6 +55,6 @@ before_install:
 
 script:
   - mkdir build && cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=/tmp -DIS_CI=False
+  - cmake .. -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=/tmp -DIS_CI=True
   - make -j8
   - make install
