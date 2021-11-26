@@ -1,4 +1,11 @@
+# CMake build directory
 build/
-.vscode/
-.DS_Store
 
+# Visual Studio Code project settings
+.vscode/
+
+# Qt Creator project settings
+CMakeLists.txt.user
+
+# MacOS Desktop Service Store file
+.DS_Store
