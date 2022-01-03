@@ -41,11 +41,21 @@ target_include_directories(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} SYSTEM
                            PRIVATE ${PYTHON_INCLUDE_DIR})
 
+if(NOT("${PYTHON_FRAMEWORK}" STREQUAL ""))
+    message("Using python framework directory: \"${PYTHON_FRAMEWORK}\"")
+    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-Wl,-F${PYTHON_FRAMEWORK}")
+    target_link_libraries(${PROJECT_NAME} PRIVATE "-framework Python")
+endif()
+
+if(NOT("${PYTHON_LIBRARY}" STREQUAL ""))
+    message("Using python library file: \"${PYTHON_LIBRARY}\"")
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${PYTHON_LIBRARY})
+endif()
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
                       Qt5::Core
                       Qt5::Network
-                      Threads::Threads
-                      ${PYTHON_LIBRARY})
+                      Threads::Threads)
 
 install(TARGETS ${PROJECT_NAME} DESTINATION OpenImageDebugger)
 
