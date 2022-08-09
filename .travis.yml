@@ -51,7 +51,7 @@ addons:
 before_install:
   # Allow qmake to be called via CLI on MacOS
   # See https://github.com/Homebrew/legacy-homebrew/issues/29938
-  - if [ $TRAVIS_OS_NAME = osx ]; then brew link qt5 --force --overwrite && export PATH=/usr/local/opt/qt5/bin:$PATH; fi
+  - if [ $TRAVIS_OS_NAME = osx ]; then brew link qt5 --force && export PATH=/usr/local/opt/qt5/bin:$PATH; fi
 
 script:
   - mkdir build && cd build
