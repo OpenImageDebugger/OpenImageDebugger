@@ -49,9 +49,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 install(TARGETS ${PROJECT_NAME} DESTINATION OpenImageDebugger)
 
-# Need to unset these vars to trigger find_package with a different required version
-unset(PYTHON_INCLUDE_DIR CACHE)
-unset(PYTHON_LIBRARY CACHE)
-
 # TODO: deal with macos installation
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../../resources/deployscripts.cmake)
