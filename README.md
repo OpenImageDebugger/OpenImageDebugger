@@ -1,4 +1,3 @@
-[![Build Status](https://api.travis-ci.com/OpenImageDebugger/OpenImageDebugger.svg?branch=master)](https://app.travis-ci.com/github/OpenImageDebugger/OpenImageDebugger)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/OpenImageDebugger/OpenImageDebugger.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/OpenImageDebugger/OpenImageDebugger/alerts/)
 [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/OpenImageDebugger/OpenImageDebugger.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/OpenImageDebugger/OpenImageDebugger/context:cpp)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/OpenImageDebugger/OpenImageDebugger.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/OpenImageDebugger/OpenImageDebugger/context:python)
