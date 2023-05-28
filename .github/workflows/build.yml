@@ -32,7 +32,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                os: [ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, macos-13]
+                os: [ubuntu-20.04, ubuntu-22.04, macos-12, macos-13, windows-2019, windows-2022]
         runs-on: ${{ matrix.os }}
         steps:
             - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
@@ -43,7 +43,6 @@ jobs:
               if: contains(matrix.os, 'ubuntu')
               run: >
                 sudo apt install
-                ninja-build
                 qtbase5-dev
                 qtchooser
                 qt5-qmake
@@ -52,14 +51,17 @@ jobs:
             - name: Install dependencies (MacOS)
               if: contains(matrix.os, 'macos')
               run: >
-                brew install
-                ninja
-                qt5
+                brew install qt5
+            - name: Install dependencies (Windows)
+              if: contains(matrix.os, 'windows')
+              uses: jurplel/install-qt-action@2d518188e746defd451af981c3c901f463d99e29
             - name: Build
+              shell: bash
               run: |
                 if [ ${{ contains(matrix.os, 'macos') }} ]; then
                   export PATH=/usr/local/opt/qt5/bin:$PATH;
                 fi
-                mkdir build && cd build
-                cmake .. -GNinja -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=/tmp
-                ninja install
+
+                # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
+                cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/tmp
+                cmake --build build --config Release --target install -j 2
