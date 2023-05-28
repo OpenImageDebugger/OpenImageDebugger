@@ -94,4 +94,3 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)
-

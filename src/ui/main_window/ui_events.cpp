@@ -24,6 +24,7 @@
  */
 
 #include <QFileDialog>
+#include <QtMath> // for portable definition of M_PI
 
 #include "main_window.h"
 
