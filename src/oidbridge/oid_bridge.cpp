@@ -25,6 +25,7 @@
 
 #include <deque>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "debuggerinterface/preprocessor_directives.h"
@@ -557,16 +558,18 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 #endif
 
     // Retrieve pointer to buffer
-    uint8_t* buff_ptr;
+    uint8_t* buff_ptr = nullptr;
+    size_t buff_size = 0;
     if (PyMemoryView_Check(py_pointer) != 0) {
-        buff_ptr =
-            reinterpret_cast<uint8_t*>(get_c_ptr_from_py_buffer(py_pointer));
+        
+        get_c_ptr_from_py_buffer(py_pointer, buff_ptr, buff_size);
     }
 #if PY_MAJOR_VERSION == 2
     else if (PyBuffer_Check(py_pointer) != 0) {
         py_buff.reset(new Py_buffer());
         PyObject_GetBuffer(py_pointer, py_buff.get(), PyBUF_SIMPLE);
         buff_ptr = reinterpret_cast<uint8_t*>(py_buff->buf);
+        buff_size = static_cast<size_t>(py_buff->len);
     }
 #endif
     else {
@@ -593,9 +596,26 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 
     BufferType buff_type = static_cast<BufferType>(get_py_int(py_type));
 
-    size_t buff_length =
-        static_cast<size_t>(buff_width * buff_height * buff_channels) *
+    const size_t buff_size_expected =
+        static_cast<size_t>(buff_stride * buff_height * buff_channels) *
         typesize(buff_type);
+
+    if (buff_ptr == nullptr) {
+
+        RAISE_PY_EXCEPTION(PyExc_TypeError, "oid_plot_buffer received nullptr as buffer pointer");
+        return;
+    }
+
+    if (buff_size < buff_size_expected) {
+
+        std::stringstream ss;
+        ss << "oid_plot_buffer received shorter buffer then expected";
+        ss << ". Variable name " << variable_name_str;
+        ss << ". Expected " << buff_size_expected << "bytes";
+        ss << ". Received " << buff_size << "bytes";
+        RAISE_PY_EXCEPTION(PyExc_TypeError, ss.str().c_str());
+        return;
+    }
 
     app->plot_buffer(variable_name_str,
                      display_name_str,
@@ -607,5 +627,5 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
                      buff_stride,
                      buff_type,
                      buff_ptr,
-                     buff_length);
+                     buff_size);
 }

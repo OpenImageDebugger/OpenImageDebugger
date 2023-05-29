@@ -101,18 +101,52 @@ def get_available_memory():
         raise Exception('Platform %s not supported' % platform)
 
 
+def get_type_name(typevalue):
+    """
+    Get the human-readable name of matrix type
+    """
+    if (typevalue == symbols.OID_TYPES_UINT8):
+        return '8U'
+    if (typevalue == symbols.OID_TYPES_UINT16):
+        return '16U'
+    if (typevalue == symbols.OID_TYPES_INT16):
+        return '16S'
+    if (typevalue == symbols.OID_TYPES_INT32):
+        return '32S'
+    if (typevalue == symbols.OID_TYPES_FLOAT32):
+        return '32F'
+    if typevalue == symbols.OID_TYPES_FLOAT64:
+        return '64F'
+
+    return '?'
+
+
+def get_type_name_full(channels, typevalue):
+    """
+    Get the human-readable name of matrix type
+    """
+    return "%sC%d" % (get_type_name(typevalue), channels)
+
+
+def get_channel_size(typevalue):
+    """
+    Compute the channel size in bytes
+    """
+    if (typevalue == symbols.OID_TYPES_UINT16 or
+        typevalue == symbols.OID_TYPES_INT16):
+        return 2  # 2 bytes per element
+    if (typevalue == symbols.OID_TYPES_INT32 or
+        typevalue == symbols.OID_TYPES_FLOAT32):
+        return 4  # 4 bytes per element
+    if typevalue == symbols.OID_TYPES_FLOAT64:
+        return 8  # 8 bytes per element
+    
+    return 1
+
+
 def get_buffer_size(height, channels, typevalue, rowstride):
     """
     Compute the buffer size in bytes
     """
-    channel_size = 1
-    if (typevalue == symbols.OID_TYPES_UINT16 or
-            typevalue == symbols.OID_TYPES_INT16):
-        channel_size = 2  # 2 bytes per element
-    elif (typevalue == symbols.OID_TYPES_INT32 or
-          typevalue == symbols.OID_TYPES_FLOAT32):
-        channel_size = 4  # 4 bytes per element
-    elif typevalue == symbols.OID_TYPES_FLOAT64:
-        channel_size = 8  # 8 bytes per element
-
+    channel_size = get_channel_size(typevalue)
     return channel_size * channels * rowstride * height
