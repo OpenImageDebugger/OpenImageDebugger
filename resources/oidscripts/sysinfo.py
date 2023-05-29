@@ -25,7 +25,7 @@ def _get_available_memory_linux():
 def _get_available_memory_darwin():
     # type: () -> int
     # Get process info
-    ps = subprocess.Popen(['/bin/ps', '-caxm', '-orss,comm'],
+    ps = subprocess.Popen(['/bin/ps', '-caxm', '-o rss=', '-o comm='],
                           stdout=subprocess.PIPE).communicate()[0].decode()
     vm = subprocess.Popen(['vm_stat'], stdout=subprocess.PIPE).communicate()[
         0].decode()
@@ -36,6 +36,8 @@ def _get_available_memory_darwin():
     rss_total = 0  # kB
     for row in range(1, len(process_lines)):
         row_text = process_lines[row].strip()
+        if not row_text:
+            continue
         row_elements = sep.split(row_text)
         try:
             rss = float(row_elements[0]) * 1024

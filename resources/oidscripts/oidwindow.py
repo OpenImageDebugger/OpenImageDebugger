@@ -6,6 +6,7 @@ Classes related to exposing an interface to the OpenImageDebugger window
 
 import ctypes
 import ctypes.util
+import os
 import platform
 import sys
 import time
@@ -25,6 +26,10 @@ class OpenImageDebuggerWindow(object):
     def __init__(self, script_path, bridge):
         self._bridge = bridge
         self._script_path = script_path
+
+        if PLATFORM_NAME == 'windows':
+            os.add_dll_directory(script_path)
+            os.add_dll_directory(os.getenv('Qt5_Dir') + '/' + 'bin')
 
         # Request ctypes to load libGL before the native oidwindow does; this
         # fixes an issue on Ubuntu machines with nvidia drivers. For more
@@ -92,7 +97,7 @@ class OpenImageDebuggerWindow(object):
         elif PLATFORM_NAME == 'darwin':
             return 'liboidbridge%s.dylib' % python_version
         elif PLATFORM_NAME == 'windows':
-            return 'liboidbridge%s.dll' % python_version
+            return 'oidbridge%s.dll' % python_version
 
     def plot_variable(self, requested_symbol):
         """
@@ -146,9 +151,15 @@ class OpenImageDebuggerWindow(object):
         Set the autocomplete list of symbols with the list of string
         'observable_symbols'
         """
+
+        # Perform two-level sorting:
+        #    1. By amount of nodes.
+        #    2. By variable name.
+        sorted_observable_symbols = sorted(observable_symbols, key=lambda symbol: (symbol.count('.'), symbol))
+
         self._lib.oid_set_available_symbols(
             self._native_handler,
-            observable_symbols)
+            sorted_observable_symbols)
 
     def run_event_loop(self):
         """
@@ -199,10 +210,13 @@ class DeferredVariablePlotter(object):
         try:
             buffer_metadata = self._bridge.get_buffer_metadata(self._variable)
 
-            if buffer_metadata is not None:
-                self._lib.oid_plot_buffer(
-                    self._native_handler,
-                    buffer_metadata)
+            if buffer_metadata is None:
+                return
+
+            self._lib.oid_plot_buffer(
+                self._native_handler,
+                buffer_metadata)
+
         except Exception as err:
             import traceback
             print('[OpenImageDebugger] Error: Could not plot variable')
