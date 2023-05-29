@@ -23,11 +23,12 @@
  * IN THE SOFTWARE.
  */
 
+#include "buffer_exporter.h"
+
+#include <limits>
 #include <memory>
 
 #include <QPixmap>
-
-#include "buffer_exporter.h"
 
 #include "math/assorted.h"
 
@@ -38,7 +39,7 @@ using namespace std;
 template <typename T>
 float get_multiplier()
 {
-    return 255.f / static_cast<float>(std::numeric_limits<T>::max());
+    return 255.f / static_cast<float>((std::numeric_limits<T>::max)());
 }
 
 
@@ -52,7 +53,7 @@ float get_multiplier<float>()
 template <typename T>
 T get_max_intensity()
 {
-    return std::numeric_limits<T>::max();
+    return (std::numeric_limits<T>::max)();
 }
 
 

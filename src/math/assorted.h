@@ -31,7 +31,7 @@
 template <typename T>
 int clamp(T value, T lower, T upper)
 {
-    return std::min(std::max(value, lower), upper);
+    return (std::min)((std::max)(value, lower), upper);
 }
 
 #endif // ASSORTED_H_
