@@ -6,6 +6,7 @@ Classes related to exposing an interface to the OpenImageDebugger window
 
 import ctypes
 import ctypes.util
+import os
 import platform
 import sys
 import time
@@ -25,6 +26,10 @@ class OpenImageDebuggerWindow(object):
     def __init__(self, script_path, bridge):
         self._bridge = bridge
         self._script_path = script_path
+
+        if PLATFORM_NAME == 'windows':
+            os.add_dll_directory(script_path)
+            os.add_dll_directory(os.getenv('Qt5_Dir') + '/' + 'bin')
 
         # Request ctypes to load libGL before the native oidwindow does; this
         # fixes an issue on Ubuntu machines with nvidia drivers. For more
@@ -92,7 +97,7 @@ class OpenImageDebuggerWindow(object):
         elif PLATFORM_NAME == 'darwin':
             return 'liboidbridge%s.dylib' % python_version
         elif PLATFORM_NAME == 'windows':
-            return 'liboidbridge%s.dll' % python_version
+            return 'oidbridge%s.dll' % python_version
 
     def plot_variable(self, requested_symbol):
         """
