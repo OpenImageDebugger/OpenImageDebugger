@@ -58,10 +58,29 @@ jobs:
             - name: Build
               shell: bash
               run: |
-                if [ ${{ contains(matrix.os, 'macos') }} ]; then
+                if [ ${{ contains(matrix.os, 'macos') }} ]
+                then
                   export PATH=/usr/local/opt/qt5/bin:$PATH;
                 fi
 
                 # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
                 cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/tmp
                 cmake --build build --config Release --target install -j 2
+
+            - name: Select tmp dir (Windows)
+              if: contains(matrix.os, 'windows')
+              shell: bash
+              run: |
+                echo "tmp_dir=C:\\Users\\runneradmin\\AppData\\Local\\Temp\\" >> "$GITHUB_ENV"
+
+            - name: Select tmp dir (Unix)
+              if: contains(matrix.os, 'windows') == false
+              run: |
+                echo "tmp_dir=/tmp/" >> "$GITHUB_ENV"
+
+            - name: Upload build
+              uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+              with:
+                name: build-${{ matrix.os }}
+                path: |
+                  ${{ env.tmp_dir }}OpenImageDebugger
