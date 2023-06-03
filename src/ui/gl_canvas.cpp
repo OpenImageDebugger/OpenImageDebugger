@@ -158,7 +158,7 @@ void GLCanvas::paintGL()
 
 void GLCanvas::wheelEvent(QWheelEvent* ev)
 {
-    main_window_->scroll_callback(ev->delta() / 120.0f);
+    main_window_->scroll_callback(static_cast<float>(ev->angleDelta().y()) / 120.0f);
 }
 
 
