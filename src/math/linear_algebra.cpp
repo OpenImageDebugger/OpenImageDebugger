@@ -273,15 +273,15 @@ void mat4::set_ortho_projection(float right, float top, float near, float far)
 {
     float* data = this->data();
 
-    data[0]  = 1.0 / right;
-    data[5]  = -1.0 / top;
-    data[10] = -2.0 / (far - near);
+    data[0]  = 1.0f / right;
+    data[5]  = -1.0f / top;
+    data[10] = -2.0f / (far - near);
     data[14] = -(far + near) / (far - near);
 
-    data[1] = data[2] = data[3] = data[4] = 0.0;
-    data[6] = data[7] = data[8] = data[9] = 0.0;
-    data[11] = data[12] = data[13] = 0.0;
-    data[15]                       = 1.0;
+    data[1] = data[2] = data[3] = data[4] = 0.0f;
+    data[6] = data[7] = data[8] = data[9] = 0.0f;
+    data[11] = data[12] = data[13] = 0.0f;
+    data[15]                       = 1.0f;
 }
 
 
