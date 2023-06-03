@@ -91,7 +91,7 @@ void MainWindow::initialize_ui_icons()
 {
 #define SET_FONT_ICON(ui_element, unicode_id) \
     ui_element->setFont(icons_font);          \
-    ui_element->setText(unicode_id);
+    ui_element->setText(QString::fromWCharArray(unicode_id, 1));
 
 #define SET_VECTOR_ICON(ui_element, icon_file_name, width, height) \
     ui_element->setScaledContents(true);                           \
@@ -115,19 +115,19 @@ void MainWindow::initialize_ui_icons()
     icons_font.setFamily("fontello");
     icons_font.setPointSizeF(10.f);
 
-    SET_FONT_ICON(ui_->acEdit, "\ue803");
-    SET_FONT_ICON(ui_->acToggle, "\ue804");
-    SET_FONT_ICON(ui_->reposition_buffer, "\ue800");
-    SET_FONT_ICON(ui_->linkViewsToggle, "\ue805");
-    SET_FONT_ICON(ui_->rotate_90_cw, "\ue801");
-    SET_FONT_ICON(ui_->rotate_90_ccw, "\ue802");
-    SET_FONT_ICON(ui_->go_to_pixel, "\uf031");
+    SET_FONT_ICON(ui_->acEdit, L"\ue803");
+    SET_FONT_ICON(ui_->acToggle, L"\ue804");
+    SET_FONT_ICON(ui_->reposition_buffer, L"\ue800");
+    SET_FONT_ICON(ui_->linkViewsToggle, L"\ue805");
+    SET_FONT_ICON(ui_->rotate_90_cw, L"\ue801");
+    SET_FONT_ICON(ui_->rotate_90_ccw, L"\ue802");
+    SET_FONT_ICON(ui_->go_to_pixel, L"\uf031");
 
-    SET_FONT_ICON(ui_->ac_reset_min, "\ue808");
-    SET_FONT_ICON(ui_->ac_reset_max, "\ue808");
+    SET_FONT_ICON(ui_->ac_reset_min, L"\ue808");
+    SET_FONT_ICON(ui_->ac_reset_max, L"\ue808");
 
-    SET_FONT_ICON(ui_->label_min, "\ue806");
-    SET_FONT_ICON(ui_->label_max, "\ue807");
+    SET_FONT_ICON(ui_->label_min, L"\ue806");
+    SET_FONT_ICON(ui_->label_max, L"\ue807");
 
     SET_VECTOR_ICON(ui_->label_red_min, "label_red_channel.svg", 10, 10);
     SET_VECTOR_ICON(ui_->label_red_max, "label_red_channel.svg", 10, 10);

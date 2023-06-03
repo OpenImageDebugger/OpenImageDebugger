@@ -104,8 +104,8 @@ void export_bitmap(const char* fname, const Buffer* buffer)
 
     for (size_t y = 0; y < height_i; ++y) {
         for (size_t x = 0; x < width_i; ++x) {
-            int col_offset = x * buffer->channels;
-            int c;
+            const std::size_t col_offset = x * buffer->channels;
+            std::size_t c = 0;
 
             // Perform contrast normalization
             for (c = 0; c < buffer->channels; ++c) {
@@ -140,7 +140,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
         in_ptr += input_stride;
     }
 
-    const int bytes_per_line = width_i * 4;
+    const int bytes_per_line = static_cast<int>(width_i * 4);
     QImage output_image(processed_buffer.data(),
                         width_i,
                         height_i,
@@ -192,26 +192,28 @@ const char* get_type_descriptor<float>()
 template <typename T>
 void export_binary(const char* fname, const Buffer* buffer)
 {
-    int width_i  = static_cast<int>(buffer->buffer_width_f);
-    int height_i = static_cast<int>(buffer->buffer_height_f);
+    const size_t width_i  = static_cast<size_t>(buffer->buffer_width_f);
+    const size_t height_i = static_cast<size_t>(buffer->buffer_height_f);
 
     const T* in_ptr = reinterpret_cast<const T*>(buffer->buffer);
 
     FILE* fhandle = fopen(fname, "wb");
 
-    if (fhandle != NULL) {
-        fprintf(fhandle, "%s\n", get_type_descriptor<T>());
-        fwrite(&height_i, sizeof(int), 1, fhandle);
-        fwrite(&width_i, sizeof(int), 1, fhandle);
-        fwrite(&buffer->channels, sizeof(int), 1, fhandle);
-        for (int y = 0; y < height_i; ++y) {
-            fwrite(in_ptr + y * buffer->step * buffer->channels,
-                   sizeof(T),
-                   static_cast<size_t>(width_i) * static_cast<size_t>(buffer->channels),
-                   fhandle);
-        }
-        fclose(fhandle);
+    if (fhandle == NULL) {
+        return;
     }
+
+    fprintf(fhandle, "%s\n", get_type_descriptor<T>());
+    fwrite(&height_i, sizeof(int), 1, fhandle);
+    fwrite(&width_i, sizeof(int), 1, fhandle);
+    fwrite(&buffer->channels, sizeof(int), 1, fhandle);
+    for (size_t y = 0; y < height_i; ++y) {
+        fwrite(in_ptr + y * buffer->step * buffer->channels,
+               sizeof(T),
+               width_i * static_cast<size_t>(buffer->channels),
+               fhandle);
+    }
+    fclose(fhandle);
 }
 
 

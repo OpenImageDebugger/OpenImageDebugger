@@ -30,7 +30,7 @@
 std::vector<std::uint8_t>
     make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
 {
-    int element_count = buff_double.size() / sizeof(double);
+    const std::size_t element_count = buff_double.size() / sizeof(double);
     std::vector<std::uint8_t> buff_float(element_count * sizeof(float));
 
     // Cast from double to float
