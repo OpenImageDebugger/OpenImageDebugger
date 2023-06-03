@@ -166,7 +166,7 @@ void GLTextRenderer::generate_glyphs_texture()
     const int cropped_bitmap_height = real_ascent - real_descent;
 
     for (p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
-        int advance_x     = g.width(*p);
+        int advance_x     = g.horizontalAdvance(*p);
         int bitmap_height = g.height();
 
         text_texture_advances[*p][0] = advance_x;
@@ -195,7 +195,7 @@ void GLTextRenderer::generate_glyphs_texture()
 
     int x = 0;
     for (p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
-        int advance_x = g.width(*p);
+        int advance_x = g.horizontalAdvance(*p);
 
         text_texture_offsets[*p][0] = x + border_size;
         text_texture_offsets[*p][1] = real_descent + border_size;
