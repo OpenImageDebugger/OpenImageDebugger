@@ -21,11 +21,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.10.0)
 
 project(OpenImageDebugger)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
 
 add_subdirectory(src)
-add_subdirectory(src/oidbridge/python3)
