@@ -101,6 +101,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
     const T* in_ptr  = reinterpret_cast<const T*>(buffer->buffer);
     int input_stride = buffer->channels * buffer->step;
     uint8_t unformatted_pixel[4];
+    const std::size_t channels = static_cast<std::size_t>(buffer->channels);
 
     for (size_t y = 0; y < height_i; ++y) {
         for (size_t x = 0; x < width_i; ++x) {
@@ -108,7 +109,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
             std::size_t c = 0;
 
             // Perform contrast normalization
-            for (c = 0; c < buffer->channels; ++c) {
+            for (c = 0; c < channels; ++c) {
                 float in_val = static_cast<float>(in_ptr[col_offset + c]);
 
                 unformatted_pixel[c] = static_cast<uint8_t>(clamp(
@@ -119,7 +120,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
             }
 
             // Grayscale: Repeat first channel into G and B
-            if (buffer->channels == 1) {
+            if (channels == 1) {
                 for (; c < 3; ++c) {
                     unformatted_pixel[c] = unformatted_pixel[0];
                 }
