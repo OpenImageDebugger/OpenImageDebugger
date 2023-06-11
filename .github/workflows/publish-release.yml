@@ -21,21 +21,42 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-name: Bump version
+name: Publish release
+
 on:
-  workflow_call:
+  push:
+    branches: [ main ]
 
 jobs:
-  bump-version:
-    name: Bump version and release
+  build-all:
+    uses: ./.github/workflows/build.yml
+  bump:
+    uses: ./.github/workflows/commisery-bump.yml
+  publish-release:
+    needs: [ build-all, bump ]
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, macos-13, windows-2019, windows-2022 ]
     steps:
-      - name: Release version
-        id: release-version
-        uses: tomtom-international/commisery-action/bump@7fd0f80be0f8766bad7cd6fb57996ebabb8794c4
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
         with:
-          token: ${{ github.token }}
-          create-release: true
-      - run: echo "Current version is ${{ steps.release-version.outputs.current-version }}"
-      - if: steps.release-version.outputs.next-version != ''
-        run: echo "Version bumped to ${{ steps.release-version.outputs.next-version }}"
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: get-latest-tag
+        run:
+          echo "LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@cbed621e49e4c01b044d60f6c80ea4ed6328b281
+        with:
+          name: build-${{ matrix.os }}
+          path: artifacts
+
+      - name: Upload artifacts to release
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
+        with:
+          tag_name: ${{ steps.get-latest-tag.outputs.LATEST_TAG }}
+          files: artifacts/build-${{ matrix.os }}.tar
