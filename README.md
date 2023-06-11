@@ -41,11 +41,11 @@ customized to work with any arbitrary data structure.
 
 ### Requirements
 
- * A C++11 compliant compiler (gcc-5 or later is recommended)
+ * A C++14 compliant compiler
  * GDB **7.10+** or LLDB **6+**
  * Qt **5.6+** (required due to the HighDPI display support - download it
    [here](https://info.qt.io/download-qt-for-application-development))
- * CMake **3.1.0+**
+ * CMake **3.10.0+**
  * Python development packages
  * OpenGL 2.1+ support
 
@@ -56,7 +56,7 @@ customized to work with any arbitrary data structure.
 On Ubuntu, you can install most of the dependencies with the following command:
 
 ```shell
-sudo apt install build-essential libpython3-dev python3-dev libpython2.7-dev python2-dev cmake
+sudo apt install build-essential libpython3-dev python3-dev cmake
 ```
 
 ### Building the Open Image Debugger
