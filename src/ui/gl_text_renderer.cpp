@@ -160,7 +160,6 @@ void GLTextRenderer::generate_glyphs_texture()
 
 
     // Compute text box size
-    float box_w = 0;
     float box_h = 0;
 
     const int cropped_bitmap_height = real_ascent - real_descent;
@@ -176,7 +175,6 @@ void GLTextRenderer::generate_glyphs_texture()
         text_texture_tls[*p][0]      = 0;
         text_texture_tls[*p][1]      = cropped_bitmap_height;
 
-        box_w += advance_x + 2 * border_size;
         box_h = (std::max)(box_h, (float)bitmap_height + 2 * border_size);
     }
 
