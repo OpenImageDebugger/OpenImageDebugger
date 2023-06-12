@@ -28,27 +28,21 @@ on:
     branches: [ main ]
 
 jobs:
-  build-all:
-    uses: ./.github/workflows/build.yml
   bump:
     uses: ./.github/workflows/commisery-bump.yml
+  build-all:
+    needs: [ bump ]
+    if: needs.bump.outputs.next-version != ''
+    uses: ./.github/workflows/build.yml
   publish-release:
     needs: [ build-all, bump ]
+    if: needs.bump.outputs.next-version != ''
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         os: [ ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, macos-13, windows-2019, windows-2022 ]
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-        with:
-          fetch-depth: 0
-
-      - name: Get latest tag
-        id: get-latest-tag
-        run:
-          echo "LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)" >> "$GITHUB_OUTPUT"
-
       - name: Download artifacts
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a
         with:
@@ -58,5 +52,5 @@ jobs:
       - name: Upload artifacts to release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
         with:
-          tag_name: ${{ steps.get-latest-tag.outputs.LATEST_TAG }}
+          tag_name: ${{ needs.bump.outputs.next-version }}
           files: artifacts/build-${{ matrix.os }}.tar
