@@ -24,6 +24,10 @@
 name: Bump version
 on:
   workflow_call:
+    outputs:
+      next-version:
+        description: "Next version determined by commisery"
+        value: ${{ jobs.bump-version.outputs.next-version }}
 
 jobs:
   bump-version:
@@ -39,3 +43,5 @@ jobs:
       - run: echo "Current version is ${{ steps.release-version.outputs.current-version }}"
       - if: steps.release-version.outputs.next-version != ''
         run: echo "Version bumped to ${{ steps.release-version.outputs.next-version }}"
+    outputs:
+      next-version: ${{ steps.release-version.outputs.next-version }}
