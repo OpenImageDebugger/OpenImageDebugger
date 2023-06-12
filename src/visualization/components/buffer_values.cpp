@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2023 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,15 +23,17 @@
  * IN THE SOFTWARE.
  */
 
+#include "buffer_values.h"
+
 #include <array>
+#include <algorithm>
+
 
 #include <QFontMetrics>
 
-#include "buffer_values.h"
 
 #include "buffer.h"
 #include "camera.h"
-#include "math/assorted.h"
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
 

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2023 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,12 +25,13 @@
 
 #include "buffer_exporter.h"
 
+
+#include <algorithm>
 #include <limits>
 #include <memory>
 
-#include <QPixmap>
 
-#include "math/assorted.h"
+#include <QPixmap>
 
 
 using namespace std;
