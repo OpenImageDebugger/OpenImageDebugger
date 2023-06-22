@@ -43,13 +43,14 @@ jobs:
 
             - name: Install dependencies (Linux)
               if: contains(matrix.os, 'ubuntu')
-              run: >
-                sudo apt install
-                qtbase5-dev
-                qtchooser
-                qt5-qmake
-                qtbase5-dev-tools
-                libqt5opengl5-dev
+              run: |
+                sudo apt update
+                sudo apt install \
+                  qtbase5-dev \
+                  qtchooser \
+                  qt5-qmake \
+                  qtbase5-dev-tools \
+                  libqt5opengl5-dev
 
             - name: Install dependencies (MacOS)
               if: contains(matrix.os, 'macos')
