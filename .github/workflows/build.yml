@@ -33,7 +33,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                os: [ ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, macos-13, windows-2019, windows-2022 ]
+                os: [ ubuntu-20.04, ubuntu-22.04, macos-12, macos-13, windows-2019, windows-2022 ]
         runs-on: ${{ matrix.os }}
         steps:
             - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
@@ -41,34 +41,14 @@ jobs:
                 fetch-depth: 0
                 submodules: 'recursive'
 
-            - name: Install dependencies (Linux)
-              if: contains(matrix.os, 'ubuntu')
-              run: |
-                sudo apt update
-                sudo apt install \
-                  qtbase5-dev \
-                  qtchooser \
-                  qt5-qmake \
-                  qtbase5-dev-tools \
-                  libqt5opengl5-dev
-
-            - name: Install dependencies (MacOS)
-              if: contains(matrix.os, 'macos')
-              run: >
-                brew install qt5
-
-            - name: Install dependencies (Windows)
-              if: contains(matrix.os, 'windows')
-              uses: jurplel/install-qt-action@b3ea5275e37b734d027040e2c7fe7a10ea2ef946
+            - name: Install Qt
+              uses: jurplel/install-qt-action@2d518188e746defd451af981c3c901f463d99e29
+              with:
+                cache: 'true'
 
             - name: Build
               shell: bash
               run: |
-                if [ ${{ contains(matrix.os, 'macos') }} ]
-                then
-                  export PATH=/usr/local/opt/qt5/bin:$PATH;
-                fi
-
                 # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
                 cmake -S . -B build -DCMAKE_INSTALL_PREFIX=out
                 cmake --build build --config Release --target install -j 2
@@ -81,5 +61,4 @@ jobs:
               uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
               with:
                 name: build-${{ matrix.os }}
-                path: |
-                  build-${{ matrix.os }}.tar
+                path: build-${{ matrix.os }}.tar
