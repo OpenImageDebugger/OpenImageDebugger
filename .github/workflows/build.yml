@@ -59,7 +59,9 @@ jobs:
 
             - name: Install dependencies (Windows)
               if: contains(matrix.os, 'windows')
-              uses: jurplel/install-qt-action@b3ea5275e37b734d027040e2c7fe7a10ea2ef946
+              uses: jurplel/install-qt-action@2d518188e746defd451af981c3c901f463d99e29
+              with:
+                cache: 'true'
 
             - name: Build
               shell: bash
