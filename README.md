@@ -1,8 +1,9 @@
+# Open Image Debugger: Enabling visualization of in-memory buffers on GDB/LLDB
+
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/OpenImageDebugger/OpenImageDebugger.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/OpenImageDebugger/OpenImageDebugger/alerts/)
 [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/OpenImageDebugger/OpenImageDebugger.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/OpenImageDebugger/OpenImageDebugger/context:cpp)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/OpenImageDebugger/OpenImageDebugger.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/OpenImageDebugger/OpenImageDebugger/context:python)
 
-# Open Image Debugger: Enabling visualization of in-memory buffers on GDB/LLDB
 Open Image Debugger is a tool for visualizing in-memory buffers during debug
 sessions, compatible with both GDB and LLDB. It works out of the box with
 instances of the OpenCV `Mat` class and `Eigen` matrices, but can also be
@@ -10,12 +11,12 @@ customized to work with any arbitrary data structure.
 
 ![](doc/sample_window.png)
 
-### Features
+## Features
 
 * GUI interactivity:
-    * Scroll to zoom, left click+drag to move the buffer around;
-    * Rotate buffers 90&deg; clockwise or counterclockwise;
-    * Go-to widget that quickly takes you to any arbitrary pixel location;
+  * Scroll to zoom, left click+drag to move the buffer around;
+  * Rotate buffers 90&deg; clockwise or counterclockwise;
+  * Go-to widget that quickly takes you to any arbitrary pixel location;
 * Buffer values: Zoom in close enough to inspect the numerical contents of any pixel.
 * Auto update: Whenever a breakpoint is hit, the buffer view is automatically
   updated.
@@ -39,15 +40,15 @@ customized to work with any arbitrary data structure.
 * Designed to scale well for HighDPI displays
 * Works on Linux, macOS X and Windows (experimental)
 
-### Requirements
+## Requirements
 
- * A C++14 compliant compiler
- * GDB **7.10+** or LLDB **6+**
- * Qt **5.6+** (required due to the HighDPI display support - download it
+* A C++17 compliant compiler
+* GDB **7.10+** or LLDB **6+**
+* Qt **5.6+** (required due to the HighDPI display support - download it
    [here](https://info.qt.io/download-qt-for-application-development))
- * CMake **3.10.0+**
- * Python development packages
- * OpenGL 2.1+ support
+* CMake **3.10.0+**
+* Python development packages
+* OpenGL 2.1+ support
 
 ## Installation
 
@@ -55,15 +56,16 @@ customized to work with any arbitrary data structure.
 
 On Ubuntu, you can install most of the dependencies with the following command:
 
-```shell
+```bash
 sudo apt install build-essential libpython3-dev python3-dev cmake
 ```
 
 ### Building the Open Image Debugger
+
 Clone the source code to any folder you prefer and initialize the
 submodules:
 
-```shell
+```bash
 git clone https://github.com/OpenImageDebugger/OpenImageDebugger.git
 cd OpenImageDebugger
 git submodule init
@@ -72,26 +74,27 @@ git submodule update
 
 Now run the following commands to build it:
 
-```shell
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=release -DCMAKE_INSTALL_PREFIX=/path/to/installation/folder
-make -j4
-sudo make install
+```bash
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/path/to/installation/folder
+cmake --build build --config Release --target install -j 4
 ```
 
 **GDB integration:** Edit the file `~/.gdbinit` (create it if it doesn't exist)
 and append the following line:
-```
+
+```bash
 source /path/to/OpenImageDebugger/oid.py
 ```
 
 **LLDB integration:** Edit the file `~/.lldbinit` (create it if it doesn't
 exist) and append the following line:
-```
+
+```bash
 command script import /path/to/OpenImageDebugger/oid.py
 ```
 
 ### MacOS Installation
+
 For information on how to build the plugin on MacOS, refer to the wiki page
 [Building on
 MacOS](https://github.com/OpenImageDebugger/OpenImageDebugger/wiki/Building-on-MacOS).
@@ -100,7 +103,7 @@ MacOS](https://github.com/OpenImageDebugger/OpenImageDebugger/wiki/Building-on-M
 
 After compiling the plugin, you can test it by running the following command:
 
-```shell
+```bash
 python /path/to/OpenImageDebugger/oid.py --test
 ```
 
@@ -110,56 +113,9 @@ with the buffers `sample_buffer_1` and `sample_buffer_2`.
 ## Troubleshooting
 
 ### QtCreator configuration
+
 If you are using QtCreator, you can change your Qt version under
 Tools->Options->Build & Run->Kits. Make sure you have Qt >= 5.6 selected.
-
-### [DEPRECATED] libGL linking issues on Linux
-!!! This section needs to be reviewed !!!
-
-Some linux users might experience a linking error if the libGL.so is not
-found by qmake, especially when using a nvidia graphics card. This issue will
-usually present itself with the message `cannot find -lGL`.
-
-To fix that, you need to find the location for your libGL.so file. The
-following commands should help you find it:
-
-```shell
-sudo updatedb
-locate -i libgl.so
-```
-
-If you have installed the proprietary drivers, you don't want to use the mesa
-folder. For example, running the command above could result in the following
-output:
-
-```
-/usr/lib/nvidia-384/libGL.so
-/usr/lib/nvidia-384/libGL.so.1
-/usr/lib/nvidia-384/libGL.so.384.90
-/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1
-/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1.2.0
-/usr/lib32/nvidia-384/libGL.so
-/usr/lib32/nvidia-384/libGL.so.1
-/usr/lib32/nvidia-384/libGL.so.384.90
-```
-
-In this case, since I'm using the proprietary nvidia drivers, I'll choose the
-folder `/usr/lib/nvidia-384`.
-
-Copy the name of the folder you found, and paste it in the file
-`oid.pro` under the definition of the `QMAKE_LFLAGS` variable. In my
-case, this variable now looks like this:
-
-```
-QMAKE_LFLAGS += \
-  # If you have an error "cannot find -lGL", uncomment the following line and
-  # replace the folder by the location of your libGL.so
-  -L/usr/lib/nvidia-384/ \
-  -Wl,--exclude-libs,ALL
-```
-
-Now, just run the build steps again, including the `qmake` command, as
-described above.
 
 ## Using plugin
 
@@ -224,9 +180,8 @@ folder to Octave/Matlab `path` variable and call
 The settings file for the plugin can be located under
 `$HOME/.config/OpenImageDebugger.ini`. You can change the following settings:
 
- * **Rendering**
-    * *maximum_framerate* Determines the maximum framerate for the buffer
-    rendering backend. Must be greater than 0.
+* **Rendering**
+  * *maximum_framerate* Determines the maximum framerate for the buffer rendering backend. Must be greater than 0.
 
 ## Advanced configuration
 
@@ -243,33 +198,33 @@ methods `get_buffer_metadata()` and `is_symbol_observable()`.
 The function `get_buffer_metadata()` must return a dictionary with the following
 fields:
 
- * **display_name** Name of the buffer as it must appear in the Open Image Debugger
-   window. Can be customized to also show its typename, for instance.
- * **pointer** Pointer to the buffer
- * **width**  Width of the ROI
- * **height** Height of the ROI
- * **channels** Number of color channels (Must be in the range `1 <= channels
+* **display_name** Name of the buffer as it must appear in the Open Image Debugger
+  window. Can be customized to also show its typename, for instance.
+* **pointer** Pointer to the buffer
+* **width**  Width of the ROI
+* **height** Height of the ROI
+* **channels** Number of color channels (Must be in the range `1 <= channels
    <= 3`)
- * **type** Identifier for the type of the underlying buffer. The supported
-   values, defined under `resources/oidscripts/symbols.py`, are:
-   * `OID_TYPES_UINT8` = 0
-   * `OID_TYPES_UINT16` = 2
-   * `OID_TYPES_INT16` = 3
-   * `OID_TYPES_INT32` = 4
-   * `OID_TYPES_FLOAT32` = 5
-   * `OID_TYPES_FLOAT64` = 6
- * **row_stride** Number of pixels you have to skip in order to reach the pixel
-   right below any arbitrary pixel. In other words, this can be thought of as
-   the width, in pixels, of the underlying containing buffer. If the ROI is the
-   total buffer size, this is the same of the buffer width.
- * **pixel_layout** String describing how internal channels should be ordered
-   for display purposes. The default value for buffers of 3 and 4 channels is
-   `'bgra'`, and `'rgba'` for images of 1 and 2 channels. This string must
-   contain exactly four characters, and each one must be one of `'r'`, `'g'`,
-   `'b'` or `'a'`.  Repeated channels, such as 'rrgg' are also valid.
- * **transpose_buffer** Boolean indicating whether or not to transpose the
-   buffer in the interface. Can be very useful if your data structure represents
-   transposition with an internal metadata.
+* **type** Identifier for the type of the underlying buffer. The supported
+  values, defined under `resources/oidscripts/symbols.py`, are:
+  * `OID_TYPES_UINT8` = 0
+  * `OID_TYPES_UINT16` = 2
+  * `OID_TYPES_INT16` = 3
+  * `OID_TYPES_INT32` = 4
+  * `OID_TYPES_FLOAT32` = 5
+  * `OID_TYPES_FLOAT64` = 6
+* **row_stride** Number of pixels you have to skip in order to reach the pixel
+  right below any arbitrary pixel. In other words, this can be thought of as
+  the width, in pixels, of the underlying containing buffer. If the ROI is the
+  total buffer size, this is the same of the buffer width.
+* **pixel_layout** String describing how internal channels should be ordered
+  for display purposes. The default value for buffers of 3 and 4 channels is
+  `'bgra'`, and `'rgba'` for images of 1 and 2 channels. This string must
+  contain exactly four characters, and each one must be one of `'r'`, `'g'`,
+  `'b'` or `'a'`.  Repeated channels, such as 'rrgg' are also valid.
+* **transpose_buffer** Boolean indicating whether or not to transpose the
+  buffer in the interface. Can be very useful if your data structure represents
+  transposition with an internal metadata.
 
 The function `is_symbol_observable()` receives a symbol and a string
 containing the variable name, and must only return `True` if that symbol is of
