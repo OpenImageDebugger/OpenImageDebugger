@@ -44,6 +44,8 @@ jobs:
             - name: Install Qt
               uses: jurplel/install-qt-action@b3ea5275e37b734d027040e2c7fe7a10ea2ef946
               with:
+                version: '5.15.2'
+                aqtversion: '==3.1.*'
                 cache: 'true'
 
             - name: Build
