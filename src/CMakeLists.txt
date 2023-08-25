@@ -38,7 +38,6 @@ set(SOURCES
     io/buffer_exporter.cpp
     ipc/message_exchange.cpp
     ipc/raw_data_decode.cpp
-    math/assorted.cpp
     math/linear_algebra.cpp
     ui/decorated_line_edit.cpp
     ui/gl_canvas.cpp
@@ -78,7 +77,7 @@ target_include_directories(${PROJECT_NAME}
 
 # Include external dependencies as "system dependencies" so compilation errors from them are ignored
 target_include_directories(${PROJECT_NAME} SYSTEM
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen/Eigen
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Khronos)
 
 target_compile_options(${PROJECT_NAME} PRIVATE "$<$<PLATFORM_ID:UNIX>:-Wl,--exclude-libs,ALL>")
@@ -94,3 +93,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)
+
+add_subdirectory(oidbridge)

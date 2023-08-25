@@ -218,7 +218,7 @@ void MainWindow::initialize_settings()
         settings.value("PreviousSession/buffers")
             .value<QList<BufferExpiration>>();
 
-    foreach (const auto& previous_buffer, previous_buffers) {
+    for (const auto& previous_buffer : previous_buffers) {
         if (previous_buffer.second >= now) {
             previous_session_buffers_.insert(
                 previous_buffer.first.toStdString());

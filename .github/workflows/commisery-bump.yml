@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2021 OpenImageDebugger contributors
+# Copyright (c) 2015-2023 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,10 +21,27 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.10.0)
+name: Bump version
+on:
+  workflow_call:
+    outputs:
+      next-version:
+        description: "Next version determined by commisery"
+        value: ${{ jobs.bump-version.outputs.next-version }}
 
-project(OpenImageDebugger)
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
-
-add_subdirectory(src)
+jobs:
+  bump-version:
+    name: Bump version and release
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Release version
+        id: release-version
+        uses: tomtom-international/commisery-action/bump@420729f8fb1c0833ece82f0c7c183c9e817c26b8
+        with:
+          token: ${{ github.token }}
+          create-release: true
+      - run: echo "Current version is ${{ steps.release-version.outputs.current-version }}"
+      - if: steps.release-version.outputs.next-version != ''
+        run: echo "Version bumped to ${{ steps.release-version.outputs.next-version }}"
+    outputs:
+      next-version: ${{ steps.release-version.outputs.next-version }}

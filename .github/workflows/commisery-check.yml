@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2021 OpenImageDebugger contributors
+# Copyright (c) 2015-2023 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,10 +21,20 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.10.0)
+name: Commisery
+on:
+  pull_request:
 
-project(OpenImageDebugger)
+jobs:
+  commit-message:
+    name: Conventional Commit compliance
+    runs-on: ubuntu-22.04
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
-
-add_subdirectory(src)
+    steps:
+      - name: Check for Conventional Commit compliance
+        uses: tomtom-international/commisery-action@420729f8fb1c0833ece82f0c7c183c9e817c26b8
+        with:
+          token: ${{ github.token }}
+          validate-commits: false
+          validate-pull-request: true
+          validate-pull-request-title-bump: false

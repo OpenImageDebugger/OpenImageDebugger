@@ -20,7 +20,7 @@ class Camera : public Component
 
     Camera& operator=(Camera&& cam) = default;
 
-    static constexpr float zoom_factor = 1.1;
+    static constexpr float zoom_factor = 1.1f;
     mat4 projection;
 
     vec4 mouse_position = vec4::zero();

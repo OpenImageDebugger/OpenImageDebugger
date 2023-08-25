@@ -30,13 +30,13 @@
 std::vector<std::uint8_t>
     make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
 {
-    int element_count = buff_double.size() / sizeof(double);
+    const std::size_t element_count = buff_double.size() / sizeof(double);
     std::vector<std::uint8_t> buff_float(element_count * sizeof(float));
 
     // Cast from double to float
     const double* src = reinterpret_cast<const double*>(buff_double.data());
     float* dst = reinterpret_cast<float*>(buff_float.data());
-    for (int i = 0; i < element_count; ++i) {
+    for (std::size_t i = 0; i < element_count; ++i) {
         dst[i] = static_cast<float>(src[i]);
     }
 
