@@ -63,8 +63,9 @@ void MainWindow::initialize_settings_ui_splitter(QSettings& settings)
     QVariantList listVariants = variant.toList();
 
     QList<int> listSizes;
-    foreach (const QVariant& size, listVariants)
+    for (const QVariant& size : listVariants) {
         listSizes.append(size.toInt());
+    }
 
     ui_->splitter->setSizes(listSizes);
 }
