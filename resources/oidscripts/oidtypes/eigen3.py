@@ -82,7 +82,9 @@ class EigenXX(interface.TypeInspectorInterface):
 
         # Set row stride and pixel layout
         pixel_layout = 'bgra'
-        row_stride = width
+
+        eigen_stride = int(picked_obj.type.template_argument(2).template_argument(1))
+        row_stride = eigen_stride if eigen_stride > 0 else width
 
         return {
             'display_name': obj_name + ' (' + str(matrix_type_obj) + ')',
