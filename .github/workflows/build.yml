@@ -36,7 +36,7 @@ jobs:
                 os: [ ubuntu-20.04, ubuntu-22.04, macos-12, macos-13, windows-2019, windows-2022 ]
         runs-on: ${{ matrix.os }}
         steps:
-            - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac
+            - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
               with:
                 fetch-depth: 0
                 submodules: 'recursive'
@@ -60,7 +60,7 @@ jobs:
               run: tar --strip-components 1 -cvf build-${{ matrix.os }}.tar out/OpenImageDebugger
 
             - name: Upload build
-              uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce
+              uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32
               with:
                 name: build-${{ matrix.os }}
                 path: build-${{ matrix.os }}.tar
