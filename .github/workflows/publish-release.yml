@@ -26,6 +26,13 @@ name: Publish release
 on:
   push:
     branches: [ main ]
+  workflow_run:
+    # pushes done by a workflow won't trigger on.push without a GH PAT. Using on.workflow_run instead.
+    # see:
+    #   - https://github.com/orgs/community/discussions/25702
+    #   - https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
+    workflows: [ Dependabot auto-approve ]
+    types: [ completed ]
 
 jobs:
   bump:
