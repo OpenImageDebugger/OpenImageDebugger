@@ -33,11 +33,11 @@ updates:
     schedule:
       interval: "daily"
     commit-message:
-      prefix: "feat"
+      prefix: "fix"
 
   - package-ecosystem: "github-actions" # See documentation for possible values
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
     commit-message:
-      prefix: "fix"
+      prefix: "ci"
