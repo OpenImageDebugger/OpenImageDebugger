@@ -40,6 +40,8 @@ jobs:
               with:
                 fetch-depth: 0
                 submodules: 'recursive'
+                # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
+                persist-credentials: false
 
             - name: Install Qt
               uses: jurplel/install-qt-action@b3ea5275e37b734d027040e2c7fe7a10ea2ef946
