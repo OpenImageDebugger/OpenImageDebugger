@@ -41,7 +41,7 @@ jobs:
         id: metadata
         uses: dependabot/fetch-metadata@c9c4182bf1b97f5224aee3906fd373f6b61b4526
         with:
-          github-token: "${{ secrets.GH_PAT }}"
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
       - name: Approve and enable auto-merge for a PR
         run: |
             gh pr review --approve "$PR_URL"
