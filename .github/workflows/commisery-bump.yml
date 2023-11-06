@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Release version
         id: release-version
-        uses: tomtom-international/commisery-action/bump@895bcd8875390d5929f8778b66af6d30d7bbc313
+        uses: tomtom-international/commisery-action/bump@33eb2d6e7dfc53e6d3d09ea20c639b8858f75021
         with:
           token: ${{ github.token }}
           create-release: true
