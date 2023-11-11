@@ -36,10 +36,12 @@ jobs:
                 os: [ ubuntu-20.04, ubuntu-22.04, macos-12, macos-13, windows-2019, windows-2022 ]
         runs-on: ${{ matrix.os }}
         steps:
-            - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608
+            - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
               with:
                 fetch-depth: 0
                 submodules: 'recursive'
+                # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
+                persist-credentials: false
 
             - name: Install Qt
               uses: jurplel/install-qt-action@b3ea5275e37b734d027040e2c7fe7a10ea2ef946
