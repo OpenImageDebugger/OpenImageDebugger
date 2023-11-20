@@ -20,7 +20,7 @@ assignees: ''
 
 A clear and concise description of what the bug is.
 
-## To Reproduce
+### To Reproduce
 
 Steps to reproduce the behavior:
 
@@ -28,15 +28,15 @@ Steps to reproduce the behavior:
 2. Step 2
 3. Step N
 
-## Expected behavior
+### Expected behavior
 
 A clear and concise description of what you expected to happen.
 
-## Actual behavior
+### Actual behavior
 
 A clear and concise description of what you actually happens.
 
-## Error messages/stack traces
+### Error messages/stack traces
 
 Please include error messages and/or stack traces in **plain text format**, preferrably using
 
@@ -44,11 +44,11 @@ Please include error messages and/or stack traces in **plain text format**, pref
 Formatted code blocks using triple backticks (```)
 ```
 
-## Screenshots
+### Screenshots
 
 :white_check_mark: If applicable, add screenshots **of the image(s) you are trying to visualize** to help explain your problem.
 :x: Screenshots of error messages are not helpful, please post formatted text instead.
 
-## Additional context
+### Additional context
 
 Add any other context about the problem here.
