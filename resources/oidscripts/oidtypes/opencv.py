@@ -80,7 +80,11 @@ class CvMat(interface.TypeInspectorInterface):
     Implementation for inspecting OpenCV CvMat structs
     """
     def get_buffer_metadata(self, obj_name, picked_obj, debugger_bridge):
-        buffer = debugger_bridge.get_casted_pointer('char', picked_obj['data'])
+        data = picked_obj['data']
+        if data.type == 'CvMat::(unnamed union)':
+            data = data[0]
+
+        buffer = debugger_bridge.get_casted_pointer('char', data)
         if buffer == 0x0:
             raise Exception('Received null buffer!')
 
