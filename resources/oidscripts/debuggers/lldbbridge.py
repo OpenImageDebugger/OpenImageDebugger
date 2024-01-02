@@ -230,20 +230,13 @@ class SymbolWrapper(DebuggerSymbolReference):
         return float(string_value)
 
     def __getitem__(self, member):
-        num_children = self._symbol.GetNumChildren()
-        if isinstance(member, int):
-            invalid_member_requested = member > num_children
-            get_symbol_child = self._symbol.GetChildAtIndex
-        elif isinstance(member, str):
-            invalid_member_requested = self._symbol.GetIndexOfChildWithName(
-                member) > num_children
-            get_symbol_child = self._symbol.GetChildMemberWithName
+        child = self._symbol.GetChildAtIndex(member) if isinstance(member, int) \
+            else self._symbol.GetChildMemberWithName(str(member))
 
-        if invalid_member_requested:
+        if not child.IsValid():
             raise KeyError
 
-        symbol_child = get_symbol_child(member)
-        return SymbolWrapper(symbol_child)
+        return SymbolWrapper(child)
 
     def get_casted_pointer(self):
         if self._symbol.TypeIsPointerType():
