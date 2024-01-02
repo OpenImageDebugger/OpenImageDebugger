@@ -53,7 +53,7 @@ class Mat(interface.TypeInspectorInterface):
             row_stride = int(row_stride / 8)
 
         return {
-            'display_name':  obj_name + ' (' + str(picked_obj.type) + ')',
+            'display_name':  f'{obj_name} ({picked_obj.type})',
             'pointer': buffer,
             'width': width,
             'height': height,
@@ -110,7 +110,7 @@ class CvMat(interface.TypeInspectorInterface):
             row_stride = int(row_stride / 8)
 
         return {
-            'display_name':  obj_name + ' (' + str(picked_obj.type) + ')',
+            'display_name':  f'{obj_name} ({picked_obj.type})',
             'pointer': buffer,
             'width': width,
             'height': height,
