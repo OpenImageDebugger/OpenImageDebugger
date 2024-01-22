@@ -40,15 +40,23 @@ customized to work with any arbitrary data structure.
 * Designed to scale well for HighDPI displays
 * Works on Linux, macOS X and Windows (experimental)
 
+## Supported OSes
+
+* OID is developed with Ubuntu as the main target. The goal is to support the two latest LTS versions at a given time.
+  * Ubuntu is also used as a basis for the minimum versions of the dependencies: we try to support the default versions of the packages you get via `apt install`
+* There are currently no plans to support other Linux distros. OID may or may not compile on your favorite distro, your mileage may vary.
+* Support for MacOS and Windows are somewhat experimental now - the code should be able to compile (see <https://github.com/OpenImageDebugger/OpenImageDebugger/releases>), but the binaries are not actively tested - in fact we currently have no automated tests at all for any OS - help is more than welcome in this regard. Also, we haven't come up with a simple installation/usage guides for theses OSes yet.
+
 ## Requirements
 
 * A C++17 compliant compiler
 * GDB **7.10+** or LLDB **6+**
-* Qt **5.6+** (required due to the HighDPI display support - download it
-   [here](https://info.qt.io/download-qt-for-application-development))
+* Qt **5.12.8+**
 * CMake **3.10.0+**
-* Python development packages
+* Python **3.8.10+** development packages
 * OpenGL 2.1+ support
+
+Note: this list might get out-of-date by accident. For a more accurate list of requirements, please check what is used in <https://github.com/OpenImageDebugger/OpenImageDebugger/blob/main/.github/workflows/build.yml>.
 
 ## Installation
 
