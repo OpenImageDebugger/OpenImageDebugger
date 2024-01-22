@@ -32,6 +32,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS False)
 
 find_package(Threads REQUIRED)
-find_package(Qt5 COMPONENTS Network REQUIRED)
+find_package(Qt5 5.12.8 REQUIRED COMPONENTS Network)
 
 add_compile_options("$<$<PLATFORM_ID:Linux,Darwin>:-Wall;-Wextra;-pedantic;-fvisibility=hidden>")

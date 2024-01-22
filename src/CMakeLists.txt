@@ -25,13 +25,13 @@ cmake_minimum_required(VERSION 3.10.0)
 
 project(oidwindow)
 
-find_package(OpenGL REQUIRED)
+find_package(OpenGL 2.1 REQUIRED)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5 COMPONENTS Core Gui OpenGL Widgets REQUIRED)
+find_package(Qt5 5.12.8 REQUIRED COMPONENTS Core Gui OpenGL Widgets)
 
 set(SOURCES
     oid_window.cpp

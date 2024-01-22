@@ -25,7 +25,7 @@ cmake_minimum_required(VERSION 3.10.0)
 
 project(oidbridge_python3)
 
-find_package(PythonLibs 3 EXACT)
+find_package(PythonLibs 3.8.10 REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
             oid_bridge.cpp

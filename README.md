@@ -54,7 +54,7 @@ customized to work with any arbitrary data structure.
 * Qt **5.12.8+**
 * CMake **3.10.0+**
 * Python **3.8.10+** development packages
-* OpenGL 2.1+ support
+* OpenGL **2.1+** support
 
 Note: this list might get out-of-date by accident. For a more accurate list of requirements, please check what is used in <https://github.com/OpenImageDebugger/OpenImageDebugger/blob/main/.github/workflows/build.yml>.
 
