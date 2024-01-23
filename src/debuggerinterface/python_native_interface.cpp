@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -38,10 +38,10 @@ long get_py_int(PyObject* obj)
 }
 
 
-uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, int tuple_index)
+uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, const int tuple_index)
 {
     PyObject* tuple_item = PyTuple_GetItem(obj, tuple_index);
-    return reinterpret_cast<uint8_t*>(PyLong_AsVoidPtr(tuple_item));
+    return static_cast<uint8_t*>(PyLong_AsVoidPtr(tuple_item));
 }
 
 
@@ -68,6 +68,6 @@ void get_c_ptr_from_py_buffer(PyObject* obj, uint8_t*& buffer_ptr, size_t& buffe
 {
     assert(PyMemoryView_Check(obj));
     const auto py_buff = PyMemoryView_GET_BUFFER(obj);
-    buffer_ptr = reinterpret_cast<uint8_t*>(py_buff->buf);
+    buffer_ptr = static_cast<uint8_t*>(py_buff->buf);
     buffer_size = static_cast<size_t>(py_buff->len);
 }

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,8 +34,8 @@ std::vector<std::uint8_t>
     std::vector<std::uint8_t> buff_float(element_count * sizeof(float));
 
     // Cast from double to float
-    const double* src = reinterpret_cast<const double*>(buff_double.data());
-    float* dst = reinterpret_cast<float*>(buff_float.data());
+    const auto src = reinterpret_cast<const double*>(buff_double.data());
+    auto* dst = reinterpret_cast<float*>(buff_float.data());
     for (std::size_t i = 0; i < element_count; ++i) {
         dst[i] = static_cast<float>(src[i]);
     }
@@ -49,7 +49,8 @@ size_t typesize(BufferType type)
     switch(type) {
     case BufferType::Int32:
         return sizeof(int32_t);
-    case BufferType::Short: // fall-through
+    case BufferType::Short:
+        [[fallthrough]];
     case BufferType::UnsignedShort:
         return sizeof(int16_t);
     case BufferType::Float32:

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,54 +23,45 @@
  * IN THE SOFTWARE.
  */
 
-#include <cmath>
-#include <map>
-
 #include "game_object.h"
 
+#include <map>
+
 #include "ui/main_window/main_window.h"
-#include "visualization/components/camera.h"
 #include "visualization/components/component.h"
 #include "visualization/stage.h"
 
 
 GameObject::GameObject()
+    : stage(nullptr)
 {
     pose_.set_identity();
 }
 
 
-bool GameObject::initialize()
+bool GameObject::initialize() const
 {
-    for (const auto& comp : all_components_) {
-        if (!comp.second->initialize()) {
-            return false;
-        }
-    }
-    return true;
+    return std::all_of(all_components_.begin(), all_components_.end(),
+                [](const auto& comp) { return comp.second->initialize(); });
 }
 
 
-bool GameObject::post_initialize()
+bool GameObject::post_initialize() const
 {
-    for (const auto& comp : all_components_) {
-        if (!comp.second->post_initialize()) {
-            return false;
-        }
-    }
-    return true;
+    return std::all_of(all_components_.begin(), all_components_.end(),
+            [](const auto& comp) { return comp.second->post_initialize(); });
 }
 
 
-void GameObject::update()
+void GameObject::update() const
 {
-    for (const auto& comp : all_components_) {
-        comp.second->update();
+    for (const auto& [_, comp] : all_components_) {
+        comp->update();
     }
 }
 
 void GameObject::add_component(const std::string& component_name,
-                               std::shared_ptr<Component> component)
+                               const std::shared_ptr<Component>& component)
 {
     all_components_[component_name] = component;
 }
@@ -88,35 +79,35 @@ void GameObject::set_pose(const mat4& pose)
 }
 
 
-void GameObject::request_render_update()
+void GameObject::request_render_update() const
 {
     stage->main_window->request_render_update();
 }
 
 
-void GameObject::mouse_drag_event(int mouse_x, int mouse_y)
+void GameObject::mouse_drag_event(const int mouse_x, const int mouse_y) const
 {
-    for (const auto& comp : all_components_) {
-        comp.second->mouse_drag_event(mouse_x, mouse_y);
+    for (const auto& [_, comp] : all_components_) {
+        comp->mouse_drag_event(mouse_x, mouse_y);
     }
 }
 
 
-void GameObject::mouse_move_event(int mouse_x, int mouse_y)
+void GameObject::mouse_move_event(const int mouse_x, const int mouse_y) const
 {
-    for (const auto& comp : all_components_) {
-        comp.second->mouse_move_event(mouse_x, mouse_y);
+    for (const auto& [_, comp] : all_components_) {
+        comp->mouse_move_event(mouse_x, mouse_y);
     }
 }
 
 
-EventProcessCode GameObject::key_press_event(int key_code)
+EventProcessCode GameObject::key_press_event(int key_code) const
 {
-    EventProcessCode event_intercepted = EventProcessCode::IGNORED;
+    auto event_intercepted = EventProcessCode::IGNORED;
 
-    for (const auto& comp : all_components_) {
-        EventProcessCode event_intercepted_component =
-            comp.second->key_press_event(key_code);
+    for (const auto& [_, comp] : all_components_) {
+        const auto event_intercepted_component =
+            comp->key_press_event(key_code);
 
         if (event_intercepted_component == EventProcessCode::INTERCEPTED) {
             event_intercepted = EventProcessCode::INTERCEPTED;

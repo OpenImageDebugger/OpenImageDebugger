@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -38,11 +38,11 @@ class GameObject;
 class Stage
 {
   public:
-    bool contrast_enabled;
+    bool contrast_enabled{};
     std::vector<uint8_t> buffer_icon;
     MainWindow* main_window;
 
-    Stage(MainWindow* main_window);
+    explicit Stage(MainWindow* main_window);
 
     bool initialize(const uint8_t* buffer,
                     int buffer_width_i,
@@ -62,9 +62,9 @@ class Stage
                        const std::string& pixel_layout,
                        bool transpose_buffer);
 
-    GameObject* get_game_object(std::string tag);
+    GameObject* get_game_object(const std::string& tag);
 
-    void update();
+    void update() const;
 
     void draw();
 
@@ -72,11 +72,11 @@ class Stage
 
     void resize_callback(int w, int h);
 
-    void mouse_drag_event(int mouse_x, int mouse_y);
+    void mouse_drag_event(int mouse_x, int mouse_y) const;
 
-    void mouse_move_event(int mouse_x, int mouse_y);
+    void mouse_move_event(int mouse_x, int mouse_y) const;
 
-    EventProcessCode key_press_event(int key_code);
+    [[nodiscard]] EventProcessCode key_press_event(int key_code) const;
 
     void go_to_pixel(float x, float y);
 

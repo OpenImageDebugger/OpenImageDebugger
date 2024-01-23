@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,7 +32,7 @@ using namespace std;
 
 void MainWindow::decode_set_available_symbols()
 {
-    std::unique_lock<std::mutex> lock(ui_mutex_);
+    std::unique_lock lock(ui_mutex_);
     MessageDecoder message_decoder(&socket_);
     message_decoder.read<QStringList, QString>(available_vars_);
 
@@ -53,8 +53,8 @@ void MainWindow::respond_get_observed_symbols()
     MessageComposer message_composer;
     message_composer.push(MessageType::GetObservedSymbolsResponse)
         .push(held_buffers_.size());
-    for (const auto& name : held_buffers_) {
-        message_composer.push(name.first);
+    for (const auto& [name, _] : held_buffers_) {
+        message_composer.push(name);
     }
     message_composer.send(&socket_);
 }
@@ -113,7 +113,7 @@ void MainWindow::decode_plot_buffer_contents()
     }
 
     if (buffer_stage == stages_.end()) { // New buffer request
-        shared_ptr<Stage> stage = make_shared<Stage>(this);
+        auto stage = make_shared<Stage>(this);
         if (!stage->initialize(held_buffers_[variable_name_str].data(),
                                buff_width,
                                buff_height,
@@ -140,7 +140,7 @@ void MainWindow::decode_plot_buffer_contents()
         label << display_name_str << "\n[" << visualized_width << "x"
               << visualized_height << "]\n"
               << get_type_label(buff_type, buff_channels);
-        QListWidgetItem* item =
+        auto* item =
             new QListWidgetItem(QPixmap::fromImage(bufferIcon),
                                 label.str().c_str(),
                                 ui_->imageList);

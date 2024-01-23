@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2020 OpenImageDebugger
+ * Copyright (c) 2015-2024 OpenImageDebugger
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -35,6 +35,7 @@
 class ProcessImpl {
 public:
     virtual ~ProcessImpl() noexcept = default;
+
     /**
      * Start the process represented by its path and arguments
      * @param command binary and path and its arguments
@@ -45,7 +46,7 @@ public:
      * Check if the process is running
      * @return true if running, false otherwise
      */
-    virtual bool isRunning() const = 0;
+    [[nodiscard]] virtual bool isRunning() const = 0;
 
     /**
      * Kill the process
