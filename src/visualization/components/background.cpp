@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -35,6 +35,7 @@
 Background::Background(GameObject* game_object, GLCanvas* gl_canvas)
     : Component(game_object, gl_canvas)
     , background_prog(gl_canvas)
+    , background_vbo(0)
 {
 }
 
@@ -55,7 +56,7 @@ bool Background::initialize()
 
     // Generate square VBO
     // clang-format off
-    static const GLfloat vertex_buffer_data[] = {
+    static constexpr GLfloat vertex_buffer_data[] = {
         -1, -1,
          1, -1,
          1,  1,
@@ -82,7 +83,7 @@ void Background::draw(const mat4&, const mat4&)
 
     gl_canvas_->glEnableVertexAttribArray(0);
     gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
-    gl_canvas_->glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    gl_canvas_->glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
     gl_canvas_->glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 

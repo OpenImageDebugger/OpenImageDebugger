@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,28 +36,25 @@ using namespace std;
 
 GLCanvas::GLCanvas(QWidget* parent)
     : QOpenGLWidget(parent)
-    , QOpenGLFunctions()
-    , mouse_x_(0)
-    , mouse_y_(0)
-    , initialized_(false)
-    , text_renderer_(new GLTextRenderer(this))
+      , mouse_x_(0)
+      , mouse_y_(0)
+      , main_window_(nullptr), icon_texture_(0), icon_fbo_(0), initialized_(false)
+      , text_renderer_(new GLTextRenderer(this))
 {
     mouse_down_[0] = mouse_down_[1] = false;
 }
 
 
-GLCanvas::~GLCanvas()
-{
-}
+GLCanvas::~GLCanvas() = default;
 
 
 void GLCanvas::mouseMoveEvent(QMouseEvent* ev)
 {
-    int last_mouse_x = mouse_x_;
-    int last_mouse_y = mouse_y_;
+    const int last_mouse_x = mouse_x_;
+    const int last_mouse_y = mouse_y_;
 
-    mouse_x_ = ev->localPos().x();
-    mouse_y_ = ev->localPos().y();
+    mouse_x_ = static_cast<int>(ev->localPos().x());
+    mouse_y_ = static_cast<int>(ev->localPos().y());
 
     if (mouse_down_[0]) {
         main_window_->mouse_drag_event(mouse_x_ - last_mouse_x,
@@ -101,9 +98,9 @@ void GLCanvas::initializeGL()
     ///
     // Texture for generating icons
     assert(main_window_ != nullptr);
-    QSizeF icon_size = main_window_->get_icon_size();
-    int icon_width   = icon_size.width();
-    int icon_height  = icon_size.height();
+    const QSizeF icon_size = main_window_->get_icon_size();
+    const auto icon_width = static_cast<int>(icon_size.width());
+    const auto icon_height= static_cast<int>(icon_size.height());
     glGenTextures(1, &icon_texture_);
     glBindTexture(GL_TEXTURE_2D, icon_texture_);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -118,7 +115,7 @@ void GLCanvas::initializeGL()
                  0,
                  GL_RGB,
                  GL_UNSIGNED_BYTE,
-                 NULL);
+                 nullptr);
 
     // Generate FBO
     glGenFramebuffers(1, &icon_fbo_);
@@ -129,15 +126,10 @@ void GLCanvas::initializeGL()
         GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, icon_texture_, 0);
 
     // Check if the GPU won't freak out about our FBO
-    GLenum status;
-    status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    switch (status) {
-    case GL_FRAMEBUFFER_COMPLETE:
-        break;
-    default:
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         cerr << "Error: FBO configuration is not supported -- sorry mate!"
              << endl;
-        break;
+        return;
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
@@ -162,7 +154,7 @@ void GLCanvas::wheelEvent(QWheelEvent* ev)
 }
 
 
-const GLTextRenderer* GLCanvas::get_text_renderer()
+const GLTextRenderer* GLCanvas::get_text_renderer() const
 {
     return text_renderer_.get();
 }
@@ -175,16 +167,16 @@ void GLCanvas::render_buffer_icon(Stage* stage, const int icon_width, const int 
     glViewport(0, 0, icon_width, icon_height);
 
     GameObject* camera = stage->get_game_object("camera");
-    Camera* cam        = camera->get_component<Camera>("camera_component");
+    auto* cam = camera->get_component<Camera>("camera_component");
 
     // Save original camera pose
-    Camera original_pose = *cam;
+    const Camera original_pose = *cam;
 
     // Adapt camera to the thumbnail dimentions
     cam->window_resized(icon_width, icon_height);
     // Flips the projected image along the horizontal axis
     cam->projection.set_ortho_projection(
-        icon_width / 2.0, -icon_height / 2.0, -1.0f, 1.0f);
+        static_cast<float>(icon_width) / 2.0f, static_cast<float>(-icon_height) / 2.0f, -1.0f, 1.0f);
     // Reposition buffer in the center of the canvas
     cam->recenter_camera();
 
@@ -207,7 +199,7 @@ void GLCanvas::render_buffer_icon(Stage* stage, const int icon_width, const int 
 }
 
 
-void GLCanvas::resizeGL(int w, int h)
+void GLCanvas::resizeGL(const int w, const int h)
 {
     glViewport(0, 0, w, h);
     main_window_->resize_callback(w, h);

@@ -53,5 +53,5 @@ int main(int argc, char *argv[])
 
     MainWindow window(host_settings);
     window.show();
-    return app.exec();
+    return QApplication::exec();
 }

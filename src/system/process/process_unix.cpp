@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2021 OpenImageDebugger
+ * Copyright (c) 2015-2024 OpenImageDebugger
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,10 +26,9 @@
 #include "process_impl.h"
 #include "process.h"
 
-#include <signal.h>
+#include <csignal>
 #include <spawn.h>
 
-#include <memory>
 
 using namespace std;
 
@@ -38,14 +37,14 @@ class ProcessImplUnix final : public ProcessImpl
 public:
     ProcessImplUnix() = default;
 
-    ~ProcessImplUnix() noexcept
+    ~ProcessImplUnix() noexcept override
     {
         kill();
     }
 
     void start(const std::vector<std::string>& command) override
     {
-        const auto windowBinaryPath = command[0];
+        const auto& windowBinaryPath = command[0];
 
         vector<char*> argv;
         argv.reserve(command.size());
@@ -64,7 +63,7 @@ public:
                     environ);
     }
 
-    bool isRunning() const override
+    [[nodiscard]] bool isRunning() const override
     {
         return pid_ != 0 && ::kill(pid_, 0) == 0;
     }

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,17 +23,15 @@
  * IN THE SOFTWARE.
  */
 
-#include <iostream>
-
 #include "linear_algebra.h"
 
-
-vec4::vec4()
-{
-}
+#include <iostream>
 
 
-vec4::vec4(float x, float y, float z, float w)
+vec4::vec4() = default;
+
+
+vec4::vec4(const float x, const float y, const float z, const float w)
     : vec(x, y, z, w)
 {
 }
@@ -63,23 +61,23 @@ vec4& vec4::operator+=(const vec4& b)
 
 vec4 vec4::operator+(const vec4& b) const
 {
-    return vec4(vec[0] + b.vec[0],
-                vec[1] + b.vec[1],
-                vec[2] + b.vec[2],
-                vec[3] + b.vec[3]);
+return {vec[0] + b.vec[0],
+        vec[1] + b.vec[1],
+        vec[2] + b.vec[2],
+        vec[3] + b.vec[3]};
 }
 
 
 vec4 vec4::operator-(const vec4& b) const
 {
-    return vec4(vec[0] - b.vec[0],
-                vec[1] - b.vec[1],
-                vec[2] - b.vec[2],
-                vec[3] - b.vec[3]);
+    return {vec[0] - b.vec[0],
+            vec[1] - b.vec[1],
+            vec[2] - b.vec[2],
+            vec[3] - b.vec[3]};
 }
 
 
-vec4 vec4::operator*(float scalar) const
+vec4 vec4::operator*(const float scalar) const
 {
     vec4 result(*this);
     result.vec *= scalar;
@@ -150,7 +148,7 @@ const float& vec4::w() const
 
 vec4 vec4::zero()
 {
-    return vec4(0, 0, 0, 0);
+    return {0, 0, 0, 0};
 }
 
 
@@ -173,12 +171,12 @@ void mat4::set_identity()
 }
 
 
-void mat4::set_from_st(float scaleX,
-                       float scaleY,
-                       float scaleZ,
-                       float x,
-                       float y,
-                       float z)
+void mat4::set_from_st(const float scaleX,
+                       const float scaleY,
+                       const float scaleZ,
+                       const float x,
+                       const float y,
+                       const float z)
 {
     float* data = this->data();
 
@@ -192,13 +190,13 @@ void mat4::set_from_st(float scaleX,
 }
 
 
-void mat4::set_from_srt(float scaleX,
-                        float scaleY,
-                        float scaleZ,
-                        float rZ,
-                        float x,
-                        float y,
-                        float z)
+void mat4::set_from_srt(const float scaleX,
+                        const float scaleY,
+                        const float scaleZ,
+                        const float rZ,
+                        const float x,
+                        const float y,
+                        const float z)
 {
     using Eigen::Affine3f;
     using Eigen::AngleAxisf;
@@ -224,7 +222,7 @@ void mat4::operator<<(const std::initializer_list<float>& data)
 }
 
 
-mat4 mat4::rotation(float angle)
+mat4 mat4::rotation(const float angle)
 {
     using Eigen::Affine3f;
     using Eigen::AngleAxisf;
@@ -269,7 +267,7 @@ mat4 mat4::scale(const vec4& factor)
 }
 
 
-void mat4::set_ortho_projection(float right, float top, float near, float far)
+void mat4::set_ortho_projection(const float right, const float top, const float near, const float far)
 {
     float* data = this->data();
 
@@ -309,7 +307,7 @@ vec4 mat4::operator*(const vec4& b) const
 }
 
 
-float&mat4::operator()(int row, int col) {
+float&mat4::operator()(const int row, const int col) {
     return mat_(row, col);
 }
 

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,6 +23,8 @@
  * IN THE SOFTWARE.
  */
 
+#include "main_window.h"
+
 #include <cmath>
 #include <iostream>
 
@@ -33,7 +35,6 @@
 #include <QShortcut>
 #include <QHostAddress>
 
-#include "main_window.h"
 
 #include "ui_main_window.h"
 
@@ -67,8 +68,8 @@ void MainWindow::initialize_settings()
     }
 
     // Load previous session symbols
-    QDateTime now = QDateTime::currentDateTime();
-    QList<BufferExpiration> previous_buffers =
+    const QDateTime now = QDateTime::currentDateTime();
+    auto previous_buffers =
         settings.value("PreviousSession/buffers")
             .value<QList<BufferExpiration>>();
 
@@ -87,7 +88,7 @@ void MainWindow::initialize_settings()
 }
 
 
-void MainWindow::initialize_ui_icons()
+void MainWindow::initialize_ui_icons() const
 {
 #define SET_FONT_ICON(ui_element, unicode_id) \
     ui_element->setFont(icons_font);          \
@@ -110,7 +111,7 @@ void MainWindow::initialize_ui_icons()
         qWarning() << "Could not load ionicons font file!";
     }
 
-    qreal screen_dpi_scale = get_screen_dpi_scale();
+    const qreal screen_dpi_scale = get_screen_dpi_scale();
     QFont icons_font;
     icons_font.setFamily("fontello");
     icons_font.setPointSizeF(10.f);
@@ -138,7 +139,7 @@ void MainWindow::initialize_ui_icons()
     SET_VECTOR_ICON(ui_->label_alpha_min, "label_alpha_channel.svg", 10, 10);
     SET_VECTOR_ICON(ui_->label_alpha_max, "label_alpha_channel.svg", 10, 10);
 
-    QLabel* label_min_max = new QLabel(ui_->minMaxEditor);
+    auto* label_min_max = new QLabel(ui_->minMaxEditor);
     SET_VECTOR_ICON(label_min_max, "lower_upper_bound.svg", 12.f, 52.f);
     ui_->gridLayout->addWidget(label_min_max, 0, 0, 2, 1);
 }
@@ -158,21 +159,21 @@ void MainWindow::initialize_timers()
 
 void MainWindow::initialize_shortcuts()
 {
-    QShortcut* symbol_list_focus_shortcut_ =
+    const QShortcut* symbol_list_focus_shortcut_ =
         new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_K), this);
     connect(symbol_list_focus_shortcut_,
             SIGNAL(activated()),
             ui_->symbolList,
             SLOT(setFocus()));
 
-    QShortcut* buffer_removal_shortcut_ =
+    const QShortcut* buffer_removal_shortcut_ =
         new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList);
     connect(buffer_removal_shortcut_,
             SIGNAL(activated()),
             this,
             SLOT(remove_selected_buffer()));
 
-    QShortcut* go_to_shortcut =
+    const QShortcut* go_to_shortcut =
         new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_L), this);
     connect(
         go_to_shortcut, SIGNAL(activated()), this, SLOT(toggle_go_to_dialog()));
@@ -208,7 +209,7 @@ void MainWindow::initialize_symbol_completer()
 }
 
 
-void MainWindow::initialize_left_pane()
+void MainWindow::initialize_left_pane() const
 {
     connect(ui_->imageList,
             SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
@@ -228,7 +229,7 @@ void MainWindow::initialize_left_pane()
 }
 
 
-void MainWindow::initialize_auto_contrast_form()
+void MainWindow::initialize_auto_contrast_form() const
 {
     // Configure auto contrast inputs
     ui_->ac_red_min->setValidator(new QDoubleValidator(ui_->ac_red_min));
@@ -277,7 +278,7 @@ void MainWindow::initialize_auto_contrast_form()
 }
 
 
-void MainWindow::initialize_toolbar()
+void MainWindow::initialize_toolbar() const
 {
     connect(ui_->acToggle, SIGNAL(clicked()), this, SLOT(ac_toggle()));
 

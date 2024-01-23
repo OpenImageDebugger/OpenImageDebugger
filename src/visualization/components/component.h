@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -44,7 +44,7 @@ class Component
 
     virtual bool post_buffer_update();
 
-    virtual int render_index() const;
+    [[nodiscard]] virtual int render_index() const;
 
     // Called after all components are initialized
     virtual bool post_initialize();

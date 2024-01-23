@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,6 +23,10 @@
  * IN THE SOFTWARE.
  */
 
+#include "oid_bridge.h"
+
+
+#include <cstdint>
 #include <deque>
 #include <iostream>
 #include <sstream>
@@ -30,12 +34,10 @@
 
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
-#include "oid_bridge.h"
 #include "ipc/message_exchange.h"
 #include "system/process/process.h"
 
 #include <QDataStream>
-#include <QString>
 #include <QTcpServer>
 #include <QTcpSocket>
 
@@ -47,29 +49,23 @@ struct UiMessage
     virtual ~UiMessage();
 };
 
-UiMessage::~UiMessage()
-{
-}
+UiMessage::~UiMessage() = default;
 
-struct GetObservedSymbolsResponseMessage : public UiMessage
+struct GetObservedSymbolsResponseMessage final : UiMessage
 {
     std::deque<string> observed_symbols;
-    ~GetObservedSymbolsResponseMessage();
+    ~GetObservedSymbolsResponseMessage() override;
 };
 
-GetObservedSymbolsResponseMessage::~GetObservedSymbolsResponseMessage()
-{
-}
+GetObservedSymbolsResponseMessage::~GetObservedSymbolsResponseMessage() = default;
 
-struct PlotBufferRequestMessage : public UiMessage
+struct PlotBufferRequestMessage final : UiMessage
 {
     std::string buffer_name;
-    ~PlotBufferRequestMessage();
+    ~PlotBufferRequestMessage() override;
 };
 
-PlotBufferRequestMessage::~PlotBufferRequestMessage()
-{
-}
+PlotBufferRequestMessage::~PlotBufferRequestMessage() = default;
 
 class PyGILRAII
 {
@@ -96,9 +92,8 @@ class PyGILRAII
 class OidBridge
 {
   public:
-    OidBridge(int (*plot_callback)(const char*))
-        : ui_proc_{}
-        , client_{nullptr}
+    explicit OidBridge(int (*plot_callback)(const char*))
+        : client_{nullptr}
         , plot_callback_{plot_callback}
     {
     }
@@ -112,8 +107,8 @@ class OidBridge
             return false;
         }
 
-        string windowBinaryPath = this->oid_path_ + "/oidwindow";
-        string portStdString    = std::to_string(server_.serverPort());
+        const string windowBinaryPath = this->oid_path_ + "/oidwindow";
+        const string portStdString = std::to_string(server_.serverPort());
 
         const vector<string> command {windowBinaryPath, "-style", "fusion", "-p", portStdString};
 
@@ -143,18 +138,16 @@ class OidBridge
         MessageComposer message_composer;
         message_composer.push(MessageType::GetObservedSymbols).send(client_);
 
-        auto response = fetch_message(MessageType::GetObservedSymbolsResponse);
+        const auto response = fetch_message(MessageType::GetObservedSymbolsResponse);
         if (response != nullptr) {
-            return static_cast<GetObservedSymbolsResponseMessage*>(
-                       response.get())
-                ->observed_symbols;
-        } else {
-            return {};
+            return dynamic_cast<GetObservedSymbolsResponseMessage*>(response.get())->observed_symbols;
         }
+
+        return {};
     }
 
 
-    void set_available_symbols(const deque<string>& available_vars)
+    void set_available_symbols(const deque<string>& available_vars) const
     {
         assert(client_ != nullptr);
 
@@ -181,14 +174,14 @@ class OidBridge
     void plot_buffer(const string& variable_name_str,
                      const string& display_name_str,
                      const string& pixel_layout_str,
-                     bool transpose_buffer,
-                     int buff_width,
-                     int buff_height,
-                     int buff_channels,
-                     int buff_stride,
-                     BufferType buff_type,
-                     uint8_t* buff_ptr,
-                     size_t buff_length)
+                     const bool transpose_buffer,
+                     const int buff_width,
+                     const int buff_height,
+                     const int buff_channels,
+                     const int buff_stride,
+                     const BufferType buff_type,
+                     const uint8_t* buff_ptr,
+                     const size_t buff_length) const
     {
         MessageComposer message_composer;
         message_composer.push(MessageType::PlotBufferContents)
@@ -223,9 +216,9 @@ class OidBridge
     std::unique_ptr<UiMessage>
     try_get_stored_message(const MessageType& msg_type)
     {
-        auto find_msg_handler = received_messages_.find(msg_type);
-
-        if (find_msg_handler != received_messages_.end()) {
+        if (const auto find_msg_handler = received_messages_.find(msg_type);
+            find_msg_handler != received_messages_.end()
+        ) {
             unique_ptr<UiMessage> result = std::move(find_msg_handler->second);
             received_messages_.erase(find_msg_handler);
             return result;
@@ -266,21 +259,21 @@ class OidBridge
     }
 
 
-    unique_ptr<UiMessage> decode_plot_buffer_request()
+    [[nodiscard]] unique_ptr<UiMessage> decode_plot_buffer_request() const
     {
         assert(client_ != nullptr);
 
-        auto response = new PlotBufferRequestMessage();
+        const auto response = new PlotBufferRequestMessage();
         MessageDecoder message_decoder(client_);
         message_decoder.read(response->buffer_name);
         return unique_ptr<UiMessage>(response);
     }
 
-    unique_ptr<UiMessage> decode_get_observed_symbols_response()
+    [[nodiscard]] unique_ptr<UiMessage> decode_get_observed_symbols_response() const
     {
         assert(client_ != nullptr);
 
-        auto response = new GetObservedSymbolsResponseMessage();
+        const auto response = new GetObservedSymbolsResponseMessage();
 
         MessageDecoder message_decoder(client_);
         message_decoder.read<std::deque<std::string>, std::string>(
@@ -292,9 +285,9 @@ class OidBridge
     std::unique_ptr<UiMessage> fetch_message(const MessageType& msg_type)
     {
         // Return message if it was already received before
-        auto result = try_get_stored_message(msg_type);
-
-        if (result != nullptr) {
+        if (auto result = try_get_stored_message(msg_type);
+            result != nullptr
+        ) {
             return result;
         }
 
@@ -337,7 +330,7 @@ AppHandler oid_initialize(int (*plot_callback)(const char*),
     PyObject* py_oid_path =
         PyDict_GetItemString(optional_parameters, "oid_path");
 
-    OidBridge* app = new OidBridge(plot_callback);
+    const auto app = new OidBridge(plot_callback);
 
     if (py_oid_path) {
         string oid_path_str;
@@ -345,7 +338,7 @@ AppHandler oid_initialize(int (*plot_callback)(const char*),
         app->set_path(oid_path_str);
     }
 
-    return static_cast<AppHandler>(app);
+    return app;
 }
 
 
@@ -353,7 +346,7 @@ void oid_cleanup(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    OidBridge* app = static_cast<OidBridge*>(handler);
+    const auto* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
@@ -369,7 +362,7 @@ void oid_exec(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    OidBridge* app = static_cast<OidBridge*>(handler);
+    auto* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
@@ -385,7 +378,7 @@ int oid_is_window_ready(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    OidBridge* app = static_cast<OidBridge*>(handler);
+    auto* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
@@ -401,7 +394,7 @@ PyObject* oid_get_observed_buffers(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    OidBridge* app = static_cast<OidBridge*>(handler);
+    const auto app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_Exception,
@@ -410,13 +403,13 @@ PyObject* oid_get_observed_buffers(AppHandler handler)
         return nullptr;
     }
 
-    auto observed_symbols = app->get_observed_symbols();
+    const auto observed_symbols = app->get_observed_symbols();
     PyObject* py_observed_symbols =
         PyList_New(static_cast<Py_ssize_t>(observed_symbols.size()));
 
-    int observed_symbols_sentinel = static_cast<int>(observed_symbols.size());
+    const auto observed_symbols_sentinel = static_cast<int>(observed_symbols.size());
     for (int i = 0; i < observed_symbols_sentinel; ++i) {
-        string symbol_name       = observed_symbols[i];
+        const string& symbol_name = observed_symbols[i];
         PyObject* py_symbol_name = PyBytes_FromString(symbol_name.c_str());
 
         if (py_symbol_name == nullptr) {
@@ -431,13 +424,13 @@ PyObject* oid_get_observed_buffers(AppHandler handler)
 }
 
 
-void oid_set_available_symbols(AppHandler handler, PyObject* available_vars_py)
+void oid_set_available_symbols(AppHandler handler, PyObject* available_vars)
 {
     PyGILRAII py_gil_raii;
 
-    assert(PyList_Check(available_vars_py));
+    assert(PyList_Check(available_vars));
 
-    OidBridge* app = static_cast<OidBridge*>(handler);
+    const auto app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
@@ -447,9 +440,9 @@ void oid_set_available_symbols(AppHandler handler, PyObject* available_vars_py)
     }
 
     deque<string> available_vars_stl;
-    for (Py_ssize_t pos = 0; pos < PyList_Size(available_vars_py); ++pos) {
+    for (Py_ssize_t pos = 0; pos < PyList_Size(available_vars); ++pos) {
         string var_name_str;
-        PyObject* listItem = PyList_GetItem(available_vars_py, pos);
+        PyObject* listItem = PyList_GetItem(available_vars, pos);
         copy_py_string(var_name_str, listItem);
         available_vars_stl.push_back(var_name_str);
     }
@@ -462,7 +455,7 @@ void oid_run_event_loop(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    OidBridge* app = static_cast<OidBridge*>(handler);
+    auto* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
@@ -480,7 +473,7 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     PyGILRAII py_gil_raii;
 
 
-    OidBridge* app = static_cast<OidBridge*>(handler);
+    auto* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
@@ -594,7 +587,7 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     auto buff_channels = static_cast<int>(get_py_int(py_channels));
     auto buff_stride   = static_cast<int>(get_py_int(py_row_stride));
 
-    BufferType buff_type = static_cast<BufferType>(get_py_int(py_type));
+    auto buff_type     = static_cast<BufferType>(get_py_int(py_type));
 
     const size_t buff_size_expected =
         static_cast<size_t>(buff_stride * buff_height * buff_channels) *

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -41,7 +41,7 @@ class ShaderProgram
   public:
     enum TexelChannels { FormatR, FormatRG, FormatRGB, FormatRGBA };
 
-    ShaderProgram(GLCanvas* gl_canvas);
+    explicit ShaderProgram(GLCanvas* gl_canvas);
 
     ~ShaderProgram();
 
@@ -83,7 +83,7 @@ class ShaderProgram
 
     GLuint compile(GLuint type, GLchar const* source);
 
-    std::string get_shader_type(GLuint type);
+    static std::string get_shader_type(GLuint type);
 
     bool is_shader_outdated(TexelChannels texel_format,
                             const std::vector<std::string>& uniforms,
