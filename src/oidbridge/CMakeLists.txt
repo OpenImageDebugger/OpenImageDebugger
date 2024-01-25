@@ -25,7 +25,7 @@ cmake_minimum_required(VERSION 3.10.0)
 
 project(oidbridge_python3)
 
-find_package(Python3 3.8.10 REQUIRED COMPONENTS Development)
+find_package(PythonLibs 3.8.10 REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
             oid_bridge.cpp
@@ -43,13 +43,13 @@ target_include_directories(${PROJECT_NAME}
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../)
 
 target_include_directories(${PROJECT_NAME} SYSTEM
-                           PRIVATE ${Python3_INCLUDE_DIRS})
+                           PRIVATE ${PYTHON_INCLUDE_DIR})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
                       Qt5::Core
                       Qt5::Network
                       Threads::Threads
-                      ${Python3_LIBRARIES})
+                      ${PYTHON_LIBRARY})
 
 install(TARGETS ${PROJECT_NAME} DESTINATION OpenImageDebugger)
 
