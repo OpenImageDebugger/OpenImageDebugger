@@ -31,10 +31,10 @@
 #include <Python.h>
 
 
-#if PY_MAJOR_VERSION==2
-#define PY_INT_CHECK_FUNC PyInt_Check
-#else
+#if PY_MAJOR_VERSION==3
 #define PY_INT_CHECK_FUNC PyLong_Check
+#else
+#error "Unsupported Python version"
 #endif
 
 
