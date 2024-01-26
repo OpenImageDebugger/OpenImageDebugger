@@ -58,6 +58,11 @@ jobs:
                 cmake -S . -B build -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
                 cmake --build build --config Release --target install -j 2
 
+            - name: Build imgui example
+              working-directory: src/thirdparty/imgui/examples/example_sdl2_opengl2
+              shell: bash
+              run: make -j
+
             - name: Tar files
               shell: bash
               run: tar --strip-components 1 -cvf build-${{ matrix.os }}.tar out/OpenImageDebugger
