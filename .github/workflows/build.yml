@@ -52,12 +52,15 @@ jobs:
                 setup-python: false
                 cache: 'true'
 
+            - name: Install ninja
+              uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2
+
             - name: Build
               shell: bash
               run: |
                 # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
-                cmake -S . -B build -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
-                cmake --build build --config Release --target install -j 2
+                cmake -G Ninja -S . -B build -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
+                cmake --build build --config Release --target install
 
             - name: Tar files
               shell: bash
