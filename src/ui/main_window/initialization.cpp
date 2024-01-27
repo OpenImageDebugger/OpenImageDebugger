@@ -69,9 +69,8 @@ void MainWindow::initialize_settings()
 
     // Load previous session symbols
     const QDateTime now = QDateTime::currentDateTime();
-    auto previous_buffers =
-        settings.value("PreviousSession/buffers")
-            .value<QList<BufferExpiration>>();
+    auto previous_buffers = settings.value("PreviousSession/buffers")
+                                .value<QList<BufferExpiration>>();
 
     for (const auto& previous_buffer : previous_buffers) {
         if (previous_buffer.second >= now) {

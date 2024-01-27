@@ -61,10 +61,10 @@ vec4& vec4::operator+=(const vec4& b)
 
 vec4 vec4::operator+(const vec4& b) const
 {
-return {vec[0] + b.vec[0],
-        vec[1] + b.vec[1],
-        vec[2] + b.vec[2],
-        vec[3] + b.vec[3]};
+    return {vec[0] + b.vec[0],
+            vec[1] + b.vec[1],
+            vec[2] + b.vec[2],
+            vec[3] + b.vec[3]};
 }
 
 
@@ -307,7 +307,8 @@ vec4 mat4::operator*(const vec4& b) const
 }
 
 
-float&mat4::operator()(const int row, const int col) {
+float& mat4::operator()(const int row, const int col)
+{
     return mat_(row, col);
 }
 

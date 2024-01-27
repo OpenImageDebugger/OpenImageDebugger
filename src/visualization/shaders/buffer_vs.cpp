@@ -25,7 +25,6 @@
 
 namespace shader
 {
-
 const char* buff_vert_shader = R"(
 
 attribute vec2 input_position;
@@ -39,5 +38,4 @@ void main(void) {
 }
 
 )";
-
 } // namespace shader

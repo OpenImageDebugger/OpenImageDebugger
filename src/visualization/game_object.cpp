@@ -41,15 +41,19 @@ GameObject::GameObject()
 
 bool GameObject::initialize() const
 {
-    return std::all_of(all_components_.begin(), all_components_.end(),
-                [](const auto& comp) { return comp.second->initialize(); });
+    return std::all_of(
+        all_components_.begin(), all_components_.end(), [](const auto& comp) {
+            return comp.second->initialize();
+        });
 }
 
 
 bool GameObject::post_initialize() const
 {
-    return std::all_of(all_components_.begin(), all_components_.end(),
-            [](const auto& comp) { return comp.second->post_initialize(); });
+    return std::all_of(
+        all_components_.begin(), all_components_.end(), [](const auto& comp) {
+            return comp.second->post_initialize();
+        });
 }
 
 

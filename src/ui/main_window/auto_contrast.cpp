@@ -55,7 +55,7 @@ void MainWindow::reset_ac_min_labels() const
 {
     GameObject* buffer_obj = currently_selected_stage_->get_game_object("buffer");
     auto* buffer = buffer_obj->get_component<Buffer>("buffer_component");
-    const float* ac_min  = buffer->min_buffer_values();
+    const float* ac_min = buffer->min_buffer_values();
 
     ui_->ac_red_min->setText(QString::number(ac_min[0]));
 

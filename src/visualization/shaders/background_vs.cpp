@@ -25,7 +25,6 @@
 
 namespace shader
 {
-
 const char* background_vert_shader = R"(
 
 attribute vec2 input_position;
@@ -35,5 +34,4 @@ void main(void) {
 }
 
 )";
-
 } // namespace shader

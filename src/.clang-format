@@ -10,12 +10,9 @@ AlignAfterOpenBracket: Align
 AlignEscapedNewlinesLeft: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
 BinPackArguments: false
-AlwaysBreakTemplateDeclarations: true
-AllowShortFunctionsOnASingleLine: false
-AllowShortCaseLabelsOnASingleLine: false
-AllowShortBlocksOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
 AlignOperands: true
 BraceWrapping:
   AfterFunction: true

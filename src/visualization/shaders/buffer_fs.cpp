@@ -25,7 +25,6 @@
 
 namespace shader
 {
-
 const char* buff_frag_shader = R"(
 
 uniform sampler2D sampler;
@@ -86,5 +85,4 @@ void main()
 }
 
 )";
-
 } // namespace shader

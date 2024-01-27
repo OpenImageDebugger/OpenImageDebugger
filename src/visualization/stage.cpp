@@ -103,9 +103,9 @@ bool Stage::initialize(const uint8_t* buffer,
         }
     }
 
-    return std::all_of(all_game_objects.begin(), all_game_objects.end(), [](auto& go) {
-        return go.second->post_initialize();
-    });
+    return std::all_of(all_game_objects.begin(),
+                       all_game_objects.end(),
+                       [](auto& go) { return go.second->post_initialize(); });
 }
 
 
