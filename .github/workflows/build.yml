@@ -59,7 +59,7 @@ jobs:
                 cmake --build build --config Release --target install -j 2
 
             - name: Build imgui example
-              working-directory: src/thirdparty/imgui/examples/example_glut_opengl2
+              working-directory: src/thirdparty/imgui/examples/example_sdl2_opengl2
               shell: bash
               run: make -j
 
