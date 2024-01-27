@@ -88,7 +88,7 @@ bool ShaderProgram::create(const char* v_source,
 
     texel_format_ = texel_format;
     memcpy(pixel_layout_, pixel_layout, 4);
-    pixel_layout_[4]       = '\0';
+    pixel_layout_[4]             = '\0';
     const GLuint vertex_shader   = compile(GL_VERTEX_SHADER, v_source);
     const GLuint fragment_shader = compile(GL_FRAGMENT_SHADER, f_source);
 
@@ -162,8 +162,7 @@ GLuint ShaderProgram::compile(const GLuint type, GLchar const* source)
 {
     const GLuint shader = gl_canvas_->glCreateShader(type);
 
-    const char* src[] = {
-        "#version 120\n",
+    const char* src[] = {"#version 120\n",
 
         // clang-format off
         texel_format_ == FormatR ?   "#define FORMAT_R\n" :
@@ -172,10 +171,10 @@ GLuint ShaderProgram::compile(const GLuint type, GLchar const* source)
                                      "",
         // clang-format on
 
-        "#define PIXEL_LAYOUT ",
-        pixel_layout_,
+                         "#define PIXEL_LAYOUT ",
+                         pixel_layout_,
 
-        source};
+                         source};
 
     gl_canvas_->glShaderSource(shader, 5, src, nullptr);
     gl_canvas_->glCompileShader(shader);

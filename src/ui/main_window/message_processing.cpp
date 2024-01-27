@@ -112,7 +112,8 @@ void MainWindow::decode_plot_buffer_contents()
         visualized_height = buff_width;
     }
 
-    if (buffer_stage == stages_.end()) { // New buffer request
+    if (buffer_stage == stages_.end()) {
+        // New buffer request
         auto stage = make_shared<Stage>(this);
         if (!stage->initialize(held_buffers_[variable_name_str].data(),
                                buff_width,
@@ -150,7 +151,8 @@ void MainWindow::decode_plot_buffer_contents()
         ui_->imageList->addItem(item);
 
         persist_settings_deferred();
-    } else { // Update buffer request
+    } else {
+        // Update buffer request
         buffer_stage->second->buffer_update(
             held_buffers_[variable_name_str].data(),
             buff_width,
@@ -200,7 +202,7 @@ void MainWindow::decode_plot_buffer_contents()
 void MainWindow::decode_incoming_messages()
 {
     // Close application if server has disconnected
-    if(socket_.state() == QTcpSocket::UnconnectedState) {
+    if (socket_.state() == QTcpSocket::UnconnectedState) {
         QApplication::quit();
     }
 

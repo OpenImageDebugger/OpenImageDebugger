@@ -28,7 +28,7 @@
 #include <cassert>
 
 std::vector<std::uint8_t>
-    make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
+make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
 {
     const std::size_t element_count = buff_double.size() / sizeof(double);
     std::vector<std::uint8_t> buff_float(element_count * sizeof(float));
@@ -46,7 +46,7 @@ std::vector<std::uint8_t>
 
 size_t typesize(BufferType type)
 {
-    switch(type) {
+    switch (type) {
     case BufferType::Int32:
         return sizeof(int32_t);
     case BufferType::Short:

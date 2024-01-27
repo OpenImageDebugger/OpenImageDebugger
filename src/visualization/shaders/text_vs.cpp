@@ -25,7 +25,6 @@
 
 namespace shader
 {
-
 const char* text_vert_shader = R"(
 
 attribute vec4 input_position;
@@ -39,5 +38,4 @@ void main(void) {
 }
 
 )";
-
 } // namespace shader

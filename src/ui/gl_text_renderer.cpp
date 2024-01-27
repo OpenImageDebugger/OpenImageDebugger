@@ -120,8 +120,8 @@ void GLTextRenderer::generate_glyphs_texture()
     painter.drawText(0, g.ascent(), text);
     QImage img = pixmap.toImage().convertToFormat(QImage::Format_Grayscale8);
 
-    std::vector<uint8_t> packed_texture(static_cast<std::size_t>(text_texture_width *
-                                        text_texture_height));
+    std::vector<uint8_t> packed_texture(
+        static_cast<std::size_t>(text_texture_width * text_texture_height));
     uint8_t* packed_texture_ptr = packed_texture.data();
 
     int real_ascent  = texture_size.height() - 1;

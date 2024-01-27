@@ -84,7 +84,7 @@ void Camera::scroll_callback(const float delta)
     const auto win_w   = static_cast<float>(gl_canvas_->width());
     const auto win_h   = static_cast<float>(gl_canvas_->height());
 
-    const vec4 mouse_pos_ndc(2.0f* (mouse_x - win_w / 2.0f) / win_w,
+    const vec4 mouse_pos_ndc(2.0f * (mouse_x - win_w / 2.0f) / win_w,
                              -2.0f * (mouse_y - win_h / 2.0f) / win_h,
                              0.0f,
                              1.0f);
@@ -109,8 +109,8 @@ void Camera::update_object_pose() const
         // applied to world coordinates during rendering will also be reversed
 
         // clang-format off
-        const mat4 pose =  scale_ *
-                           mat4::translation(position);
+        const mat4 pose = scale_ *
+            mat4::translation(position);
         // clang-format on
 
         game_object_->set_pose(pose);
@@ -215,9 +215,9 @@ void Camera::scale_at(const vec4& center_ndc, const float delta)
 
     // clang-format off
     scale_ = scale_ *
-             mat4::translation(center_pos) *
-             mat4::scale(vec4(delta_zoom, delta_zoom, 1.0f, 1.0f)) *
-             mat4::translation(-center_pos);
+        mat4::translation(center_pos) *
+        mat4::scale(vec4(delta_zoom, delta_zoom, 1.0f, 1.0f)) *
+        mat4::translation(-center_pos);
     // clang-format on
 
     // Update camera position and force the scale matrix to contain scale
@@ -241,8 +241,9 @@ void Camera::set_initial_zoom()
     GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
     const auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
 
-    vec4 buf_dim = buffer_obj->get_pose() *
-                   vec4(buff->buffer_width_f, buff->buffer_height_f, 0.0f, 1.0f);
+    vec4 buf_dim =
+        buffer_obj->get_pose() *
+        vec4(buff->buffer_width_f, buff->buffer_height_f, 0.0f, 1.0f);
 
     buf_dim.x() = std::abs(buf_dim.x());
     buf_dim.y() = std::abs(buf_dim.y());
@@ -279,7 +280,7 @@ void Camera::set_initial_zoom()
     }
 
     const float zoom = 1.0f / compute_zoom();
-    scale_     = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
+    scale_           = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
 }
 
 

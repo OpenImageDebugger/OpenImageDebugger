@@ -100,7 +100,7 @@ void GLCanvas::initializeGL()
     assert(main_window_ != nullptr);
     const QSizeF icon_size = main_window_->get_icon_size();
     const auto icon_width = static_cast<int>(icon_size.width());
-    const auto icon_height= static_cast<int>(icon_size.height());
+    const auto icon_height = static_cast<int>(icon_size.height());
     glGenTextures(1, &icon_texture_);
     glBindTexture(GL_TEXTURE_2D, icon_texture_);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);

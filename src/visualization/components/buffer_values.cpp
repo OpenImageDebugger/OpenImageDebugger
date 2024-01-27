@@ -98,12 +98,12 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 
         const auto* buffer_component =
             game_object_->get_component<Buffer>("buffer_component");
-        const float buffer_width_f    = buffer_component->buffer_width_f;
-        const float buffer_height_f   = buffer_component->buffer_height_f;
-        const int step                = buffer_component->step;
-        const int channels            = buffer_component->channels;
-        const BufferType type         = buffer_component->type;
-        const uint8_t* buffer         = buffer_component->buffer;
+        const float buffer_width_f  = buffer_component->buffer_width_f;
+        const float buffer_height_f = buffer_component->buffer_height_f;
+        const int step              = buffer_component->step;
+        const int channels          = buffer_component->channels;
+        const BufferType type       = buffer_component->type;
+        const uint8_t* buffer       = buffer_component->buffer;
 
         const vec4 tl_ndc(-1.0f, 1.0f, 0.0f, 1.0f);
         const vec4 br_ndc(1.0f, -1.0f, 0.0f, 1.0f);
@@ -145,19 +145,22 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
         if (channels == 1) {
             recenter_factors = {0.0f, 0.0f, 0.0f, 0.0f};
         } else if (channels == 2) {
-            const auto rfUp = padding / 3.0f/ channels_float;
+            const auto rfUp  = padding / 3.0f / channels_float;
             recenter_factors = {rfUp, -rfUp, 0.0f, 0.0f};
         } else if (channels == 3) {
             const auto rfUp = padding / 2.0f / channels_float;
             recenter_factors = {rfUp, 0.0f, -rfUp, 0.0f};
         } else if (channels == 4) {
             const auto rfUp = 3.0f * padding / 5.0f / channels_float;
-            const auto rfDown= padding / 5.0f / channels_float;
+            const auto rfDown = padding / 5.0f / channels_float;
             recenter_factors = {rfUp, rfDown, -rfDown, -rfUp};
         }
 
-        for (int y = static_cast<int>(lower_y - pos_center_y); y < static_cast<int>(upper_y - pos_center_y); ++y) {
-            for (int x = static_cast<int>(lower_x - pos_center_x); x < static_cast<int>(upper_x - pos_center_x);
+        for (int y = static_cast<int>(lower_y - pos_center_y);
+             y < static_cast<int>(upper_y - pos_center_y);
+             ++y) {
+            for (int x = static_cast<int>(lower_x - pos_center_x);
+                 x < static_cast<int>(upper_x - pos_center_x);
                  ++x) {
                 int pos = (y * step + x) * channels;
 
@@ -281,8 +284,9 @@ void BufferValues::draw_text(const mat4& projection,
         const float tex_lower_y =
             static_cast<float>(text_renderer->text_texture_offsets[*p][1]) /
             text_renderer->text_texture_height;
-        const float tex_upper_x = tex_lower_x + (static_cast<float>(tex_wid) - 1.0f) /
-                                              text_renderer->text_texture_width;
+        const float tex_upper_x =
+            tex_lower_x + (static_cast<float>(tex_wid) - 1.0f) /
+                              text_renderer->text_texture_width;
         const float tex_upper_y =
             tex_lower_y +
             (static_cast<float>(tex_hei) - 1.0f) / text_renderer->text_texture_height;

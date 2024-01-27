@@ -74,6 +74,7 @@ class PyGILRAII
     {
         _py_gil_state = PyGILState_Ensure();
     }
+
     PyGILRAII(const PyGILRAII&)  = delete;
     PyGILRAII(const PyGILRAII&&) = delete;
 
@@ -110,7 +111,8 @@ class OidBridge
         const string windowBinaryPath = this->oid_path_ + "/oidwindow";
         const string portStdString = std::to_string(server_.serverPort());
 
-        const vector<string> command {windowBinaryPath, "-style", "fusion", "-p", portStdString};
+        const vector<string> command{
+            windowBinaryPath, "-style", "fusion", "-p", portStdString};
 
         ui_proc_.start(command);
 
@@ -217,8 +219,7 @@ class OidBridge
     try_get_stored_message(const MessageType& msg_type)
     {
         if (const auto find_msg_handler = received_messages_.find(msg_type);
-            find_msg_handler != received_messages_.end()
-        ) {
+            find_msg_handler != received_messages_.end()) {
             unique_ptr<UiMessage> result = std::move(find_msg_handler->second);
             received_messages_.erase(find_msg_handler);
             return result;
@@ -285,9 +286,7 @@ class OidBridge
     std::unique_ptr<UiMessage> fetch_message(const MessageType& msg_type)
     {
         // Return message if it was already received before
-        if (auto result = try_get_stored_message(msg_type);
-            result != nullptr
-        ) {
+        if (auto result = try_get_stored_message(msg_type); result != nullptr) {
             return result;
         }
 
@@ -302,7 +301,8 @@ class OidBridge
     {
         if (client_ == nullptr) {
             if (!server_.waitForNewConnection(10000)) {
-                cerr << "[OpenImageDebugger] No clients connected to OpenImageDebugger server"
+                cerr << "[OpenImageDebugger] No clients connected to "
+                        "OpenImageDebugger server"
                      << endl;
             }
             client_ = server_.nextPendingConnection();
@@ -568,7 +568,7 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     auto buff_channels = static_cast<int>(get_py_int(py_channels));
     auto buff_stride   = static_cast<int>(get_py_int(py_row_stride));
 
-    auto buff_type     = static_cast<BufferType>(get_py_int(py_type));
+    auto buff_type = static_cast<BufferType>(get_py_int(py_type));
 
     const size_t buff_size_expected =
         static_cast<size_t>(buff_stride * buff_height * buff_channels) *

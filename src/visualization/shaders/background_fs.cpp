@@ -25,7 +25,6 @@
 
 namespace shader
 {
-
 const char* background_frag_shader = R"(
 
 void main()
@@ -38,5 +37,4 @@ void main()
 }
 
 )";
-
 } // namespace shader

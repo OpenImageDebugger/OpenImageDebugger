@@ -73,8 +73,7 @@ void MainWindow::mouse_drag_event(const int mouse_x, const int mouse_y)
 
     if (link_views_enabled_) {
         for (const auto& [_, stage] : stages_) {
-            stage->mouse_drag_event(virtual_motion.x(),
-                                           virtual_motion.y());
+            stage->mouse_drag_event(virtual_motion.x(), virtual_motion.y());
         }
     } else if (currently_selected_stage_ != nullptr) {
         currently_selected_stage_->mouse_drag_event(virtual_motion.x(),
@@ -265,7 +264,7 @@ void MainWindow::remove_selected_buffer()
 void MainWindow::symbol_selected()
 {
     const QByteArray symbol_name_qba = ui_->symbolList->text().toLocal8Bit();
-    const char* symbol_name    = symbol_name_qba.constData();
+    const char* symbol_name          = symbol_name_qba.constData();
     if (ui_->symbolList->text().length() > 0) {
         request_plot_buffer(symbol_name);
         // Clear symbol input

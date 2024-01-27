@@ -58,10 +58,10 @@ bool Background::initialize()
     // clang-format off
     static constexpr GLfloat vertex_buffer_data[] = {
         -1, -1,
-         1, -1,
-         1,  1,
-         1,  1,
-        -1,  1,
+        1, -1,
+        1, 1,
+        1, 1,
+        -1, 1,
         -1, -1,
     };
     // clang-format on

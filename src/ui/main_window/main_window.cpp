@@ -44,8 +44,7 @@ using namespace std;
 Q_DECLARE_METATYPE(QList<QString>)
 
 
-MainWindow::MainWindow(ConnectionSettings host_settings,
-                       QWidget* parent)
+MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     : QMainWindow(parent)
     , is_window_ready_(false)
     , request_render_update_(true)
@@ -219,7 +218,7 @@ void MainWindow::persist_settings()
 vec4 MainWindow::get_stage_coordinates(const float pos_window_x, const float pos_window_y) const
 {
     GameObject* cam_obj = currently_selected_stage_->get_game_object("camera");
-    const auto* cam= cam_obj->get_component<Camera>("camera_component");
+    const auto* cam     = cam_obj->get_component<Camera>("camera_component");
 
     GameObject* buffer_obj =
         currently_selected_stage_->get_game_object("buffer");
