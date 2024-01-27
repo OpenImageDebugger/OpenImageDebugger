@@ -59,7 +59,7 @@ jobs:
               shell: bash
               run: |
                 # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
-                cmake -G Ninja -S . -B build -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
+                cmake -G Ninja -S . -B build -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=c++
                 cmake --build build --config Release --target install
 
             - name: Tar files
