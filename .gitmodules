@@ -6,3 +6,7 @@
 	path = src/thirdparty/imgui
 	url = https://github.com/ocornut/imgui
 	branch = docking
+[submodule "src/thirdparty/SDL"]
+	path = src/thirdparty/SDL
+	url = https://github.com/libsdl-org/SDL
+	branch = release-2.30.x
