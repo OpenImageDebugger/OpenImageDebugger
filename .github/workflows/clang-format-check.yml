@@ -41,9 +41,9 @@ jobs:
               run: |
                 sudo apt update -y && sudo apt install clang-format
 
+            # should fail if code is not formatted correctly
             - name: Run clang-format
               shell: bash
               run: |
                 git clang-format origin/main
-                # should fail if code is not formatted correctly
                 exit $?
