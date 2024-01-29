@@ -34,8 +34,7 @@ jobs:
         steps:
             - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
               with:
-                fetch-depth: 0
-                fetch-tags: true
+                fetch-depth: 1
 
             - name: Install clang-format
               shell: bash
@@ -46,4 +45,4 @@ jobs:
               shell: bash
               run: |
                 # should fail if code is not formatted correctly
-                git clang-format main
+                git clang-format origin/main
