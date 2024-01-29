@@ -40,14 +40,14 @@ using namespace std;
 template <typename T>
 float get_multiplier()
 {
-    return 255.f / static_cast<float>((std::numeric_limits<T>::max)());
+    return 255.0f / static_cast<float>((std::numeric_limits<T>::max)());
 }
 
 
 template <>
 float get_multiplier<float>()
 {
-    return 255.f;
+    return 255.0f;
 }
 
 
@@ -61,7 +61,7 @@ T get_max_intensity()
 template <>
 float get_max_intensity<float>()
 {
-    return 1.f;
+    return 1.0f;
 }
 
 
@@ -151,8 +151,9 @@ void export_bitmap(const char* fname, const Buffer* buffer)
                               static_cast<int>(height_i),
                               bytes_per_line,
                               QImage::Format_RGBA8888);
-    const auto result = output_image.save(fname, "png");
-    assert(result && "Failed to save image");
+    if (const auto result = output_image.save(fname, "png"); !result) {
+        std::cerr << ("Failed to save image") << std::endl;
+    }
 }
 
 
@@ -225,7 +226,7 @@ void export_binary(const char* fname, const Buffer* buffer)
 
 void BufferExporter::export_buffer(const Buffer* buffer,
                                    const std::string& path,
-                                   BufferExporter::OutputType type)
+                                   const OutputType type)
 {
     if (type == OutputType::Bitmap) {
         switch (buffer->type) {
@@ -242,6 +243,7 @@ void BufferExporter::export_buffer(const Buffer* buffer,
             export_bitmap<int32_t>(path.c_str(), buffer);
             break;
         case BufferType::Float32:
+            [[fallthrough]];
         case BufferType::Float64:
             export_bitmap<float>(path.c_str(), buffer);
             break;
@@ -262,6 +264,7 @@ void BufferExporter::export_buffer(const Buffer* buffer,
             export_binary<int32_t>(path.c_str(), buffer);
             break;
         case BufferType::Float32:
+            [[fallthrough]];
         case BufferType::Float64:
             export_binary<float>(path.c_str(), buffer);
             break;
