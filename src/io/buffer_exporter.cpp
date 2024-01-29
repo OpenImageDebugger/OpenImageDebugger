@@ -151,7 +151,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
                               static_cast<int>(height_i),
                               bytes_per_line,
                               QImage::Format_RGBA8888);
-    if (const auto result = output_image.save(fname, "png"); !result) {
+    if (const auto result = output_image.save(fname, "png"); !result) { // aaaaaaaaa
         std::cerr << ("Failed to save image") << std::endl;
     }
 }
