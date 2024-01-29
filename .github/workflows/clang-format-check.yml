@@ -44,5 +44,6 @@ jobs:
             - name: Run clang-format
               shell: bash
               run: |
-                # should fail if code is not formatted correctly
                 git clang-format origin/main
+                # should fail if code is not formatted correctly
+                return $?
