@@ -46,4 +46,4 @@ jobs:
               run: |
                 git clang-format origin/main
                 # should fail if code is not formatted correctly
-                return $?
+                exit $?
