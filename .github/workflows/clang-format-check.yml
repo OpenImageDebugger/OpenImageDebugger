@@ -21,29 +21,33 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-name: Build
+name: Check formatting
 
 on:
   pull_request:
   workflow_call:
 
 jobs:
-    build:
-        name: Check formatting
-        runs-on: [ ubuntu-22.04 ]
-        steps:
-            - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-              with:
-                fetch-depth: 0
+  check-formatting:
+    name: Check formatting
+    # ugly hack: `git clang-format` has a proper return value on the
+    # default installation of macOS 13 but not on Ubuntu22.04, so mac it is
+    runs-on: [ macos-13 ]
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          # maybe a bit of an overkill, but we need info about main
+          fetch-depth: 0
 
-            - name: Install clang-format
-              shell: bash
-              run: |
-                sudo apt update -y && sudo apt install clang-format
+      - name: Install clang-format
+        shell: bash
+        run: |
+          brew install clang-format
 
-            # should fail if code is not formatted correctly
-            - name: Run clang-format
-              shell: bash
-              run: |
-                git clang-format origin/main
-                exit $?
+      - name: Run clang-format
+        shell: bash
+        continue-on-error: false
+        # this workflow relies on the next command returning zero when no
+        # formatting change is done and non-zero otherwise
+        run: |
+          git clang-format --diff origin/main
