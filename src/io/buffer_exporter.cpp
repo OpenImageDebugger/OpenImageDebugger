@@ -25,11 +25,10 @@
 
 #include "buffer_exporter.h"
 
-
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 #include <limits>
-
 
 #include <QPixmap>
 

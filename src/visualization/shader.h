@@ -26,7 +26,6 @@
 #ifndef SHADER_H_
 #define SHADER_H_
 
-#include <iostream>
 #include <map>
 #include <string>
 #include <vector>

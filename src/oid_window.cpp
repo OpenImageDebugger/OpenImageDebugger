@@ -23,6 +23,8 @@
  * IN THE SOFTWARE.
  */
 
+#include "ui/main_window/main_window.h"
+
 #include <csignal>
 
 #include <string>
@@ -30,8 +32,6 @@
 #include <QApplication>
 #include <QCommandLineParser>
 
-#include "debuggerinterface/preprocessor_directives.h"
-#include "ui/main_window/main_window.h"
 
 using namespace std;
 
