@@ -1,5 +1,5 @@
 /*
-* The MIT License (MIT)
+ * The MIT License (MIT)
  *
  * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)

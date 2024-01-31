@@ -143,10 +143,9 @@ void MainWindow::decode_plot_buffer_contents()
         label << display_name_str << "\n[" << visualized_width << "x"
               << visualized_height << "]\n"
               << get_type_label(buff_type, buff_channels);
-        auto* item =
-            new QListWidgetItem(QPixmap::fromImage(bufferIcon),
-                                label.str().c_str(),
-                                ui_->imageList);
+        auto* item = new QListWidgetItem(QPixmap::fromImage(bufferIcon),
+                                         label.str().c_str(),
+                                         ui_->imageList);
         item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
         item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
                        Qt::ItemIsDragEnabled);

@@ -41,8 +41,8 @@ Camera::Camera(GameObject* game_object, GLCanvas* gl_canvas)
 }
 
 
-Camera::Camera(const Camera& cam) :
-    Component(cam)
+Camera::Camera(const Camera& cam)
+    : Component(cam)
 {
     zoom_power_    = cam.zoom_power_;
     camera_pos_x_  = cam.camera_pos_x_;
@@ -71,7 +71,10 @@ Camera& Camera::operator=(const Camera& cam)
 
 void Camera::window_resized(const int w, const int h)
 {
-    projection.set_ortho_projection(static_cast<float>(w) / 2.0f, static_cast<float>(h) / 2.0f, -1.0f, 1.0f);
+    projection.set_ortho_projection(static_cast<float>(w) / 2.0f,
+                                    static_cast<float>(h) / 2.0f,
+                                    -1.0f,
+                                    1.0f);
     canvas_width_  = w;
     canvas_height_ = h;
 }
@@ -161,7 +164,7 @@ void Camera::handle_key_events()
             camera_pos_y_ -= delta_pos.y() + scale_(1, 3);
 
             const float zoom = 1.0f / compute_zoom();
-            scale_ = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
+            scale_           = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
 
             update_object_pose();
 
@@ -250,7 +253,7 @@ void Camera::set_initial_zoom()
 
     zoom_power_ = 0.0f;
 
-    const auto canvas_width_f = static_cast<float>(canvas_width_);
+    const auto canvas_width_f  = static_cast<float>(canvas_width_);
     const auto canvas_height_f = static_cast<float>(canvas_height_);
 
     if (canvas_width_f > buf_dim.x() && canvas_height_f > buf_dim.y()) {
@@ -295,12 +298,13 @@ void Camera::move_to(const float x, const float y)
     GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
 
     const auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
-    const auto buf_dim = vec4(buff->buffer_width_f, buff->buffer_height_f, 0.0f, 1.0f);
+    const auto buf_dim =
+        vec4(buff->buffer_width_f, buff->buffer_height_f, 0.0f, 1.0f);
     const vec4 centered_coord = buf_dim * 0.5f - vec4(x, y, 0.0f, 0.0f);
 
     // Recompute zoom matrix to discard its internal translation
     const float zoom = 1.0f / compute_zoom();
-    scale_ = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
+    scale_           = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
 
     vec4 transformed_goal =
         scale_.inv() * buffer_obj->get_pose() * centered_coord;
@@ -317,7 +321,8 @@ vec4 Camera::get_position() const
     GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
 
     const auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
-    const auto buf_dim = vec4(buff->buffer_width_f, buff->buffer_height_f, 0.0f, 1.0f);
+    const auto buf_dim =
+        vec4(buff->buffer_width_f, buff->buffer_height_f, 0.0f, 1.0f);
     const vec4 pos_vec(camera_pos_x_, camera_pos_y_, 0.0f, 1.0f);
 
     return buf_dim * 0.5f - buffer_obj->get_pose().inv() * scale_ * pos_vec;

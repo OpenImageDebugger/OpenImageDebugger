@@ -267,7 +267,10 @@ mat4 mat4::scale(const vec4& factor)
 }
 
 
-void mat4::set_ortho_projection(const float right, const float top, const float near, const float far)
+void mat4::set_ortho_projection(const float right,
+                                const float top,
+                                const float near,
+                                const float far)
 {
     float* data = this->data();
 

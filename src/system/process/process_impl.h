@@ -32,8 +32,9 @@
 /**
  * Interface to process calling classes
  */
-class ProcessImpl {
-public:
+class ProcessImpl
+{
+  public:
     virtual ~ProcessImpl() noexcept = default;
 
     /**

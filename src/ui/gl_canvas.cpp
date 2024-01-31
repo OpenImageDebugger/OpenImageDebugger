@@ -38,10 +38,13 @@ using namespace std;
 
 GLCanvas::GLCanvas(QWidget* parent)
     : QOpenGLWidget(parent)
-      , mouse_x_(0)
-      , mouse_y_(0)
-      , main_window_(nullptr), icon_texture_(0), icon_fbo_(0), initialized_(false)
-      , text_renderer_(new GLTextRenderer(this))
+    , mouse_x_(0)
+    , mouse_y_(0)
+    , main_window_(nullptr)
+    , icon_texture_(0)
+    , icon_fbo_(0)
+    , initialized_(false)
+    , text_renderer_(new GLTextRenderer(this))
 {
     mouse_down_[0] = mouse_down_[1] = false;
 }
@@ -101,7 +104,7 @@ void GLCanvas::initializeGL()
     // Texture for generating icons
     assert(main_window_ != nullptr);
     const QSizeF icon_size = main_window_->get_icon_size();
-    const auto icon_width = static_cast<int>(icon_size.width());
+    const auto icon_width  = static_cast<int>(icon_size.width());
     const auto icon_height = static_cast<int>(icon_size.height());
     glGenTextures(1, &icon_texture_);
     glBindTexture(GL_TEXTURE_2D, icon_texture_);
@@ -152,7 +155,8 @@ void GLCanvas::paintGL()
 
 void GLCanvas::wheelEvent(QWheelEvent* ev)
 {
-    main_window_->scroll_callback(static_cast<float>(ev->angleDelta().y()) / 120.0f);
+    main_window_->scroll_callback(static_cast<float>(ev->angleDelta().y()) /
+                                  120.0f);
 }
 
 
@@ -162,14 +166,16 @@ const GLTextRenderer* GLCanvas::get_text_renderer() const
 }
 
 
-void GLCanvas::render_buffer_icon(Stage* stage, const int icon_width, const int icon_height)
+void GLCanvas::render_buffer_icon(Stage* stage,
+                                  const int icon_width,
+                                  const int icon_height)
 {
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, icon_fbo_);
 
     glViewport(0, 0, icon_width, icon_height);
 
     GameObject* camera = stage->get_game_object("camera");
-    auto* cam = camera->get_component<Camera>("camera_component");
+    auto* cam          = camera->get_component<Camera>("camera_component");
 
     // Save original camera pose
     const Camera original_pose = *cam;
@@ -177,13 +183,17 @@ void GLCanvas::render_buffer_icon(Stage* stage, const int icon_width, const int 
     // Adapt camera to the thumbnail dimentions
     cam->window_resized(icon_width, icon_height);
     // Flips the projected image along the horizontal axis
-    cam->projection.set_ortho_projection(
-        static_cast<float>(icon_width) / 2.0f, static_cast<float>(-icon_height) / 2.0f, -1.0f, 1.0f);
+    cam->projection.set_ortho_projection(static_cast<float>(icon_width) / 2.0f,
+                                         static_cast<float>(-icon_height) /
+                                             2.0f,
+                                         -1.0f,
+                                         1.0f);
     // Reposition buffer in the center of the canvas
     cam->recenter_camera();
 
     stage->draw();
-    stage->buffer_icon.resize(3 * static_cast<size_t>(icon_width) * static_cast<size_t>(icon_height));
+    stage->buffer_icon.resize(3 * static_cast<size_t>(icon_width) *
+                              static_cast<size_t>(icon_height));
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0,
                  0,

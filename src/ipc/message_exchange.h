@@ -217,16 +217,18 @@ class MessageDecoder
     }
 };
 
-template <> inline
-MessageComposer& MessageComposer::push<std::string>(const std::string& value)
+template <>
+inline MessageComposer&
+MessageComposer::push<std::string>(const std::string& value)
 {
     push(value.size());
     message_blocks_.emplace_back(new StringBlock(value));
     return *this;
 }
 
-template <> inline
-MessageComposer& MessageComposer::push<std::deque<std::string>>(const std::deque<std::string>& value)
+template <>
+inline MessageComposer& MessageComposer::push<std::deque<std::string>>(
+    const std::deque<std::string>& value)
 {
     push(value.size());
     for (const auto& element : value) {
@@ -235,8 +237,9 @@ MessageComposer& MessageComposer::push<std::deque<std::string>>(const std::deque
     return *this;
 }
 
-template <> inline
-MessageDecoder& MessageDecoder::read<std::vector<uint8_t>>(std::vector<uint8_t>& value)
+template <>
+inline MessageDecoder&
+MessageDecoder::read<std::vector<uint8_t>>(std::vector<uint8_t>& value)
 {
     size_t container_size;
     read(container_size);
@@ -247,8 +250,8 @@ MessageDecoder& MessageDecoder::read<std::vector<uint8_t>>(std::vector<uint8_t>&
     return *this;
 }
 
-template <> inline
-MessageDecoder& MessageDecoder::read<std::string>(std::string& value)
+template <>
+inline MessageDecoder& MessageDecoder::read<std::string>(std::string& value)
 {
     size_t symbol_length;
     read(symbol_length);
@@ -259,8 +262,8 @@ MessageDecoder& MessageDecoder::read<std::string>(std::string& value)
     return *this;
 }
 
-template <> inline
-MessageDecoder& MessageDecoder::read<QString>(QString& value)
+template <>
+inline MessageDecoder& MessageDecoder::read<QString>(QString& value)
 {
     size_t symbol_length;
     read(symbol_length);

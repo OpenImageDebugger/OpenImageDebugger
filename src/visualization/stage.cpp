@@ -203,18 +203,16 @@ void Stage::draw()
 
 void Stage::scroll_callback(const float delta)
 {
-    GameObject* cam_obj = all_game_objects["camera"].get();
-    auto* camera_component =
-        cam_obj->get_component<Camera>("camera_component");
+    GameObject* cam_obj    = all_game_objects["camera"].get();
+    auto* camera_component = cam_obj->get_component<Camera>("camera_component");
     camera_component->scroll_callback(delta);
 }
 
 
 void Stage::resize_callback(int w, int h)
 {
-    GameObject* cam_obj = all_game_objects["camera"].get();
-    auto* camera_component =
-        cam_obj->get_component<Camera>("camera_component");
+    GameObject* cam_obj    = all_game_objects["camera"].get();
+    auto* camera_component = cam_obj->get_component<Camera>("camera_component");
     camera_component->window_resized(w, h);
 }
 
@@ -254,9 +252,8 @@ EventProcessCode Stage::key_press_event(const int key_code) const
 
 void Stage::go_to_pixel(const float x, const float y)
 {
-    GameObject* cam_obj = all_game_objects["camera"].get();
-    auto* camera_component =
-        cam_obj->get_component<Camera>("camera_component");
+    GameObject* cam_obj    = all_game_objects["camera"].get();
+    auto* camera_component = cam_obj->get_component<Camera>("camera_component");
 
     camera_component->move_to(x, y);
 }

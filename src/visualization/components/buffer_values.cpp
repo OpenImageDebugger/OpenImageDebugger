@@ -25,8 +25,8 @@
 
 #include "buffer_values.h"
 
-#include <array>
 #include <algorithm>
+#include <array>
 
 
 #include "ui/gl_text_renderer.h"
@@ -63,7 +63,8 @@ inline void pix2str(const BufferType& type,
                     char* pix_label)
 {
     if (type == BufferType::Float32 || type == BufferType::Float64) {
-        const float fpix = reinterpret_cast<const float*>(buffer)[pos + channel];
+        const float fpix =
+            reinterpret_cast<const float*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%.3f", fpix);
         if (strlen(pix_label) > 7) {
             snprintf(pix_label, label_length, "%.3e", fpix);
@@ -71,7 +72,8 @@ inline void pix2str(const BufferType& type,
     } else if (type == BufferType::UnsignedByte) {
         snprintf(pix_label, label_length, "%d", buffer[pos + channel]);
     } else if (type == BufferType::Short) {
-        const short fpix = reinterpret_cast<const short*>(buffer)[pos + channel];
+        const short fpix =
+            reinterpret_cast<const short*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%d", fpix);
     } else if (type == BufferType::UnsignedShort) {
         const unsigned short fpix =
@@ -90,8 +92,8 @@ inline void pix2str(const BufferType& type,
 void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 {
     GameObject* cam_obj = game_object_->stage->get_game_object("camera");
-    const auto* camera = cam_obj->get_component<Camera>("camera_component");
-    const float zoom = camera->compute_zoom();
+    const auto* camera  = cam_obj->get_component<Camera>("camera_component");
+    const float zoom    = camera->compute_zoom();
 
     if (zoom > 40.0f) {
         const mat4 buffer_pose = game_object_->get_pose();
@@ -108,8 +110,8 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
         const vec4 tl_ndc(-1.0f, 1.0f, 0.0f, 1.0f);
         const vec4 br_ndc(1.0f, -1.0f, 0.0f, 1.0f);
         const mat4 vp_inv = (projection * view_inv * buffer_pose).inv();
-        vec4 tl = vp_inv * tl_ndc;
-        vec4 br = vp_inv * br_ndc;
+        vec4 tl           = vp_inv * tl_ndc;
+        vec4 br           = vp_inv * br_ndc;
 
         const float tl_x = min(tl.x(), br.x());
         // Since the clip ROI may be rotated, we need to re-compute TL and BR
@@ -148,12 +150,12 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
             const auto rfUp  = padding / 3.0f / channels_float;
             recenter_factors = {rfUp, -rfUp, 0.0f, 0.0f};
         } else if (channels == 3) {
-            const auto rfUp = padding / 2.0f / channels_float;
+            const auto rfUp  = padding / 2.0f / channels_float;
             recenter_factors = {rfUp, 0.0f, -rfUp, 0.0f};
         } else if (channels == 4) {
-            const auto rfUp = 3.0f * padding / 5.0f / channels_float;
+            const auto rfUp   = 3.0f * padding / 5.0f / channels_float;
             const auto rfDown = padding / 5.0f / channels_float;
-            recenter_factors = {rfUp, rfDown, -rfDown, -rfUp};
+            recenter_factors  = {rfUp, rfDown, -rfDown, -rfUp};
         }
 
         for (int y = static_cast<int>(lower_y - pos_center_y);
@@ -167,7 +169,9 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
                 for (int c = 0; c < channels; ++c) {
                     constexpr int label_length = 30;
                     char pix_label[label_length];
-                    const float y_off = (0.5f * (channels_float - 1) - static_cast<float>(c)) / channels_float -
+                    const float y_off =
+                        (0.5f * (channels_float - 1) - static_cast<float>(c)) /
+                            channels_float -
                         recenter_factors[c];
 
                     pix2str(type, buffer, pos, c, label_length, pix_label);
@@ -215,12 +219,13 @@ void BufferValues::draw_text(const mat4& projection,
     gl_canvas_->glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, nullptr);
 
     gl_canvas_->glActiveTexture(GL_TEXTURE0);
-    const auto x_plus_half_buffer_width = static_cast<int>(x + buffer_component->buffer_width_f / 2.0f);
-    const auto y_plus_half_buffer_height = static_cast<int>(y + buffer_component->buffer_height_f / 2.0f);
+    const auto x_plus_half_buffer_width =
+        static_cast<int>(x + buffer_component->buffer_width_f / 2.0f);
+    const auto y_plus_half_buffer_height =
+        static_cast<int>(y + buffer_component->buffer_height_f / 2.0f);
 
     const GLuint buff_tex = buffer_component->sub_texture_id_at_coord(
-        x_plus_half_buffer_width,
-        y_plus_half_buffer_height);
+        x_plus_half_buffer_width, y_plus_half_buffer_height);
     glBindTexture(GL_TEXTURE_2D, buff_tex);
     text_renderer->text_prog.uniform1i("buff_sampler", 0);
 
@@ -243,7 +248,8 @@ void BufferValues::draw_text(const mat4& projection,
     float boxH = 0.0f;
     for (auto p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
         boxW += static_cast<float>(text_renderer->text_texture_advances[*p][0]);
-        boxH = max(boxH, static_cast<float>(text_renderer->text_texture_sizes[*p][1]));
+        boxH = max(
+            boxH, static_cast<float>(text_renderer->text_texture_sizes[*p][1]));
     }
 
     constexpr float paddingScale = 1.0f / (1.0f - 2.0f * padding);
@@ -269,8 +275,10 @@ void BufferValues::draw_text(const mat4& projection,
     x = centeredCoord.x() - boxW / 2.0f * sx - channel_offset.x();
 
     for (auto p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
-        const float x2 = x + static_cast<float>(text_renderer->text_texture_tls[*p][0]) * sx;
-        const float y2 = y - static_cast<float>(text_renderer->text_texture_tls[*p][1]) * sy;
+        const float x2 =
+            x + static_cast<float>(text_renderer->text_texture_tls[*p][0]) * sx;
+        const float y2 =
+            y - static_cast<float>(text_renderer->text_texture_tls[*p][1]) * sy;
 
         const int tex_wid = text_renderer->text_texture_sizes[*p][0];
         const int tex_hei = text_renderer->text_texture_sizes[*p][1];
@@ -288,8 +296,8 @@ void BufferValues::draw_text(const mat4& projection,
             tex_lower_x + (static_cast<float>(tex_wid) - 1.0f) /
                               text_renderer->text_texture_width;
         const float tex_upper_y =
-            tex_lower_y +
-            (static_cast<float>(tex_hei) - 1.0f) / text_renderer->text_texture_height;
+            tex_lower_y + (static_cast<float>(tex_hei) - 1.0f) /
+                              text_renderer->text_texture_height;
 
         /*
          * box format: <pixel coord x, pixel coord y, texture coord x, texture
@@ -307,8 +315,10 @@ void BufferValues::draw_text(const mat4& projection,
         gl_canvas_->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         vec4 char_step_direction(
-            static_cast<float>(text_renderer->text_texture_advances[*p][0]) * sx,
-            static_cast<float>(text_renderer->text_texture_advances[*p][1]) * sy,
+            static_cast<float>(text_renderer->text_texture_advances[*p][0]) *
+                sx,
+            static_cast<float>(text_renderer->text_texture_advances[*p][1]) *
+                sy,
             0.0f,
             1.0f);
 

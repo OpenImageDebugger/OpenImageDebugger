@@ -23,10 +23,11 @@
  * IN THE SOFTWARE.
  */
 
+#include "process.h"
+
 #include <string>
 #include <vector>
 
-#include "process.h"
 #include "process_impl.h"
 
 Process::Process()

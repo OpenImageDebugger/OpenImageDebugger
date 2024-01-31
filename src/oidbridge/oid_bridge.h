@@ -29,11 +29,11 @@
 #include <Python.h>
 
 #ifndef OID_API
-#  if __GNUC__ >= 4
-#    define OID_API __attribute__((visibility("default")))
-#  elif defined(_WIN32)
-#    define OID_API __declspec(dllexport)
-#  endif
+#if __GNUC__ >= 4
+#define OID_API __attribute__((visibility("default")))
+#elif defined(_WIN32)
+#define OID_API __declspec(dllexport)
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -112,8 +112,7 @@ PyObject* oid_get_observed_buffers(AppHandler handler);
  *     of all available symbols in the current context.
  */
 OID_API
-void oid_set_available_symbols(AppHandler handler,
-                               PyObject* available_vars);
+void oid_set_available_symbols(AppHandler handler, PyObject* available_vars);
 
 
 /**

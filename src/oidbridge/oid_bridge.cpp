@@ -57,7 +57,8 @@ struct GetObservedSymbolsResponseMessage final : UiMessage
     ~GetObservedSymbolsResponseMessage() override;
 };
 
-GetObservedSymbolsResponseMessage::~GetObservedSymbolsResponseMessage() = default;
+GetObservedSymbolsResponseMessage::~GetObservedSymbolsResponseMessage() =
+    default;
 
 struct PlotBufferRequestMessage final : UiMessage
 {
@@ -78,7 +79,7 @@ class PyGILRAII
     PyGILRAII(const PyGILRAII&)  = delete;
     PyGILRAII(const PyGILRAII&&) = delete;
 
-    PyGILRAII& operator=(const PyGILRAII&) = delete;
+    PyGILRAII& operator=(const PyGILRAII&)  = delete;
     PyGILRAII& operator=(const PyGILRAII&&) = delete;
 
     ~PyGILRAII()
@@ -109,7 +110,7 @@ class OidBridge
         }
 
         const string windowBinaryPath = this->oid_path_ + "/oidwindow";
-        const string portStdString = std::to_string(server_.serverPort());
+        const string portStdString    = std::to_string(server_.serverPort());
 
         const vector<string> command{
             windowBinaryPath, "-style", "fusion", "-p", portStdString};
@@ -128,7 +129,7 @@ class OidBridge
         oid_path_ = oid_path;
     }
 
-    bool is_window_ready()
+    [[nodiscard]] bool is_window_ready() const
     {
         return client_ != nullptr && ui_proc_.isRunning();
     }
@@ -140,9 +141,12 @@ class OidBridge
         MessageComposer message_composer;
         message_composer.push(MessageType::GetObservedSymbols).send(client_);
 
-        const auto response = fetch_message(MessageType::GetObservedSymbolsResponse);
+        const auto response =
+            fetch_message(MessageType::GetObservedSymbolsResponse);
         if (response != nullptr) {
-            return dynamic_cast<GetObservedSymbolsResponseMessage*>(response.get())->observed_symbols;
+            return dynamic_cast<GetObservedSymbolsResponseMessage*>(
+                       response.get())
+                ->observed_symbols;
         }
 
         return {};
@@ -253,7 +257,9 @@ class OidBridge
                     decode_get_observed_symbols_response();
                 break;
             default:
-                cerr << "[OpenImageDebugger] Received message with incorrect header" << endl;
+                cerr << "[OpenImageDebugger] Received message with incorrect "
+                        "header"
+                     << endl;
                 break;
             }
         } while (client_->bytesAvailable() > 0);
@@ -270,7 +276,8 @@ class OidBridge
         return unique_ptr<UiMessage>(response);
     }
 
-    [[nodiscard]] unique_ptr<UiMessage> decode_get_observed_symbols_response() const
+    [[nodiscard]] unique_ptr<UiMessage>
+    decode_get_observed_symbols_response() const
     {
         assert(client_ != nullptr);
 
@@ -407,10 +414,11 @@ PyObject* oid_get_observed_buffers(AppHandler handler)
     PyObject* py_observed_symbols =
         PyList_New(static_cast<Py_ssize_t>(observed_symbols.size()));
 
-    const auto observed_symbols_sentinel = static_cast<int>(observed_symbols.size());
+    const auto observed_symbols_sentinel =
+        static_cast<int>(observed_symbols.size());
     for (int i = 0; i < observed_symbols_sentinel; ++i) {
         const string& symbol_name = observed_symbols[i];
-        PyObject* py_symbol_name = PyBytes_FromString(symbol_name.c_str());
+        PyObject* py_symbol_name  = PyBytes_FromString(symbol_name.c_str());
 
         if (py_symbol_name == nullptr) {
             Py_DECREF(py_observed_symbols);
@@ -543,7 +551,7 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 
     // Retrieve pointer to buffer
     uint8_t* buff_ptr = nullptr;
-    size_t buff_size = 0;
+    size_t buff_size  = 0;
     if (PyMemoryView_Check(py_pointer) != 0) {
         get_c_ptr_from_py_buffer(py_pointer, buff_ptr, buff_size);
     } else {
@@ -575,7 +583,9 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
         typesize(buff_type);
 
     if (buff_ptr == nullptr) {
-        RAISE_PY_EXCEPTION(PyExc_TypeError, "oid_plot_buffer received nullptr as buffer pointer");
+        RAISE_PY_EXCEPTION(
+            PyExc_TypeError,
+            "oid_plot_buffer received nullptr as buffer pointer");
         return;
     }
 
