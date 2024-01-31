@@ -75,7 +75,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
 
     uint8_t* out_ptr = processed_buffer.data();
 
-    const float* bc_comp = buffer->auto_buffer_contrast_brightness();
+    const float* bc_comp    = buffer->auto_buffer_contrast_brightness();
     const float color_scale = get_multiplier<T>();
 
     const float max_intensity = get_max_intensity<T>();
@@ -109,7 +109,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
     for (size_t y = 0; y < height_i; ++y) {
         for (size_t x = 0; x < width_i; ++x) {
             const std::size_t col_offset = x * buffer->channels;
-            std::size_t c = 0;
+            std::size_t c                = 0;
 
             // Perform contrast normalization
             for (; c < channels; ++c) {

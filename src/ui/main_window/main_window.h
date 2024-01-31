@@ -48,7 +48,8 @@ namespace Ui
 class MainWindowUi;
 }
 
-struct ConnectionSettings {
+struct ConnectionSettings
+{
     std::string url;
     uint16_t port;
 };
@@ -104,7 +105,7 @@ class MainWindow final : public QMainWindow
 
     void closeEvent(QCloseEvent*) override;
 
-public Q_SLOTS:
+  public Q_SLOTS:
     ///
     // Assorted methods - slots - implemented in main_window.cpp
     void loop();
@@ -217,7 +218,8 @@ public Q_SLOTS:
 
     void set_currently_selected_stage(Stage* stage);
 
-    [[nodiscard]] vec4 get_stage_coordinates(float pos_window_x, float pos_window_y) const;
+    [[nodiscard]] vec4 get_stage_coordinates(float pos_window_x,
+                                             float pos_window_y) const;
 
     ///
     // Communication with debugger bridge

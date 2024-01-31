@@ -76,7 +76,7 @@ class Camera final : public Component
 
     [[nodiscard]] vec4 get_position() const;
 
-private:
+  private:
     void update_object_pose() const;
 
     void scale_at(const vec4& center_ndc, float delta);

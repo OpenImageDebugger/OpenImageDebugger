@@ -31,9 +31,9 @@
 #include <QDateTime>
 #include <QDebug>
 #include <QFontDatabase>
+#include <QHostAddress>
 #include <QSettings>
 #include <QShortcut>
-#include <QHostAddress>
 
 
 #include "ui_main_window.h"
@@ -68,7 +68,7 @@ void MainWindow::initialize_settings()
     }
 
     // Load previous session symbols
-    const QDateTime now = QDateTime::currentDateTime();
+    const QDateTime now   = QDateTime::currentDateTime();
     auto previous_buffers = settings.value("PreviousSession/buffers")
                                 .value<QList<BufferExpiration>>();
 

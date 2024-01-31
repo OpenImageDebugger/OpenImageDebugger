@@ -32,10 +32,10 @@
 #include <QSettings>
 #include <utility>
 
+#include "ipc/message_exchange.h"
 #include "ui_main_window.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
-#include "ipc/message_exchange.h"
 
 
 using namespace std;
@@ -215,7 +215,8 @@ void MainWindow::persist_settings()
 }
 
 
-vec4 MainWindow::get_stage_coordinates(const float pos_window_x, const float pos_window_y) const
+vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
+                                       const float pos_window_y) const
 {
     GameObject* cam_obj = currently_selected_stage_->get_game_object("camera");
     const auto* cam     = cam_obj->get_component<Camera>("camera_component");
@@ -266,10 +267,9 @@ void MainWindow::update_status_bar() const
                 << cam->compute_zoom() * 100.0f << "%";
         message << " val=";
 
-        buffer->get_pixel_info(
-            message,
-            static_cast<int>(floor(mouse_pos.x())),
-            static_cast<int>(floor(mouse_pos.y())));
+        buffer->get_pixel_info(message,
+                               static_cast<int>(floor(mouse_pos.x())),
+                               static_cast<int>(floor(mouse_pos.y())));
 
         status_bar_->setText(message.str().c_str());
     }

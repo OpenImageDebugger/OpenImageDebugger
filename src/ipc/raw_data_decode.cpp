@@ -35,7 +35,7 @@ make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
 
     // Cast from double to float
     const auto src = reinterpret_cast<const double*>(buff_double.data());
-    auto* dst = reinterpret_cast<float*>(buff_float.data());
+    auto* dst      = reinterpret_cast<float*>(buff_float.data());
     for (std::size_t i = 0; i < element_count; ++i) {
         dst[i] = static_cast<float>(src[i]);
     }

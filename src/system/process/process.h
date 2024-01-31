@@ -32,8 +32,9 @@
 
 class ProcessImpl;
 
-class Process {
-public:
+class Process final
+{
+  public:
     Process();
 
     /**
@@ -58,7 +59,7 @@ public:
      */
     void waitForStart() const;
 
-private:
+  private:
     /**
      * Initialize pimpl according to platform
      */

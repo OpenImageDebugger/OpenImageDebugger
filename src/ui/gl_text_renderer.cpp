@@ -32,10 +32,16 @@
 
 GLTextRenderer::GLTextRenderer(GLCanvas* gl_canvas)
     : font("Times New Roman", font_size)
-      , text_vbo(0), text_tex(0), text_texture_offsets{}, text_texture_advances{}, text_texture_sizes{},
-      text_texture_tls{},
-      text_prog(gl_canvas)
-      , text_texture_width(0), text_texture_height(0), gl_canvas_(gl_canvas)
+    , text_vbo(0)
+    , text_tex(0)
+    , text_texture_offsets{}
+    , text_texture_advances{}
+    , text_texture_sizes{}
+    , text_texture_tls{}
+    , text_prog(gl_canvas)
+    , text_texture_width(0)
+    , text_texture_height(0)
+    , gl_canvas_(gl_canvas)
 {
 }
 
@@ -93,8 +99,8 @@ void GLTextRenderer::generate_glyphs_texture()
 
     {
         constexpr int mipmap_levels = 5;
-        auto tex_level_width = static_cast<int>(text_texture_width);
-        auto tex_level_height = static_cast<int>(text_texture_height);
+        auto tex_level_width        = static_cast<int>(text_texture_width);
+        auto tex_level_height       = static_cast<int>(text_texture_height);
 
         for (int i = 0; i < mipmap_levels; ++i) {
             gl_canvas_->glTexImage2D(GL_TEXTURE_2D,
@@ -107,7 +113,7 @@ void GLTextRenderer::generate_glyphs_texture()
                                      GL_UNSIGNED_BYTE,
                                      nullptr);
 
-            tex_level_width = (std::max)(1, tex_level_width / 2);
+            tex_level_width  = (std::max)(1, tex_level_width / 2);
             tex_level_height = (std::max)(1, tex_level_height / 2);
         }
     }
@@ -132,7 +138,7 @@ void GLTextRenderer::generate_glyphs_texture()
     // Pack bitmap and compute real ascent and descent lines
     for (int y = 0; y < texture_size.height(); ++y) {
         const uint8_t* imgptr = img.scanLine(y);
-        int x = 0;
+        int x                 = 0;
 
         bool found_filled_pixel = false;
         for (; x < texture_size.width(); ++x) {
@@ -176,7 +182,8 @@ void GLTextRenderer::generate_glyphs_texture()
         text_texture_tls[*p][0]      = 0;
         text_texture_tls[*p][1]      = cropped_bitmap_height;
 
-        box_h = (std::max)(box_h, static_cast<float>(bitmap_height) + 2 * border_size);
+        box_h = (std::max)(box_h,
+                           static_cast<float>(bitmap_height) + 2 * border_size);
     }
 
     // Clears generated buffer

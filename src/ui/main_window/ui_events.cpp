@@ -23,10 +23,10 @@
  * IN THE SOFTWARE.
  */
 
+#include "main_window.h"
+
 #include <QFileDialog>
 #include <QtMath> // for portable definition of M_PI
-
-#include "main_window.h"
 
 #include "io/buffer_exporter.h"
 #include "ui_main_window.h"
@@ -293,7 +293,8 @@ void MainWindow::export_buffer()
         stages_.find(sender_action->data().toString().toStdString())->second;
 
     GameObject* buffer_obj = stage->get_game_object("buffer");
-    const auto* component = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto* component =
+        buffer_obj->get_component<Buffer>("buffer_component");
 
     QFileDialog file_dialog(this);
     file_dialog.setAcceptMode(QFileDialog::AcceptSave);
@@ -326,9 +327,7 @@ void MainWindow::export_buffer()
 
         // Export buffer
         BufferExporter::export_buffer(
-            component,
-            file_name,
-            output_extensions[selected_filter]);
+            component, file_name, output_extensions[selected_filter]);
 
         // Update default export suffix to the previously used suffix
         default_export_suffix_ = selected_filter;
@@ -368,7 +367,8 @@ void MainWindow::toggle_go_to_dialog() const
         if (currently_selected_stage_ != nullptr) {
             GameObject* cam_obj =
                 currently_selected_stage_->get_game_object("camera");
-            const auto* cam = cam_obj->get_component<Camera>("camera_component");
+            const auto* cam =
+                cam_obj->get_component<Camera>("camera_component");
 
             default_goal = cam->get_position();
         }
