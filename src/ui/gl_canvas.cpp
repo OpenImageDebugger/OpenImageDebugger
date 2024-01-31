@@ -25,6 +25,8 @@
 
 #include "gl_canvas.h"
 
+#include <iostream>
+
 #include "main_window/main_window.h"
 #include "ui/gl_text_renderer.h"
 #include "visualization/components/camera.h"

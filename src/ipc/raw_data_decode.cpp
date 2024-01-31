@@ -44,7 +44,7 @@ make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
 }
 
 
-size_t typesize(BufferType type)
+size_t typesize(const BufferType type)
 {
     switch (type) {
     case BufferType::Int32:

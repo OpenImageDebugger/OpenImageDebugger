@@ -176,7 +176,7 @@ public Q_SLOTS:
     const int icon_width_base_;
     const int icon_height_base_;
 
-    double render_framerate_;
+    double render_framerate_{};
 
     QTimer settings_persist_timer_;
     QTimer update_timer_;
@@ -195,12 +195,12 @@ public Q_SLOTS:
 
     std::mutex ui_mutex_;
 
-    SymbolCompleter* symbol_completer_;
+    SymbolCompleter* symbol_completer_{};
 
     Ui::MainWindowUi* ui_;
 
-    QLabel* status_bar_;
-    GoToWidget* go_to_widget_;
+    QLabel* status_bar_{};
+    GoToWidget* go_to_widget_{};
 
     ConnectionSettings host_settings_;
     QTcpSocket socket_;

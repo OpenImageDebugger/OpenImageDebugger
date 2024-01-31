@@ -25,6 +25,8 @@
 
 #include "main_window.h"
 
+#include <iostream>
+
 #include "ui_main_window.h"
 
 using namespace std;

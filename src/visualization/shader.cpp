@@ -23,10 +23,11 @@
  * IN THE SOFTWARE.
  */
 
-#include <cstring>
-
 #include "shader.h"
 
+#include <cstring>
+
+#include <iostream>
 
 ShaderProgram::ShaderProgram(GLCanvas* gl_canvas)
     : program_(0)
