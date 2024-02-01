@@ -94,6 +94,7 @@ jobs:
       with:
         version: '5.12.8'
         aqtversion: '==3.1.*'
+        setup-python: false
         cache: 'true'
 
     # Autobuild attempts to build any compiled languages (C/C++, C#, Go, Java, or Swift).

@@ -49,6 +49,7 @@ jobs:
               with:
                 version: '5.12.8'
                 aqtversion: '==3.1.*'
+                setup-python: false
                 cache: 'true'
 
             - name: Build
