@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,7 +26,6 @@
 #ifndef GL_TEXT_RENDERER_H_
 #define GL_TEXT_RENDERER_H_
 
-#include "math/linear_algebra.h"
 #include "ui/gl_canvas.h"
 #include "visualization/shader.h"
 
@@ -45,7 +44,7 @@ class GLTextRenderer
     int text_texture_sizes[256][2];
     int text_texture_tls[256][2];
 
-    GLTextRenderer(GLCanvas* gl_canvas);
+    explicit GLTextRenderer(GLCanvas* gl_canvas);
     ~GLTextRenderer();
 
     bool initialize();

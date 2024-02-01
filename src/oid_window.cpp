@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,6 +23,8 @@
  * IN THE SOFTWARE.
  */
 
+#include "ui/main_window/main_window.h"
+
 #include <csignal>
 
 #include <string>
@@ -30,8 +32,6 @@
 #include <QApplication>
 #include <QCommandLineParser>
 
-#include "debuggerinterface/preprocessor_directives.h"
-#include "ui/main_window/main_window.h"
 
 using namespace std;
 
@@ -53,5 +53,5 @@ int main(int argc, char* argv[])
 
     MainWindow window(host_settings);
     window.show();
-    return app.exec();
+    return QApplication::exec();
 }

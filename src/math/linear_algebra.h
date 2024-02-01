@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,9 +25,6 @@
 
 #ifndef LINEAR_ALGEBRA_H_
 #define LINEAR_ALGEBRA_H_
-
-#include <cstring>
-#include <iostream>
 
 #include <Eigen>
 
@@ -71,10 +68,10 @@ class vec4
     float& z();
     float& w();
 
-    const float& x() const;
-    const float& y() const;
-    const float& z() const;
-    const float& w() const;
+    [[nodiscard]] const float& x() const;
+    [[nodiscard]] const float& y() const;
+    [[nodiscard]] const float& z() const;
+    [[nodiscard]] const float& w() const;
 
     static vec4 zero();
 
@@ -113,7 +110,7 @@ class mat4
 
     void print() const;
 
-    mat4 inv() const;
+    [[nodiscard]] mat4 inv() const;
 
     mat4 operator*(const mat4& b) const;
 

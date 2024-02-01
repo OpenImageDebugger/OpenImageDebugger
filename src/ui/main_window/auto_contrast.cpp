@@ -23,9 +23,9 @@
  * IN THE SOFTWARE.
  */
 
-#include <QLineEdit>
-
 #include "main_window.h"
+
+#include <QLineEdit>
 
 #include "ui_main_window.h"
 #include "visualization/game_object.h"
@@ -51,12 +51,12 @@ void disable_inputs(const initializer_list<QLineEdit*>& inputs)
 }
 
 
-void MainWindow::reset_ac_min_labels()
+void MainWindow::reset_ac_min_labels() const
 {
     GameObject* buffer_obj =
         currently_selected_stage_->get_game_object("buffer");
-    Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
-    float* ac_min  = buffer->min_buffer_values();
+    auto* buffer        = buffer_obj->get_component<Buffer>("buffer_component");
+    const float* ac_min = buffer->min_buffer_values();
 
     ui_->ac_c1_min->setText(QString::number(ac_min[0]));
 
@@ -85,12 +85,12 @@ void MainWindow::reset_ac_min_labels()
 }
 
 
-void MainWindow::reset_ac_max_labels()
+void MainWindow::reset_ac_max_labels() const
 {
     GameObject* buffer_obj =
         currently_selected_stage_->get_game_object("buffer");
-    Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
-    float* ac_max  = buffer->max_buffer_values();
+    auto* buffer        = buffer_obj->get_component<Buffer>("buffer_component");
+    const float* ac_max = buffer->max_buffer_values();
 
     ui_->ac_c1_max->setText(QString::number(ac_max[0]));
     if (buffer->channels == 4) {
@@ -171,7 +171,7 @@ void MainWindow::ac_min_reset()
     if (currently_selected_stage_ != nullptr) {
         GameObject* buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+        auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
         buff->recompute_min_color_values();
         buff->compute_contrast_brightness_parameters();
 
@@ -189,7 +189,7 @@ void MainWindow::ac_max_reset()
     if (currently_selected_stage_ != nullptr) {
         GameObject* buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+        auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
         buff->recompute_max_color_values();
         buff->compute_contrast_brightness_parameters();
 
@@ -202,23 +202,24 @@ void MainWindow::ac_max_reset()
 }
 
 
-void MainWindow::ac_toggle(bool is_checked)
+void MainWindow::ac_toggle(const bool is_checked)
 {
     ac_enabled_ = is_checked;
-    for (auto& stage : stages_)
-        stage.second->contrast_enabled = ac_enabled_;
+    for (auto& [_, stage] : stages_) {
+        stage->contrast_enabled = ac_enabled_;
+    }
 
     request_render_update_ = true;
     request_icons_update_  = true;
 }
 
 
-void MainWindow::set_ac_min_value(int idx, float value)
+void MainWindow::set_ac_min_value(const int idx, const float value)
 {
     if (currently_selected_stage_ != nullptr) {
         GameObject* buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+        auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
         buff->min_buffer_values()[idx] = value;
         buff->compute_contrast_brightness_parameters();
 
@@ -228,12 +229,12 @@ void MainWindow::set_ac_min_value(int idx, float value)
 }
 
 
-void MainWindow::set_ac_max_value(int idx, float value)
+void MainWindow::set_ac_max_value(const int idx, const float value)
 {
     if (currently_selected_stage_ != nullptr) {
         GameObject* buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        Buffer* buff = buffer_obj->get_component<Buffer>("buffer_component");
+        auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
         buff->max_buffer_values()[idx] = value;
         buff->compute_contrast_brightness_parameters();
 

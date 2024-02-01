@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,6 +22,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
+#include "go_to_widget.h"
 
 #include <cmath>
 
@@ -29,12 +30,10 @@
 #include <QIntValidator>
 #include <QKeyEvent>
 
-#include "go_to_widget.h"
-
 GoToWidget::GoToWidget(QWidget* parent)
     : QWidget(parent)
 {
-    QHBoxLayout* layout = new QHBoxLayout(this);
+    auto* layout = new QHBoxLayout(this);
     layout->setMargin(0);
     layout->setSpacing(0);
 
@@ -49,7 +48,7 @@ GoToWidget::GoToWidget(QWidget* parent)
     layout->addWidget(x_coordinate_);
     layout->addWidget(y_coordinate_);
 
-    setVisible(false);
+    QWidget::setVisible(false);
 }
 
 
@@ -62,19 +61,22 @@ void GoToWidget::keyPressEvent(QKeyEvent* e)
 
         return;
     case Qt::Key_Enter:
+        [[fallthrough]];
     case Qt::Key_Return:
         toggle_visible();
         e->accept();
         Q_EMIT(go_to_requested(x_coordinate_->text().toFloat() + 0.5f,
                                y_coordinate_->text().toFloat() + 0.5f));
         return; // Let the completer do default behavior
+    default:
+        return;
     }
 }
 
 
 void GoToWidget::toggle_visible()
 {
-    QWidget* parent_widget = static_cast<QWidget*>(parent());
+    auto* parent_widget = dynamic_cast<QWidget*>(parent());
 
     if (isVisible()) {
         hide();
@@ -92,7 +94,8 @@ void GoToWidget::toggle_visible()
 }
 
 
-void GoToWidget::set_defaults(float default_x, float default_y)
+void GoToWidget::set_defaults(const float default_x,
+                              const float default_y) const
 {
     x_coordinate_->setText(QString::number(std::round(default_x - 0.5f)));
     y_coordinate_->setText(QString::number(std::round(default_y - 0.5f)));

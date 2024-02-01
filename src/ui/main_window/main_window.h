@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,12 +32,10 @@
 #include <set>
 #include <string>
 
-#include <QAbstractButton>
 #include <QLabel>
 #include <QListWidgetItem>
 #include <QMainWindow>
 #include <QSettings>
-#include <QTcpSocket>
 #include <QTimer>
 
 #include "math/linear_algebra.h"
@@ -45,6 +43,9 @@
 #include "ui/symbol_completer.h"
 #include "visualization/stage.h"
 
+#include <QAbstractButton>
+
+class QLabel;
 
 namespace Ui
 {
@@ -58,55 +59,55 @@ struct ConnectionSettings
 };
 
 
-class MainWindow : public QMainWindow
+class MainWindow final : public QMainWindow
 {
     Q_OBJECT
 
   public:
     ///
     // Constructor / destructor
-    explicit MainWindow(const ConnectionSettings& host_settings,
+    explicit MainWindow(ConnectionSettings host_settings,
                         QWidget* parent = nullptr);
 
-    ~MainWindow();
+    ~MainWindow() override;
 
     ///
     // Assorted methods - implemented in main_window.cpp
     void show();
 
-    void draw();
+    void draw() const;
 
-    GLCanvas* gl_canvas();
+    [[nodiscard]] GLCanvas* gl_canvas() const;
 
-    QSizeF get_icon_size();
+    [[nodiscard]] QSizeF get_icon_size() const;
 
     // External interface
-    bool is_window_ready();
+    [[nodiscard]] bool is_window_ready() const;
 
     ///
     // Auto contrast pane - implemented in auto_contrast.cpp
-    void reset_ac_min_labels();
+    void reset_ac_min_labels() const;
 
-    void reset_ac_max_labels();
+    void reset_ac_max_labels() const;
 
     ///
     // General UI Events - implemented in ui_events.cpp
-    void resize_callback(int w, int h);
+    void resize_callback(int w, int h) const;
 
     void scroll_callback(float delta);
 
     void mouse_drag_event(int mouse_x, int mouse_y);
 
-    void mouse_move_event(int mouse_x, int mouse_y);
+    void mouse_move_event(int mouse_x, int mouse_y) const;
 
     // Window change events - only called after the event is finished
-    bool eventFilter(QObject* target, QEvent* event);
+    bool eventFilter(QObject* target, QEvent* event) override;
 
-    void resizeEvent(QResizeEvent*);
+    void resizeEvent(QResizeEvent*) override;
 
-    void moveEvent(QMoveEvent*);
+    void moveEvent(QMoveEvent*) override;
 
-    void closeEvent(QCloseEvent*);
+    void closeEvent(QCloseEvent*) override;
 
   public Q_SLOTS:
     ///
@@ -114,6 +115,7 @@ class MainWindow : public QMainWindow
     void loop();
 
     void request_render_update();
+
     void request_icons_update();
 
     ///
@@ -156,13 +158,13 @@ class MainWindow : public QMainWindow
 
     void symbol_selected();
 
-    void symbol_completed(QString str);
+    void symbol_completed(const QString& str);
 
     void export_buffer();
 
     void show_context_menu(const QPoint& pos);
 
-    void toggle_go_to_dialog();
+    void toggle_go_to_dialog() const;
 
     void go_to_pixel(float x, float y);
 
@@ -182,7 +184,7 @@ class MainWindow : public QMainWindow
     const int icon_width_base_;
     const int icon_height_base_;
 
-    double render_framerate_;
+    double render_framerate_{};
 
     QTimer settings_persist_timer_;
     QTimer update_timer_;
@@ -201,34 +203,35 @@ class MainWindow : public QMainWindow
 
     std::mutex ui_mutex_;
 
-    SymbolCompleter* symbol_completer_;
+    SymbolCompleter* symbol_completer_{};
 
     Ui::MainWindowUi* ui_;
 
-    QLabel* status_bar_;
-    GoToWidget* go_to_widget_;
+    QLabel* status_bar_{};
+    GoToWidget* go_to_widget_{};
 
     ConnectionSettings host_settings_;
     QTcpSocket socket_;
 
-    QString name_channel_1_;
-    QString name_channel_2_;
-    QString name_channel_3_;
-    QString name_channel_4_;
+    QString name_channel_1_{"red"};
+    QString name_channel_2_{"green"};
+    QString name_channel_3_{"blue"};
+    QString name_channel_4_{"alpha"};
 
     ///
     // Assorted methods - private - implemented in main_window.cpp
-    void update_status_bar();
+    void update_status_bar() const;
 
-    qreal get_screen_dpi_scale();
+    static qreal get_screen_dpi_scale();
 
-    std::string get_type_label(BufferType type, int channels);
+    static std::string get_type_label(BufferType type, int channels);
 
     void persist_settings_deferred();
 
     void set_currently_selected_stage(Stage* stage);
 
-    vec4 get_stage_coordinates(float pos_window_x, float pos_window_y);
+    [[nodiscard]] vec4 get_stage_coordinates(float pos_window_x,
+                                             float pos_window_y) const;
 
     ///
     // Communication with debugger bridge
@@ -236,10 +239,13 @@ class MainWindow : public QMainWindow
 
     void respond_get_observed_symbols();
 
-    QListWidgetItem* find_image_list_item(const std::string& variable_name_str);
+    [[nodiscard]] QListWidgetItem*
+    find_image_list_item(const std::string& variable_name_str) const;
+
     void repaint_image_list_icon(const std::string& variable_name_str);
+
     void update_image_list_label(const std::string& variable_name_str,
-                                 const std::string& label_str);
+                                 const std::string& label_str) const;
     void decode_plot_buffer_contents();
 
     void decode_incoming_messages();
@@ -254,22 +260,33 @@ class MainWindow : public QMainWindow
 
     ///
     // Initialization - private - implemented in initialization.cpp
+    void initialize_ui_icons();
+
     void initialize_settings_ui_list_position(QSettings& settings);
+
     void initialize_settings_ui_splitter(QSettings& settings);
+
     void initialize_settings_ui_minmax_compact(QSettings& settings);
+
     QString initialize_settings_ui_colorspace_channel(const QChar& character);
+
     void initialize_settings_ui_colorspace(QSettings& settings);
+
     void initialize_settings_ui_minmax_visible(QSettings& settings);
+
     void initialize_settings_ui_contrast_enabled(QSettings& settings);
+
     void initialize_settings_ui(QSettings& settings);
+
     void initialize_settings();
 
-    void setFontIcon(QAbstractButton* ui_element, QString unicode_id);
-    void setVectorIcon(QLabel* ui_element,
-                       QString icon_file_name,
-                       int width,
-                       int height);
-    void initialize_ui_icons();
+    static void setFontIcon(QAbstractButton* ui_element,
+                            const wchar_t unicode_id[]);
+
+    static void setVectorIcon(QLabel* ui_element,
+                              const QString& icon_file_name,
+                              int width,
+                              int height);
 
     void initialize_ui_signals();
 
@@ -279,11 +296,11 @@ class MainWindow : public QMainWindow
 
     void initialize_symbol_completer();
 
-    void initialize_auto_contrast_form();
+    void initialize_auto_contrast_form() const;
 
-    void initialize_toolbar();
+    void initialize_toolbar() const;
 
-    void initialize_left_pane();
+    void initialize_left_pane() const;
 
     void initialize_status_bar();
 

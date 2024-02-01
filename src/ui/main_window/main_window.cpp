@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,15 +23,14 @@
  * IN THE SOFTWARE.
  */
 
+#include "main_window.h"
+
 #include <iomanip>
 
-#include <QAction>
 #include <QDateTime>
 #include <QScreen>
 #include <QSettings>
-#include <QSplitter>
-
-#include "main_window.h"
+#include <utility>
 
 #include "ipc/message_exchange.h"
 #include "ui_main_window.h"
@@ -45,7 +44,7 @@ using namespace std;
 Q_DECLARE_METATYPE(QList<QString>)
 
 
-MainWindow::MainWindow(const ConnectionSettings& host_settings, QWidget* parent)
+MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     : QMainWindow(parent)
     , is_window_ready_(false)
     , request_render_update_(true)
@@ -57,7 +56,7 @@ MainWindow::MainWindow(const ConnectionSettings& host_settings, QWidget* parent)
     , icon_height_base_(75)
     , currently_selected_stage_(nullptr)
     , ui_(new Ui::MainWindowUi)
-    , host_settings_(host_settings)
+    , host_settings_(std::move(host_settings))
 {
     QCoreApplication::instance()->installEventFilter(this);
 
@@ -97,7 +96,7 @@ void MainWindow::show()
 }
 
 
-void MainWindow::draw()
+void MainWindow::draw() const
 {
     if (currently_selected_stage_ != nullptr) {
         currently_selected_stage_->draw();
@@ -105,21 +104,21 @@ void MainWindow::draw()
 }
 
 
-GLCanvas* MainWindow::gl_canvas()
+GLCanvas* MainWindow::gl_canvas() const
 {
     return ui_->bufferPreview;
 }
 
 
-QSizeF MainWindow::get_icon_size()
+QSizeF MainWindow::get_icon_size() const
 {
     const qreal screen_dpi_scale = get_screen_dpi_scale();
-    return QSizeF(icon_width_base_ * screen_dpi_scale,
-                  icon_height_base_ * screen_dpi_scale);
+    return {icon_width_base_ * screen_dpi_scale,
+            icon_height_base_ * screen_dpi_scale};
 }
 
 
-bool MainWindow::is_window_ready()
+bool MainWindow::is_window_ready() const
 {
     return ui_->bufferPreview->is_ready() && is_window_ready_;
 }
@@ -180,12 +179,12 @@ void MainWindow::persist_settings()
     QList<BufferExpiration> persisted_session_buffers;
 
     // Load previous session symbols
-    QList<BufferExpiration> previous_session_buffers_qlist =
+    auto previous_session_buffers_qlist =
         settings.value("PreviousSession/buffers")
             .value<QList<BufferExpiration>>();
 
-    QDateTime now             = QDateTime::currentDateTime();
-    QDateTime next_expiration = now.addDays(1);
+    const QDateTime now             = QDateTime::currentDateTime();
+    const QDateTime next_expiration = now.addDays(1);
 
     // Of the buffers not currently being visualized, only keep those whose
     // timer hasn't expired yet and is not in the set of removed names
@@ -205,9 +204,9 @@ void MainWindow::persist_settings()
         }
     }
 
-    for (const auto& held_buffer : held_buffers_) {
+    for (const auto& [buffer, _] : held_buffers_) {
         persisted_session_buffers.append(
-            BufferExpiration(held_buffer.first.c_str(), next_expiration));
+            BufferExpiration(buffer.c_str(), next_expiration));
     }
 
     // Write default suffix for buffer export
@@ -247,24 +246,25 @@ void MainWindow::persist_settings()
 }
 
 
-vec4 MainWindow::get_stage_coordinates(float pos_window_x, float pos_window_y)
+vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
+                                       const float pos_window_y) const
 {
     GameObject* cam_obj = currently_selected_stage_->get_game_object("camera");
-    Camera* cam         = cam_obj->get_component<Camera>("camera_component");
+    const auto* cam     = cam_obj->get_component<Camera>("camera_component");
 
     GameObject* buffer_obj =
         currently_selected_stage_->get_game_object("buffer");
-    Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto* buffer = buffer_obj->get_component<Buffer>("buffer_component");
 
-    float win_w = ui_->bufferPreview->width();
-    float win_h = ui_->bufferPreview->height();
-    vec4 mouse_pos_ndc(2.0f * (pos_window_x - win_w / 2) / win_w,
-                       -2.0f * (pos_window_y - win_h / 2) / win_h,
-                       0,
-                       1);
-    mat4 view      = cam_obj->get_pose().inv();
-    mat4 buff_pose = buffer_obj->get_pose();
-    mat4 vp_inv    = (cam->projection * view * buff_pose).inv();
+    const auto win_w = static_cast<float>(ui_->bufferPreview->width());
+    const auto win_h = static_cast<float>(ui_->bufferPreview->height());
+    const vec4 mouse_pos_ndc(2.0f * (pos_window_x - win_w / 2) / win_w,
+                             -2.0f * (pos_window_y - win_h / 2) / win_h,
+                             0,
+                             1);
+    const mat4 view      = cam_obj->get_pose().inv();
+    const mat4 buff_pose = buffer_obj->get_pose();
+    const mat4 vp_inv    = (cam->projection * view * buff_pose).inv();
 
     vec4 mouse_pos = vp_inv * mouse_pos_ndc;
     mouse_pos +=
@@ -274,21 +274,22 @@ vec4 MainWindow::get_stage_coordinates(float pos_window_x, float pos_window_y)
 }
 
 
-void MainWindow::update_status_bar()
+void MainWindow::update_status_bar() const
 {
     if (currently_selected_stage_ != nullptr) {
         stringstream message;
 
         GameObject* cam_obj =
             currently_selected_stage_->get_game_object("camera");
-        Camera* cam = cam_obj->get_component<Camera>("camera_component");
+        const auto* cam = cam_obj->get_component<Camera>("camera_component");
 
         GameObject* buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
+        const auto* buffer =
+            buffer_obj->get_component<Buffer>("buffer_component");
 
-        float mouse_x = ui_->bufferPreview->mouse_x();
-        float mouse_y = ui_->bufferPreview->mouse_y();
+        const auto mouse_x = static_cast<float>(ui_->bufferPreview->mouse_x());
+        const auto mouse_y = static_cast<float>(ui_->bufferPreview->mouse_y());
 
         vec4 mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
 
@@ -313,7 +314,7 @@ qreal MainWindow::get_screen_dpi_scale()
 }
 
 
-string MainWindow::get_type_label(BufferType type, int channels)
+string MainWindow::get_type_label(const BufferType type, const int channels)
 {
     stringstream result;
     if (type == BufferType::Float32) {

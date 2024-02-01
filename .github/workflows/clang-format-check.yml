@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2023 OpenImageDebugger contributors
+# Copyright (c) 2015-2024 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,20 +21,33 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-name: Commisery
+name: Check formatting
+
 on:
   pull_request:
+  workflow_call:
 
 jobs:
-  commit-message:
-    name: Conventional Commit compliance
-    runs-on: ubuntu-22.04
-
+  check-formatting:
+    name: Check formatting
+    # ugly hack: `git clang-format` has a proper return value on the
+    # default installation of macOS 13 but not on Ubuntu22.04, so mac it is
+    runs-on: [ macos-13 ]
     steps:
-      - name: Check for Conventional Commit compliance
-        uses: tomtom-international/commisery-action@6b639e2b7cd250201e2add9aa99e95cf70fa5e1b
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          token: ${{ github.token }}
-          validate-commits: false
-          validate-pull-request: true
-          validate-pull-request-title-bump: false
+          # maybe a bit of an overkill, but we need info about main
+          fetch-depth: 0
+
+      - name: Install clang-format
+        shell: bash
+        run: |
+          brew install clang-format
+
+      - name: Run clang-format
+        shell: bash
+        continue-on-error: false
+        # this workflow relies on the next command returning zero when no
+        # formatting change is done and non-zero otherwise
+        run: |
+          git clang-format --diff origin/main

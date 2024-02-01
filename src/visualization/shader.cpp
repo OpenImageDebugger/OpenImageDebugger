@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,14 +23,17 @@
  * IN THE SOFTWARE.
  */
 
-#include <cstring>
-
 #include "shader.h"
 
+#include <cstring>
+
+#include <iostream>
 
 ShaderProgram::ShaderProgram(GLCanvas* gl_canvas)
     : program_(0)
     , gl_canvas_(gl_canvas)
+    , texel_format_()
+    , pixel_layout_{}
 {
 }
 
@@ -86,9 +89,9 @@ bool ShaderProgram::create(const char* v_source,
 
     texel_format_ = texel_format;
     memcpy(pixel_layout_, pixel_layout, 4);
-    pixel_layout_[4]       = '\0';
-    GLuint vertex_shader   = compile(GL_VERTEX_SHADER, v_source);
-    GLuint fragment_shader = compile(GL_FRAGMENT_SHADER, f_source);
+    pixel_layout_[4]             = '\0';
+    const GLuint vertex_shader   = compile(GL_VERTEX_SHADER, v_source);
+    const GLuint fragment_shader = compile(GL_FRAGMENT_SHADER, f_source);
 
     if (vertex_shader == 0 || fragment_shader == 0) {
         return false;
@@ -105,7 +108,7 @@ bool ShaderProgram::create(const char* v_source,
 
     // Get uniform locations
     for (const auto& name : uniforms) {
-        GLuint loc = gl_canvas_->glGetUniformLocation(program_, name.c_str());
+        const GLuint loc = gl_canvas_->glGetUniformLocation(program_, name.c_str());
         uniforms_[name] = loc;
     }
 
@@ -113,40 +116,40 @@ bool ShaderProgram::create(const char* v_source,
 }
 
 
-void ShaderProgram::uniform1i(const std::string& name, int value) const
+void ShaderProgram::uniform1i(const std::string& name, const int value) const
 {
-    gl_canvas_->glUniform1i(uniforms_.at(name), value);
+    gl_canvas_->glUniform1i(static_cast<GLint>(uniforms_.at(name)), value);
 }
 
 
-void ShaderProgram::uniform2f(const std::string& name, float x, float y) const
+void ShaderProgram::uniform2f(const std::string& name, const float x, const float y) const
 {
-    gl_canvas_->glUniform2f(uniforms_.at(name), x, y);
+    gl_canvas_->glUniform2f(static_cast<GLint>(uniforms_.at(name)), x, y);
 }
 
 
 void ShaderProgram::uniform3fv(const std::string& name,
-                               int count,
+                               const int count,
                                const float* data) const
 {
-    gl_canvas_->glUniform3fv(uniforms_.at(name), count, data);
+    gl_canvas_->glUniform3fv(static_cast<GLint>(uniforms_.at(name)), count, data);
 }
 
 
 void ShaderProgram::uniform4fv(const std::string& name,
-                               int count,
+                               const int count,
                                const float* data) const
 {
-    gl_canvas_->glUniform4fv(uniforms_.at(name), count, data);
+    gl_canvas_->glUniform4fv(static_cast<GLint>(uniforms_.at(name)), count, data);
 }
 
 
 void ShaderProgram::uniform_matrix4fv(const std::string& name,
-                                      int count,
-                                      GLboolean transpose,
+                                      const int count,
+                                      const GLboolean transpose,
                                       const float* value) const
 {
-    gl_canvas_->glUniformMatrix4fv(uniforms_.at(name), count, transpose, value);
+    gl_canvas_->glUniformMatrix4fv(static_cast<GLint>(uniforms_.at(name)), count, transpose, value);
 }
 
 
@@ -156,9 +159,9 @@ void ShaderProgram::use() const
 }
 
 
-GLuint ShaderProgram::compile(GLuint type, GLchar const* source)
+GLuint ShaderProgram::compile(const GLuint type, GLchar const* source)
 {
-    GLuint shader = gl_canvas_->glCreateShader(type);
+    const GLuint shader = gl_canvas_->glCreateShader(type);
 
     const char* src[] = {"#version 120\n",
 
@@ -174,7 +177,7 @@ GLuint ShaderProgram::compile(GLuint type, GLchar const* source)
 
                          source};
 
-    gl_canvas_->glShaderSource(shader, 5, src, NULL);
+    gl_canvas_->glShaderSource(shader, 5, src, nullptr);
     gl_canvas_->glCompileShader(shader);
 
     GLint compiled;
@@ -194,7 +197,7 @@ GLuint ShaderProgram::compile(GLuint type, GLchar const* source)
 }
 
 
-std::string ShaderProgram::get_shader_type(GLuint type)
+std::string ShaderProgram::get_shader_type(const GLuint type)
 {
     std::string name;
     switch (type) {

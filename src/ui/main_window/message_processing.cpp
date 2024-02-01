@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,6 +25,8 @@
 
 #include "main_window.h"
 
+#include <iostream>
+
 #include "ui_main_window.h"
 
 using namespace std;
@@ -32,7 +34,7 @@ using namespace std;
 
 void MainWindow::decode_set_available_symbols()
 {
-    std::unique_lock<std::mutex> lock(ui_mutex_);
+    std::unique_lock lock(ui_mutex_);
     MessageDecoder message_decoder(&socket_);
     message_decoder.read<QStringList, QString>(available_vars_);
 
@@ -53,15 +55,15 @@ void MainWindow::respond_get_observed_symbols()
     MessageComposer message_composer;
     message_composer.push(MessageType::GetObservedSymbolsResponse)
         .push(held_buffers_.size());
-    for (const auto& name : held_buffers_) {
-        message_composer.push(name.first);
+    for (const auto& [name, _] : held_buffers_) {
+        message_composer.push(name);
     }
     message_composer.send(&socket_);
 }
 
 
 QListWidgetItem*
-MainWindow::find_image_list_item(const std::string& variable_name_str)
+MainWindow::find_image_list_item(const std::string& variable_name_str) const
 {
     // Looking for corresponding item...
     for (int i = 0; i < ui_->imageList->count(); ++i) {
@@ -95,11 +97,11 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
         stage.get(), icon_width, icon_height);
 
     // Construct icon widget
-    QImage bufferIcon(stage->buffer_icon.data(),
-                      icon_width,
-                      icon_height,
-                      bytes_per_line,
-                      QImage::Format_RGB888);
+    const QImage bufferIcon(stage->buffer_icon.data(),
+                            icon_width,
+                            icon_height,
+                            bytes_per_line,
+                            QImage::Format_RGB888);
 
     // Replace icon in the corresponding item
     QListWidgetItem* item = find_image_list_item(variable_name_str);
@@ -109,7 +111,7 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
 
 
 void MainWindow::update_image_list_label(const std::string& variable_name_str,
-                                         const std::string& label_str)
+                                         const std::string& label_str) const
 {
     // Replace text in the corresponding item
     QListWidgetItem* item = find_image_list_item(variable_name_str);

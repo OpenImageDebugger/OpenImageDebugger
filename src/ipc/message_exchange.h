@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -43,25 +43,25 @@ enum class MessageType {
 
 struct MessageBlock
 {
-    virtual size_t size() const         = 0;
-    virtual const uint8_t* data() const = 0;
+    [[nodiscard]] virtual size_t size() const         = 0;
+    [[nodiscard]] virtual const uint8_t* data() const = 0;
     virtual ~MessageBlock();
 };
 
 template <typename Primitive>
-struct PrimitiveBlock : public MessageBlock
+struct PrimitiveBlock final : MessageBlock
 {
-    PrimitiveBlock(Primitive value)
+    explicit PrimitiveBlock(Primitive value)
         : data_(value)
     {
     }
 
-    virtual size_t size() const
+    [[nodiscard]] size_t size() const override
     {
         return sizeof(Primitive);
     }
 
-    virtual const uint8_t* data() const
+    [[nodiscard]] const uint8_t* data() const override
     {
         return reinterpret_cast<const uint8_t*>(&data_);
     }
@@ -71,32 +71,32 @@ struct PrimitiveBlock : public MessageBlock
 };
 
 
-struct StringBlock : public MessageBlock
+struct StringBlock final : MessageBlock
 {
-    StringBlock(const std::string& value);
+    explicit StringBlock(std::string value);
 
-    virtual size_t size() const;
+    [[nodiscard]] size_t size() const override;
 
-    virtual const uint8_t* data() const;
+    [[nodiscard]] const uint8_t* data() const override;
 
   private:
     std::string data_;
 };
 
-struct BufferBlock : public MessageBlock
+struct BufferBlock final : MessageBlock
 {
-    BufferBlock(const uint8_t* buffer, size_t length)
+    BufferBlock(const uint8_t* buffer, const size_t length)
         : buffer_(buffer)
         , length_(length)
     {
     }
 
-    virtual size_t size() const
+    [[nodiscard]] size_t size() const override
     {
         return length_;
     }
 
-    virtual const uint8_t* data() const
+    [[nodiscard]] const uint8_t* data() const override
     {
         return buffer_;
     }
@@ -109,12 +109,12 @@ struct BufferBlock : public MessageBlock
 template <typename PrimitiveType>
 void assert_primitive_type()
 {
-    static_assert(std::is_same<PrimitiveType, MessageType>::value ||
-                      std::is_same<PrimitiveType, int>::value ||
-                      std::is_same<PrimitiveType, unsigned char>::value ||
-                      std::is_same<PrimitiveType, BufferType>::value ||
-                      std::is_same<PrimitiveType, bool>::value ||
-                      std::is_same<PrimitiveType, std::size_t>::value,
+    static_assert(std::is_same_v<PrimitiveType, MessageType> ||
+                      std::is_same_v<PrimitiveType, int> ||
+                      std::is_same_v<PrimitiveType, unsigned char> ||
+                      std::is_same_v<PrimitiveType, BufferType> ||
+                      std::is_same_v<PrimitiveType, bool> ||
+                      std::is_same_v<PrimitiveType, std::size_t>,
                   "this function must only be called with primitives");
 }
 
@@ -131,7 +131,7 @@ class MessageComposer
         return *this;
     }
 
-    MessageComposer& push(uint8_t* buffer, size_t size)
+    MessageComposer& push(const uint8_t* buffer, const size_t size)
     {
         push(size);
         message_blocks_.emplace_back(new BufferBlock(buffer, size));
@@ -169,7 +169,7 @@ class MessageComposer
 class MessageDecoder
 {
   public:
-    MessageDecoder(QTcpSocket* socket)
+    explicit MessageDecoder(QTcpSocket* socket)
         : socket_(socket)
     {
     }
@@ -203,7 +203,7 @@ class MessageDecoder
   private:
     QTcpSocket* socket_;
 
-    void read_impl(char* dst, size_t read_length)
+    void read_impl(char* dst, const size_t read_length) const
     {
         size_t offset = 0;
         do {
@@ -228,24 +228,24 @@ MessageComposer::push<std::string>(const std::string& value)
 
 template <>
 inline MessageComposer& MessageComposer::push<std::deque<std::string>>(
-    const std::deque<std::string>& container)
+    const std::deque<std::string>& value)
 {
-    push(container.size());
-    for (const auto& value : container) {
-        push(value);
+    push(value.size());
+    for (const auto& element : value) {
+        push(element);
     }
     return *this;
 }
 
 template <>
 inline MessageDecoder&
-MessageDecoder::read<std::vector<uint8_t>>(std::vector<uint8_t>& container)
+MessageDecoder::read<std::vector<uint8_t>>(std::vector<uint8_t>& value)
 {
     size_t container_size;
     read(container_size);
 
-    container.resize(container_size);
-    read_impl(reinterpret_cast<char*>(container.data()), container_size);
+    value.resize(container_size);
+    read_impl(reinterpret_cast<char*>(value.data()), container_size);
 
     return *this;
 }
@@ -257,7 +257,7 @@ inline MessageDecoder& MessageDecoder::read<std::string>(std::string& value)
     read(symbol_length);
 
     value.resize(symbol_length);
-    read_impl(&value.front(), static_cast<qint64>(symbol_length));
+    read_impl(&value.front(), symbol_length);
 
     return *this;
 }
@@ -270,7 +270,7 @@ inline MessageDecoder& MessageDecoder::read<QString>(QString& value)
 
     std::vector<char> temp_string;
     temp_string.resize(symbol_length + 1, '\0');
-    read_impl(reinterpret_cast<char*>(temp_string.data()), symbol_length);
+    read_impl(temp_string.data(), symbol_length);
     value = QString(temp_string.data());
 
     return *this;

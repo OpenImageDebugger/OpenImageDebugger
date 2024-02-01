@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2021 OpenImageDebugger
+ * Copyright (c) 2015-2024 OpenImageDebugger
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -53,7 +53,7 @@ class ProcessImplWin32 final : public ProcessImpl
         proc_.waitForStarted();
     }
 
-    bool isRunning() const override
+    [[nodiscard]] bool isRunning() const override
     {
         return proc_.state() == QProcess::Running;
     }

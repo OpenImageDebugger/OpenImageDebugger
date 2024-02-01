@@ -1,9 +1,5 @@
 # Open Image Debugger: Enabling visualization of in-memory buffers on GDB/LLDB
 
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/OpenImageDebugger/OpenImageDebugger.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/OpenImageDebugger/OpenImageDebugger/alerts/)
-[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/OpenImageDebugger/OpenImageDebugger.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/OpenImageDebugger/OpenImageDebugger/context:cpp)
-[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/OpenImageDebugger/OpenImageDebugger.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/OpenImageDebugger/OpenImageDebugger/context:python)
-
 Open Image Debugger is a tool for visualizing in-memory buffers during debug
 sessions, compatible with both GDB and LLDB. It works out of the box with
 instances of the OpenCV `Mat` class and `Eigen` matrices, but can also be
@@ -40,15 +36,23 @@ customized to work with any arbitrary data structure.
 * Designed to scale well for HighDPI displays
 * Works on Linux, macOS X and Windows (experimental)
 
+## Supported OSes
+
+* OID is developed with Ubuntu as the main target. The goal is to support the two latest LTS versions at a given time.
+  * Ubuntu is also used as a basis for the minimum versions of the dependencies: we try to support the default versions of the packages you get via `apt install`
+* There are currently no plans to support other Linux distros. OID may or may not compile on your favorite distro, your mileage may vary.
+* Support for MacOS and Windows are somewhat experimental now - the code should be able to compile (see <https://github.com/OpenImageDebugger/OpenImageDebugger/releases>), but the binaries are not actively tested - in fact we currently have no automated tests at all for any OS - help is more than welcome in this regard. Also, we haven't come up with a simple installation/usage guides for these OSes yet.
+
 ## Requirements
 
 * A C++17 compliant compiler
 * GDB **7.10+** or LLDB **6+**
-* Qt **5.6+** (required due to the HighDPI display support - download it
-   [here](https://info.qt.io/download-qt-for-application-development))
+* Qt **5.12.8+**
 * CMake **3.10.0+**
-* Python development packages
-* OpenGL 2.1+ support
+* Python **3.8.10+** development packages
+* OpenGL **2.1+** support
+
+Note: this list might get out-of-date by accident. For a more accurate list of requirements, please check what is used in <https://github.com/OpenImageDebugger/OpenImageDebugger/blob/main/.github/workflows/build.yml>.
 
 ## Installation
 
@@ -183,14 +187,14 @@ The settings file for the plugin can be located under
 * **Rendering**
   * *maximum_framerate* Determines the maximum framerate for the buffer
   rendering backend. Must be greater than 0.
-* **UI**
+* **UI** - thanks to @a-hromov for the contribution
   * *list_position* Determines the position of symbols list.
     * `left` Default value.
     * `right`
     * `top`
     * `bottom`
   * *minmax_compact* Changes the position of min/max intensity controller.
-    * `true` Places min/max intensity controller in the sam row with the toolbar.
+    * `true` Places min/max intensity controller in the same row with the toolbar.
     * `false` Places min/max intensity controller below the toolbar. Default value.
   * *colorspace* Selects the order of colorspace channels on the UI.
     * `rgba` Default value.

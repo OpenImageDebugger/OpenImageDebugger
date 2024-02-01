@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,10 +31,10 @@
 #include <Python.h>
 
 
-#if PY_MAJOR_VERSION == 2
-#define PY_INT_CHECK_FUNC PyInt_Check
-#else
+#if PY_MAJOR_VERSION == 3
 #define PY_INT_CHECK_FUNC PyLong_Check
+#else
+#error "Unsupported Python version"
 #endif
 
 

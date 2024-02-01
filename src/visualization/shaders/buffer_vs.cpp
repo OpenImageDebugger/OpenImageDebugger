@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,7 +25,6 @@
 
 namespace shader
 {
-
 const char* buff_vert_shader = R"(
 
 attribute vec2 input_position;
@@ -39,5 +38,4 @@ void main(void) {
 }
 
 )";
-
 } // namespace shader

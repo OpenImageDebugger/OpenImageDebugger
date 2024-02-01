@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,30 +26,26 @@
 #ifndef BUFFER_VALUES_H_
 #define BUFFER_VALUES_H_
 
-#include <iostream>
-
-#include <QFont>
-
 #include "component.h"
-#include "ui/gl_text_renderer.h"
 
-class BufferValues : public Component
+
+class BufferValues final : public Component
 {
   public:
     BufferValues(GameObject* game_object, GLCanvas* gl_canvas);
 
-    virtual ~BufferValues();
+    ~BufferValues() override;
 
-    virtual void update()
+    void update() override
     {
     }
 
-    virtual int render_index() const;
+    [[nodiscard]] int render_index() const override;
 
-    virtual void draw(const mat4& projection, const mat4& view_inv);
+    void draw(const mat4& projection, const mat4& view_inv) override;
 
   private:
-    float text_pixel_scale         = 1.0;
+    float text_pixel_scale         = 1.0f;
     static float constexpr padding = 0.125f; // Must be smaller than 0.5
 
     void generate_glyphs_texture();

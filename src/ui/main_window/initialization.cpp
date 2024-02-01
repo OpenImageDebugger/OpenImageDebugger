@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,6 +23,8 @@
  * IN THE SOFTWARE.
  */
 
+#include "main_window.h"
+
 #include <cmath>
 #include <iostream>
 
@@ -30,9 +32,9 @@
 #include <QDebug>
 #include <QFontDatabase>
 #include <QHostAddress>
+#include <QSettings>
 #include <QShortcut>
 
-#include "main_window.h"
 
 #include "ui_main_window.h"
 
@@ -40,16 +42,19 @@
 void MainWindow::initialize_settings_ui_list_position(QSettings& settings)
 {
     const QVariant variant = settings.value("list_position");
-    if (!variant.canConvert(QVariant::Type::String))
+    if (!variant.canConvert(QVariant::Type::String)) {
         return;
+    }
 
     const QString position_str = variant.toString();
 
-    if (position_str == "top" || position_str == "bottom")
+    if (position_str == "top" || position_str == "bottom") {
         ui_->splitter->setOrientation(Qt::Vertical);
+    }
 
-    if (position_str == "right" || position_str == "bottom")
+    if (position_str == "right" || position_str == "bottom") {
         ui_->splitter->insertWidget(-1, ui_->frame_list);
+    }
 
     ui_->splitter->repaint();
 }
@@ -219,10 +224,9 @@ void MainWindow::initialize_settings()
     settings.endGroup();
 
     // Load previous session symbols
-    QDateTime now = QDateTime::currentDateTime();
-    QList<BufferExpiration> previous_buffers =
-        settings.value("PreviousSession/buffers")
-            .value<QList<BufferExpiration>>();
+    const QDateTime now   = QDateTime::currentDateTime();
+    auto previous_buffers = settings.value("PreviousSession/buffers")
+                                .value<QList<BufferExpiration>>();
 
     for (const auto& previous_buffer : previous_buffers) {
         if (previous_buffer.second >= now) {
@@ -256,33 +260,35 @@ void MainWindow::initialize_settings()
 }
 
 
-void MainWindow::setFontIcon(QAbstractButton* ui_element, QString unicode_id)
+void MainWindow::setFontIcon(QAbstractButton* ui_element,
+                             const wchar_t unicode_id[])
 {
     QFont icons_font;
     icons_font.setFamily("fontello");
     icons_font.setPointSizeF(10.f);
 
     ui_element->setFont(icons_font);
-    ui_element->setText(unicode_id);
+    ui_element->setText(QString::fromWCharArray(unicode_id));
 }
 
 
 void MainWindow::setVectorIcon(QLabel* ui_element,
-                               QString icon_file_name,
-                               int width,
-                               int height)
+                               const QString& icon_file_name,
+                               const int width,
+                               const int height)
 {
     qreal screen_dpi_scale = get_screen_dpi_scale();
 
     ui_element->setScaledContents(true);
-    ui_element->setMinimumWidth(std::round(width));
-    ui_element->setMaximumWidth(std::round(width));
-    ui_element->setMinimumHeight(std::round(height));
-    ui_element->setMaximumHeight(std::round(height));
+    ui_element->setMinimumWidth(static_cast<int>(std::round(width)));
+    ui_element->setMaximumWidth(static_cast<int>(std::round(width)));
+    ui_element->setMinimumHeight(static_cast<int>(std::round(height)));
+    ui_element->setMaximumHeight(static_cast<int>(std::round(height)));
     ui_element->setPixmap(
         QIcon(QString(":/resources/icons/%1").arg(icon_file_name))
-            .pixmap(QSize(std::round(width * screen_dpi_scale),
-                          std::round(height * screen_dpi_scale))));
+            .pixmap(QSize(
+                static_cast<int>(std::round(width * screen_dpi_scale)),
+                static_cast<int>(std::round(height * screen_dpi_scale)))));
     ui_element->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 }
 
@@ -294,17 +300,20 @@ void MainWindow::initialize_ui_icons()
         qWarning() << "Could not load ionicons font file!";
     }
 
+    QFont icons_font;
+    icons_font.setFamily("fontello");
+    icons_font.setPointSizeF(10.f);
 
-    setFontIcon(ui_->acEdit, "\ue803");
-    setFontIcon(ui_->acToggle, "\ue804");
-    setFontIcon(ui_->reposition_buffer, "\ue800");
-    setFontIcon(ui_->linkViewsToggle, "\ue805");
-    setFontIcon(ui_->rotate_90_cw, "\ue801");
-    setFontIcon(ui_->rotate_90_ccw, "\ue802");
-    setFontIcon(ui_->go_to_pixel, "\uf031");
+    setFontIcon(ui_->acEdit, L"\ue803");
+    setFontIcon(ui_->acToggle, L"\ue804");
+    setFontIcon(ui_->reposition_buffer, L"\ue800");
+    setFontIcon(ui_->linkViewsToggle, L"\ue805");
+    setFontIcon(ui_->rotate_90_cw, L"\ue801");
+    setFontIcon(ui_->rotate_90_ccw, L"\ue802");
+    setFontIcon(ui_->go_to_pixel, L"\uf031");
 
-    setFontIcon(ui_->ac_reset_min, "\ue808");
-    setFontIcon(ui_->ac_reset_max, "\ue808");
+    setFontIcon(ui_->ac_reset_min, L"\ue808");
+    setFontIcon(ui_->ac_reset_max, L"\ue808");
 
     setVectorIcon(ui_->label_c1_min,
                   QString("label_%1_channel.svg").arg(name_channel_1_),
@@ -343,6 +352,18 @@ void MainWindow::initialize_ui_icons()
 }
 
 
+void MainWindow::initialize_timers()
+{
+    connect(&settings_persist_timer_,
+            SIGNAL(timeout()),
+            this,
+            SLOT(persist_settings()));
+    settings_persist_timer_.setSingleShot(true);
+
+    connect(&update_timer_, SIGNAL(timeout()), this, SLOT(loop()));
+}
+
+
 void MainWindow::initialize_ui_signals()
 {
     connect(ui_->splitter,
@@ -361,36 +382,23 @@ void MainWindow::initialize_ui_signals()
             &MainWindow::persist_settings_deferred);
 }
 
-
-void MainWindow::initialize_timers()
-{
-    connect(&settings_persist_timer_,
-            SIGNAL(timeout()),
-            this,
-            SLOT(persist_settings()));
-    settings_persist_timer_.setSingleShot(true);
-
-    connect(&update_timer_, SIGNAL(timeout()), this, SLOT(loop()));
-}
-
-
 void MainWindow::initialize_shortcuts()
 {
-    QShortcut* symbol_list_focus_shortcut_ =
+    const QShortcut* symbol_list_focus_shortcut_ =
         new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_K), this);
     connect(symbol_list_focus_shortcut_,
             SIGNAL(activated()),
             ui_->symbolList,
             SLOT(setFocus()));
 
-    QShortcut* buffer_removal_shortcut_ =
+    const QShortcut* buffer_removal_shortcut_ =
         new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList);
     connect(buffer_removal_shortcut_,
             SIGNAL(activated()),
             this,
             SLOT(remove_selected_buffer()));
 
-    QShortcut* go_to_shortcut =
+    const QShortcut* go_to_shortcut =
         new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_L), this);
     connect(
         go_to_shortcut, SIGNAL(activated()), this, SLOT(toggle_go_to_dialog()));
@@ -426,7 +434,7 @@ void MainWindow::initialize_symbol_completer()
 }
 
 
-void MainWindow::initialize_left_pane()
+void MainWindow::initialize_left_pane() const
 {
     connect(ui_->imageList,
             SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
@@ -446,7 +454,7 @@ void MainWindow::initialize_left_pane()
 }
 
 
-void MainWindow::initialize_auto_contrast_form()
+void MainWindow::initialize_auto_contrast_form() const
 {
     // Configure auto contrast inputs
     ui_->ac_c1_min->setValidator(new QDoubleValidator(ui_->ac_c1_min));
@@ -495,7 +503,7 @@ void MainWindow::initialize_auto_contrast_form()
 }
 
 
-void MainWindow::initialize_toolbar()
+void MainWindow::initialize_toolbar() const
 {
     connect(ui_->acToggle, &QToolButton::toggled, this, &MainWindow::ac_toggle);
 

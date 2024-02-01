@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,10 +23,10 @@
  * IN THE SOFTWARE.
  */
 
+#include "main_window.h"
+
 #include <QFileDialog>
 #include <QtMath> // for portable definition of M_PI
-
-#include "main_window.h"
 
 #include "io/buffer_exporter.h"
 #include "ui_main_window.h"
@@ -37,21 +37,22 @@
 using namespace std;
 
 
-void MainWindow::resize_callback(int w, int h)
+void MainWindow::resize_callback(const int w, const int h) const
 {
-    for (auto& stage : stages_)
-        stage.second->resize_callback(w, h);
+    for (const auto& [_, stage] : stages_) {
+        stage->resize_callback(w, h);
+    }
 
     go_to_widget_->move(ui_->bufferPreview->width() - go_to_widget_->width(),
                         ui_->bufferPreview->height() - go_to_widget_->height());
 }
 
 
-void MainWindow::scroll_callback(float delta)
+void MainWindow::scroll_callback(const float delta)
 {
     if (link_views_enabled_) {
-        for (auto& stage : stages_) {
-            stage.second->scroll_callback(delta);
+        for (const auto& [_, stage] : stages_) {
+            stage->scroll_callback(delta);
         }
     } else if (currently_selected_stage_ != nullptr) {
         currently_selected_stage_->scroll_callback(delta);
@@ -66,15 +67,14 @@ void MainWindow::scroll_callback(float delta)
 }
 
 
-void MainWindow::mouse_drag_event(int mouse_x, int mouse_y)
+void MainWindow::mouse_drag_event(const int mouse_x, const int mouse_y)
 {
-    const QPoint virtual_motion(static_cast<int>(mouse_x),
-                                static_cast<int>(mouse_y));
+    const QPoint virtual_motion(mouse_x, mouse_y);
 
     if (link_views_enabled_) {
-        for (auto& stage : stages_)
-            stage.second->mouse_drag_event(virtual_motion.x(),
-                                           virtual_motion.y());
+        for (const auto& [_, stage] : stages_) {
+            stage->mouse_drag_event(virtual_motion.x(), virtual_motion.y());
+        }
     } else if (currently_selected_stage_ != nullptr) {
         currently_selected_stage_->mouse_drag_event(virtual_motion.x(),
                                                     virtual_motion.y());
@@ -84,7 +84,7 @@ void MainWindow::mouse_drag_event(int mouse_x, int mouse_y)
 }
 
 
-void MainWindow::mouse_move_event(int, int)
+void MainWindow::mouse_move_event(int, int) const
 {
     update_status_bar();
 }
@@ -114,14 +114,14 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
     KeyboardState::update_keyboard_state(event);
 
     if (event->type() == QEvent::KeyPress) {
-        QKeyEvent* key_event = static_cast<QKeyEvent*>(event);
+        const auto* key_event = dynamic_cast<QKeyEvent*>(event);
 
         EventProcessCode event_intercepted = EventProcessCode::IGNORED;
 
         if (link_views_enabled_) {
-            for (auto& stage : stages_) {
-                EventProcessCode event_intercepted_stage =
-                    stage.second->key_press_event(key_event->key());
+            for (const auto& [_, stage] : stages_) {
+                const EventProcessCode event_intercepted_stage =
+                    stage->key_press_event(key_event->key());
 
                 if (event_intercepted_stage == EventProcessCode::INTERCEPTED) {
                     event_intercepted = EventProcessCode::INTERCEPTED;
@@ -138,9 +138,9 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
 
             event->accept();
             return true;
-        } else {
-            return QObject::eventFilter(target, event);
         }
+
+        return QObject::eventFilter(target, event);
     }
 
     return false;
@@ -150,16 +150,16 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
 void MainWindow::recenter_buffer()
 {
     if (link_views_enabled_) {
-        for (auto& stage : stages_) {
-            GameObject* cam_obj = stage.second->get_game_object("camera");
-            Camera* cam = cam_obj->get_component<Camera>("camera_component");
+        for (const auto& [_, stage] : stages_) {
+            GameObject* cam_obj = stage->get_game_object("camera");
+            auto* cam = cam_obj->get_component<Camera>("camera_component");
             cam->recenter_camera();
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
             GameObject* cam_obj =
                 currently_selected_stage_->get_game_object("camera");
-            Camera* cam = cam_obj->get_component<Camera>("camera_component");
+            auto* cam = cam_obj->get_component<Camera>("camera_component");
             cam->recenter_camera();
         }
     }
@@ -178,15 +178,15 @@ void MainWindow::rotate_90_cw()
 {
     const auto request_90_cw_rotation = [](Stage* stage) {
         GameObject* buffer_obj = stage->get_game_object("buffer");
-        Buffer* buffer_comp =
+        auto* buffer_comp =
             buffer_obj->get_component<Buffer>("buffer_component");
 
-        buffer_comp->rotate(static_cast<float>(90.0 * M_PI / 180.0));
+        buffer_comp->rotate(90.0f * static_cast<float>(M_PI) / 180.0f);
     };
 
     if (link_views_enabled_) {
-        for (auto& stage : stages_) {
-            request_90_cw_rotation(stage.second.get());
+        for (auto& [_, stage] : stages_) {
+            request_90_cw_rotation(stage.get());
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
@@ -202,15 +202,15 @@ void MainWindow::rotate_90_ccw()
 {
     const auto request_90_ccw_rotation = [](Stage* stage) {
         GameObject* buffer_obj = stage->get_game_object("buffer");
-        Buffer* buffer_comp =
+        auto* buffer_comp =
             buffer_obj->get_component<Buffer>("buffer_component");
 
-        buffer_comp->rotate(static_cast<float>(-90.0 * M_PI / 180.0));
+        buffer_comp->rotate(-90.0f * static_cast<float>(M_PI) / 180.0f);
     };
 
     if (link_views_enabled_) {
-        for (auto& stage : stages_) {
-            request_90_ccw_rotation(stage.second.get());
+        for (auto& [_, stage] : stages_) {
+            request_90_ccw_rotation(stage.get());
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
@@ -227,7 +227,7 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
     if (item == nullptr)
         return;
 
-    auto stage =
+    const auto stage =
         stages_.find(item->data(Qt::UserRole).toString().toStdString());
     if (stage != stages_.end()) {
         set_currently_selected_stage(stage->second.get());
@@ -242,9 +242,9 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
 void MainWindow::remove_selected_buffer()
 {
     if (ui_->imageList->count() > 0 && currently_selected_stage_ != nullptr) {
-        QListWidgetItem* removed_item =
+        const QListWidgetItem* removed_item =
             ui_->imageList->takeItem(ui_->imageList->currentRow());
-        string buffer_name =
+        const string buffer_name =
             removed_item->data(Qt::UserRole).toString().toStdString();
         stages_.erase(buffer_name);
         held_buffers_.erase(buffer_name);
@@ -252,7 +252,7 @@ void MainWindow::remove_selected_buffer()
 
         removed_buffer_names_.insert(buffer_name);
 
-        if (stages_.size() == 0) {
+        if (stages_.empty()) {
             set_currently_selected_stage(nullptr);
         }
 
@@ -263,8 +263,8 @@ void MainWindow::remove_selected_buffer()
 
 void MainWindow::symbol_selected()
 {
-    QByteArray symbol_name_qba = ui_->symbolList->text().toLocal8Bit();
-    const char* symbol_name    = symbol_name_qba.constData();
+    const QByteArray symbol_name_qba = ui_->symbolList->text().toLocal8Bit();
+    const char* symbol_name          = symbol_name_qba.constData();
     if (ui_->symbolList->text().length() > 0) {
         request_plot_buffer(symbol_name);
         // Clear symbol input
@@ -273,10 +273,10 @@ void MainWindow::symbol_selected()
 }
 
 
-void MainWindow::symbol_completed(QString str)
+void MainWindow::symbol_completed(const QString& str)
 {
     if (str.length() > 0) {
-        QByteArray symbol_name_qba = str.toLocal8Bit();
+        const QByteArray symbol_name_qba = str.toLocal8Bit();
         request_plot_buffer(symbol_name_qba.constData());
         // Clear symbol input
         ui_->symbolList->setText("");
@@ -287,13 +287,14 @@ void MainWindow::symbol_completed(QString str)
 
 void MainWindow::export_buffer()
 {
-    auto sender_action(static_cast<QAction*>(sender()));
+    const auto sender_action(dynamic_cast<QAction*>(sender()));
 
-    auto stage =
+    const auto stage =
         stages_.find(sender_action->data().toString().toStdString())->second;
 
     GameObject* buffer_obj = stage->get_game_object("buffer");
-    Buffer* component = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto* component =
+        buffer_obj->get_component<Buffer>("buffer_component");
 
     QFileDialog file_dialog(this);
     file_dialog.setAcceptMode(QFileDialog::AcceptSave);
@@ -306,7 +307,7 @@ void MainWindow::export_buffer()
         BufferExporter::OutputType::OctaveMatrix;
 
     // Generate the save suffix string
-    QHashIterator<QString, BufferExporter::OutputType> it(output_extensions);
+    QHashIterator it(output_extensions);
 
     QString save_message;
 
@@ -321,7 +322,7 @@ void MainWindow::export_buffer()
     file_dialog.selectNameFilter(default_export_suffix_);
 
     if (file_dialog.exec() == QDialog::Accepted) {
-        string file_name = file_dialog.selectedFiles()[0].toStdString();
+        const string file_name = file_dialog.selectedFiles()[0].toStdString();
         const auto selected_filter = file_dialog.selectedNameFilter();
 
         // Export buffer
@@ -341,7 +342,7 @@ void MainWindow::show_context_menu(const QPoint& pos)
 {
     if (ui_->imageList->itemAt(pos) != nullptr) {
         // Handle global position
-        QPoint globalPos = ui_->imageList->mapToGlobal(pos);
+        const QPoint globalPos = ui_->imageList->mapToGlobal(pos);
 
         // Create menu and insert context actions
         QMenu myMenu(this);
@@ -358,7 +359,7 @@ void MainWindow::show_context_menu(const QPoint& pos)
 }
 
 
-void MainWindow::toggle_go_to_dialog()
+void MainWindow::toggle_go_to_dialog() const
 {
     if (!go_to_widget_->isVisible()) {
         vec4 default_goal(0, 0, 0, 0);
@@ -366,7 +367,8 @@ void MainWindow::toggle_go_to_dialog()
         if (currently_selected_stage_ != nullptr) {
             GameObject* cam_obj =
                 currently_selected_stage_->get_game_object("camera");
-            Camera* cam = cam_obj->get_component<Camera>("camera_component");
+            const auto* cam =
+                cam_obj->get_component<Camera>("camera_component");
 
             default_goal = cam->get_position();
         }
@@ -381,8 +383,8 @@ void MainWindow::toggle_go_to_dialog()
 void MainWindow::go_to_pixel(float x, float y)
 {
     if (link_views_enabled_) {
-        for (auto& stage : stages_) {
-            stage.second->go_to_pixel(x, y);
+        for (const auto& [_, stage] : stages_) {
+            stage->go_to_pixel(x, y);
         }
     } else if (currently_selected_stage_ != nullptr) {
         currently_selected_stage_->go_to_pixel(x, y);

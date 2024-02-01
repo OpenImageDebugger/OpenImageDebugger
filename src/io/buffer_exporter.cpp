@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2023 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,11 +25,10 @@
 
 #include "buffer_exporter.h"
 
-
 #include <algorithm>
+#include <cassert>
+#include <iostream>
 #include <limits>
-#include <memory>
-
 
 #include <QPixmap>
 
@@ -40,14 +39,14 @@ using namespace std;
 template <typename T>
 float get_multiplier()
 {
-    return 255.f / static_cast<float>((std::numeric_limits<T>::max)());
+    return 255.0f / static_cast<float>((std::numeric_limits<T>::max)());
 }
 
 
 template <>
 float get_multiplier<float>()
 {
-    return 255.f;
+    return 255.0f;
 }
 
 
@@ -61,7 +60,7 @@ T get_max_intensity()
 template <>
 float get_max_intensity<float>()
 {
-    return 1.f;
+    return 1.0f;
 }
 
 
@@ -72,12 +71,12 @@ void export_bitmap(const char* fname, const Buffer* buffer)
     const auto height_i = static_cast<size_t>(buffer->buffer_height_f);
 
     vector<uint8_t> processed_buffer(4 * width_i * height_i);
-    uint8_t default_channel_vals[] = {0, 0, 0, 255};
+    constexpr uint8_t default_channel_vals[] = {0, 0, 0, 255};
 
     uint8_t* out_ptr = processed_buffer.data();
 
-    const float* bc_comp = buffer->auto_buffer_contrast_brightness();
-    float color_scale    = get_multiplier<T>();
+    const float* bc_comp    = buffer->auto_buffer_contrast_brightness();
+    const float color_scale = get_multiplier<T>();
 
     const float max_intensity = get_max_intensity<T>();
 
@@ -96,13 +95,16 @@ void export_bitmap(const char* fname, const Buffer* buffer)
         case 'a':
             pixel_layout[c] = 3;
             break;
+        default:
+            assert("Unknown pixel layout");
+            break;
         }
     }
 
     const T* in_ptr  = reinterpret_cast<const T*>(buffer->buffer);
     int input_stride = buffer->channels * buffer->step;
     uint8_t unformatted_pixel[4];
-    const std::size_t channels = static_cast<std::size_t>(buffer->channels);
+    const auto channels = static_cast<std::size_t>(buffer->channels);
 
     for (size_t y = 0; y < height_i; ++y) {
         for (size_t x = 0; x < width_i; ++x) {
@@ -110,8 +112,8 @@ void export_bitmap(const char* fname, const Buffer* buffer)
             std::size_t c                = 0;
 
             // Perform contrast normalization
-            for (c = 0; c < channels; ++c) {
-                float in_val = static_cast<float>(in_ptr[col_offset + c]);
+            for (; c < channels; ++c) {
+                const auto in_val = static_cast<float>(in_ptr[col_offset + c]);
 
                 unformatted_pixel[c] = static_cast<uint8_t>(clamp(
                     (in_val * bc_comp[c] + bc_comp[4 + c] * max_intensity) *
@@ -133,7 +135,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
             }
 
             // Reorganize pixel layout according to user provided format
-            for (int c = 0; c < 4; ++c) {
+            for (c = 0; c < 4; ++c) {
                 out_ptr[pixel_layout[c]] = unformatted_pixel[c];
             }
             out_ptr += 4;
@@ -143,12 +145,14 @@ void export_bitmap(const char* fname, const Buffer* buffer)
     }
 
     const int bytes_per_line = static_cast<int>(width_i * 4);
-    QImage output_image(processed_buffer.data(),
-                        width_i,
-                        height_i,
-                        bytes_per_line,
-                        QImage::Format_RGBA8888);
-    output_image.save(fname, "png");
+    const QImage output_image(processed_buffer.data(),
+                              static_cast<int>(width_i),
+                              static_cast<int>(height_i),
+                              bytes_per_line,
+                              QImage::Format_RGBA8888);
+    if (const auto result = output_image.save(fname, "png"); !result) {
+        std::cerr << ("Failed to save image") << std::endl;
+    }
 }
 
 
@@ -194,14 +198,14 @@ const char* get_type_descriptor<float>()
 template <typename T>
 void export_binary(const char* fname, const Buffer* buffer)
 {
-    const size_t width_i  = static_cast<size_t>(buffer->buffer_width_f);
-    const size_t height_i = static_cast<size_t>(buffer->buffer_height_f);
+    const auto width_i  = static_cast<size_t>(buffer->buffer_width_f);
+    const auto height_i = static_cast<size_t>(buffer->buffer_height_f);
 
     const T* in_ptr = reinterpret_cast<const T*>(buffer->buffer);
 
     FILE* fhandle = fopen(fname, "wb");
 
-    if (fhandle == NULL) {
+    if (fhandle == nullptr) {
         return;
     }
 
@@ -221,7 +225,7 @@ void export_binary(const char* fname, const Buffer* buffer)
 
 void BufferExporter::export_buffer(const Buffer* buffer,
                                    const std::string& path,
-                                   BufferExporter::OutputType type)
+                                   const OutputType type)
 {
     if (type == OutputType::Bitmap) {
         switch (buffer->type) {
@@ -238,6 +242,7 @@ void BufferExporter::export_buffer(const Buffer* buffer,
             export_bitmap<int32_t>(path.c_str(), buffer);
             break;
         case BufferType::Float32:
+            [[fallthrough]];
         case BufferType::Float64:
             export_bitmap<float>(path.c_str(), buffer);
             break;
@@ -258,6 +263,7 @@ void BufferExporter::export_buffer(const Buffer* buffer,
             export_binary<int32_t>(path.c_str(), buffer);
             break;
         case BufferType::Float32:
+            [[fallthrough]];
         case BufferType::Float64:
             export_binary<float>(path.c_str(), buffer);
             break;

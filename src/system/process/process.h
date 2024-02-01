@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger
+ * Copyright (c) 2015-2024 OpenImageDebugger
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,7 +32,7 @@
 
 class ProcessImpl;
 
-class Process
+class Process final
 {
   public:
     Process();
@@ -41,23 +41,23 @@ class Process
      * Start the process represented by its path and arguments
      * @param command binary and path and its arguments
      */
-    void start(const std::vector<std::string>& command);
+    void start(const std::vector<std::string>& command) const;
 
     /**
      * Check if the process is running
      * @return true if running, false otherwise
      */
-    bool isRunning();
+    [[nodiscard]] bool isRunning() const;
 
     /**
      * Kill the process
      */
-    void kill();
+    void kill() const;
 
     /**
      * Busy waiting until the process starts
      */
-    void waitForStart();
+    void waitForStart() const;
 
   private:
     /**
