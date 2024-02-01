@@ -269,7 +269,8 @@ class MainWindow final : public QMainWindow
 
     void initialize_settings_ui_minmax_compact(const QSettings& settings) const;
 
-    static QString initialize_settings_ui_colorspace_channel(const QChar& character);
+    static QString
+    initialize_settings_ui_colorspace_channel(const QChar& character);
 
     void initialize_settings_ui_colorspace(const QSettings& settings);
 

@@ -169,15 +169,14 @@ void MainWindow::decode_plot_buffer_contents()
         visualized_height = buff_width;
     }
 
-    string label_str;
-    {
+    const auto label_str = [&]() -> string {
         stringstream label_ss;
         label_ss << display_name_str;
         label_ss << "\n[" << visualized_width << "x" << visualized_height
                  << "]";
         label_ss << "\n" << get_type_label(buff_type, buff_channels);
-        label_str = label_ss.str();
-    }
+        return label_ss.str();
+    }();
 
     // Find corresponding stage buffer
     auto buffer_stage = stages_.find(variable_name_str);
