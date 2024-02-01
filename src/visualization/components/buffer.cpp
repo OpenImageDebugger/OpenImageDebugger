@@ -37,7 +37,8 @@
 using namespace std;
 
 
-const float Buffer::no_ac_params[8] = {1.0, 1.0, 1.0, 1.0, 0, 0, 0, 0};
+constexpr float Buffer::no_ac_params[8] =
+    {1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
 
 Buffer::Buffer(GameObject* game_object, GLCanvas* gl_canvas)
@@ -114,7 +115,7 @@ void Buffer::rotate(const float angle)
 }
 
 
-void Buffer::set_icon_drawing_mode(bool is_enabled)
+void Buffer::set_icon_drawing_mode(const bool is_enabled) const
 {
     buff_prog.use();
 
@@ -367,10 +368,10 @@ void Buffer::update_object_pose() const
     if (transpose) {
         // clang-format off
         transposition << std::initializer_list<float>{
-            0, 1, 0, 0,
-            1, 0, 0, 0,
-            0, 0, 1, 0,
-            0, 0, 0, 1
+            0.0f, 1.0f, 0.0f, 0.0f,
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f
         };
         // clang-format on
     } else {
@@ -417,10 +418,10 @@ bool Buffer::initialize()
     // clang-format off
     static constexpr GLfloat g_vertex_buffer_data[] = {
         -0.5f, -0.5f,
-        0.5f, -0.5f,
-        0.5f, 0.5f,
-        0.5f, 0.5f,
-        -0.5f, 0.5f,
+         0.5f, -0.5f,
+         0.5f,  0.5f,
+         0.5f,  0.5f,
+        -0.5f,  0.5f,
         -0.5f, -0.5f,
     };
     // clang-format on
@@ -508,7 +509,7 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
                                 static_cast<float>(buff_w),
                                 static_cast<float>(buff_h));
 
-            px += static_cast<float>(buff_w) / 2;
+            px += static_cast<float>(buff_w) / 2.0f;
 
             gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, vbo);
             gl_canvas_->glVertexAttribPointer(

@@ -259,16 +259,18 @@ void Stage::go_to_pixel(const float x, const float y)
 }
 
 
-void Stage::set_icon_drawing_mode(bool is_enabled)
+void Stage::set_icon_drawing_mode(const bool is_enabled)
 {
     GameObject* buffer_obj = all_game_objects["buffer"].get();
-    if (buffer_obj == nullptr)
+    if (buffer_obj == nullptr) {
         return;
+    }
 
-    auto* buffer_component =
+    const auto* buffer_component =
         buffer_obj->get_component<Buffer>("buffer_component");
-    if (buffer_component == nullptr)
+    if (buffer_component == nullptr) {
         return;
+    }
 
     buffer_component->set_icon_drawing_mode(is_enabled);
 }

@@ -8,7 +8,7 @@ PointerBindsToType: true
 Cpp11BracedListStyle: true
 AlignAfterOpenBracket: Align
 AlignEscapedNewlinesLeft: true
-AllowShortBlocksOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
 BinPackArguments: false
@@ -22,6 +22,7 @@ BraceWrapping:
   AfterUnion: true
 BreakBeforeBraces: Custom
 MaxEmptyLinesToKeep: 2
-SortIncludes: true
+SortIncludes: CaseSensitive
 SpaceBeforeAssignmentOperators: true
 BreakConstructorInitializers: BeforeComma
+InsertBraces: true

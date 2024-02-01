@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2019 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -123,11 +123,7 @@ void Camera::update_object_pose() const
         // Since the view matrix of the camera is inverted before being applied
         // to the world coordinates, the order in which the operations below are
         // applied to world coordinates during rendering will also be reversed
-
-        // clang-format off
-        const mat4 pose = scale_ *
-            mat4::translation(position);
-        // clang-format on
+        const mat4 pose = scale_ * mat4::translation(position);
 
         game_object_->set_pose(pose);
     }
@@ -217,10 +213,11 @@ EventProcessCode Camera::key_press_event(int)
 }
 
 
-void Camera::scale_at(const vec4& center_ndc, float delta)
+void Camera::scale_at(const vec4& center_ndc, const float delta)
 {
     // Check if lowest zoom value has been reached.
-    if (delta < 0) {
+    auto new_delta{delta};
+    if (new_delta < 0) {
 
         // Ratio which defines farthest zoom limit. (0; 1].
         // 1 forbids to zoom farther then window size.
@@ -249,11 +246,11 @@ void Camera::scale_at(const vec4& center_ndc, float delta)
         }
 
         // Update delta if view matrix is near its lowest zoom.
-        delta = std::max(delta, delta_lowest);
+        new_delta = std::max(new_delta, delta_lowest);
     }
 
     // Check if greatest zoom value has been reached.
-    if (delta > 0) {
+    if (new_delta > 0) {
 
         // Closest zoom power. It may be any positive value.
         // 1 forbids to zoom closer then original matrix scale.
@@ -267,12 +264,12 @@ void Camera::scale_at(const vec4& center_ndc, float delta)
         }
 
         // Update delta if view matrix is near its greatest zoom.
-        delta = std::min(delta, delta_greatest);
+        new_delta = std::min(new_delta, delta_greatest);
     }
 
     const mat4 vp_inv = game_object_->get_pose() * projection.inv();
 
-    const float delta_zoom = std::pow(zoom_factor, -delta);
+    const float delta_zoom = std::pow(zoom_factor, -new_delta);
 
     const vec4 center_pos = scale_.inv() * vp_inv * center_ndc;
 
@@ -297,7 +294,7 @@ void Camera::scale_at(const vec4& center_ndc, float delta)
 
     // Calls to compute_zoom will require the zoom_power_ parameter to be on
     // par with the accumulated delta_zooms
-    zoom_power_ += delta;
+    zoom_power_ += new_delta;
 
     update_object_pose();
 }

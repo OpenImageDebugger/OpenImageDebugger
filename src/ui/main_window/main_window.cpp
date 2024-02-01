@@ -43,7 +43,6 @@ using namespace std;
 
 Q_DECLARE_METATYPE(QList<QString>)
 
-
 MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     : QMainWindow(parent)
     , is_window_ready_(false)
@@ -148,8 +147,9 @@ void MainWindow::loop()
     // Update an icon of every entry in image list
     if (request_icons_update_) {
 
-        for (auto& pair_stage : stages_)
+        for (auto& pair_stage : stages_) {
             repaint_image_list_icon(pair_stage.first);
+        }
 
         request_icons_update_ = false;
     }
@@ -225,8 +225,9 @@ void MainWindow::persist_settings()
         const QList<int> listSizesInt = ui_->splitter->sizes();
 
         QList<QVariant> listSizesVariant;
-        for (int size : listSizesInt)
+        for (int size : listSizesInt) {
             listSizesVariant.append(size);
+        }
 
         settings.setValue("splitter", listSizesVariant);
     }

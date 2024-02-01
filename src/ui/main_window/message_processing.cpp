@@ -67,10 +67,10 @@ MainWindow::find_image_list_item(const std::string& variable_name_str) const
 {
     // Looking for corresponding item...
     for (int i = 0; i < ui_->imageList->count(); ++i) {
-
         QListWidgetItem* item = ui_->imageList->item(i);
-        if (item->data(Qt::UserRole) != variable_name_str.c_str())
+        if (item->data(Qt::UserRole) != variable_name_str.c_str()) {
             continue;
+        }
 
         return item;
     }
@@ -80,16 +80,17 @@ MainWindow::find_image_list_item(const std::string& variable_name_str) const
 
 void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
 {
-    auto itStage = stages_.find(variable_name_str);
-    if (itStage == stages_.end())
+    const auto itStage = stages_.find(variable_name_str);
+    if (itStage == stages_.end()) {
         return;
+    }
 
     const std::shared_ptr<Stage>& stage = itStage->second;
 
     // Buffer icon dimensions
-    QSizeF icon_size         = get_icon_size();
-    int icon_width           = static_cast<int>(icon_size.width());
-    int icon_height          = static_cast<int>(icon_size.height());
+    const QSizeF icon_size   = get_icon_size();
+    const int icon_width     = static_cast<int>(icon_size.width());
+    const int icon_height    = static_cast<int>(icon_size.height());
     const int bytes_per_line = icon_width * 3;
 
     // Update buffer icon
@@ -105,8 +106,9 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
 
     // Replace icon in the corresponding item
     QListWidgetItem* item = find_image_list_item(variable_name_str);
-    if (item != nullptr)
+    if (item != nullptr) {
         item->setIcon(QPixmap::fromImage(bufferIcon));
+    }
 }
 
 
@@ -115,8 +117,9 @@ void MainWindow::update_image_list_label(const std::string& variable_name_str,
 {
     // Replace text in the corresponding item
     QListWidgetItem* item = find_image_list_item(variable_name_str);
-    if (item != nullptr)
+    if (item != nullptr) {
         item->setText(label_str.c_str());
+    }
 }
 
 
@@ -181,7 +184,7 @@ void MainWindow::decode_plot_buffer_contents()
     if (buffer_stage == stages_.end()) {
 
         // Construct a new stage buffer if needed
-        shared_ptr<Stage> stage = make_shared<Stage>(this);
+        auto stage = make_shared<Stage>(this);
         if (!stage->initialize(buff_ptr,
                                buff_width,
                                buff_height,
@@ -192,7 +195,7 @@ void MainWindow::decode_plot_buffer_contents()
                                transpose_buffer)) {
             cerr << "[error] Could not initialize opengl canvas!" << endl;
         }
-        stage->contrast_enabled    = ac_enabled_;
+        stage->contrast_enabled = ac_enabled_;
         buffer_stage = stages_.emplace(variable_name_str, stage).first;
     } else {
 

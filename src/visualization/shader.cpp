@@ -44,7 +44,7 @@ ShaderProgram::~ShaderProgram()
 }
 
 
-bool ShaderProgram::is_shader_outdated(TexelChannels texel_format,
+bool ShaderProgram::is_shader_outdated(const TexelChannels texel_format,
                                        const std::vector<std::string>& uniforms,
                                        const char* pixel_layout)
 {
@@ -74,7 +74,7 @@ bool ShaderProgram::is_shader_outdated(TexelChannels texel_format,
 
 bool ShaderProgram::create(const char* v_source,
                            const char* f_source,
-                           TexelChannels texel_format,
+                           const TexelChannels texel_format,
                            const char* pixel_layout,
                            const std::vector<std::string>& uniforms)
 {
@@ -108,7 +108,8 @@ bool ShaderProgram::create(const char* v_source,
 
     // Get uniform locations
     for (const auto& name : uniforms) {
-        const GLuint loc = gl_canvas_->glGetUniformLocation(program_, name.c_str());
+        const GLuint loc =
+            gl_canvas_->glGetUniformLocation(program_, name.c_str());
         uniforms_[name] = loc;
     }
 
@@ -122,7 +123,9 @@ void ShaderProgram::uniform1i(const std::string& name, const int value) const
 }
 
 
-void ShaderProgram::uniform2f(const std::string& name, const float x, const float y) const
+void ShaderProgram::uniform2f(const std::string& name,
+                              const float x,
+                              const float y) const
 {
     gl_canvas_->glUniform2f(static_cast<GLint>(uniforms_.at(name)), x, y);
 }
@@ -132,7 +135,8 @@ void ShaderProgram::uniform3fv(const std::string& name,
                                const int count,
                                const float* data) const
 {
-    gl_canvas_->glUniform3fv(static_cast<GLint>(uniforms_.at(name)), count, data);
+    gl_canvas_->glUniform3fv(
+        static_cast<GLint>(uniforms_.at(name)), count, data);
 }
 
 
@@ -140,7 +144,8 @@ void ShaderProgram::uniform4fv(const std::string& name,
                                const int count,
                                const float* data) const
 {
-    gl_canvas_->glUniform4fv(static_cast<GLint>(uniforms_.at(name)), count, data);
+    gl_canvas_->glUniform4fv(
+        static_cast<GLint>(uniforms_.at(name)), count, data);
 }
 
 
@@ -149,7 +154,8 @@ void ShaderProgram::uniform_matrix4fv(const std::string& name,
                                       const GLboolean transpose,
                                       const float* value) const
 {
-    gl_canvas_->glUniformMatrix4fv(static_cast<GLint>(uniforms_.at(name)), count, transpose, value);
+    gl_canvas_->glUniformMatrix4fv(
+        static_cast<GLint>(uniforms_.at(name)), count, transpose, value);
 }
 
 
@@ -159,22 +165,17 @@ void ShaderProgram::use() const
 }
 
 
-GLuint ShaderProgram::compile(const GLuint type, GLchar const* source)
+GLuint ShaderProgram::compile(const GLuint type, const GLchar* source)
 {
     const GLuint shader = gl_canvas_->glCreateShader(type);
 
     const char* src[] = {"#version 120\n",
-
-                         // clang-format off
-        texel_format_ == FormatR ?   "#define FORMAT_R\n" :
-        texel_format_ == FormatRG ?  "#define FORMAT_RG\n" :
-        texel_format_ == FormatRGB ? "#define FORMAT_RGB\n" :
-                                     "",
-                         // clang-format on
-
+                         texel_format_ == FormatR     ? "#define FORMAT_R\n"
+                         : texel_format_ == FormatRG  ? "#define FORMAT_RG\n"
+                         : texel_format_ == FormatRGB ? "#define FORMAT_RGB\n"
+                                                      : "",
                          "#define PIXEL_LAYOUT ",
                          pixel_layout_,
-
                          source};
 
     gl_canvas_->glShaderSource(shader, 5, src, nullptr);

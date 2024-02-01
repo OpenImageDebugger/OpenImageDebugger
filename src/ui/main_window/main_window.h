@@ -246,6 +246,7 @@ class MainWindow final : public QMainWindow
 
     void update_image_list_label(const std::string& variable_name_str,
                                  const std::string& label_str) const;
+
     void decode_plot_buffer_contents();
 
     void decode_incoming_messages();
@@ -260,21 +261,21 @@ class MainWindow final : public QMainWindow
 
     ///
     // Initialization - private - implemented in initialization.cpp
-    void initialize_ui_icons();
+    void initialize_ui_icons() const;
 
-    void initialize_settings_ui_list_position(QSettings& settings);
+    void initialize_settings_ui_list_position(const QSettings& settings) const;
 
-    void initialize_settings_ui_splitter(QSettings& settings);
+    void initialize_settings_ui_splitter(const QSettings& settings) const;
 
-    void initialize_settings_ui_minmax_compact(QSettings& settings);
+    void initialize_settings_ui_minmax_compact(const QSettings& settings) const;
 
-    QString initialize_settings_ui_colorspace_channel(const QChar& character);
+    static QString initialize_settings_ui_colorspace_channel(const QChar& character);
 
-    void initialize_settings_ui_colorspace(QSettings& settings);
+    void initialize_settings_ui_colorspace(const QSettings& settings);
 
-    void initialize_settings_ui_minmax_visible(QSettings& settings);
+    void initialize_settings_ui_minmax_visible(const QSettings& settings) const;
 
-    void initialize_settings_ui_contrast_enabled(QSettings& settings);
+    void initialize_settings_ui_contrast_enabled(const QSettings& settings);
 
     void initialize_settings_ui(QSettings& settings);
 

@@ -39,7 +39,8 @@
 #include "ui_main_window.h"
 
 
-void MainWindow::initialize_settings_ui_list_position(QSettings& settings)
+void MainWindow::initialize_settings_ui_list_position(
+    const QSettings& settings) const
 {
     const QVariant variant = settings.value("list_position");
     if (!variant.canConvert(QVariant::Type::String)) {
@@ -59,11 +60,13 @@ void MainWindow::initialize_settings_ui_list_position(QSettings& settings)
     ui_->splitter->repaint();
 }
 
-void MainWindow::initialize_settings_ui_splitter(QSettings& settings)
+void MainWindow::initialize_settings_ui_splitter(
+    const QSettings& settings) const
 {
     const QVariant variant = settings.value("splitter");
-    if (!variant.canConvert(QVariant::Type::List))
+    if (!variant.canConvert(QVariant::Type::List)) {
         return;
+    }
 
     QVariantList listVariants = variant.toList();
 
@@ -75,31 +78,32 @@ void MainWindow::initialize_settings_ui_splitter(QSettings& settings)
     ui_->splitter->setSizes(listSizes);
 }
 
-void MainWindow::initialize_settings_ui_minmax_compact(QSettings& settings)
+void MainWindow::initialize_settings_ui_minmax_compact(
+    const QSettings& settings) const
 {
-    bool is_minmax_compact = false;
-    {
+    const bool is_minmax_compact = [&]() -> auto {
         const QVariant variant = settings.value("minmax_compact");
-        if (!variant.canConvert(QVariant::Type::Bool))
-            return;
+        if (!variant.canConvert(QVariant::Type::Bool)) {
+            return false;
+        }
 
-        is_minmax_compact = variant.toBool();
-    }
+        return variant.toBool();
+    }();
 
-    if (!is_minmax_compact)
+    if (!is_minmax_compact) {
         return;
-
-    bool is_minmax_visible = true;
-    {
-        const QVariant variant = settings.value("minmax_visible");
-        if (!variant.canConvert(QVariant::Type::Bool))
-            return;
-
-        is_minmax_visible = variant.toBool();
     }
+
+    const bool is_minmax_visible = [&]() -> auto {
+        const QVariant variant = settings.value("minmax_visible");
+        if (!variant.canConvert(QVariant::Type::Bool)) {
+            return true;
+        }
+
+        return variant.toBool();
+    }();
 
     if (is_minmax_visible) {
-
         ui_->gridLayout_toolbar->addWidget(ui_->linkViewsToggle, 0, 0);
         ui_->gridLayout_toolbar->addWidget(ui_->reposition_buffer, 0, 1);
         ui_->gridLayout_toolbar->addWidget(ui_->go_to_pixel, 0, 2);
@@ -121,7 +125,6 @@ QString
 MainWindow::initialize_settings_ui_colorspace_channel(const QChar& character)
 {
     switch (character.toLatin1()) {
-
     case 'b':
         return "blue";
     case 'g':
@@ -131,48 +134,57 @@ MainWindow::initialize_settings_ui_colorspace_channel(const QChar& character)
     case 'a':
         return "alpha";
     default:
-        return QString();
+        return {};
     }
 }
 
-void MainWindow::initialize_settings_ui_colorspace(QSettings& settings)
+void MainWindow::initialize_settings_ui_colorspace(const QSettings& settings)
 {
     const QVariant variant = settings.value("colorspace");
-    if (!variant.canConvert(QVariant::Type::String))
+    if (!variant.canConvert(QVariant::Type::String)) {
         return;
+    }
 
     const QString colorspace_str = variant.toString();
 
-    if (colorspace_str.size() > 0)
+    if (colorspace_str.size() > 0) {
         name_channel_1_ =
             initialize_settings_ui_colorspace_channel(colorspace_str.at(0));
-    if (colorspace_str.size() > 1)
+    }
+    if (colorspace_str.size() > 1) {
         name_channel_2_ =
             initialize_settings_ui_colorspace_channel(colorspace_str.at(1));
-    if (colorspace_str.size() > 2)
+    }
+    if (colorspace_str.size() > 2) {
         name_channel_3_ =
             initialize_settings_ui_colorspace_channel(colorspace_str.at(2));
-    if (colorspace_str.size() > 3)
+    }
+    if (colorspace_str.size() > 3) {
         name_channel_4_ =
             initialize_settings_ui_colorspace_channel(colorspace_str.at(3));
+    }
 }
 
-void MainWindow::initialize_settings_ui_minmax_visible(QSettings& settings)
+void MainWindow::initialize_settings_ui_minmax_visible(
+    const QSettings& settings) const
 {
     const QVariant variant = settings.value("minmax_visible");
-    if (!variant.canConvert(QVariant::Type::Bool))
+    if (!variant.canConvert(QVariant::Type::Bool)) {
         return;
+    }
 
     const bool is_minmax_visible = variant.toBool();
     ui_->acEdit->setChecked(is_minmax_visible);
     ui_->minMaxEditor->setVisible(is_minmax_visible);
 }
 
-void MainWindow::initialize_settings_ui_contrast_enabled(QSettings& settings)
+void MainWindow::initialize_settings_ui_contrast_enabled(
+    const QSettings& settings)
 {
     const QVariant variant = settings.value("contrast_enabled");
-    if (!variant.canConvert(QVariant::Type::Bool))
+    if (!variant.canConvert(QVariant::Type::Bool)) {
         return;
+    }
 
     ac_enabled_ = variant.toBool();
     ui_->acToggle->setChecked(ac_enabled_);
@@ -277,7 +289,7 @@ void MainWindow::setVectorIcon(QLabel* ui_element,
                                const int width,
                                const int height)
 {
-    qreal screen_dpi_scale = get_screen_dpi_scale();
+    const qreal screen_dpi_scale = get_screen_dpi_scale();
 
     ui_element->setScaledContents(true);
     ui_element->setMinimumWidth(static_cast<int>(std::round(width)));
@@ -293,7 +305,7 @@ void MainWindow::setVectorIcon(QLabel* ui_element,
 }
 
 
-void MainWindow::initialize_ui_icons()
+void MainWindow::initialize_ui_icons() const
 {
     if (QFontDatabase::addApplicationFont(":/resources/icons/fontello.ttf") <
         0) {
