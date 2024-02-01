@@ -53,7 +53,8 @@ void disable_inputs(const initializer_list<QLineEdit*>& inputs)
 
 void MainWindow::reset_ac_min_labels()
 {
-    GameObject* buffer_obj = currently_selected_stage_->get_game_object("buffer");
+    GameObject* buffer_obj =
+        currently_selected_stage_->get_game_object("buffer");
     Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
     float* ac_min  = buffer->min_buffer_values();
 
@@ -79,15 +80,15 @@ void MainWindow::reset_ac_min_labels()
 
         ui_->ac_c2_min->setText(QString::number(ac_min[1]));
     } else {
-        disable_inputs(
-            {ui_->ac_c2_min, ui_->ac_c3_min, ui_->ac_c4_min});
+        disable_inputs({ui_->ac_c2_min, ui_->ac_c3_min, ui_->ac_c4_min});
     }
 }
 
 
 void MainWindow::reset_ac_max_labels()
 {
-    GameObject* buffer_obj = currently_selected_stage_->get_game_object("buffer");
+    GameObject* buffer_obj =
+        currently_selected_stage_->get_game_object("buffer");
     Buffer* buffer = buffer_obj->get_component<Buffer>("buffer_component");
     float* ac_max  = buffer->max_buffer_values();
 
@@ -112,8 +113,7 @@ void MainWindow::reset_ac_max_labels()
 
         ui_->ac_c2_max->setText(QString::number(ac_max[1]));
     } else {
-        disable_inputs(
-            {ui_->ac_c2_max, ui_->ac_c3_max, ui_->ac_c4_max});
+        disable_inputs({ui_->ac_c2_max, ui_->ac_c3_max, ui_->ac_c4_max});
     }
 }
 
@@ -179,7 +179,7 @@ void MainWindow::ac_min_reset()
         reset_ac_min_labels();
 
         request_render_update_ = true;
-        request_icons_update_ = true;
+        request_icons_update_  = true;
     }
 }
 
@@ -197,7 +197,7 @@ void MainWindow::ac_max_reset()
         reset_ac_max_labels();
 
         request_render_update_ = true;
-        request_icons_update_ = true;
+        request_icons_update_  = true;
     }
 }
 
@@ -209,7 +209,7 @@ void MainWindow::ac_toggle(bool is_checked)
         stage.second->contrast_enabled = ac_enabled_;
 
     request_render_update_ = true;
-    request_icons_update_ = true;
+    request_icons_update_  = true;
 }
 
 
@@ -223,7 +223,7 @@ void MainWindow::set_ac_min_value(int idx, float value)
         buff->compute_contrast_brightness_parameters();
 
         request_render_update_ = true;
-        request_icons_update_ = true;
+        request_icons_update_  = true;
     }
 }
 
@@ -238,6 +238,6 @@ void MainWindow::set_ac_max_value(int idx, float value)
         buff->compute_contrast_brightness_parameters();
 
         request_render_update_ = true;
-        request_icons_update_ = true;
+        request_icons_update_  = true;
     }
 }

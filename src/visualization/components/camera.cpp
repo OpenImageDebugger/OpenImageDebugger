@@ -39,8 +39,8 @@ Camera::Camera(GameObject* game_object, GLCanvas* gl_canvas)
 }
 
 
-Camera::Camera(const Camera& cam) :
-    Component(cam)
+Camera::Camera(const Camera& cam)
+    : Component(cam)
 {
     zoom_power_    = cam.zoom_power_;
     camera_pos_x_  = cam.camera_pos_x_;
@@ -228,12 +228,15 @@ void Camera::scale_at(const vec4& center_ndc, float delta)
         const auto pair_dim = get_buffer_initial_dimensions();
 
         // Find lowest allowed zoom ratio.
-        const float zoom_lowest_x = ratio_lowest * canvas_width_ / pair_dim.first;
-        const float zoom_lowest_y = ratio_lowest * canvas_height_ / pair_dim.second;
+        const float zoom_lowest_x =
+            ratio_lowest * canvas_width_ / pair_dim.first;
+        const float zoom_lowest_y =
+            ratio_lowest * canvas_height_ / pair_dim.second;
         const float zoom_lowest = std::min(zoom_lowest_x, zoom_lowest_y);
 
         // Find lowest allowed zoom power.
-        const float zoom_power_lowest = std::log(zoom_lowest) / std::log(zoom_factor);
+        const float zoom_power_lowest =
+            std::log(zoom_lowest) / std::log(zoom_factor);
 
         // Find lowest allowed delta.
         const float delta_lowest = zoom_power_lowest - zoom_power_;
@@ -317,7 +320,8 @@ void Camera::set_initial_zoom()
         }
 
         zoom_power_ -= zoom_power_step;
-    } else if (canvas_width_ < pair_dim.first || canvas_height_ < pair_dim.second) {
+    } else if (canvas_width_ < pair_dim.first ||
+               canvas_height_ < pair_dim.second) {
         // Zoom out
         zoom_power_ -= zoom_power_step;
         float new_zoom = compute_zoom();

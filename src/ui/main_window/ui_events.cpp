@@ -326,9 +326,7 @@ void MainWindow::export_buffer()
 
         // Export buffer
         BufferExporter::export_buffer(
-            component,
-            file_name,
-            output_extensions[selected_filter]);
+            component, file_name, output_extensions[selected_filter]);
 
         // Update default export suffix to the previously used suffix
         default_export_suffix_ = selected_filter;

@@ -36,9 +36,9 @@
 #include <QLabel>
 #include <QListWidgetItem>
 #include <QMainWindow>
-#include <QTimer>
-#include <QTcpSocket>
 #include <QSettings>
+#include <QTcpSocket>
+#include <QTimer>
 
 #include "math/linear_algebra.h"
 #include "ui/go_to_widget.h"
@@ -51,7 +51,8 @@ namespace Ui
 class MainWindowUi;
 }
 
-struct ConnectionSettings {
+struct ConnectionSettings
+{
     std::string url;
     uint16_t port;
 };
@@ -64,7 +65,7 @@ class MainWindow : public QMainWindow
   public:
     ///
     // Constructor / destructor
-    explicit MainWindow(const ConnectionSettings &host_settings,
+    explicit MainWindow(const ConnectionSettings& host_settings,
                         QWidget* parent = nullptr);
 
     ~MainWindow();
@@ -107,7 +108,7 @@ class MainWindow : public QMainWindow
 
     void closeEvent(QCloseEvent*);
 
-public Q_SLOTS:
+  public Q_SLOTS:
     ///
     // Assorted methods - slots - implemented in main_window.cpp
     void loop();
@@ -237,7 +238,8 @@ public Q_SLOTS:
 
     QListWidgetItem* find_image_list_item(const std::string& variable_name_str);
     void repaint_image_list_icon(const std::string& variable_name_str);
-    void update_image_list_label(const std::string& variable_name_str, const std::string& label_str);
+    void update_image_list_label(const std::string& variable_name_str,
+                                 const std::string& label_str);
     void decode_plot_buffer_contents();
 
     void decode_incoming_messages();
@@ -263,7 +265,10 @@ public Q_SLOTS:
     void initialize_settings();
 
     void setFontIcon(QAbstractButton* ui_element, QString unicode_id);
-    void setVectorIcon(QLabel* ui_element, QString icon_file_name, int width, int height);
+    void setVectorIcon(QLabel* ui_element,
+                       QString icon_file_name,
+                       int width,
+                       int height);
     void initialize_ui_icons();
 
     void initialize_ui_signals();

@@ -158,7 +158,8 @@ void GLCanvas::paintGL()
 
 void GLCanvas::wheelEvent(QWheelEvent* ev)
 {
-    main_window_->scroll_callback(static_cast<float>(ev->angleDelta().y()) / 120.0f);
+    main_window_->scroll_callback(static_cast<float>(ev->angleDelta().y()) /
+                                  120.0f);
 }
 
 
@@ -168,7 +169,9 @@ const GLTextRenderer* GLCanvas::get_text_renderer()
 }
 
 
-void GLCanvas::render_buffer_icon(Stage* stage, const int icon_width, const int icon_height)
+void GLCanvas::render_buffer_icon(Stage* stage,
+                                  const int icon_width,
+                                  const int icon_height)
 {
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, icon_fbo_);
 
@@ -192,7 +195,8 @@ void GLCanvas::render_buffer_icon(Stage* stage, const int icon_width, const int 
     stage->set_icon_drawing_mode(true);
 
     stage->draw();
-    stage->buffer_icon.resize(3 * static_cast<size_t>(icon_width) * static_cast<size_t>(icon_height));
+    stage->buffer_icon.resize(3 * static_cast<size_t>(icon_width) *
+                              static_cast<size_t>(icon_height));
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0,
                  0,

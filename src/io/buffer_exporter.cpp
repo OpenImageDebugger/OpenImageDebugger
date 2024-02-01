@@ -107,7 +107,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
     for (size_t y = 0; y < height_i; ++y) {
         for (size_t x = 0; x < width_i; ++x) {
             const std::size_t col_offset = x * buffer->channels;
-            std::size_t c = 0;
+            std::size_t c                = 0;
 
             // Perform contrast normalization
             for (c = 0; c < channels; ++c) {

@@ -92,7 +92,7 @@ void GLTextRenderer::generate_glyphs_texture()
     const int mipmap_levels = 5;
 
     {
-        int tex_level_width = text_texture_width;
+        int tex_level_width  = text_texture_width;
         int tex_level_height = text_texture_height;
 
         for (int i = 0; i < mipmap_levels; ++i) {
@@ -106,7 +106,7 @@ void GLTextRenderer::generate_glyphs_texture()
                                      GL_UNSIGNED_BYTE,
                                      nullptr);
 
-            tex_level_width = (std::max)(1, tex_level_width / 2);
+            tex_level_width  = (std::max)(1, tex_level_width / 2);
             tex_level_height = (std::max)(1, tex_level_height / 2);
         }
     }

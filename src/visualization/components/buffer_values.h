@@ -36,8 +36,7 @@
 class BufferValues : public Component
 {
   public:
-    BufferValues(GameObject* game_object,
-                 GLCanvas* gl_canvas);
+    BufferValues(GameObject* game_object, GLCanvas* gl_canvas);
 
     virtual ~BufferValues();
 

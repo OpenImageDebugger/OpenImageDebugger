@@ -33,10 +33,10 @@
 
 #include "main_window.h"
 
+#include "ipc/message_exchange.h"
 #include "ui_main_window.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
-#include "ipc/message_exchange.h"
 
 
 using namespace std;
@@ -45,8 +45,7 @@ using namespace std;
 Q_DECLARE_METATYPE(QList<QString>)
 
 
-MainWindow::MainWindow(const ConnectionSettings& host_settings,
-                       QWidget* parent)
+MainWindow::MainWindow(const ConnectionSettings& host_settings, QWidget* parent)
     : QMainWindow(parent)
     , is_window_ready_(false)
     , request_render_update_(true)
@@ -299,10 +298,9 @@ void MainWindow::update_status_bar()
                 << cam->compute_zoom() * 100.0f << "%";
         message << " val=";
 
-        buffer->get_pixel_info(
-            message,
-            static_cast<int>(floor(mouse_pos.x())),
-            static_cast<int>(floor(mouse_pos.y())));
+        buffer->get_pixel_info(message,
+                               static_cast<int>(floor(mouse_pos.x())),
+                               static_cast<int>(floor(mouse_pos.y())));
 
         status_bar_->setText(message.str().c_str());
     }

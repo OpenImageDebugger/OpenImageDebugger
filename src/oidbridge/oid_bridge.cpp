@@ -30,8 +30,8 @@
 
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
-#include "oid_bridge.h"
 #include "ipc/message_exchange.h"
+#include "oid_bridge.h"
 #include "system/process/process.h"
 
 #include <QDataStream>
@@ -81,7 +81,7 @@ class PyGILRAII
     PyGILRAII(const PyGILRAII&)  = delete;
     PyGILRAII(const PyGILRAII&&) = delete;
 
-    PyGILRAII& operator=(const PyGILRAII&) = delete;
+    PyGILRAII& operator=(const PyGILRAII&)  = delete;
     PyGILRAII& operator=(const PyGILRAII&&) = delete;
 
     ~PyGILRAII()
@@ -115,7 +115,8 @@ class OidBridge
         string windowBinaryPath = this->oid_path_ + "/oidwindow";
         string portStdString    = std::to_string(server_.serverPort());
 
-        const vector<string> command {windowBinaryPath, "-style", "fusion", "-p", portStdString};
+        const vector<string> command{
+            windowBinaryPath, "-style", "fusion", "-p", portStdString};
 
         ui_proc_.start(command);
 
@@ -259,7 +260,9 @@ class OidBridge
                     decode_get_observed_symbols_response();
                 break;
             default:
-                cerr << "[OpenImageDebugger] Received message with incorrect header" << endl;
+                cerr << "[OpenImageDebugger] Received message with incorrect "
+                        "header"
+                     << endl;
                 break;
             }
         } while (client_->bytesAvailable() > 0);
@@ -309,7 +312,8 @@ class OidBridge
     {
         if (client_ == nullptr) {
             if (!server_.waitForNewConnection(10000)) {
-                cerr << "[OpenImageDebugger] No clients connected to OpenImageDebugger server"
+                cerr << "[OpenImageDebugger] No clients connected to "
+                        "OpenImageDebugger server"
                      << endl;
             }
             client_ = server_.nextPendingConnection();
@@ -559,16 +563,16 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 
     // Retrieve pointer to buffer
     uint8_t* buff_ptr = nullptr;
-    size_t buff_size = 0;
+    size_t buff_size  = 0;
     if (PyMemoryView_Check(py_pointer) != 0) {
-        
+
         get_c_ptr_from_py_buffer(py_pointer, buff_ptr, buff_size);
     }
 #if PY_MAJOR_VERSION == 2
     else if (PyBuffer_Check(py_pointer) != 0) {
         py_buff.reset(new Py_buffer());
         PyObject_GetBuffer(py_pointer, py_buff.get(), PyBUF_SIMPLE);
-        buff_ptr = reinterpret_cast<uint8_t*>(py_buff->buf);
+        buff_ptr  = reinterpret_cast<uint8_t*>(py_buff->buf);
         buff_size = static_cast<size_t>(py_buff->len);
     }
 #endif
@@ -602,7 +606,9 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 
     if (buff_ptr == nullptr) {
 
-        RAISE_PY_EXCEPTION(PyExc_TypeError, "oid_plot_buffer received nullptr as buffer pointer");
+        RAISE_PY_EXCEPTION(
+            PyExc_TypeError,
+            "oid_plot_buffer received nullptr as buffer pointer");
         return;
     }
 

@@ -62,9 +62,6 @@ int Component::render_index() const
 }
 
 
-
-
-
 bool Component::post_initialize()
 {
     return true;

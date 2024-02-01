@@ -160,20 +160,19 @@ GLuint ShaderProgram::compile(GLuint type, GLchar const* source)
 {
     GLuint shader = gl_canvas_->glCreateShader(type);
 
-    const char* src[] = {
-        "#version 120\n",
+    const char* src[] = {"#version 120\n",
 
-        // clang-format off
+                         // clang-format off
         texel_format_ == FormatR ?   "#define FORMAT_R\n" :
         texel_format_ == FormatRG ?  "#define FORMAT_RG\n" :
         texel_format_ == FormatRGB ? "#define FORMAT_RGB\n" :
                                      "",
-        // clang-format on
+                         // clang-format on
 
-        "#define PIXEL_LAYOUT ",
-        pixel_layout_,
+                         "#define PIXEL_LAYOUT ",
+                         pixel_layout_,
 
-        source};
+                         source};
 
     gl_canvas_->glShaderSource(shader, 5, src, NULL);
     gl_canvas_->glCompileShader(shader);

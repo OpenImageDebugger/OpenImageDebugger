@@ -309,7 +309,8 @@ vec4 mat4::operator*(const vec4& b) const
 }
 
 
-float&mat4::operator()(int row, int col) {
+float& mat4::operator()(int row, int col)
+{
     return mat_(row, col);
 }
 

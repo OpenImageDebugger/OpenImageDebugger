@@ -30,8 +30,8 @@
 #include <vector>
 
 #include "component.h"
-#include "visualization/shader.h"
 #include "ipc/message_exchange.h"
+#include "visualization/shader.h"
 
 
 class Buffer : public Component

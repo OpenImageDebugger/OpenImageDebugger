@@ -31,7 +31,7 @@
 #include <Python.h>
 
 
-#if PY_MAJOR_VERSION==2
+#if PY_MAJOR_VERSION == 2
 #define PY_INT_CHECK_FUNC PyInt_Check
 #else
 #define PY_INT_CHECK_FUNC PyLong_Check
@@ -44,7 +44,9 @@ long get_py_int(PyObject* obj);
 int check_py_string_type(PyObject* obj);
 
 
-void get_c_ptr_from_py_buffer(PyObject* obj, uint8_t*& buffer_ptr, size_t& buffer_size);
+void get_c_ptr_from_py_buffer(PyObject* obj,
+                              uint8_t*& buffer_ptr,
+                              size_t& buffer_size);
 
 
 uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, int tuple_index);

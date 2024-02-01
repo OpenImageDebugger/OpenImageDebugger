@@ -33,14 +33,15 @@
 
 using namespace std;
 
-class ProcessImplWin32 final: public ProcessImpl
+class ProcessImplWin32 final : public ProcessImpl
 {
-public:
+  public:
     ProcessImplWin32()
         : proc_()
-    {}
+    {
+    }
 
-    void start(const std::vector<std::string> &command) override
+    void start(const std::vector<std::string>& command) override
     {
         const auto program = QString::fromStdString(command[0]);
         QStringList args;
@@ -62,7 +63,7 @@ public:
         proc_.kill();
     }
 
-private:
+  private:
     QProcess proc_;
 };
 

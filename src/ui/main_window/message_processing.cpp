@@ -60,7 +60,8 @@ void MainWindow::respond_get_observed_symbols()
 }
 
 
-QListWidgetItem* MainWindow::find_image_list_item(const std::string& variable_name_str)
+QListWidgetItem*
+MainWindow::find_image_list_item(const std::string& variable_name_str)
 {
     // Looking for corresponding item...
     for (int i = 0; i < ui_->imageList->count(); ++i) {
@@ -91,7 +92,7 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
 
     // Update buffer icon
     ui_->bufferPreview->render_buffer_icon(
-                stage.get(), icon_width, icon_height);
+        stage.get(), icon_width, icon_height);
 
     // Construct icon widget
     QImage bufferIcon(stage->buffer_icon.data(),
@@ -107,7 +108,8 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
 }
 
 
-void MainWindow::update_image_list_label(const std::string& variable_name_str, const std::string& label_str)
+void MainWindow::update_image_list_label(const std::string& variable_name_str,
+                                         const std::string& label_str)
 {
     // Replace text in the corresponding item
     QListWidgetItem* item = find_image_list_item(variable_name_str);
@@ -166,7 +168,8 @@ void MainWindow::decode_plot_buffer_contents()
     {
         stringstream label_ss;
         label_ss << display_name_str;
-        label_ss << "\n[" << visualized_width << "x" << visualized_height << "]";
+        label_ss << "\n[" << visualized_width << "x" << visualized_height
+                 << "]";
         label_ss << "\n" << get_type_label(buff_type, buff_channels);
         label_str = label_ss.str();
     }
@@ -177,32 +180,29 @@ void MainWindow::decode_plot_buffer_contents()
 
         // Construct a new stage buffer if needed
         shared_ptr<Stage> stage = make_shared<Stage>(this);
-        if (!stage->initialize(
-                    buff_ptr,
-                    buff_width,
-                    buff_height,
-                    buff_channels,
-                    buff_type,
-                    buff_stride,
-                    pixel_layout_str,
-                    transpose_buffer)) {
+        if (!stage->initialize(buff_ptr,
+                               buff_width,
+                               buff_height,
+                               buff_channels,
+                               buff_type,
+                               buff_stride,
+                               pixel_layout_str,
+                               transpose_buffer)) {
             cerr << "[error] Could not initialize opengl canvas!" << endl;
         }
         stage->contrast_enabled    = ac_enabled_;
         buffer_stage = stages_.emplace(variable_name_str, stage).first;
-    }
-    else {
+    } else {
 
         // Update buffer data
-        buffer_stage->second->buffer_update(
-                    buff_ptr,
-                    buff_width,
-                    buff_height,
-                    buff_channels,
-                    buff_type,
-                    buff_stride,
-                    pixel_layout_str,
-                    transpose_buffer);
+        buffer_stage->second->buffer_update(buff_ptr,
+                                            buff_width,
+                                            buff_height,
+                                            buff_channels,
+                                            buff_type,
+                                            buff_stride,
+                                            pixel_layout_str,
+                                            transpose_buffer);
     }
 
     // Construct a new list widget if needed
@@ -236,7 +236,7 @@ void MainWindow::decode_plot_buffer_contents()
 void MainWindow::decode_incoming_messages()
 {
     // Close application if server has disconnected
-    if(socket_.state() == QTcpSocket::UnconnectedState) {
+    if (socket_.state() == QTcpSocket::UnconnectedState) {
         QApplication::quit();
     }
 

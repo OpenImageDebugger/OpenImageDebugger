@@ -36,7 +36,7 @@
 using namespace std;
 
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
 
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     parser.parse(QCoreApplication::arguments());
 
     ConnectionSettings host_settings;
-    host_settings.url = parser.value("h").toStdString();
+    host_settings.url  = parser.value("h").toStdString();
     host_settings.port = static_cast<uint16_t>(parser.value("p").toUInt());
 
     MainWindow window(host_settings);

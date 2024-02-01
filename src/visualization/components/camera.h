@@ -51,7 +51,7 @@ class Camera : public Component
 
     vec4 get_position();
 
-private:
+  private:
     std::pair<float, float> get_buffer_initial_dimensions() const;
 
     void update_object_pose();

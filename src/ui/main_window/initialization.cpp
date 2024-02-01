@@ -29,8 +29,8 @@
 #include <QDateTime>
 #include <QDebug>
 #include <QFontDatabase>
-#include <QShortcut>
 #include <QHostAddress>
+#include <QShortcut>
 
 #include "main_window.h"
 
@@ -112,7 +112,8 @@ void MainWindow::initialize_settings_ui_minmax_compact(QSettings& settings)
     ui_->acEdit->hide();
 }
 
-QString MainWindow::initialize_settings_ui_colorspace_channel(const QChar& character)
+QString
+MainWindow::initialize_settings_ui_colorspace_channel(const QChar& character)
 {
     switch (character.toLatin1()) {
 
@@ -138,13 +139,17 @@ void MainWindow::initialize_settings_ui_colorspace(QSettings& settings)
     const QString colorspace_str = variant.toString();
 
     if (colorspace_str.size() > 0)
-        name_channel_1_ = initialize_settings_ui_colorspace_channel(colorspace_str.at(0));
+        name_channel_1_ =
+            initialize_settings_ui_colorspace_channel(colorspace_str.at(0));
     if (colorspace_str.size() > 1)
-        name_channel_2_ = initialize_settings_ui_colorspace_channel(colorspace_str.at(1));
+        name_channel_2_ =
+            initialize_settings_ui_colorspace_channel(colorspace_str.at(1));
     if (colorspace_str.size() > 2)
-        name_channel_3_ = initialize_settings_ui_colorspace_channel(colorspace_str.at(2));
+        name_channel_3_ =
+            initialize_settings_ui_colorspace_channel(colorspace_str.at(2));
     if (colorspace_str.size() > 3)
-        name_channel_4_ = initialize_settings_ui_colorspace_channel(colorspace_str.at(3));
+        name_channel_4_ =
+            initialize_settings_ui_colorspace_channel(colorspace_str.at(3));
 }
 
 void MainWindow::initialize_settings_ui_minmax_visible(QSettings& settings)
@@ -244,8 +249,7 @@ void MainWindow::initialize_settings()
     // Restore possibility to resize application in timer.
     // This is needed to give application some time to run event loop
     // and redraw all widgets without changing overall geometry.
-    QTimer::singleShot(100, this, [this](){
-
+    QTimer::singleShot(100, this, [this]() {
         setMinimumSize(0, 0);
         setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
     });
@@ -263,7 +267,10 @@ void MainWindow::setFontIcon(QAbstractButton* ui_element, QString unicode_id)
 }
 
 
-void MainWindow::setVectorIcon(QLabel* ui_element, QString icon_file_name, int width, int height)
+void MainWindow::setVectorIcon(QLabel* ui_element,
+                               QString icon_file_name,
+                               int width,
+                               int height)
 {
     qreal screen_dpi_scale = get_screen_dpi_scale();
 
@@ -274,8 +281,8 @@ void MainWindow::setVectorIcon(QLabel* ui_element, QString icon_file_name, int w
     ui_element->setMaximumHeight(std::round(height));
     ui_element->setPixmap(
         QIcon(QString(":/resources/icons/%1").arg(icon_file_name))
-            .pixmap(QSize(std::round(width* screen_dpi_scale),
-                          std::round(height* screen_dpi_scale))));
+            .pixmap(QSize(std::round(width * screen_dpi_scale),
+                          std::round(height * screen_dpi_scale))));
     ui_element->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 }
 
@@ -299,14 +306,38 @@ void MainWindow::initialize_ui_icons()
     setFontIcon(ui_->ac_reset_min, "\ue808");
     setFontIcon(ui_->ac_reset_max, "\ue808");
 
-    setVectorIcon(ui_->label_c1_min, QString("label_%1_channel.svg").arg(name_channel_1_), 10, 10);
-    setVectorIcon(ui_->label_c1_max, QString("label_%1_channel.svg").arg(name_channel_1_), 10, 10);
-    setVectorIcon(ui_->label_c2_min, QString("label_%1_channel.svg").arg(name_channel_2_), 10, 10);
-    setVectorIcon(ui_->label_c2_max, QString("label_%1_channel.svg").arg(name_channel_2_), 10, 10);
-    setVectorIcon(ui_->label_c3_min, QString("label_%1_channel.svg").arg(name_channel_3_), 10, 10);
-    setVectorIcon(ui_->label_c3_max, QString("label_%1_channel.svg").arg(name_channel_3_), 10, 10);
-    setVectorIcon(ui_->label_c4_min, QString("label_%1_channel.svg").arg(name_channel_4_), 10, 10);
-    setVectorIcon(ui_->label_c4_max, QString("label_%1_channel.svg").arg(name_channel_4_), 10, 10);
+    setVectorIcon(ui_->label_c1_min,
+                  QString("label_%1_channel.svg").arg(name_channel_1_),
+                  10,
+                  10);
+    setVectorIcon(ui_->label_c1_max,
+                  QString("label_%1_channel.svg").arg(name_channel_1_),
+                  10,
+                  10);
+    setVectorIcon(ui_->label_c2_min,
+                  QString("label_%1_channel.svg").arg(name_channel_2_),
+                  10,
+                  10);
+    setVectorIcon(ui_->label_c2_max,
+                  QString("label_%1_channel.svg").arg(name_channel_2_),
+                  10,
+                  10);
+    setVectorIcon(ui_->label_c3_min,
+                  QString("label_%1_channel.svg").arg(name_channel_3_),
+                  10,
+                  10);
+    setVectorIcon(ui_->label_c3_max,
+                  QString("label_%1_channel.svg").arg(name_channel_3_),
+                  10,
+                  10);
+    setVectorIcon(ui_->label_c4_min,
+                  QString("label_%1_channel.svg").arg(name_channel_4_),
+                  10,
+                  10);
+    setVectorIcon(ui_->label_c4_max,
+                  QString("label_%1_channel.svg").arg(name_channel_4_),
+                  10,
+                  10);
 
     setVectorIcon(ui_->label_minmax, "lower_upper_bound.svg", 8, 35);
 }
@@ -314,15 +345,18 @@ void MainWindow::initialize_ui_icons()
 
 void MainWindow::initialize_ui_signals()
 {
-    connect(ui_->splitter, &QSplitter::splitterMoved,
+    connect(ui_->splitter,
+            &QSplitter::splitterMoved,
             this,
             &MainWindow::persist_settings_deferred);
 
-    connect(ui_->acEdit, &QAbstractButton::clicked,
+    connect(ui_->acEdit,
+            &QAbstractButton::clicked,
             this,
             &MainWindow::persist_settings_deferred);
 
-    connect(ui_->acToggle, &QAbstractButton::clicked,
+    connect(ui_->acToggle,
+            &QAbstractButton::clicked,
             this,
             &MainWindow::persist_settings_deferred);
 }

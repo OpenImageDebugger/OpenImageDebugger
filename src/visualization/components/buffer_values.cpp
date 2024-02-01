@@ -25,8 +25,8 @@
 
 #include "buffer_values.h"
 
-#include <array>
 #include <algorithm>
+#include <array>
 
 
 #include <QFontMetrics>
@@ -65,8 +65,7 @@ inline void pix2str(const BufferType& type,
                     const int label_length,
                     char* pix_label)
 {
-    if (type == BufferType::Float32 ||
-        type == BufferType::Float64) {
+    if (type == BufferType::Float32 || type == BufferType::Float64) {
         float fpix = reinterpret_cast<const float*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%.3f", fpix);
         if (strlen(pix_label) > 7)
@@ -100,12 +99,12 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 
         Buffer* buffer_component =
             game_object_->get_component<Buffer>("buffer_component");
-        float buffer_width_f    = buffer_component->buffer_width_f;
-        float buffer_height_f   = buffer_component->buffer_height_f;
-        int step                = buffer_component->step;
-        int channels            = buffer_component->channels;
-        BufferType type = buffer_component->type;
-        const uint8_t* buffer         = buffer_component->buffer;
+        float buffer_width_f  = buffer_component->buffer_width_f;
+        float buffer_height_f = buffer_component->buffer_height_f;
+        int step              = buffer_component->step;
+        int channels          = buffer_component->channels;
+        BufferType type       = buffer_component->type;
+        const uint8_t* buffer = buffer_component->buffer;
 
         vec4 tl_ndc(-1, 1, 0, 1);
         vec4 br_ndc(1, -1, 0, 1);
