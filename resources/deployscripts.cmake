@@ -6,7 +6,10 @@ set(DEBUGGER_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/../../resources/oidscripts)
 set(OID_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/../../resources/oid.py)
 
 install(DIRECTORY ${MATLAB_SCRIPTS} ${DEBUGGER_SCRIPTS}
-        DESTINATION OpenImageDebugger)
+        DESTINATION OpenImageDebugger
+        FILES_MATCHING PATTERN "*pycache*" EXCLUDE
+                       PATTERN "*.m"
+                       PATTERN "*.py")
 
 install(PROGRAMS ${OID_SCRIPT}
         DESTINATION OpenImageDebugger)
