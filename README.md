@@ -83,6 +83,19 @@ cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/path/to/installation/folder
 cmake --build build --config Release --target install -j 4
 ```
 
+CMake build script tries to automatically find suitable python installation using 
+internal module [FindPython3](https://cmake.org/cmake/help/latest/module/FindPython3.html).
+
+You can help it by adding `-DPython3_ROOT_DIR=/path` to command line, like below
+
+```bash
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/path/to/installation/folder -DPython3_ROOT_DIR=/usr
+```
+
+If you have LLDB installed, then CMake will try to retrieve this information from it, \
+by running command `lldb --print-script-interpreter-info` and parsing its output.
+
+
 **GDB integration:** Edit the file `~/.gdbinit` (create it if it doesn't exist)
 and append the following line:
 
@@ -99,9 +112,10 @@ command script import /path/to/OpenImageDebugger/oid.py
 
 ### MacOS Installation
 
-For information on how to build the plugin on MacOS, refer to the wiki page
-[Building on
-MacOS](https://github.com/OpenImageDebugger/OpenImageDebugger/wiki/Building-on-MacOS).
+CMake scripts rely on LLDB output. 
+
+They execute command `lldb --print-script-interpreter-info` that prints all necessary 
+information about embedded python and parse its output.
 
 ### Testing your installation
 
