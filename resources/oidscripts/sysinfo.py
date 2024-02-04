@@ -24,35 +24,22 @@ def _get_available_memory_linux():
 
 def _get_available_memory_darwin():
     # type: () -> int
-    # Get process info
-    ps = subprocess.Popen(['/bin/ps', '-caxm', '-o rss=', '-o comm='],
-                          stdout=subprocess.PIPE).communicate()[0].decode()
     vm = subprocess.Popen(['vm_stat'], stdout=subprocess.PIPE).communicate()[
         0].decode()
-
-    # Iterate processes
-    process_lines = ps.split('\n')
-    sep = re.compile(r'[\s]+')
-    rss_total = 0  # kB
-    for row in range(1, len(process_lines)):
-        row_text = process_lines[row].strip()
-        if not row_text:
-            continue
-        row_elements = sep.split(row_text)
-        try:
-            rss = float(row_elements[0]) * 1024
-        except IndexError:
-            rss = 0  # ignore...
-        rss_total += rss
 
     # Process vm_stat
     vm_lines = vm.split('\n')
     sep = re.compile(r':[\s]+')
     vm_stats = {}
+
+    psre = 'page size of ([0-9]+) bytes'
+    match = re.search(psre, vm_lines[0])
+    page_size = int(match.group(1)) if match else 16384
+
     for row in range(1, len(vm_lines) - 2):
         row_text = vm_lines[row].strip()
         row_elements = sep.split(row_text)
-        vm_stats[(row_elements[0])] = int(row_elements[1].strip('\.')) * 4096
+        vm_stats[(row_elements[0])] = int(row_elements[1].strip('\.')) * page_size
     return vm_stats["Pages free"]
 
 def _get_available_memory_win32():
