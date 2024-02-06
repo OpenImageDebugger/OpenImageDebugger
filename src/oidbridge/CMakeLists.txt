@@ -50,42 +50,44 @@ if (NOT Python3_ROOT_DIR)
         endif()
     endif()
 
-    # Make GDB to print script interpreter info, similar to LLDB
-    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/gdbcomm" "py
+    if (UNIX)
+        # Make GDB to print script interpreter info, similar to LLDB
+        file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/gdbcomm" "py
 import sys
 import gdb
 print(f'{{\"version\": \"{sys.version_info.major}.{sys.version_info.minor}\", \"executable\": \"{sys.executable}\", \"prefix\": \"{sys.prefix}\"}}')
 gdb.execute(\"quit\")
 ")
 
-    execute_process(COMMAND "gdb" "-q" "--command=${CMAKE_CURRENT_BINARY_DIR}/gdbcomm"
-        OUTPUT_VARIABLE gdb_output RESULT_VARIABLE gdb_result)
+        execute_process(COMMAND "gdb" "-q" "--command=${CMAKE_CURRENT_BINARY_DIR}/gdbcomm"
+            OUTPUT_VARIABLE gdb_output RESULT_VARIABLE gdb_result)
 
-    if (gdb_result EQUAL 0)
-        string(JSON gdb_python_version GET ${gdb_output} "version")
-        string(JSON gdb_python_root GET ${gdb_output} "prefix")
-        string(JSON gdb_python_exe GET ${gdb_output} "executable")
+        if (gdb_result EQUAL 0)
+            string(JSON gdb_python_version GET ${gdb_output} "version")
+            string(JSON gdb_python_root GET ${gdb_output} "prefix")
+            string(JSON gdb_python_exe GET ${gdb_output} "executable")
 
-        message(STATUS "GDB was configured with Python ${gdb_python_version} at ${gdb_python_exe} (root is ${gdb_python_root})")
-    endif()
-
-    if (gdb_python_root AND lldb_python_root)
-        if(NOT gdb_python_root PATH_EQUAL lldb_python_root)
-            message(FATAL_ERROR
-"CMake determined that you have installed both GDB and LLDB and they are configured to use python at different locations (${gdb_python_root} and ${lldb_python_root} respectively)
-Please rerun configuration explicitly specifying python root path
-              cmake .... -DPython3_ROOT_DIR=/path
-")
+            message(STATUS "GDB was configured with Python ${gdb_python_version} at ${gdb_python_exe} (root is ${gdb_python_root})")
         endif()
-    endif()
 
-    if (gdb_python_version AND lldb_python_version)
-        if(NOT gdb_python_version VERSION_EQUAL lldb_python_version)
-            message(FATAL_ERROR
-"CMake determined that you have installed both GDB and LLDB and they are configured to use different python versions (${gdb_python_version} and ${lldb_python_version} respectively).
-Please rerun configuration explicitly specifying python root path
-              cmake .... -DPython3_ROOT_DIR=/path
-")
+        if (gdb_python_root AND lldb_python_root)
+            if(NOT gdb_python_root PATH_EQUAL lldb_python_root)
+                message(FATAL_ERROR
+                    "CMake determined that you have installed both GDB and LLDB and they are configured to use python at different locations (${gdb_python_root} and ${lldb_python_root} respectively)
+                    Please rerun configuration explicitly specifying python root path
+                    cmake .... -DPython3_ROOT_DIR=/path
+                    ")
+            endif()
+        endif()
+
+        if (gdb_python_version AND lldb_python_version)
+            if(NOT gdb_python_version VERSION_EQUAL lldb_python_version)
+                message(FATAL_ERROR
+                        "CMake determined that you have installed both GDB and LLDB and they are configured to use different python versions (${gdb_python_version} and ${lldb_python_version} respectively).
+                        Please rerun configuration explicitly specifying python root path
+                        cmake .... -DPython3_ROOT_DIR=/path
+                        ")
+            endif()
         endif()
     endif()
 
