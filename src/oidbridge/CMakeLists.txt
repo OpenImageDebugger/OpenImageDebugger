@@ -72,21 +72,23 @@ gdb.execute(\"quit\")
 
         if (gdb_python_root AND lldb_python_root)
             if(NOT gdb_python_root PATH_EQUAL lldb_python_root)
-                message(FATAL_ERROR
-                    "CMake determined that you have installed both GDB and LLDB and they are configured to use python at different locations (${gdb_python_root} and ${lldb_python_root} respectively)
-                    Please rerun configuration explicitly specifying python root path
-                    cmake .... -DPython3_ROOT_DIR=/path
-                    ")
+                message(FATAL_ERROR "
+CMake determined that you have installed both GDB and LLDB and they are configured to use python at different locations
+${gdb_python_root} and ${lldb_python_root} respectively
+Please rerun configuration explicitly specifying python root path
+   cmake .... -DPython3_ROOT_DIR=/path
+")
             endif()
         endif()
 
         if (gdb_python_version AND lldb_python_version)
             if(NOT gdb_python_version VERSION_EQUAL lldb_python_version)
-                message(FATAL_ERROR
-                        "CMake determined that you have installed both GDB and LLDB and they are configured to use different python versions (${gdb_python_version} and ${lldb_python_version} respectively).
-                        Please rerun configuration explicitly specifying python root path
-                        cmake .... -DPython3_ROOT_DIR=/path
-                        ")
+                message(FATAL_ERROR "
+CMake determined that you have installed both GDB and LLDB and they are configured to use different python versions
+${gdb_python_version} and ${lldb_python_version} respectively
+Please rerun configuration explicitly specifying python root path
+    cmake .... -DPython3_ROOT_DIR=/path
+")
             endif()
         endif()
     endif()
