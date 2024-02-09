@@ -33,6 +33,9 @@
 
 #include "raw_data_decode.h"
 
+namespace oid
+{
+
 enum class MessageType {
     GetObservedSymbols         = 0,
     GetObservedSymbolsResponse = 1,
@@ -276,5 +279,6 @@ inline MessageDecoder& MessageDecoder::read<QString>(QString& value)
     return *this;
 }
 
+} // namespace oid
 
 #endif // IPC_MESSAGE_EXCHANGE_H_

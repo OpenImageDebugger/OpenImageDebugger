@@ -34,6 +34,7 @@
 
 
 using namespace std;
+using namespace oid;
 
 
 int main(int argc, char* argv[])

@@ -47,6 +47,9 @@
 
 class QLabel;
 
+namespace oid
+{
+
 namespace Ui
 {
 class MainWindowUi;
@@ -312,5 +315,7 @@ class MainWindow final : public QMainWindow
 
     void initialize_networking();
 };
+
+} // namespace oid
 
 #endif // MAIN_WINDOW_H_

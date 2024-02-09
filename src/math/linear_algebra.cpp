@@ -28,6 +28,9 @@
 #include <iostream>
 
 
+namespace oid
+{
+
 vec4::vec4() = default;
 
 
@@ -53,8 +56,9 @@ vec4& vec4::operator=(const vec4& b)
 
 vec4& vec4::operator+=(const vec4& b)
 {
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; ++i) {
         vec[i] += b.vec[i];
+    }
     return *this;
 }
 
@@ -324,3 +328,5 @@ mat4 mat4::operator*(const mat4& b) const
 
     return res;
 }
+
+} // namespace oid

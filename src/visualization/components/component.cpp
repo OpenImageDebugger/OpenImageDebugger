@@ -25,6 +25,8 @@
 
 #include "component.h"
 
+namespace oid
+{
 
 Component::Component(GameObject* game_object, GLCanvas* gl_canvas)
     : game_object_(game_object)
@@ -64,3 +66,5 @@ bool Component::post_initialize()
 {
     return true;
 }
+
+} // namespace oid

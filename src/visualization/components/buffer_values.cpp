@@ -39,6 +39,8 @@
 
 using namespace std;
 
+namespace oid
+{
 
 BufferValues::BufferValues(GameObject* game_object, GLCanvas* gl_canvas)
     : Component(game_object, gl_canvas)
@@ -326,3 +328,5 @@ void BufferValues::draw_text(const mat4& projection,
         y += char_step_direction.y();
     }
 }
+
+} // namespace oid

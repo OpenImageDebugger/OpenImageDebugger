@@ -33,10 +33,12 @@
 #include <QOpenGLWidget>
 
 
+namespace oid
+{
+
+class GLTextRenderer;
 class MainWindow;
 class Stage;
-class GLTextRenderer;
-
 
 class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions
 {
@@ -103,5 +105,7 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions
 
     void generate_icon_texture();
 };
+
+} // namespace oid
 
 #endif // GL_CANVAS_H_

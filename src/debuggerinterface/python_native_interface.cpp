@@ -25,6 +25,8 @@
 
 #include "python_native_interface.h"
 
+namespace oid
+{
 
 long get_py_int(PyObject* obj)
 {
@@ -71,3 +73,5 @@ void get_c_ptr_from_py_buffer(PyObject* obj,
     buffer_ptr         = static_cast<uint8_t*>(py_buff->buf);
     buffer_size        = static_cast<size_t>(py_buff->len);
 }
+
+} // namespace oid

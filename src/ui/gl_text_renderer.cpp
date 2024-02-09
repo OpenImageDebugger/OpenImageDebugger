@@ -29,6 +29,8 @@
 
 #include "visualization/shaders/oid_shaders.h"
 
+namespace oid
+{
 
 GLTextRenderer::GLTextRenderer(GLCanvas* gl_canvas)
     : font("Times New Roman", font_size)
@@ -92,10 +94,12 @@ void GLTextRenderer::generate_glyphs_texture()
     const QSize texture_size(g.size(Qt::TextSingleLine, text));
 
     text_texture_width = text_texture_height = 1.0f;
-    while (text_texture_width < static_cast<float>(texture_size.width()))
+    while (text_texture_width < static_cast<float>(texture_size.width())) {
         text_texture_width *= 2.0f;
-    while (text_texture_height < static_cast<float>(texture_size.height()))
+    }
+    while (text_texture_height < static_cast<float>(texture_size.height())) {
         text_texture_height *= 2.f;
+    }
 
     {
         constexpr int mipmap_levels = 5;
@@ -221,3 +225,5 @@ void GLTextRenderer::generate_glyphs_texture()
     gl_canvas_->glTexParameteri(
         GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
 }
+
+} // namespace oid

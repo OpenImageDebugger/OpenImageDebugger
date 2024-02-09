@@ -29,6 +29,8 @@
 #include "component.h"
 #include "math/linear_algebra.h"
 
+namespace oid
+{
 
 class Camera final : public Component
 {
@@ -96,5 +98,7 @@ class Camera final : public Component
 
     mat4 scale_;
 };
+
+} // namespace oid
 
 #endif // CAMERA_H_

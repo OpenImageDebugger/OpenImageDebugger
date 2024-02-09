@@ -28,6 +28,8 @@
 
 #include "component.h"
 
+namespace oid
+{
 
 class BufferValues final : public Component
 {
@@ -59,5 +61,7 @@ class BufferValues final : public Component
                    float y_offset,
                    float channels);
 };
+
+} // namespace oid
 
 #endif // BUFFER_VALUES_H_

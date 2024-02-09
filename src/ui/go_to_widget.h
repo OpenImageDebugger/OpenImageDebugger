@@ -26,10 +26,12 @@
 #ifndef GO_TO_WIDGET_H_
 #define GO_TO_WIDGET_H_
 
-class QWidget;
-
 #include "decorated_line_edit.h"
 
+class QWidget;
+
+namespace oid
+{
 
 class GoToWidget final : public QWidget
 {
@@ -51,5 +53,7 @@ class GoToWidget final : public QWidget
     DecoratedLineEdit* x_coordinate_;
     DecoratedLineEdit* y_coordinate_;
 };
+
+} // namespace oid
 
 #endif // GO_TO_WIDGET_H_

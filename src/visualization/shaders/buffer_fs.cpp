@@ -23,7 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-namespace shader
+namespace oid::shader
 {
 const char* buff_frag_shader = R"(
 
@@ -90,4 +90,4 @@ void main()
 }
 
 )";
-} // namespace shader
+} // namespace oid::shader

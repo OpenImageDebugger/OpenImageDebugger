@@ -36,6 +36,8 @@
 
 using namespace std;
 
+namespace oid
+{
 
 void MainWindow::resize_callback(const int w, const int h) const
 {
@@ -380,7 +382,7 @@ void MainWindow::toggle_go_to_dialog() const
 }
 
 
-void MainWindow::go_to_pixel(float x, float y)
+void MainWindow::go_to_pixel(const float x, const float y)
 {
     if (link_views_enabled_) {
         for (const auto& [_, stage] : stages_) {
@@ -394,3 +396,5 @@ void MainWindow::go_to_pixel(float x, float y)
 
     request_render_update_ = true;
 }
+
+} // namespace oid

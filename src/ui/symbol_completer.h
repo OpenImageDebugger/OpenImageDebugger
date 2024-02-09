@@ -50,5 +50,4 @@ class SymbolCompleter final : public QCompleter
     QString word_;
 };
 
-
 #endif // SYMBOL_COMPLETER_H_

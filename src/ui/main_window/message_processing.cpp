@@ -31,6 +31,8 @@
 
 using namespace std;
 
+namespace oid
+{
 
 void MainWindow::decode_set_available_symbols()
 {
@@ -281,3 +283,5 @@ void MainWindow::request_plot_buffer(const char* buffer_name)
         .push(std::string(buffer_name))
         .send(&socket_);
 }
+
+} // namespace oid

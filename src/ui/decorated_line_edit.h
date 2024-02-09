@@ -28,6 +28,9 @@
 
 #include <QLineEdit>
 
+namespace oid
+{
+
 class DecoratedLineEdit final : public QLineEdit
 {
     Q_OBJECT
@@ -37,5 +40,7 @@ class DecoratedLineEdit final : public QLineEdit
                       const char* tooltip,
                       QWidget* parent = nullptr);
 };
+
+} // namespace oid
 
 #endif // DECORATED_LINE_EDIT_H_

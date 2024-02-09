@@ -33,6 +33,8 @@
 
 using namespace std;
 
+namespace oid
+{
 
 void enable_inputs(const initializer_list<QLineEdit*>& inputs)
 {
@@ -242,3 +244,5 @@ void MainWindow::set_ac_max_value(const int idx, const float value)
         request_icons_update_  = true;
     }
 }
+
+} // namespace oid

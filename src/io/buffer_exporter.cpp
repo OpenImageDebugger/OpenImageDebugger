@@ -32,9 +32,10 @@
 
 #include <QPixmap>
 
-
 using namespace std;
 
+namespace oid
+{
 
 template <typename T>
 float get_multiplier()
@@ -270,3 +271,5 @@ void BufferExporter::export_buffer(const Buffer* buffer,
         }
     }
 }
+
+} // namespace oid

@@ -36,6 +36,8 @@
 
 using namespace std;
 
+namespace oid
+{
 
 struct compareRenderOrder
 {
@@ -274,3 +276,5 @@ void Stage::set_icon_drawing_mode(const bool is_enabled)
 
     buffer_component->set_icon_drawing_mode(is_enabled);
 }
+
+} // namespace oid

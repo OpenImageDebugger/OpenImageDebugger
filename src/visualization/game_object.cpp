@@ -31,6 +31,8 @@
 #include "visualization/components/component.h"
 #include "visualization/stage.h"
 
+namespace oid
+{
 
 GameObject::GameObject()
     : stage(nullptr)
@@ -127,3 +129,5 @@ GameObject::get_components()
 {
     return all_components_;
 }
+
+} // namespace oid
