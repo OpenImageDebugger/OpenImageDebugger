@@ -32,8 +32,10 @@
 #include "visualization/components/buffer.h"
 
 
-class GameObject;
+namespace oid
+{
 
+class GameObject;
 
 class Stage
 {
@@ -85,5 +87,6 @@ class Stage
   private:
     std::map<std::string, std::shared_ptr<GameObject>> all_game_objects;
 };
+} // namespace oid
 
 #endif // STAGE_H_

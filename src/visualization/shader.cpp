@@ -29,6 +29,9 @@
 
 #include <iostream>
 
+namespace oid
+{
+
 ShaderProgram::ShaderProgram(GLCanvas* gl_canvas)
     : program_(0)
     , gl_canvas_(gl_canvas)
@@ -214,3 +217,5 @@ std::string ShaderProgram::get_shader_type(const GLuint type)
     }
     return name;
 }
+
+} // namespace oid

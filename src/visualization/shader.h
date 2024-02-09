@@ -34,6 +34,8 @@
 
 #include "ui/gl_canvas.h"
 
+namespace oid
+{
 
 class ShaderProgram
 {
@@ -88,5 +90,7 @@ class ShaderProgram
                             const std::vector<std::string>& uniforms,
                             const char* pixel_layout);
 };
+
+} // namespace oid
 
 #endif // SHADER_H_

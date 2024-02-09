@@ -30,6 +30,9 @@
 #include <QIcon>
 #include <QPainter>
 
+namespace oid
+{
+
 DecoratedLineEdit::DecoratedLineEdit(const char* icon_path,
                                      const char* tooltip,
                                      QWidget* parent)
@@ -39,3 +42,5 @@ DecoratedLineEdit::DecoratedLineEdit(const char* icon_path,
     auto* label_widget = new QAction(label_icon, tooltip, this);
     addAction(label_widget, LeadingPosition);
 }
+
+} // namespace oid

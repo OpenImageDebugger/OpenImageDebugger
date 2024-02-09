@@ -30,6 +30,9 @@
 #include <QIntValidator>
 #include <QKeyEvent>
 
+namespace oid
+{
+
 GoToWidget::GoToWidget(QWidget* parent)
     : QWidget(parent)
 {
@@ -100,3 +103,5 @@ void GoToWidget::set_defaults(const float default_x,
     x_coordinate_->setText(QString::number(std::round(default_x - 0.5f)));
     y_coordinate_->setText(QString::number(std::round(default_y - 0.5f)));
 }
+
+} // namespace oid

@@ -28,10 +28,14 @@
 
 #include <set>
 
-enum class EventProcessCode { IGNORED, INTERCEPTED };
+class QEvent;
+
+namespace oid
+{
 
 class MainWindow;
-class QEvent;
+
+enum class EventProcessCode { IGNORED, INTERCEPTED };
 
 class KeyboardState
 {
@@ -50,5 +54,7 @@ class KeyboardState
 
     static std::set<int> pressed_keys_;
 };
+
+} // namespace oid
 
 #endif // EVENTS_H_

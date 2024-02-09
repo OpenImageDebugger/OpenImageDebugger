@@ -30,6 +30,9 @@
 
 #include "process_impl.h"
 
+namespace oid
+{
+
 Process::Process()
 {
     createImpl();
@@ -55,3 +58,5 @@ void Process::waitForStart() const
 {
     while (!impl_->isRunning());
 }
+
+} // namespace oid

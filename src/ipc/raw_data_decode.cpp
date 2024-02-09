@@ -27,6 +27,9 @@
 
 #include <cassert>
 
+namespace oid
+{
+
 std::vector<std::uint8_t>
 make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
 {
@@ -64,3 +67,5 @@ size_t typesize(const BufferType type)
         return sizeof(std::uint8_t);
     }
 }
+
+} // namespace oid

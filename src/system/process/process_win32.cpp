@@ -33,6 +33,9 @@
 
 using namespace std;
 
+namespace oid
+{
+
 class ProcessImplWin32 final : public ProcessImpl
 {
   public:
@@ -71,3 +74,5 @@ void Process::createImpl()
 {
     impl_ = make_shared<ProcessImplWin32>();
 }
+
+} // namespace oid

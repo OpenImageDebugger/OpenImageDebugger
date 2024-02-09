@@ -43,6 +43,7 @@
 
 
 using namespace std;
+using namespace oid;
 
 struct UiMessage
 {
@@ -233,7 +234,7 @@ class OidBridge
     }
 
 
-    void try_read_incoming_messages(int msecs = 3000)
+    void try_read_incoming_messages(const int msecs = 3000)
     {
         assert(client_ != nullptr);
 

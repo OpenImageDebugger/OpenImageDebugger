@@ -28,6 +28,8 @@
 #include <iostream>
 #include <utility>
 
+namespace oid
+{
 
 MessageBlock::~MessageBlock() = default;
 
@@ -45,3 +47,5 @@ const uint8_t* StringBlock::data() const
 {
     return reinterpret_cast<const uint8_t*>(data_.data());
 }
+
+} // namespace oid

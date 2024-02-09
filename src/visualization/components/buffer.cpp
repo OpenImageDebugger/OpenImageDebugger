@@ -30,12 +30,15 @@
 #include "GL/gl.h"
 
 #include "camera.h"
+#include "math/linear_algebra.h"
 #include "visualization/game_object.h"
 #include "visualization/shaders/oid_shaders.h"
 #include "visualization/stage.h"
 
 using namespace std;
 
+namespace oid
+{
 
 constexpr float Buffer::no_ac_params[8] =
     {1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -644,3 +647,5 @@ void Buffer::setup_gl_buffer()
     gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
     gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
 }
+
+} // namespace oid

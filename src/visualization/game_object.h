@@ -33,9 +33,12 @@
 
 
 class GLCanvas;
-class Stage;
-class Component;
 
+namespace oid
+{
+
+class Component;
+class Stage;
 
 class GameObject
 {
@@ -81,4 +84,5 @@ class GameObject
     mat4 pose_;
 };
 
+} // namespace oid
 #endif // GAME_OBJECT_H_

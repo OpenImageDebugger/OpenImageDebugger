@@ -23,7 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-namespace shader
+namespace oid::shader
 {
 const char* buff_vert_shader = R"(
 
@@ -38,4 +38,4 @@ void main(void) {
 }
 
 )";
-} // namespace shader
+} // namespace oid::shader

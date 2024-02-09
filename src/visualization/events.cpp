@@ -30,6 +30,9 @@
 #include <QApplication>
 #include <QKeyEvent>
 
+namespace oid
+{
+
 std::set<int> KeyboardState::pressed_keys_;
 
 
@@ -79,3 +82,5 @@ void KeyboardState::update_keyboard_state(const QEvent* event)
         pressed_keys_.erase(dynamic_cast<const QKeyEvent*>(event)->key());
     }
 }
+
+} // namespace oid

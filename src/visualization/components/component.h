@@ -28,10 +28,13 @@
 
 #include "visualization/events.h"
 
+
+namespace oid
+{
+
 class GameObject;
 class GLCanvas;
 class mat4;
-
 
 class Component
 {
@@ -76,4 +79,5 @@ class Component
     GLCanvas* gl_canvas_;
 };
 
+} // namespace oid
 #endif // COMPONENT_H_

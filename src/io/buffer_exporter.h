@@ -28,6 +28,8 @@
 
 #include "visualization/components/buffer.h"
 
+namespace oid
+{
 
 class BufferExporter
 {
@@ -38,5 +40,7 @@ class BufferExporter
                               const std::string& path,
                               OutputType type);
 };
+
+} // namespace oid
 
 #endif // BUFFER_EXPORTER_H_

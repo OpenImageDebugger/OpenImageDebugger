@@ -28,9 +28,10 @@
 
 #include <Eigen>
 
+namespace oid
+{
 
 class mat4;
-
 
 class vec4
 {
@@ -127,5 +128,7 @@ class mat4
   private:
     Eigen::Matrix4f mat_;
 };
+
+} // namespace oid
 
 #endif // LINEAR_ALGEBRA_H_

@@ -29,8 +29,8 @@
 #include <csignal>
 #include <spawn.h>
 
-
 using namespace std;
+using namespace oid;
 
 class ProcessImplUnix final : public ProcessImpl
 {
@@ -48,8 +48,8 @@ public:
 
         vector<char*> argv;
         argv.reserve(command.size());
-        for (size_t i = 1; i < command.size(); i++) {
-            argv.push_back(const_cast<char*>(command[i].c_str()));
+        for (const auto& arg : command) {
+            argv.push_back(const_cast<char*>(arg.c_str()));
         }
         argv.push_back(nullptr);
 

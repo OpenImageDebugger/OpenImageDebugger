@@ -37,6 +37,8 @@
 #error "Unsupported Python version"
 #endif
 
+namespace oid
+{
 
 long get_py_int(PyObject* obj);
 
@@ -53,5 +55,7 @@ uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, int tuple_index);
 
 
 void copy_py_string(std::string& dst, PyObject* src);
+
+} // namespace oid
 
 #endif // PYTHON_NATIVE_INTERFACE_H_

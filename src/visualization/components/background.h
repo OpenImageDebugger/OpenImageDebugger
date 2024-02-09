@@ -29,6 +29,8 @@
 #include "component.h"
 #include "visualization/shader.h"
 
+namespace oid
+{
 
 class Background final : public Component
 {
@@ -51,5 +53,7 @@ class Background final : public Component
     ShaderProgram background_prog;
     GLuint background_vbo;
 };
+
+} // namespace oid
 
 #endif // BACKGROUND_H_

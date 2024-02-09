@@ -29,6 +29,8 @@
 #include "ui/gl_canvas.h"
 #include "visualization/shader.h"
 
+namespace oid
+{
 
 class GLTextRenderer
 {
@@ -59,5 +61,7 @@ class GLTextRenderer
   private:
     GLCanvas* gl_canvas_;
 };
+
+} // namespace oid
 
 #endif // GL_TEXT_RENDERER_H_

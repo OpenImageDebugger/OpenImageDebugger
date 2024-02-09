@@ -29,6 +29,9 @@
 #include <string>
 #include <vector>
 
+namespace oid
+{
+
 /**
  * Interface to process calling classes
  */
@@ -54,5 +57,7 @@ class ProcessImpl
      */
     virtual void kill() = 0;
 };
+
+} // namespace oid
 
 #endif // #ifndef SYSTEM_PROCESS_IMPL_H_

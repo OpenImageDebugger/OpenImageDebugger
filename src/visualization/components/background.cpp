@@ -31,6 +31,8 @@
 #include "visualization/shaders/oid_shaders.h"
 #include "visualization/stage.h"
 
+namespace oid
+{
 
 Background::Background(GameObject* game_object, GLCanvas* gl_canvas)
     : Component(game_object, gl_canvas)
@@ -92,3 +94,5 @@ int Background::render_index() const
 {
     return -100;
 }
+
+} // namespace oid

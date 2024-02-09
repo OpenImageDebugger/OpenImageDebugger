@@ -31,6 +31,9 @@
 
 #include <vector> // for std::vector
 
+namespace oid
+{
+
 enum class BufferType {
     UnsignedByte  = 0,
     UnsignedShort = 2,
@@ -44,5 +47,7 @@ std::vector<std::uint8_t>
 make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double);
 
 std::size_t typesize(BufferType type);
+
+} // namespace oid
 
 #endif // RAW_DATA_DECODE_H_

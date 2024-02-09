@@ -32,6 +32,8 @@
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
 
+namespace oid
+{
 
 Camera::Camera(GameObject* game_object, GLCanvas* gl_canvas)
     : Component(game_object, gl_canvas)
@@ -411,3 +413,5 @@ bool Camera::post_buffer_update()
 {
     return true;
 }
+
+} // namespace oid

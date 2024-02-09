@@ -38,6 +38,8 @@
 
 #include "ui_main_window.h"
 
+namespace oid
+{
 
 void MainWindow::initialize_settings_ui_list_position(
     const QSettings& settings) const
@@ -556,3 +558,5 @@ void MainWindow::initialize_go_to_widget()
 {
     go_to_widget_ = new GoToWidget(ui_->bufferPreview);
 }
+
+} // namespace oid

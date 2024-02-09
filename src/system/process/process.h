@@ -30,6 +30,9 @@
 #include <string>
 #include <vector>
 
+namespace oid
+{
+
 class ProcessImpl;
 
 class Process final
@@ -68,5 +71,7 @@ class Process final
     // pimpl idiom
     std::shared_ptr<ProcessImpl> impl_;
 };
+
+} // namespace oid
 
 #endif // #ifndef SYSTEM_PROCESS_H_

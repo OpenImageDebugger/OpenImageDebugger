@@ -33,6 +33,8 @@
 #include "ipc/message_exchange.h"
 #include "visualization/shader.h"
 
+namespace oid
+{
 
 class Buffer final : public Component
 {
@@ -120,5 +122,7 @@ class Buffer final : public Component
     ShaderProgram buff_prog;
     GLuint vbo{};
 };
+
+} // namespace oid
 
 #endif // BUFFER_H_

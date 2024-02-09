@@ -33,6 +33,7 @@
 #include <utility>
 
 #include "ipc/message_exchange.h"
+#include "math/linear_algebra.h"
 #include "ui_main_window.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
@@ -42,6 +43,9 @@ using namespace std;
 
 
 Q_DECLARE_METATYPE(QList<QString>)
+
+namespace oid
+{
 
 MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     : QMainWindow(parent)
@@ -348,3 +352,5 @@ void MainWindow::set_currently_selected_stage(Stage* stage)
     currently_selected_stage_ = stage;
     request_render_update_    = true;
 }
+
+} // namespace oid

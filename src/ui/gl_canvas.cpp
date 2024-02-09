@@ -35,6 +35,8 @@
 
 using namespace std;
 
+namespace oid
+{
 
 GLCanvas::GLCanvas(QWidget* parent)
     : QOpenGLWidget(parent)
@@ -236,3 +238,5 @@ void list_gl_extensions()
     cout << "Supported OpenGL extensions:" << glGetString(GL_EXTENSIONS)
          << endl;
 }
+
+} // namespace oid
