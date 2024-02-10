@@ -135,7 +135,7 @@ class IplImage(interface.TypeInspectorInterface):
     Implementation for inspecting OpenCV IplImage structs
     """
 
-    types = {8: symbols.OID_TYPES_UINT8,   0x80000008: symbols.OID_TYPES_UINT8, 
+    types = {8: symbols.OID_TYPES_UINT8, 0x80000008: symbols.OID_TYPES_UINT8, 
              16: symbols.OID_TYPES_UINT16, 0x80000010: symbols.OID_TYPES_INT16,
              32: symbols.OID_TYPES_FLOAT32,
              64: symbols.OID_TYPES_FLOAT64}
@@ -172,6 +172,5 @@ class IplImage(interface.TypeInspectorInterface):
         symbol_type = str(symbol.type)
         type_regex = r'(const\s+)?IplImage(\s+?[*&])?'
         result = re.match(type_regex, symbol_type) is not None
-        # print(f"name: {symbol_name}, type: {symbol.type}, symbol: {symbol}, observable: {result}")
         return result
 
