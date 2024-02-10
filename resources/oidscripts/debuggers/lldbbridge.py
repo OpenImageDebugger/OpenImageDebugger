@@ -173,7 +173,7 @@ class LldbBridge(BridgeInterface):
                 member_idx)  # type: lldb.SBValue
 
             member_name_chain_current = member_name_chain.copy()
-            member_name_chain_current.append(symbol_member.name)
+            member_name_chain_current.append(str(symbol_member.name))
 
             symbol_wrapper = SymbolWrapper(symbol_member)
             if self._type_bridge.is_symbol_observable(symbol_wrapper,
