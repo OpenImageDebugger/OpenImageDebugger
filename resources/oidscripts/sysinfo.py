@@ -39,7 +39,7 @@ def _get_available_memory_darwin():
     for row in range(1, len(vm_lines) - 2):
         row_text = vm_lines[row].strip()
         row_elements = sep.split(row_text)
-        vm_stats[(row_elements[0])] = int(row_elements[1].strip('\.')) * page_size
+        vm_stats[(row_elements[0])] = int(row_elements[1].strip('.')) * page_size
     return vm_stats["Pages free"]
 
 def _get_available_memory_win32():
