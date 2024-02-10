@@ -53,7 +53,7 @@ class Mat(interface.TypeInspectorInterface):
             row_stride = int(row_stride / 8)
 
         return {
-            'display_name':  obj_name + ' (' + str(picked_obj.type) + ')',
+            'display_name': f'{obj_name} ({picked_obj.type})',
             'pointer': buffer,
             'width': width,
             'height': height,
@@ -80,7 +80,10 @@ class CvMat(interface.TypeInspectorInterface):
     Implementation for inspecting OpenCV CvMat structs
     """
     def get_buffer_metadata(self, obj_name, picked_obj, debugger_bridge):
-        buffer = debugger_bridge.get_casted_pointer('char', picked_obj['data'])
+        data = picked_obj['data']
+        if data.type == 'CvMat::(unnamed union)':
+            data = data[0]
+        buffer = debugger_bridge.get_casted_pointer('char', data)
         if buffer == 0x0:
             raise Exception('Received null buffer!')
 
@@ -110,7 +113,7 @@ class CvMat(interface.TypeInspectorInterface):
             row_stride = int(row_stride / 8)
 
         return {
-            'display_name':  obj_name + ' (' + str(picked_obj.type) + ')',
+            'display_name': f'{obj_name} ({picked_obj.type})',
             'pointer': buffer,
             'width': width,
             'height': height,
@@ -125,3 +128,50 @@ class CvMat(interface.TypeInspectorInterface):
         symbol_type = str(symbol.type)
         type_regex = r'(const\s+)?CvMat(\s+?[*&])?'
         return re.match(type_regex, symbol_type) is not None
+
+
+class IplImage(interface.TypeInspectorInterface):
+    """
+    Implementation for inspecting OpenCV IplImage structs
+    """
+
+    types = {8: symbols.OID_TYPES_UINT8,   0x80000008: symbols.OID_TYPES_UINT8, 
+             16: symbols.OID_TYPES_UINT16, 0x80000010: symbols.OID_TYPES_INT16,
+             32: symbols.OID_TYPES_FLOAT32,
+             64: symbols.OID_TYPES_FLOAT64}
+
+    def get_buffer_metadata(self, obj_name, picked_obj, debugger_bridge):
+        buffer = debugger_bridge.get_casted_pointer('char', picked_obj['imageData'])
+        if buffer == 0x0:
+            raise Exception('Received null buffer!')
+
+        width = int(picked_obj['width'])
+        height = int(picked_obj['height'])
+        channels = int(picked_obj['nChannels'])
+        depth = int(picked_obj['depth'])
+        row_stride = int(int(picked_obj['widthStep']) / depth * 8)
+
+        if channels >= 3:
+            pixel_layout = 'bgra'
+        else:
+            pixel_layout = 'rgba'
+
+        return {
+            'display_name': f'{obj_name} ({picked_obj.type})',
+            'pointer': buffer,
+            'width': width,
+            'height': height,
+            'channels': channels,
+            'type': self.types[depth],
+            'row_stride': row_stride,
+            'pixel_layout': pixel_layout,
+            'transpose_buffer': False
+        }
+
+    def is_symbol_observable(self, symbol, symbol_name):
+        symbol_type = str(symbol.type)
+        type_regex = r'(const\s+)?IplImage(\s+?[*&])?'
+        result = re.match(type_regex, symbol_type) is not None
+        # print(f"name: {symbol_name}, type: {symbol.type}, symbol: {symbol}, observable: {result}")
+        return result
+
