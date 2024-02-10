@@ -231,7 +231,7 @@ class SymbolWrapper(DebuggerSymbolReference):
 
     def __getitem__(self, member):
         child = self._symbol.GetChildAtIndex(member) if isinstance(member, int) \
-                else selg._symbol.GetChildMemberWithName(str(member))
+                else self._symbol.GetChildMemberWithName(str(member))
 
         if not child.IsValid():
             raise KeyError
