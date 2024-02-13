@@ -115,76 +115,70 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
         vec4 tl           = vp_inv * tl_ndc;
         vec4 br           = vp_inv * br_ndc;
 
-        const float tl_x = min(tl.x(), br.x());
         // Since the clip ROI may be rotated, we need to re-compute TL and BR
         // from their Xs and Ys
-        const float tl_y = min(tl.y(), br.y());
-        const float br_x = max(tl.x(), br.x());
-        const float br_y = max(tl.y(), br.y());
+        const int tl_x = min(tl.x(), br.x());
+        const int tl_y = min(tl.y(), br.y());
+        const int br_x = max(tl.x(), br.x());
+        const int br_y = max(tl.y(), br.y());
         tl.x() = tl_x, tl.y() = tl_y;
         br.x() = br_x, br.y() = br_y;
 
 
-        const auto lower_x = clamp(truncf(tl.x()) - 1.0f,
-                                   -buffer_width_f / 2.0f,
-                                   buffer_width_f / 2.0f - 1.0f);
-        const auto upper_x = clamp(ceilf(br.x()) + 1.0f,
-                                   -(buffer_width_f + 1) / 2.0f + 1.0f,
-                                   (buffer_width_f + 1) / 2.0f);
+        const int lower_x = clamp(truncf(tl.x()) - 1.0f,
+                                  -buffer_width_f / 2.0f,
+                                  buffer_width_f / 2.0f - 1.0f);
+        const int upper_x = clamp(ceilf(br.x()) + 1.0f,
+                                  -(buffer_width_f + 1.0f) / 2.0f + 1.0f,
+                                  (buffer_width_f + 1.0f) / 2.0f);
 
-        const auto lower_y = clamp(truncf(tl.y()) - 1.0f,
-                                   -buffer_height_f / 2.0f,
-                                   buffer_height_f / 2.0f - 1.0f);
-        const auto upper_y = clamp(ceilf(br.y()) + 1.0f,
-                                   -(buffer_height_f + 1) / 2.0f + 1.0f,
-                                   (buffer_height_f + 1) / 2.0f);
+        const int lower_y = clamp(truncf(tl.y()) - 1.0f,
+                                  -buffer_height_f / 2.0f,
+                                  buffer_height_f / 2.0f - 1.0f);
+        const int upper_y = clamp(ceilf(br.y()) + 1.0f,
+                                  -(buffer_height_f + 1.0f) / 2.0f + 1.0f,
+                                  (buffer_height_f + 1.0f) / 2.0f);
 
-        const auto pos_center_x = -buffer_width_f / 2;
-        const auto pos_center_y = -buffer_height_f / 2;
+        const int pos_center_x = -buffer_width_f / 2;
+        const int pos_center_y = -buffer_height_f / 2;
 
         // Offset for vertical channel position to account for padding
         array<float, 4> recenter_factors{};
 
-        const auto channels_float = static_cast<float>(channels);
         if (channels == 1) {
             recenter_factors = {0.0f, 0.0f, 0.0f, 0.0f};
         } else if (channels == 2) {
-            const auto rfUp  = padding / 3.0f / channels_float;
+            const auto rfUp  = padding / 3.0f / channels;
             recenter_factors = {rfUp, -rfUp, 0.0f, 0.0f};
         } else if (channels == 3) {
-            const auto rfUp  = padding / 2.0f / channels_float;
+            const auto rfUp  = padding / 2.0f / channels;
             recenter_factors = {rfUp, 0.0f, -rfUp, 0.0f};
         } else if (channels == 4) {
-            const auto rfUp   = 3.0f * padding / 5.0f / channels_float;
-            const auto rfDown = padding / 5.0f / channels_float;
+            const auto rfUp   = 3.0f * padding / 5.0f / channels;
+            const auto rfDown = padding / 5.0f / channels;
             recenter_factors  = {rfUp, rfDown, -rfDown, -rfUp};
         }
 
-        for (int y = static_cast<int>(lower_y - pos_center_y);
-             y < static_cast<int>(upper_y - pos_center_y);
-             ++y) {
-            for (int x = static_cast<int>(lower_x - pos_center_x);
-                 x < static_cast<int>(upper_x - pos_center_x);
+        for (int y = lower_y - pos_center_y; y < upper_y - pos_center_y; ++y) {
+            for (int x = lower_x - pos_center_x; x < upper_x - pos_center_x;
                  ++x) {
                 int pos = (y * step + x) * channels;
 
                 for (int c = 0; c < channels; ++c) {
                     constexpr int label_length = 30;
                     char pix_label[label_length];
-                    const float y_off =
-                        (0.5f * (channels_float - 1) - static_cast<float>(c)) /
-                            channels_float -
-                        recenter_factors[c];
+                    const float y_off = (0.5f * (channels - 1) - c) / channels -
+                                        recenter_factors[c];
 
                     pix2str(type, buffer, pos, c, label_length, pix_label);
                     draw_text(projection,
                               view_inv,
                               buffer_pose,
                               pix_label,
-                              static_cast<float>(x) + pos_center_x,
-                              static_cast<float>(y) + pos_center_y,
+                              x + pos_center_x,
+                              y + pos_center_y,
                               y_off,
-                              channels_float);
+                              channels);
                 }
             }
         }
