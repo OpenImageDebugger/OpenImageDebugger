@@ -11,7 +11,7 @@ import threading
 from oidscripts import sysinfo
 from oidscripts.debuggers.interfaces import BridgeInterface
 from oidscripts.events import BridgeEventHandlerInterface
-
+from oidscripts.logger import log
 
 class GdbBridge(BridgeInterface):
     """
@@ -114,8 +114,7 @@ class GdbBridge(BridgeInterface):
                 try:
                     observable_symbols.add(field_name)
                 except Exception:
-                    print('[OpenImageDebugger] Info: Member %s is not observable'
-                          % field_name)
+                    log.info(f"Member {field_name} is not observable")
         return observable_symbols
 
     def get_casted_pointer(self, typename, gdb_object):
@@ -149,8 +148,7 @@ class GdbBridge(BridgeInterface):
                         try:
                             observable_symbols.add(name)
                         except Exception:
-                            print('[OpenImageDebugger] Info: Field %s is not'
-                                  'observable' % name)
+                            log.info(f"Field {name} is not observable")
 
             block = block.superblock
 
