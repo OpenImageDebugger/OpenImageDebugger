@@ -22,7 +22,7 @@ from oidscripts.oidwindow import OpenImageDebuggerWindow
 from oidscripts.test import oidtest
 from oidscripts.debuggers.interfaces import BridgeInterface
 from oidscripts.events import OpenImageDebuggerEvents
-
+from oidscripts.logger import log
 
 def import_gdb(type_bridge):
     from oidscripts.debuggers import gdbbridge
@@ -81,9 +81,9 @@ def register_ide_hooks(debugger,  # type: BridgeInterface
         except Exception as err:
             error_traces.append(traceback.format_exc())
 
-    print('[OpenImageDebugger] Info: Could not activate hooks for any IDEs')
+    log.info('Could not activate hooks for any IDEs')
     # To find out more about this issue, uncomment the line below:
-    # print('\n'.join(error_traces))
+    # log.info('\n'.join(error_traces))
 
 
 def get_debugger_bridge():
@@ -107,8 +107,8 @@ def get_debugger_bridge():
         except Exception as err:
             error_traces.append(traceback.format_exc())
 
-    print('[OpenImageDebugger] Error: Could not instantiate any debugger bridge')
-    print('\n'.join(error_traces))
+    log.error('Could not instantiate any debugger bridge')
+    log.error('\n'.join(error_traces))
     exit(1)
 
 

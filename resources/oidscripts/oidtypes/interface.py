@@ -7,7 +7,7 @@ plotted in the OpenImageDebugger window.
 """
 
 import abc
-
+from oidscripts.logger import log
 
 def debug_buffer_metadata(func):
     def wrapper(self, obj_name, picked_obj, debugger_bridge):
@@ -15,12 +15,10 @@ def debug_buffer_metadata(func):
             # metadata is used for debugging purposed, so we are supressing the next lgtm alert
             metadata = func(self, obj_name, picked_obj, debugger_bridge) # lgtm [py/unused-local-variable]
 
-            print('[%s] [%s] was parsed by oidtype [%s]' %
-                  (str(picked_obj.type), obj_name, type(self).__name__))
+            log.info(f"[{str(picked_obj.type)}] [{obj_name}] was parsed by oidtype [{type(self).__name__}]")
         except Exception as error:
-            print('[%s] [%s] raised exception when parsed by oidtype [%s]:' %
-                  (str(picked_obj.type), obj_name, type(self).__name__))
-            print('    %s' % str(error))
+            log.error(f"[{str(picked_obj.type)}] [{obj_name}] raised exception when parsed by oidtype [{type(self).__name__}]")
+            log.error(f"    {str(error)}")
 
             raise error
 
@@ -36,8 +34,7 @@ def debug_symbol_observable(func):
         else:
             is_observable_str = 'is NOT observable'
 
-        print('[' + str(symbol_obj.type) + '] [' + symbol_name + '] ' +
-              is_observable_str + ' by [' + type(self).__name__ + ']')
+        log.info(f"[{str(symbol_obj.type)}] [{symbol_name}] {is_observable_str} by [{type(self).__name__}]")
 
         return is_observable
 
