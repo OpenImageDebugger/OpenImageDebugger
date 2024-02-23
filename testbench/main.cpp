@@ -302,6 +302,17 @@ void changeStackOnPurpose() {
     cout << "Changed stack position" << endl;
 }
 
+class MultiMat
+{
+public:
+    Mat* testField0;
+    Mat* testField1;
+    // Test recursive pointer
+    MultiMat* selfPointer;
+
+    MultiMat() : testField0(nullptr), testField1(nullptr), selfPointer(this) {}
+};
+
 class TestFather
 {
   protected:
@@ -332,6 +343,9 @@ class Test : public TestFather
         i(0, 0, 0) = 255;
         Mat broken;
         Mat* pointer = &TestField;
+        MultiMat multiMat;
+        multiMat.testField0 = &TestField;
+        multiMat.testField1 = &TestField;
         char tst;
         broken.data        = &tst;
         broken.cols        = 1024;
