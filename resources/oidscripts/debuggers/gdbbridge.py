@@ -99,56 +99,48 @@ class GdbBridge(BridgeInterface):
         self._event_handler = event_handler
         self._commands['plot'].set_command_listener(event_handler.plot_handler)
 
-    def get_fields_from_type(self, this_type, observable_symbols):
-        """
-        Given a class/struct type "this_type", fetch all members of that
-        particular type and test them against the observable buffer check.
-        """
-        for field_name, field_val in this_type.iteritems():
-            if field_val.is_base_class:
-                type_fields = self.get_fields_from_type(field_val.type,
-                                                        observable_symbols)
-                observable_symbols.update(type_fields)
-            elif ((field_name not in observable_symbols) and
-                  (self._type_bridge.is_symbol_observable(field_val, field_name))):
-                try:
-                    observable_symbols.add(field_name)
-                except Exception:
-                    log.info(f"Member {field_name} is not observable")
-        return observable_symbols
-
     def get_casted_pointer(self, typename, gdb_object):
         typename_obj = gdb.lookup_type(typename)
         typename_pointer_obj = typename_obj.pointer()
         return gdb_object.cast(typename_pointer_obj)
 
+    def _get_observable_children_members(self, symbol, output_set, parent_name=''):
+        if not parent_name:
+            parent_name = symbol.name
+
+        if gdb.TYPE_CODE_STRUCT == symbol.type.code:
+            for field in symbol.type.fields():
+                # Check if already observable
+                complete_symbol_name = f"{parent_name}.{field.name}"
+                if self._type_bridge.is_symbol_observable(field, complete_symbol_name):
+                    output_set.add(complete_symbol_name)
+
+                # Check if there's a possible observable child
+                elif gdb.TYPE_CODE_STRUCT == field.type.code:
+                    self._get_observable_children_members(field, output_set, complete_symbol_name)
+
     def get_available_symbols(self):
         frame = gdb.selected_frame()
         block = frame.block()
         observable_symbols = set()
-
         while block is not None:
             for symbol in block:
                 if symbol.is_argument or symbol.is_variable:
                     name = symbol.name
 
-                    # Get struct/class fields
-                    if name == 'this':
-                        # The GDB API is a bit convoluted, so I have to do some
-                        # contortion in order to get the class type from the
-                        # this object so I can iterate over its fields
-                        this_type = gdb.parse_and_eval(symbol.name) \
-                            .dereference().type
-                        type_fields = self.get_fields_from_type(
-                            this_type,
-                            observable_symbols)
-                        observable_symbols.update(type_fields)
-                    elif ((name not in observable_symbols) and
-                          (self._type_bridge.is_symbol_observable(symbol, name))):
-                        try:
-                            observable_symbols.add(name)
-                        except Exception:
-                            log.info(f"Field {name} is not observable")
+                    # Check if the symbol is already observable
+                    if self._type_bridge.is_symbol_observable(symbol, name):
+                        observable_symbols.add(name)
+
+                    # Special case to handle 'this'
+                    elif name == 'this':
+                        this_field = gdb.parse_and_eval(name).dereference().type.fields()
+                        for field in this_field:
+                            self._get_observable_children_members(field, observable_symbols, name)
+
+                    # Check if we have a struct or a class
+                    else:
+                        self._get_observable_children_members(symbol, observable_symbols)
 
             block = block.superblock
 
