@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, ubuntu-22.04, macos-12, macos-13, windows-2019, windows-2022 ]
+        os: [ ubuntu-20.04, ubuntu-22.04, macos-13, macos-14, windows-2019, windows-2022 ]
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
