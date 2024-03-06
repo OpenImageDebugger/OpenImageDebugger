@@ -31,8 +31,8 @@ jobs:
   check-formatting:
     name: Check formatting
     # ugly hack: `git clang-format` has a proper return value on the
-    # default installation of macOS 13 but not on Ubuntu22.04, so mac it is
-    runs-on: [ macos-13 ]
+    # default installation of macOS 14 but not on Ubuntu22.04, so mac it is
+    runs-on: [macos-14]
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:

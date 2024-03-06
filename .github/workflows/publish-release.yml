@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2023 OpenImageDebugger contributors
+# Copyright (c) 2015-2024 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,33 +25,41 @@ name: Publish release
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_run:
     # pushes done by a workflow won't trigger on.push without a GH PAT. Using on.workflow_run instead.
     # see:
     #   - https://github.com/orgs/community/discussions/25702
     #   - https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
-    workflows: [ Dependabot auto-approve ]
-    types: [ completed ]
+    workflows: [Dependabot auto-approve]
+    types: [completed]
 
 jobs:
   bump:
     uses: ./.github/workflows/commisery-bump.yml
   build-all:
-    needs: [ bump ]
+    needs: [bump]
     if: needs.bump.outputs.next-version != ''
     uses: ./.github/workflows/build.yml
   publish-release:
-    needs: [ build-all, bump ]
+    needs: [build-all, bump]
     if: needs.bump.outputs.next-version != ''
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, ubuntu-22.04, macos-12, macos-13, windows-2019, windows-2022 ]
+        os:
+          [
+            ubuntu-20.04,
+            ubuntu-22.04,
+            macos-13,
+            macos-14,
+            windows-2019,
+            windows-2022,
+          ]
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427
         with:
           name: build-${{ matrix.os }}
           path: artifacts
