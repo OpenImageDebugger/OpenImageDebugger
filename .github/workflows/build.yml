@@ -76,7 +76,7 @@ jobs:
           fi
           # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
           cmake -S . -B build -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release --target install -j 2
+          cmake --build build --config Release --target install -j 4
 
       - name: Tar files
         shell: bash
