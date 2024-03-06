@@ -28,54 +28,62 @@ on:
   workflow_call:
 
 jobs:
-    build:
-        name: Build
-        strategy:
-            fail-fast: false
-            matrix:
-                os: [ ubuntu-20.04, ubuntu-22.04, macos-13, macos-14, windows-2019, windows-2022 ]
-        runs-on: ${{ matrix.os }}
-        steps:
-            - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-              with:
-                fetch-depth: 1
-                fetch-tags: true
-                submodules: 'recursive'
-                # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
-                persist-credentials: false
+  build:
+    name: Build
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          [
+            ubuntu-20.04,
+            ubuntu-22.04,
+            macos-13,
+            macos-14,
+            windows-2019,
+            windows-2022,
+          ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          fetch-depth: 1
+          fetch-tags: true
+          submodules: "recursive"
+          # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
+          persist-credentials: false
 
-            # aqtinstall currently does not support macos on arm64
-            - if: ${{ ! contains(matrix.os, 'macos-14') }}
-              name: Install Qt
-              uses: jurplel/install-qt-action@b3ea5275e37b734d027040e2c7fe7a10ea2ef946
-              with:
-                version: '5.12.8'
-                aqtversion: '==3.1.*'
-                setup-python: false
-                cache: 'true'
+      # aqtinstall currently does not support macos on arm64
+      - if: ${{ ! contains(matrix.os, 'macos-14') }}
+        name: Install Qt
+        uses: jurplel/install-qt-action@b3ea5275e37b734d027040e2c7fe7a10ea2ef946
+        with:
+          version: "5.12.8"
+          aqtversion: "==3.1.*"
+          setup-python: false
+          cache: "true"
 
-            # else
-            - if: contains(matrix.os, 'macos-14')
-              name: Install Qt (MacOS 14)
-              run: brew install qt5
+      # else
+      - if: contains(matrix.os, 'macos-14')
+        name: Install Qt (MacOS 14)
+        run: brew install qt5
 
-            - name: Build
-              shell: bash
-              run: |
-                if [ ${{ contains(matrix.os, 'macos-14') }} ]
-                then
-                  export PATH="/opt/homebrew/opt/qt@5/bin:$PATH";
-                fi
-                # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
-                cmake -S . -B build -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
-                cmake --build build --config Release --target install -j 2
+      - name: Build
+        shell: bash
+        run: |
+          if [ ${{ contains(matrix.os, 'macos-14') }} ]
+          then
+            export PATH="/opt/homebrew/opt/qt@5/bin:$PATH";
+          fi
+          # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
+          cmake -S . -B build -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --target install -j 2
 
-            - name: Tar files
-              shell: bash
-              run: tar --strip-components 1 -cvf build-${{ matrix.os }}.tar out/OpenImageDebugger
+      - name: Tar files
+        shell: bash
+        run: tar --strip-components 1 -cvf build-${{ matrix.os }}.tar out/OpenImageDebugger
 
-            - name: Upload build
-              uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
-              with:
-                name: build-${{ matrix.os }}
-                path: build-${{ matrix.os }}.tar
+      - name: Upload build
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
+        with:
+          name: build-${{ matrix.os }}
+          path: build-${{ matrix.os }}.tar
