@@ -69,7 +69,7 @@ inline void pix2str(const BufferType& type,
         const float fpix =
             reinterpret_cast<const float*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%.3f", fpix);
-        if (strlen(pix_label) > 7) {
+        if (string{pix_label}.length() > 7) {
             snprintf(pix_label, label_length, "%.3e", fpix);
         }
     } else if (type == BufferType::UnsignedByte) {
@@ -85,7 +85,7 @@ inline void pix2str(const BufferType& type,
     } else if (type == BufferType::Int32) {
         const int fpix = reinterpret_cast<const int*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%d", fpix);
-        if (strlen(pix_label) > 7) {
+        if (string{pix_label}.length() > 7) {
             snprintf(pix_label, label_length, "%.3e", static_cast<float>(fpix));
         }
     }
