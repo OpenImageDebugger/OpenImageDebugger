@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 
 
 #include "ui/gl_text_renderer.h"
@@ -242,10 +243,11 @@ void BufferValues::draw_text(const mat4& projection,
     // Compute text box size
     float boxW = 0.0f;
     float boxH = 0.0f;
-    for (auto p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
-        boxW += static_cast<float>(text_renderer->text_texture_advances[*p][0]);
+    for (const auto c : string{text}) {
+        const auto uc = static_cast<unsigned char>(c);
+        boxW += static_cast<float>(text_renderer->text_texture_advances[uc][0]);
         boxH = max(
-            boxH, static_cast<float>(text_renderer->text_texture_sizes[*p][1]));
+            boxH, static_cast<float>(text_renderer->text_texture_sizes[uc][1]));
     }
 
     constexpr float paddingScale = 1.0f / (1.0f - 2.0f * padding);
