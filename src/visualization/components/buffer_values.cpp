@@ -244,10 +244,12 @@ void BufferValues::draw_text(const mat4& projection,
     float boxW = 0.0f;
     float boxH = 0.0f;
     for (const auto c : string{text}) {
-        const auto uc = static_cast<unsigned char>(c);
-        boxW += static_cast<float>(text_renderer->text_texture_advances[uc][0]);
+        const auto uchar = static_cast<unsigned char>(c);
+        boxW +=
+            static_cast<float>(text_renderer->text_texture_advances[uchar][0]);
         boxH = max(
-            boxH, static_cast<float>(text_renderer->text_texture_sizes[uc][1]));
+            boxH,
+            static_cast<float>(text_renderer->text_texture_sizes[uchar][1]));
     }
 
     constexpr float paddingScale = 1.0f / (1.0f - 2.0f * padding);
@@ -272,23 +274,26 @@ void BufferValues::draw_text(const mat4& projection,
     y = centeredCoord.y() + boxH / 2.0f * sy - channel_offset.y();
     x = centeredCoord.x() - boxW / 2.0f * sx - channel_offset.x();
 
-    for (auto p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
+    for (const auto c : string{text}) {
+        const auto uchar = static_cast<unsigned char>(c);
         const float x2 =
-            x + static_cast<float>(text_renderer->text_texture_tls[*p][0]) * sx;
+            x +
+            static_cast<float>(text_renderer->text_texture_tls[uchar][0]) * sx;
         const float y2 =
-            y - static_cast<float>(text_renderer->text_texture_tls[*p][1]) * sy;
+            y -
+            static_cast<float>(text_renderer->text_texture_tls[uchar][1]) * sy;
 
-        const int tex_wid = text_renderer->text_texture_sizes[*p][0];
-        const int tex_hei = text_renderer->text_texture_sizes[*p][1];
+        const int tex_wid = text_renderer->text_texture_sizes[uchar][0];
+        const int tex_hei = text_renderer->text_texture_sizes[uchar][1];
 
         const float w = static_cast<float>(tex_wid) * sx;
         const float h = static_cast<float>(tex_hei) * sy;
 
         const float tex_lower_x =
-            static_cast<float>(text_renderer->text_texture_offsets[*p][0]) /
+            static_cast<float>(text_renderer->text_texture_offsets[uchar][0]) /
             text_renderer->text_texture_width;
         const float tex_lower_y =
-            static_cast<float>(text_renderer->text_texture_offsets[*p][1]) /
+            static_cast<float>(text_renderer->text_texture_offsets[uchar][1]) /
             text_renderer->text_texture_height;
         const float tex_upper_x =
             tex_lower_x + (static_cast<float>(tex_wid) - 1.0f) /
@@ -313,9 +318,9 @@ void BufferValues::draw_text(const mat4& projection,
         gl_canvas_->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         vec4 char_step_direction(
-            static_cast<float>(text_renderer->text_texture_advances[*p][0]) *
+            static_cast<float>(text_renderer->text_texture_advances[uchar][0]) *
                 sx,
-            static_cast<float>(text_renderer->text_texture_advances[*p][1]) *
+            static_cast<float>(text_renderer->text_texture_advances[uchar][1]) *
                 sy,
             0.0f,
             1.0f);
