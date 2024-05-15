@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2023 OpenImageDebugger contributors
+# Copyright (c) 2015-2024 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,7 +32,7 @@ on:
 jobs:
   bump-version:
     name: Bump version and release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Release version
         id: release-version
