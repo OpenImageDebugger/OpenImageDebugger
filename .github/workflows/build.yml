@@ -68,22 +68,20 @@ jobs:
           cache: true
 
       - if: contains(matrix.os, 'macos')
-        name: Install Qt (MacOS)
+        name: Install Qt (macOS)
         run: brew install qt@5
+
+      - if: contains(matrix.os, 'macos-13')
+        name: Configure Qt (macOS 13)
+        run: echo "PATH=/usr/local/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
+
+      - if: contains(matrix.os, 'macos-14')
+        name: Configure Qt (macOS 14)
+        run: echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
       - name: Build
         shell: bash
         run: |
-          if [ ${{ contains(matrix.os, 'macos-13') }} ]
-          then
-            export PATH="/usr/local/opt/qt@5/bin:$PATH"
-          fi
-
-          if [ ${{ contains(matrix.os, 'macos-14') }} ]
-          then
-            export PATH="/opt/homebrew/opt/qt@5/bin:$PATH"
-          fi
-
           # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
           cmake -S . -B build -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
           cmake --build build --config Release --target install -j 4
