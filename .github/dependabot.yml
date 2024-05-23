@@ -34,7 +34,6 @@ updates:
       interval: "daily"
     commit-message:
       prefix: "fix"
-      include: "scope"
 
   - package-ecosystem: "github-actions" # See documentation for possible values
     directory: "/" # Location of package manifests
@@ -42,4 +41,3 @@ updates:
       interval: "daily"
     commit-message:
       prefix: "ci"
-      include: "scope"
