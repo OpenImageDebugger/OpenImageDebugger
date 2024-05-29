@@ -51,6 +51,8 @@ jobs:
     #   - https://gh.io/supported-runners-and-hardware-resources
     #   - https://gh.io/using-larger-runners
     # Consider using larger runners for possible analysis time improvements.
+
+    # Workaround: on Ubuntu 24.04 the job gets canceled on the Perform CodeQL Analysis step. Using Ubuntu 22.04 instead
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-22.04' }}
     container: ghcr.io/openimagedebugger/oid:22.04
     timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
