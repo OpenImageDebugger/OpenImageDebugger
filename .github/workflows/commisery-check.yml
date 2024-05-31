@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Check for Conventional Commit compliance
-        uses: tomtom-international/commisery-action@eeb5ca9c4b6fbf395e6207b6b139acbf3832c9f1
+        uses: tomtom-international/commisery-action@e41c2b77a2702fdac81351e3b840a7fee5e4da8d
         with:
           token: ${{ github.token }}
           validate-commits: false
