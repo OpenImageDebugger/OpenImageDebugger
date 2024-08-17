@@ -30,9 +30,9 @@
 
 #include "io/buffer_exporter.h"
 #include "ui_main_window.h"
+#include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
-
 
 using namespace std;
 
@@ -175,6 +175,73 @@ void MainWindow::link_views_toggle()
     link_views_enabled_ = !link_views_enabled_;
 }
 
+void MainWindow::shift_precision_left()
+{
+    const auto shift_precision_left = [](Stage* stage) {
+        GameObject* buffer_obj = stage->get_game_object("buffer");
+        auto* buffer_comp =
+            buffer_obj->get_component<BufferValues>("text_component");
+
+        buffer_comp->shift_precision_left();
+    };
+
+    if (link_views_enabled_) {
+        for (auto& [_, stage] : stages_) {
+            shift_precision_left(stage.get());
+        }
+    } else {
+        if (currently_selected_stage_ != nullptr) {
+            shift_precision_left(currently_selected_stage_);
+        }
+    }
+
+    request_render_update_ = true;
+}
+
+void MainWindow::shift_precision_right()
+{
+    const auto shift_precision_right = [](Stage* stage) {
+        GameObject* buffer_obj = stage->get_game_object("buffer");
+        auto* buffer_comp =
+            buffer_obj->get_component<BufferValues>("text_component");
+
+        buffer_comp->shift_precision_right();
+    };
+
+    if (link_views_enabled_) {
+        for (auto& [_, stage] : stages_) {
+            shift_precision_right(stage.get());
+        }
+    } else {
+        if (currently_selected_stage_ != nullptr) {
+            shift_precision_right(currently_selected_stage_);
+        }
+    }
+
+    request_render_update_ = true;
+}
+
+void MainWindow::update_shift_precision()
+{
+    if (currently_selected_stage_ != nullptr) {
+        GameObject* buffer_obj =
+            currently_selected_stage_->get_game_object("buffer");
+        const auto* buffer =
+            buffer_obj->get_component<Buffer>("buffer_component");
+
+        if ((BufferType::Float32 == buffer->type) ||
+            (BufferType::Float64 == buffer->type)) {
+            ui_->shift_precision_left->setEnabled(true);
+            ui_->shift_precision_right->setEnabled(true);
+        } else {
+            ui_->shift_precision_left->setEnabled(false);
+            ui_->shift_precision_right->setEnabled(false);
+        }
+    } else {
+        ui_->shift_precision_left->setEnabled(false);
+        ui_->shift_precision_right->setEnabled(false);
+    }
+}
 
 void MainWindow::rotate_90_cw()
 {
@@ -226,8 +293,9 @@ void MainWindow::rotate_90_ccw()
 
 void MainWindow::buffer_selected(QListWidgetItem* item)
 {
-    if (item == nullptr)
+    if (item == nullptr) {
         return;
+    }
 
     const auto stage =
         stages_.find(item->data(Qt::UserRole).toString().toStdString());
@@ -235,7 +303,7 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
         set_currently_selected_stage(stage->second.get());
         reset_ac_min_labels();
         reset_ac_max_labels();
-
+        update_shift_precision();
         update_status_bar();
     }
 }
@@ -256,6 +324,7 @@ void MainWindow::remove_selected_buffer()
 
         if (stages_.empty()) {
             set_currently_selected_stage(nullptr);
+            update_shift_precision();
         }
 
         persist_settings_deferred();
@@ -316,8 +385,9 @@ void MainWindow::export_buffer()
     while (it.hasNext()) {
         it.next();
         save_message += it.key();
-        if (it.hasNext())
+        if (it.hasNext()) {
             save_message += ";;";
+        }
     }
 
     file_dialog.setNameFilter(save_message);
