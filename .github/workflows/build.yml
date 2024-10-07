@@ -91,7 +91,7 @@ jobs:
         run: tar --strip-components 1 -cvf build-${{ matrix.os }}.tar out/OpenImageDebugger
 
       - name: Upload build
-        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
+        uses: actions/upload-artifact@604373da6381bf24206979c74d06a550515601b9
         with:
           name: build-${{ matrix.os }}
           path: build-${{ matrix.os }}.tar
