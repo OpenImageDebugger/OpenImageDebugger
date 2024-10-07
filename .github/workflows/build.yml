@@ -37,8 +37,8 @@ jobs:
           [
             ubuntu-22.04,
             ubuntu-24.04,
-            macos-13,
             macos-14,
+            macos-15,
             windows-2019,
             windows-2022,
           ]
@@ -69,15 +69,9 @@ jobs:
 
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
-        run: brew install qt@5
-
-      - if: contains(matrix.os, 'macos-13')
-        name: Configure Qt (macOS 13)
-        run: echo "PATH=/usr/local/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
-
-      - if: contains(matrix.os, 'macos-14')
-        name: Configure Qt (macOS 14)
-        run: echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
+        run: |
+          brew install qt@5
+          echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
       - name: Build
         shell: bash
