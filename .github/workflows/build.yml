@@ -60,7 +60,7 @@ jobs:
 
       - if: contains(matrix.os, 'windows')
         name: Install Qt (Windows)
-        uses: jurplel/install-qt-action@f45d390edc19bee3b8bcc1f325e1b10ecba9074e
+        uses: jurplel/install-qt-action@c6c7281365daef91a238e1c2ddce4eaa94a2991d
         with:
           version: "5.15.1"
           aqtversion: "==3.1.*"
