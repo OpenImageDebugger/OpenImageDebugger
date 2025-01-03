@@ -281,6 +281,8 @@ class MainWindow final : public QMainWindow
 
     void initialize_settings_ui_contrast_enabled(const QSettings& settings);
 
+    void initialize_settings_ui_link_views_enabled(const QSettings& settings);
+
     void initialize_settings_ui(QSettings& settings);
 
     void initialize_settings();

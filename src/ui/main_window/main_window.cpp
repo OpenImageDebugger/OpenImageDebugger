@@ -237,6 +237,7 @@ void MainWindow::persist_settings()
     }
     settings.setValue("minmax_visible", ui_->acEdit->isChecked());
     settings.setValue("contrast_enabled", ui_->acToggle->isChecked());
+    settings.setValue("link_views_enabled", ui_->linkViewsToggle->isChecked());
     settings.endGroup();
 
     // Write window position/size

@@ -45,7 +45,7 @@ void MainWindow::initialize_settings_ui_list_position(
     const QSettings& settings) const
 {
     const QVariant variant = settings.value("list_position");
-    if (!variant.canConvert(QVariant::Type::String)) {
+    if (!variant.canConvert<QString>()) {
         return;
     }
 
@@ -66,7 +66,7 @@ void MainWindow::initialize_settings_ui_splitter(
     const QSettings& settings) const
 {
     const QVariant variant = settings.value("splitter");
-    if (!variant.canConvert(QVariant::Type::List)) {
+    if (!variant.canConvert<QVariantList>()) {
         return;
     }
 
@@ -85,7 +85,7 @@ void MainWindow::initialize_settings_ui_minmax_compact(
 {
     const bool is_minmax_compact = [&]() -> auto {
         const QVariant variant = settings.value("minmax_compact");
-        if (!variant.canConvert(QVariant::Type::Bool)) {
+        if (!variant.canConvert<bool>()) {
             return false;
         }
 
@@ -98,7 +98,7 @@ void MainWindow::initialize_settings_ui_minmax_compact(
 
     const bool is_minmax_visible = [&]() -> auto {
         const QVariant variant = settings.value("minmax_visible");
-        if (!variant.canConvert(QVariant::Type::Bool)) {
+        if (!variant.canConvert<bool>()) {
             return true;
         }
 
@@ -143,7 +143,7 @@ MainWindow::initialize_settings_ui_colorspace_channel(const QChar& character)
 void MainWindow::initialize_settings_ui_colorspace(const QSettings& settings)
 {
     const QVariant variant = settings.value("colorspace");
-    if (!variant.canConvert(QVariant::Type::String)) {
+    if (!variant.canConvert<QString>()) {
         return;
     }
 
@@ -171,7 +171,7 @@ void MainWindow::initialize_settings_ui_minmax_visible(
     const QSettings& settings) const
 {
     const QVariant variant = settings.value("minmax_visible");
-    if (!variant.canConvert(QVariant::Type::Bool)) {
+    if (!variant.canConvert<bool>()) {
         return;
     }
 
@@ -184,13 +184,25 @@ void MainWindow::initialize_settings_ui_contrast_enabled(
     const QSettings& settings)
 {
     const QVariant variant = settings.value("contrast_enabled");
-    if (!variant.canConvert(QVariant::Type::Bool)) {
+    if (!variant.canConvert<bool>()) {
         return;
     }
 
     ac_enabled_ = variant.toBool();
     ui_->acToggle->setChecked(ac_enabled_);
     ui_->minMaxEditor->setEnabled(ac_enabled_);
+}
+
+void MainWindow::initialize_settings_ui_link_views_enabled(
+    const QSettings& settings)
+{
+    const QVariant variant = settings.value("link_views_enabled");
+    if (!variant.canConvert<bool>()) {
+        return;
+    }
+
+    link_views_enabled_ = variant.toBool();
+    ui_->linkViewsToggle->setChecked(link_views_enabled_);
 }
 
 void MainWindow::initialize_settings_ui(QSettings& settings)
@@ -203,6 +215,7 @@ void MainWindow::initialize_settings_ui(QSettings& settings)
     initialize_settings_ui_colorspace(settings);
     initialize_settings_ui_minmax_visible(settings);
     initialize_settings_ui_contrast_enabled(settings);
+    initialize_settings_ui_link_views_enabled(settings);
 
     settings.endGroup();
 }
@@ -391,6 +404,11 @@ void MainWindow::initialize_ui_signals()
             &MainWindow::persist_settings_deferred);
 
     connect(ui_->acToggle,
+            &QAbstractButton::clicked,
+            this,
+            &MainWindow::persist_settings_deferred);
+
+    connect(ui_->linkViewsToggle,
             &QAbstractButton::clicked,
             this,
             &MainWindow::persist_settings_deferred);
