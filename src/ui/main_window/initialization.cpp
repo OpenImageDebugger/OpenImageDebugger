@@ -193,6 +193,18 @@ void MainWindow::initialize_settings_ui_contrast_enabled(
     ui_->minMaxEditor->setEnabled(ac_enabled_);
 }
 
+void MainWindow::initialize_settings_ui_link_views_enabled(
+    const QSettings& settings)
+{
+    const QVariant variant = settings.value("link_views_enabled");
+    if (!variant.canConvert(QVariant::Type::Bool)) {
+        return;
+    }
+
+    link_views_enabled_ = variant.toBool();
+    ui_->linkViewsToggle->setChecked(link_views_enabled_);
+}
+
 void MainWindow::initialize_settings_ui(QSettings& settings)
 {
     settings.beginGroup("UI");
@@ -203,6 +215,7 @@ void MainWindow::initialize_settings_ui(QSettings& settings)
     initialize_settings_ui_colorspace(settings);
     initialize_settings_ui_minmax_visible(settings);
     initialize_settings_ui_contrast_enabled(settings);
+    initialize_settings_ui_link_views_enabled(settings);
 
     settings.endGroup();
 }
@@ -391,6 +404,11 @@ void MainWindow::initialize_ui_signals()
             &MainWindow::persist_settings_deferred);
 
     connect(ui_->acToggle,
+            &QAbstractButton::clicked,
+            this,
+            &MainWindow::persist_settings_deferred);
+
+    connect(ui_->linkViewsToggle,
             &QAbstractButton::clicked,
             this,
             &MainWindow::persist_settings_deferred);
