@@ -417,7 +417,7 @@ void MainWindow::initialize_ui_signals()
 void MainWindow::initialize_shortcuts()
 {
     const QShortcut* symbol_list_focus_shortcut_ =
-        new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_K), this);
+        new QShortcut(QKeySequence::fromString("Ctrl+K"), this);
     connect(symbol_list_focus_shortcut_,
             SIGNAL(activated()),
             ui_->symbolList,
@@ -431,7 +431,7 @@ void MainWindow::initialize_shortcuts()
             SLOT(remove_selected_buffer()));
 
     const QShortcut* go_to_shortcut =
-        new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_L), this);
+        new QShortcut(QKeySequence::fromString("Ctrl+L"), this);
     connect(
         go_to_shortcut, SIGNAL(activated()), this, SLOT(toggle_go_to_dialog()));
     connect(go_to_widget_,
