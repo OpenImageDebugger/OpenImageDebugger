@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2024 OpenImageDebugger contributors
+# Copyright (c) 2015-2025 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Release version
         id: release-version
-        uses: tomtom-international/commisery-action/bump@f830c46b56b05c427cb2b5b650d848bee1681c99
+        uses: tomtom-international/commisery-action/bump@f830c46b56b05c427cb2b5b650d848bee1681c99 # 3.5.0
         with:
           token: ${{ github.token }}
           create-release: true
