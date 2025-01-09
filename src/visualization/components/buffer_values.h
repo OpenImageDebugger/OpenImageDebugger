@@ -52,8 +52,9 @@ class BufferValues final : public Component
     static float constexpr padding = 0.125f; // Must be smaller than 0.5
     static int constexpr max_float_precision = 10;
     static int constexpr min_float_precision = 3;
-    int float_precision                      = min_float_precision;
-    float text_pixel_scale                   = 1.0f;
+    static float constexpr default_text_scale = 1.0f;
+    int float_precision                       = min_float_precision;
+    float text_pixel_scale                    = default_text_scale;
 
     void generate_glyphs_texture();
 

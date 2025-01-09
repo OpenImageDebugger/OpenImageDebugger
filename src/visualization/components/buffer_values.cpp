@@ -28,7 +28,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
-
+#include <iostream>
 
 #include "ui/gl_text_renderer.h"
 
@@ -257,9 +257,10 @@ void BufferValues::draw_text(const mat4& projection,
     }
 
     constexpr float paddingScale = 1.0f / (1.0f - 2.0f * padding);
-    text_pixel_scale = max(0.0f, max(boxW, boxH) * paddingScale * channels);
-    const float sx   = 1.0f / text_pixel_scale;
-    const float sy   = 1.0f / text_pixel_scale;
+    text_pixel_scale =
+        max(text_pixel_scale, max(boxW, boxH) * paddingScale * channels);
+    const float sx = 1.0f / text_pixel_scale;
+    const float sy = 1.0f / text_pixel_scale;
 
     vec4 channel_offset(0.0f, y_offset, 0.0f, 0.0f);
 
@@ -337,6 +338,8 @@ void BufferValues::shift_precision_left()
 {
     if (min_float_precision < float_precision) {
         float_precision--;
+        // reset text scaling
+        text_pixel_scale = default_text_scale;
     }
 }
 
@@ -344,6 +347,8 @@ void BufferValues::shift_precision_right()
 {
     if (max_float_precision > float_precision) {
         float_precision++;
+        // reset text scaling
+        text_pixel_scale = default_text_scale;
     }
 }
 
