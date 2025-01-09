@@ -186,7 +186,7 @@ void MainWindow::shift_precision_left()
     };
 
     if (link_views_enabled_) {
-        for (auto& [_, stage] : stages_) {
+        for (const auto& [_, stage] : stages_) {
             shift_precision_left(stage.get());
         }
     } else {
@@ -209,7 +209,7 @@ void MainWindow::shift_precision_right()
     };
 
     if (link_views_enabled_) {
-        for (auto& [_, stage] : stages_) {
+        for (const auto& [_, stage] : stages_) {
             shift_precision_right(stage.get());
         }
     } else {
