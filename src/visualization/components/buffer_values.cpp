@@ -257,7 +257,7 @@ void BufferValues::draw_text(const mat4& projection,
     }
 
     constexpr float paddingScale = 1.0f / (1.0f - 2.0f * padding);
-    text_pixel_scale = max(0.0f, max(boxW, boxH) * paddingScale * channels);
+    text_pixel_scale = max(1.0f, max(boxW, boxH) * paddingScale * channels);
     const float sx   = 1.0f / text_pixel_scale;
     const float sy   = 1.0f / text_pixel_scale;
 
