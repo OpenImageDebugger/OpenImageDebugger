@@ -378,6 +378,56 @@ QStatusBar::item { border: 0; };</string>
                </property>
               </widget>
              </item>
+            <item row="0" column="7">
+              <widget class="QToolButton" name="shift_precision_left">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>26</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>26</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>Shift float precision left</string>
+               </property>
+              </widget>
+             </item>
+            <item row="0" column="8">
+              <widget class="QToolButton" name="shift_precision_right">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>26</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>26</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>Shift float precision right</string>
+               </property>
+              </widget>
+             </item>
             </layout>
            </widget>
           </item>
@@ -965,6 +1015,8 @@ Larger values will be clamped at this level when auto contrast is enabled</strin
   <tabstop>rotate_90_ccw</tabstop>
   <tabstop>rotate_90_cw</tabstop>
   <tabstop>go_to_pixel</tabstop>
+  <tabstop>shift_precision_left</tabstop>
+  <tabstop>shift_precision_right</tabstop>
   <tabstop>ac_reset_min</tabstop>
   <tabstop>ac_reset_max</tabstop>
  </tabstops>
