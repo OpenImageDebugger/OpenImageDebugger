@@ -352,4 +352,9 @@ void BufferValues::shift_precision_right()
     }
 }
 
+int BufferValues::get_float_precision() const
+{
+    return float_precision;
+}
+
 } // namespace oid

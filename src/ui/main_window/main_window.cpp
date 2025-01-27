@@ -35,6 +35,7 @@
 #include "ipc/message_exchange.h"
 #include "math/linear_algebra.h"
 #include "ui_main_window.h"
+#include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
 
@@ -145,6 +146,7 @@ void MainWindow::loop()
     // Update visualization pane
     if (request_render_update_) {
         ui_->bufferPreview->update();
+        update_status_bar();
         request_render_update_ = false;
     }
 
@@ -279,7 +281,6 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
     return mouse_pos;
 }
 
-
 void MainWindow::update_status_bar() const
 {
     if (currently_selected_stage_ != nullptr) {
@@ -294,20 +295,34 @@ void MainWindow::update_status_bar() const
         const auto* buffer =
             buffer_obj->get_component<Buffer>("buffer_component");
 
+        auto* text_comp =
+            buffer_obj->get_component<BufferValues>("text_component");
+
         const auto mouse_x = static_cast<float>(ui_->bufferPreview->mouse_x());
         const auto mouse_y = static_cast<float>(ui_->bufferPreview->mouse_y());
 
+        // Position
         vec4 mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
 
+        // Zoom
         message << std::fixed << std::setprecision(3) << "("
                 << static_cast<int>(floor(mouse_pos.x())) << ", "
                 << static_cast<int>(floor(mouse_pos.y())) << ")\t"
                 << cam->compute_zoom() * 100.0f << "%";
+
+        // Value
         message << " val=";
 
         buffer->get_pixel_info(message,
                                static_cast<int>(floor(mouse_pos.x())),
                                static_cast<int>(floor(mouse_pos.y())));
+
+        // Float precision
+        if (BufferType::Float64 == buffer->type ||
+            BufferType::Float32 == buffer->type) {
+            message << " precision=[" << text_comp->get_float_precision()
+                    << "]";
+        }
 
         status_bar_->setText(message.str().c_str());
     }
