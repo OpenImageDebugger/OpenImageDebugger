@@ -47,6 +47,7 @@ class BufferValues final : public Component
     void draw(const mat4& projection, const mat4& view_inv) override;
     void shift_precision_left();
     void shift_precision_right();
+    int get_float_precision() const;
 
   private:
     static float constexpr padding = 0.125f; // Must be smaller than 0.5

@@ -462,8 +462,6 @@ void MainWindow::go_to_pixel(const float x, const float y)
         currently_selected_stage_->go_to_pixel(x, y);
     }
 
-    update_status_bar();
-
     request_render_update_ = true;
 }
 
