@@ -399,7 +399,7 @@ QStatusBar::item { border: 0; };</string>
                 </size>
                </property>
                <property name="toolTip">
-                <string>Shift float precision left</string>
+                <string>Decrease float precision</string>
                </property>
               </widget>
              </item>
@@ -424,7 +424,7 @@ QStatusBar::item { border: 0; };</string>
                 </size>
                </property>
                <property name="toolTip">
-                <string>Shift float precision right</string>
+                <string>Increase float precision</string>
                </property>
               </widget>
              </item>
