@@ -281,6 +281,7 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
     return mouse_pos;
 }
 
+
 void MainWindow::update_status_bar() const
 {
     if (currently_selected_stage_ != nullptr) {
