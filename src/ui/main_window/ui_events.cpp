@@ -177,7 +177,7 @@ void MainWindow::link_views_toggle()
 
 void MainWindow::shift_precision_left()
 {
-    const auto shift_precision_left = [](Stage* stage) {
+    const auto shift_precision_left_impl = [](Stage* stage) {
         GameObject* buffer_obj = stage->get_game_object("buffer");
         auto* buffer_comp =
             buffer_obj->get_component<BufferValues>("text_component");
@@ -187,11 +187,11 @@ void MainWindow::shift_precision_left()
 
     if (link_views_enabled_) {
         for (const auto& [_, stage] : stages_) {
-            shift_precision_left(stage.get());
+            shift_precision_left_impl(stage.get());
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
-            shift_precision_left(currently_selected_stage_);
+            shift_precision_left_impl(currently_selected_stage_);
         }
     }
 
@@ -200,7 +200,7 @@ void MainWindow::shift_precision_left()
 
 void MainWindow::shift_precision_right()
 {
-    const auto shift_precision_right = [](Stage* stage) {
+    const auto shift_precision_right_impl = [](Stage* stage) {
         GameObject* buffer_obj = stage->get_game_object("buffer");
         auto* buffer_comp =
             buffer_obj->get_component<BufferValues>("text_component");
@@ -210,11 +210,11 @@ void MainWindow::shift_precision_right()
 
     if (link_views_enabled_) {
         for (const auto& [_, stage] : stages_) {
-            shift_precision_right(stage.get());
+            shift_precision_right_impl(stage.get());
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
-            shift_precision_right(currently_selected_stage_);
+            shift_precision_right_impl(currently_selected_stage_);
         }
     }
 
