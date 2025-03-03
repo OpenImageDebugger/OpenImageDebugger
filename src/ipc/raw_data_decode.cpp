@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -63,7 +63,7 @@ size_t typesize(const BufferType type)
     case BufferType::UnsignedByte:
         return sizeof(std::uint8_t);
     default:
-        assert("unknow BufferType received");
+        assert(!"Unknown BufferType received");
         return sizeof(std::uint8_t);
     }
 }
