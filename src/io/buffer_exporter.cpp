@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -97,7 +97,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
             pixel_layout[c] = 3;
             break;
         default:
-            assert("Unknown pixel layout");
+            assert(!"Unknown pixel layout");
             break;
         }
     }
