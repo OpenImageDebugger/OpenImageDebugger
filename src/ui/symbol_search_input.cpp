@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -97,19 +97,21 @@ void SymbolSearchInput::keyPressEvent(QKeyEvent* e)
         break;
     }
 
-    const bool is_shortcut =
+    const auto is_shortcut =
         (e->modifiers() & Qt::ControlModifier) && e->key() == Qt::Key_E;
-    if (!is_shortcut)
+
+    if (!is_shortcut) {
         QLineEdit::keyPressEvent(
             e); // Don't send the shortcut (CTRL-E) to the text edit.
+    }
 
-    if (!completer_)
+    if (!completer_) {
         return;
+    }
 
-    const bool ctrl_or_shift =
-        e->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier);
-
-    if (!is_shortcut && !ctrl_or_shift && e->modifiers() != Qt::NoModifier) {
+    if (const auto ctrl_or_shift =
+            e->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier);
+        !is_shortcut && !ctrl_or_shift && e->modifiers() != Qt::NoModifier) {
         completer_->popup()->hide();
         return;
     }
