@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -390,14 +390,14 @@ void Buffer::create_shader_program()
     // Buffer Shaders
     ShaderProgram::TexelChannels channel_type;
     if (channels == 1) {
-        channel_type = ShaderProgram::FormatR;
+        channel_type = ShaderProgram::TexelChannels::FormatR;
     } else if (channels == 2) {
-        channel_type = ShaderProgram::FormatRG;
+        channel_type = ShaderProgram::TexelChannels::FormatRG;
     } else if (channels == 3) {
-        channel_type = ShaderProgram::FormatRGB;
+        channel_type = ShaderProgram::TexelChannels::FormatRGB;
     } else {
         assert(channels == 4);
-        channel_type = ShaderProgram::FormatRGBA;
+        channel_type = ShaderProgram::TexelChannels::FormatRGBA;
     }
 
     buff_prog.create(shader::buff_vert_shader,

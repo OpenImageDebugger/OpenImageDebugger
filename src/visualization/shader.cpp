@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -172,14 +172,15 @@ GLuint ShaderProgram::compile(const GLuint type, const GLchar* source)
 {
     const GLuint shader = gl_canvas_->glCreateShader(type);
 
-    const char* src[] = {"#version 120\n",
-                         texel_format_ == FormatR     ? "#define FORMAT_R\n"
-                         : texel_format_ == FormatRG  ? "#define FORMAT_RG\n"
-                         : texel_format_ == FormatRGB ? "#define FORMAT_RGB\n"
-                                                      : "",
-                         "#define PIXEL_LAYOUT ",
-                         pixel_layout_,
-                         source};
+    const char* src[] = {
+        "#version 120\n",
+        texel_format_ == TexelChannels::FormatR     ? "#define FORMAT_R\n"
+        : texel_format_ == TexelChannels::FormatRG  ? "#define FORMAT_RG\n"
+        : texel_format_ == TexelChannels::FormatRGB ? "#define FORMAT_RGB\n"
+                                                    : "",
+        "#define PIXEL_LAYOUT ",
+        pixel_layout_,
+        source};
 
     gl_canvas_->glShaderSource(shader, 5, src, nullptr);
     gl_canvas_->glCompileShader(shader);

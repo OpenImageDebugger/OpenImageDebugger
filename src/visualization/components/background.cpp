@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -52,7 +52,7 @@ bool Background::initialize()
 {
     background_prog.create(shader::background_vert_shader,
                            shader::background_frag_shader,
-                           ShaderProgram::FormatR,
+                           ShaderProgram::TexelChannels::FormatR,
                            "rgba",
                            {});
 

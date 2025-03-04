@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -59,7 +59,7 @@ bool GLTextRenderer::initialize()
 {
     text_prog.create(shader::text_vert_shader,
                      shader::text_frag_shader,
-                     ShaderProgram::FormatR,
+                     ShaderProgram::TexelChannels::FormatR,
                      "rgba",
                      {"mvp",
                       "buff_sampler",
