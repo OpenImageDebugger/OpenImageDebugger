@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -171,7 +171,7 @@ void MainWindow::decode_plot_buffer_contents()
         visualized_height = buff_width;
     }
 
-    const auto label_str = [&]() -> string {
+    const string label_str = [&] {
         stringstream label_ss;
         label_ss << display_name_str;
         label_ss << "\n[" << visualized_width << "x" << visualized_height
