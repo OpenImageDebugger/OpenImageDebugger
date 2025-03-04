@@ -125,8 +125,12 @@ void mat4::set_from_st(const float scaleX,
 {
     float* data = this->data();
 
-    data[0] = scaleX, data[5] = scaleY, data[10] = scaleZ;
-    data[12] = x, data[13] = y, data[14] = z;
+    data[0]  = scaleX;
+    data[5]  = scaleY;
+    data[10] = scaleZ;
+    data[12] = x;
+    data[13] = y;
+    data[14] = z;
 
     data[1] = data[2] = data[3] = data[4] = 0.0;
     data[6] = data[7] = data[8] = data[9] = 0.0;
