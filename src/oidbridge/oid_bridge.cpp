@@ -480,8 +480,7 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 {
     PyGILRAII py_gil_raii;
 
-
-    auto* app = static_cast<OidBridge*>(handler);
+    const auto* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
