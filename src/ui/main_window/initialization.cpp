@@ -83,7 +83,7 @@ void MainWindow::initialize_settings_ui_splitter(
 void MainWindow::initialize_settings_ui_minmax_compact(
     const QSettings& settings) const
 {
-    const bool is_minmax_compact = [&]() -> auto {
+    const bool is_minmax_compact = [&] {
         const QVariant variant = settings.value("minmax_compact");
         if (!variant.canConvert<bool>()) {
             return false;
@@ -96,7 +96,7 @@ void MainWindow::initialize_settings_ui_minmax_compact(
         return;
     }
 
-    const bool is_minmax_visible = [&]() -> auto {
+    const bool is_minmax_visible = [&] {
         const QVariant variant = settings.value("minmax_visible");
         if (!variant.canConvert<bool>()) {
             return true;
