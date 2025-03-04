@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -254,7 +254,7 @@ void MainWindow::rotate_90_cw()
     };
 
     if (link_views_enabled_) {
-        for (auto& [_, stage] : stages_) {
+        for (const auto& [_, stage] : stages_) {
             request_90_cw_rotation(stage.get());
         }
     } else {
@@ -278,7 +278,7 @@ void MainWindow::rotate_90_ccw()
     };
 
     if (link_views_enabled_) {
-        for (auto& [_, stage] : stages_) {
+        for (const auto& [_, stage] : stages_) {
             request_90_ccw_rotation(stage.get());
         }
     } else {
@@ -334,25 +334,29 @@ void MainWindow::remove_selected_buffer()
 
 void MainWindow::symbol_selected()
 {
+    if (ui_->symbolList->text().isEmpty()) {
+        return;
+    }
+
     const QByteArray symbol_name_qba = ui_->symbolList->text().toLocal8Bit();
     const char* symbol_name          = symbol_name_qba.constData();
-    if (ui_->symbolList->text().length() > 0) {
-        request_plot_buffer(symbol_name);
-        // Clear symbol input
-        ui_->symbolList->setText("");
-    }
+    request_plot_buffer(symbol_name);
+    // Clear symbol input
+    ui_->symbolList->setText("");
 }
 
 
 void MainWindow::symbol_completed(const QString& str)
 {
-    if (str.length() > 0) {
-        const QByteArray symbol_name_qba = str.toLocal8Bit();
-        request_plot_buffer(symbol_name_qba.constData());
-        // Clear symbol input
-        ui_->symbolList->setText("");
-        ui_->symbolList->clearFocus();
+    if (str.isEmpty()) {
+        return;
     }
+
+    const QByteArray symbol_name_qba = str.toLocal8Bit();
+    request_plot_buffer(symbol_name_qba.constData());
+    // Clear symbol input
+    ui_->symbolList->setText("");
+    ui_->symbolList->clearFocus();
 }
 
 
