@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,17 +26,12 @@
 #ifndef PREPROCESSOR_DIRECTIVES_H_
 #define PREPROCESSOR_DIRECTIVES_H_
 
-#define RAISE_PY_EXCEPTION(exception_type, msg)    \
-    PyGILState_STATE gstate = PyGILState_Ensure(); \
-    PyErr_SetString(exception_type, msg);          \
-    PyGILState_Release(gstate);
-
-
-#define RAISE_PY_EXCEPTION(exception_type, msg)    \
-    PyGILState_STATE gstate = PyGILState_Ensure(); \
-    PyErr_SetString(exception_type, msg);          \
-    PyGILState_Release(gstate);
-
+#define RAISE_PY_EXCEPTION(exception_type, msg)        \
+    do {                                               \
+        PyGILState_STATE gstate = PyGILState_Ensure(); \
+        PyErr_SetString(exception_type, msg);          \
+        PyGILState_Release(gstate);                    \
+    } while (0)
 
 #define CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, ret)         \
     if (py_##name == nullptr) {                                       \

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -96,8 +96,7 @@ class OidBridge
 {
   public:
     explicit OidBridge(int (*plot_callback)(const char*))
-        : client_{nullptr}
-        , plot_callback_{plot_callback}
+        : plot_callback_{plot_callback}
     {
     }
 
@@ -125,7 +124,7 @@ class OidBridge
         return client_ != nullptr;
     }
 
-    void set_path(const string& oid_path)
+    void set_path(const string_view& oid_path)
     {
         oid_path_ = oid_path;
     }
@@ -142,9 +141,9 @@ class OidBridge
         MessageComposer message_composer;
         message_composer.push(MessageType::GetObservedSymbols).send(client_);
 
-        const auto response =
-            fetch_message(MessageType::GetObservedSymbolsResponse);
-        if (response != nullptr) {
+        if (const auto response =
+                fetch_message(MessageType::GetObservedSymbolsResponse);
+            response != nullptr) {
             return dynamic_cast<GetObservedSymbolsResponseMessage*>(
                        response.get())
                 ->observed_symbols;
@@ -213,7 +212,7 @@ class OidBridge
   private:
     Process ui_proc_;
     QTcpServer server_;
-    QTcpSocket* client_;
+    QTcpSocket* client_{nullptr};
     string oid_path_;
 
     int (*plot_callback_)(const char*);
@@ -386,7 +385,7 @@ int oid_is_window_ready(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    auto* app = static_cast<OidBridge*>(handler);
+    const auto* app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
