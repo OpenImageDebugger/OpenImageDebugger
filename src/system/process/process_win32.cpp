@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger
+ * Copyright (c) 2015-2025 OpenImageDebugger
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -44,7 +44,7 @@ class ProcessImplWin32 final : public ProcessImpl
     {
     }
 
-    void start(const std::vector<std::string>& command) override
+    void start(std::vector<std::string>& command) override
     {
         const auto program = QString::fromStdString(command[0]);
         QStringList args;

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger
+ * Copyright (c) 2015-2025 OpenImageDebugger
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -38,7 +38,7 @@ Process::Process()
     createImpl();
 }
 
-void Process::start(const std::vector<std::string>& command) const
+void Process::start(std::vector<std::string>& command) const
 {
     impl_->start(command);
 }

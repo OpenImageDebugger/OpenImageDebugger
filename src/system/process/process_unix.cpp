@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger
+ * Copyright (c) 2015-2025 OpenImageDebugger
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,6 +24,7 @@
  */
 
 #include "process_impl.h"
+
 #include "process.h"
 
 #include <csignal>
@@ -34,22 +35,30 @@ using namespace oid;
 
 class ProcessImplUnix final : public ProcessImpl
 {
-public:
+  public:
     ProcessImplUnix() = default;
+
+    ProcessImplUnix(const ProcessImplUnix&) = delete;
+
+    ProcessImplUnix(ProcessImplUnix&& other) noexcept = delete;
+
+    ProcessImplUnix& operator=(const ProcessImplUnix&) = delete;
+
+    ProcessImplUnix& operator=(ProcessImplUnix&& other) noexcept = delete;
 
     ~ProcessImplUnix() noexcept override
     {
         kill();
     }
 
-    void start(const std::vector<std::string>& command) override
+    void start(std::vector<std::string>& command) override
     {
         const auto& windowBinaryPath = command[0];
 
         vector<char*> argv;
         argv.reserve(command.size());
-        for (const auto& arg : command) {
-            argv.push_back(const_cast<char*>(arg.c_str()));
+        for (auto& arg : command) {
+            argv.push_back(arg.data());
         }
         argv.push_back(nullptr);
 
@@ -59,7 +68,7 @@ public:
                     windowBinaryPath.c_str(),
                     nullptr, // TODO consider passing something here
                     nullptr, // and here
-                    &argv[0],
+                    argv.data(),
                     environ);
     }
 
@@ -73,7 +82,7 @@ public:
         ::kill(pid_, SIGTERM);
     }
 
-private:
+  private:
     pid_t pid_{0};
 };
 
