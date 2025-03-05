@@ -47,27 +47,18 @@ using namespace oid;
 
 struct UiMessage
 {
-    virtual ~UiMessage();
+    virtual ~UiMessage() = default;
 };
 
-UiMessage::~UiMessage() = default;
-
-struct GetObservedSymbolsResponseMessage final : UiMessage
+struct GetObservedSymbolsResponseMessage final : public UiMessage
 {
     std::deque<string> observed_symbols;
-    ~GetObservedSymbolsResponseMessage() override;
 };
 
-GetObservedSymbolsResponseMessage::~GetObservedSymbolsResponseMessage() =
-    default;
-
-struct PlotBufferRequestMessage final : UiMessage
+struct PlotBufferRequestMessage final : public UiMessage
 {
     std::string buffer_name;
-    ~PlotBufferRequestMessage() override;
 };
-
-PlotBufferRequestMessage::~PlotBufferRequestMessage() = default;
 
 class PyGILRAII
 {
@@ -270,10 +261,10 @@ class OidBridge
     {
         assert(client_ != nullptr);
 
-        const auto response = new PlotBufferRequestMessage();
+        auto response = std::make_unique<PlotBufferRequestMessage>();
         MessageDecoder message_decoder(client_);
         message_decoder.read(response->buffer_name);
-        return unique_ptr<UiMessage>(response);
+        return response;
     }
 
     [[nodiscard]] unique_ptr<UiMessage>
@@ -281,13 +272,13 @@ class OidBridge
     {
         assert(client_ != nullptr);
 
-        const auto response = new GetObservedSymbolsResponseMessage();
+        auto response = std::make_unique<GetObservedSymbolsResponseMessage>();
 
         MessageDecoder message_decoder(client_);
         message_decoder.read<std::deque<std::string>, std::string>(
             response->observed_symbols);
 
-        return unique_ptr<UiMessage>(response);
+        return response;
     }
 
     std::unique_ptr<UiMessage> fetch_message(const MessageType& msg_type)
