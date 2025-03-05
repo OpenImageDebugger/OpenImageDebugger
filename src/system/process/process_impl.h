@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger
+ * Copyright (c) 2015-2025 OpenImageDebugger
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -44,7 +44,7 @@ class ProcessImpl
      * Start the process represented by its path and arguments
      * @param command binary and path and its arguments
      */
-    virtual void start(const std::vector<std::string>& command) = 0;
+    virtual void start(std::vector<std::string>& command) = 0;
 
     /**
      * Check if the process is running

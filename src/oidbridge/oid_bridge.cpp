@@ -103,7 +103,7 @@ class OidBridge
         const string windowBinaryPath = this->oid_path_ + "/oidwindow";
         const string portStdString    = std::to_string(server_.serverPort());
 
-        const vector<string> command{
+        vector<string> command{
             windowBinaryPath, "-style", "fusion", "-p", portStdString};
 
         ui_proc_.start(command);
