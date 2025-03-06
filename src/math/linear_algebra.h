@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -77,7 +77,7 @@ class vec4
     static vec4 zero();
 
   private:
-    Eigen::Vector4f vec;
+    Eigen::Vector4f vec_;
 };
 
 vec4 operator-(const vec4& vector);
