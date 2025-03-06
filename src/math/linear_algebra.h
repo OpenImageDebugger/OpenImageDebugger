@@ -42,7 +42,7 @@ class vec4
 
     ~vec4() = default;
 
-    vec4(const vec4& b);
+    vec4(const vec4& b) = default;
 
     vec4(vec4&& b) = default;
 
