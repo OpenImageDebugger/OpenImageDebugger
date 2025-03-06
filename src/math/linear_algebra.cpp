@@ -31,21 +31,10 @@
 namespace oid
 {
 
-vec4::vec4() = default;
-
 
 vec4::vec4(const float x, const float y, const float z, const float w)
     : vec_(x, y, z, w)
 {
-}
-
-
-vec4& vec4::operator=(const vec4& b)
-{
-    if (this != &b) {
-        vec_ = b.vec_;
-    }
-    return *this;
 }
 
 
