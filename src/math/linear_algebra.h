@@ -38,17 +38,9 @@ class vec4
     friend class mat4;
 
   public:
-    vec4();
+    vec4() = default;
 
-    ~vec4() = default;
-
-    vec4(const vec4& b) = default;
-
-    vec4(vec4&& b) = default;
-
-    vec4& operator=(const vec4& b);
-
-    vec4& operator=(vec4&& b) = default;
+    vec4(const float x, const float y, const float z, const float w);
 
     vec4& operator+=(const vec4& b);
 
@@ -57,8 +49,6 @@ class vec4
     vec4 operator-(const vec4& b) const;
 
     vec4 operator*(float scalar) const;
-
-    vec4(float x, float y, float z, float w);
 
     void print() const;
 
