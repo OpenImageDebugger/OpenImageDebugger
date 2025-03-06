@@ -47,33 +47,6 @@ vec4& vec4::operator+=(const vec4& b)
 }
 
 
-vec4 vec4::operator+(const vec4& b) const
-{
-    return {vec_[0] + b.vec_[0],
-            vec_[1] + b.vec_[1],
-            vec_[2] + b.vec_[2],
-            vec_[3] + b.vec_[3]};
-}
-
-
-vec4 vec4::operator-(const vec4& b) const
-{
-    return {vec_[0] - b.vec_[0],
-            vec_[1] - b.vec_[1],
-            vec_[2] - b.vec_[2],
-            vec_[3] - b.vec_[3]};
-}
-
-
-vec4 vec4::operator*(const float scalar) const
-{
-    vec4 result(*this);
-    result.vec_ *= scalar;
-
-    return result;
-}
-
-
 void vec4::print() const
 {
     std::cout << vec_.transpose() << std::endl;
@@ -293,26 +266,15 @@ mat4 mat4::inv() const
 }
 
 
-vec4 mat4::operator*(const vec4& b) const
-{
-    vec4 res;
-    res.vec_ = this->mat_ * b.vec_;
-
-    return res;
-}
-
-
 float& mat4::operator()(const int row, const int col)
 {
     return mat_(row, col);
 }
 
-
-mat4 mat4::operator*(const mat4& b) const
+vec4 mat4::operator*(const vec4& vec) const
 {
-    mat4 res;
-
-    res.mat_ = this->mat_ * b.mat_;
+    vec4 res;
+    res.vec_ = this->mat_ * vec.vec_;
 
     return res;
 }
