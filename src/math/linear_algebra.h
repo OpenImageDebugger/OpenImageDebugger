@@ -44,11 +44,29 @@ class vec4
 
     vec4& operator+=(const vec4& b);
 
-    vec4 operator+(const vec4& b) const;
+    friend vec4 operator+(const vec4& a, const vec4& b)
+    {
+        return {a.vec_[0] + b.vec_[0],
+                a.vec_[1] + b.vec_[1],
+                a.vec_[2] + b.vec_[2],
+                a.vec_[3] + b.vec_[3]};
+    }
 
-    vec4 operator-(const vec4& b) const;
+    friend vec4 operator-(const vec4& a, const vec4& b)
+    {
+        return {a.vec_[0] - b.vec_[0],
+                a.vec_[1] - b.vec_[1],
+                a.vec_[2] - b.vec_[2],
+                a.vec_[3] - b.vec_[3]};
+    }
 
-    vec4 operator*(float scalar) const;
+    friend vec4 operator*(const vec4& vec, const float scalar)
+    {
+        vec4 result(vec);
+        result.vec_ *= scalar;
+
+        return result;
+    }
 
     void print() const;
 
@@ -103,9 +121,16 @@ class mat4
 
     [[nodiscard]] mat4 inv() const;
 
-    mat4 operator*(const mat4& b) const;
+    friend mat4 operator*(const mat4& a, const mat4& b)
+    {
+        mat4 res;
 
-    vec4 operator*(const vec4& b) const;
+        res.mat_ = a.mat_ * b.mat_;
+
+        return res;
+    }
+
+    vec4 operator*(const vec4& vec) const;
 
     float& operator()(int row, int col);
 
