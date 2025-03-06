@@ -39,11 +39,6 @@ vec4::vec4(const float x, const float y, const float z, const float w)
 {
 }
 
-vec4::vec4(const vec4& b)
-{
-    vec_ = b.vec_;
-}
-
 
 vec4& vec4::operator=(const vec4& b)
 {
