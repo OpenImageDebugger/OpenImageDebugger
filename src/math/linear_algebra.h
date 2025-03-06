@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2025 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -38,47 +38,27 @@ class vec4
     friend class mat4;
 
   public:
-    vec4() = default;
+    vec4();
+
+    ~vec4() = default;
+
+    vec4(const vec4& b);
+
+    vec4(vec4&& b) = default;
+
+    vec4& operator=(const vec4& b);
+
+    vec4& operator=(vec4&& b) = default;
+
+    vec4& operator+=(const vec4& b);
+
+    vec4 operator+(const vec4& b) const;
+
+    vec4 operator-(const vec4& b) const;
+
+    vec4 operator*(float scalar) const;
 
     vec4(float x, float y, float z, float w);
-
-    friend vec4 operator+=(const vec4& self, const vec4& b)
-    {
-        vec4 result(self);
-        for (int i = 0; i < 4; ++i) {
-            result.vec_[i] += b.vec_[i];
-        }
-        return result;
-    }
-
-    friend vec4 operator+(const vec4& a, const vec4& b)
-    {
-        return {a.vec_[0] + b.vec_[0],
-                a.vec_[1] + b.vec_[1],
-                a.vec_[2] + b.vec_[2],
-                a.vec_[3] + b.vec_[3]};
-    }
-
-    friend vec4 operator-(const vec4& a, const vec4& b)
-    {
-        return {a.vec_[0] - b.vec_[0],
-                a.vec_[1] - b.vec_[1],
-                a.vec_[2] - b.vec_[2],
-                a.vec_[3] - b.vec_[3]};
-    }
-
-    friend vec4 operator*(const vec4& self, const float scalar)
-    {
-        vec4 result(self);
-        result.vec_ *= scalar;
-
-        return result;
-    }
-
-    friend vec4 operator-(const vec4& vector)
-    {
-        return {-vector.x(), -vector.y(), -vector.z(), -vector.w()};
-    }
 
     void print() const;
 
@@ -97,8 +77,10 @@ class vec4
     static vec4 zero();
 
   private:
-    Eigen::Vector4f vec_;
+    Eigen::Vector4f vec;
 };
+
+vec4 operator-(const vec4& vector);
 
 
 class mat4
@@ -131,14 +113,7 @@ class mat4
 
     [[nodiscard]] mat4 inv() const;
 
-    friend mat4 operator*(const mat4& a, const mat4& b)
-    {
-        mat4 res;
-
-        res.mat_ = a.mat_ * b.mat_;
-
-        return res;
-    }
+    mat4 operator*(const mat4& b) const;
 
     vec4 operator*(const vec4& b) const;
 

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2025 OpenImageDebugger contributors
+ * Copyright (c) 2015-2024 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,75 +31,134 @@
 namespace oid
 {
 
+vec4::vec4() = default;
+
+
 vec4::vec4(const float x, const float y, const float z, const float w)
-    : vec_(x, y, z, w)
+    : vec(x, y, z, w)
 {
+}
+
+vec4::vec4(const vec4& b)
+{
+    vec = b.vec;
+}
+
+
+vec4& vec4::operator=(const vec4& b)
+{
+    if (this != &b) {
+        vec = b.vec;
+    }
+    return *this;
+}
+
+
+vec4& vec4::operator+=(const vec4& b)
+{
+    for (int i = 0; i < 4; ++i) {
+        vec[i] += b.vec[i];
+    }
+    return *this;
+}
+
+
+vec4 vec4::operator+(const vec4& b) const
+{
+    return {vec[0] + b.vec[0],
+            vec[1] + b.vec[1],
+            vec[2] + b.vec[2],
+            vec[3] + b.vec[3]};
+}
+
+
+vec4 vec4::operator-(const vec4& b) const
+{
+    return {vec[0] - b.vec[0],
+            vec[1] - b.vec[1],
+            vec[2] - b.vec[2],
+            vec[3] - b.vec[3]};
+}
+
+
+vec4 vec4::operator*(const float scalar) const
+{
+    vec4 result(*this);
+    result.vec *= scalar;
+
+    return result;
 }
 
 
 void vec4::print() const
 {
-    std::cout << vec_.transpose() << std::endl;
+    std::cout << vec.transpose() << std::endl;
 }
 
 
 float* vec4::data()
 {
-    return vec_.data();
+    return vec.data();
 }
 
 
 float& vec4::x()
 {
-    return vec_[0];
+    return vec[0];
 }
 
 
 float& vec4::y()
 {
-    return vec_[1];
+    return vec[1];
 }
 
 
 float& vec4::z()
 {
-    return vec_[2];
+    return vec[2];
 }
 
 
 float& vec4::w()
 {
-    return vec_[3];
+    return vec[3];
 }
 
 
 const float& vec4::x() const
 {
-    return vec_[0];
+    return vec[0];
 }
 
 
 const float& vec4::y() const
 {
-    return vec_[1];
+    return vec[1];
 }
 
 
 const float& vec4::z() const
 {
-    return vec_[2];
+    return vec[2];
 }
 
 
 const float& vec4::w() const
 {
-    return vec_[3];
+    return vec[3];
 }
 
 
 vec4 vec4::zero()
 {
     return {0.0f, 0.0f, 0.0f, 0.0f};
+}
+
+
+vec4 operator-(const vec4& vector)
+{
+    return {-vector.x(), -vector.y(), -vector.z(), -vector.w()};
 }
 
 
@@ -253,7 +312,7 @@ mat4 mat4::inv() const
 vec4 mat4::operator*(const vec4& b) const
 {
     vec4 res;
-    res.vec_ = this->mat_ * b.vec_;
+    res.vec = this->mat_ * b.vec;
 
     return res;
 }
@@ -264,5 +323,14 @@ float& mat4::operator()(const int row, const int col)
     return mat_(row, col);
 }
 
+
+mat4 mat4::operator*(const mat4& b) const
+{
+    mat4 res;
+
+    res.mat_ = this->mat_ * b.mat_;
+
+    return res;
+}
 
 } // namespace oid
