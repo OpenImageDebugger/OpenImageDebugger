@@ -25,6 +25,8 @@
 
 #include "decorated_line_edit.h"
 
+#include <memory>
+
 #include <QAction>
 #include <QHBoxLayout>
 #include <QIcon>
@@ -39,8 +41,8 @@ DecoratedLineEdit::DecoratedLineEdit(const char* icon_path,
     : QLineEdit(parent)
 {
     const QIcon label_icon(icon_path);
-    auto* label_widget = new QAction(label_icon, tooltip, this);
-    addAction(label_widget, LeadingPosition);
+    auto label_widget = std::make_unique<QAction>(label_icon, tooltip, this);
+    addAction(label_widget.release(), LeadingPosition);
 }
 
 } // namespace oid
