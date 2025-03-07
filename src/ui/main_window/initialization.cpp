@@ -26,7 +26,8 @@
 #include "main_window.h"
 
 #include <cmath>
-#include <iostream>
+
+#include <memory>
 
 #include <QDateTime>
 #include <QDebug>
@@ -34,7 +35,6 @@
 #include <QHostAddress>
 #include <QSettings>
 #include <QShortcut>
-
 
 #include "ui_main_window.h"
 
@@ -83,7 +83,7 @@ void MainWindow::initialize_settings_ui_splitter(
 void MainWindow::initialize_settings_ui_minmax_compact(
     const QSettings& settings) const
 {
-    const bool is_minmax_compact = [&] {
+    const auto is_minmax_compact = [&] {
         const QVariant variant = settings.value("minmax_compact");
         if (!variant.canConvert<bool>()) {
             return false;
@@ -96,7 +96,7 @@ void MainWindow::initialize_settings_ui_minmax_compact(
         return;
     }
 
-    const bool is_minmax_visible = [&] {
+    const auto is_minmax_visible = [&] {
         const QVariant variant = settings.value("minmax_visible");
         if (!variant.canConvert<bool>()) {
             return true;
@@ -391,7 +391,7 @@ void MainWindow::initialize_timers()
 }
 
 
-void MainWindow::initialize_ui_signals()
+void MainWindow::initialize_ui_signals() const
 {
     connect(ui_->splitter,
             &QSplitter::splitterMoved,
@@ -416,24 +416,26 @@ void MainWindow::initialize_ui_signals()
 
 void MainWindow::initialize_shortcuts()
 {
-    const QShortcut* symbol_list_focus_shortcut_ =
-        new QShortcut(QKeySequence::fromString("Ctrl+K"), this);
-    connect(symbol_list_focus_shortcut_,
+    auto symbol_list_focus_shortcut =
+        std::make_unique<QShortcut>(QKeySequence::fromString("Ctrl+K"), this);
+    connect(symbol_list_focus_shortcut.release(),
             SIGNAL(activated()),
             ui_->symbolList,
             SLOT(setFocus()));
 
-    const QShortcut* buffer_removal_shortcut_ =
-        new QShortcut(QKeySequence(Qt::Key_Delete), ui_->imageList);
-    connect(buffer_removal_shortcut_,
+    auto buffer_removal_shortcut = std::make_unique<QShortcut>(
+        QKeySequence(Qt::Key_Delete), ui_->imageList);
+    connect(buffer_removal_shortcut.release(),
             SIGNAL(activated()),
             this,
             SLOT(remove_selected_buffer()));
 
-    const QShortcut* go_to_shortcut =
-        new QShortcut(QKeySequence::fromString("Ctrl+L"), this);
-    connect(
-        go_to_shortcut, SIGNAL(activated()), this, SLOT(toggle_go_to_dialog()));
+    auto go_to_shortcut =
+        std::make_unique<QShortcut>(QKeySequence::fromString("Ctrl+L"), this);
+    connect(go_to_shortcut.release(),
+            SIGNAL(activated()),
+            this,
+            SLOT(toggle_go_to_dialog()));
     connect(go_to_widget_,
             SIGNAL(go_to_requested(float, float)),
             this,
