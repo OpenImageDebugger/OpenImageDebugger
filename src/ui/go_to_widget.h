@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,6 +28,8 @@
 
 #include "decorated_line_edit.h"
 
+#include <memory>
+
 class QWidget;
 
 namespace oid
@@ -50,8 +52,8 @@ class GoToWidget final : public QWidget
 
 
   private:
-    DecoratedLineEdit* x_coordinate_;
-    DecoratedLineEdit* y_coordinate_;
+    std::unique_ptr<DecoratedLineEdit> x_coordinate_;
+    std::unique_ptr<DecoratedLineEdit> y_coordinate_;
 };
 
 } // namespace oid

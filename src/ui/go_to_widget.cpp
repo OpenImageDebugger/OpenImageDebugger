@@ -26,6 +26,8 @@
 
 #include <cmath>
 
+#include <memory>
+
 #include <QHBoxLayout>
 #include <QIntValidator>
 #include <QKeyEvent>
@@ -36,20 +38,24 @@ namespace oid
 GoToWidget::GoToWidget(QWidget* parent)
     : QWidget(parent)
 {
-    auto* layout = new QHBoxLayout(this);
+    auto layout = std::make_unique<QHBoxLayout>(this);
     layout->setMargin(0);
     layout->setSpacing(0);
 
-    x_coordinate_ = new DecoratedLineEdit(
+    x_coordinate_ = std::make_unique<DecoratedLineEdit>(
         ":resources/icons/x.svg", "Horizontal coordinate", this);
-    x_coordinate_->setValidator(new QIntValidator(x_coordinate_));
+    x_coordinate_->setValidator(
+        std::make_unique<QIntValidator>(x_coordinate_.get()).release());
 
-    y_coordinate_ = new DecoratedLineEdit(
+    y_coordinate_ = std::make_unique<DecoratedLineEdit>(
         ":resources/icons/y.svg", "Vertical coordinate", this);
-    y_coordinate_->setValidator(new QIntValidator(y_coordinate_));
+    y_coordinate_->setValidator(
+        std::make_unique<QIntValidator>(y_coordinate_.get()).release());
 
-    layout->addWidget(x_coordinate_);
-    layout->addWidget(y_coordinate_);
+    layout->addWidget(x_coordinate_.get());
+    layout->addWidget(y_coordinate_.get());
+
+    setLayout(layout.release());
 
     QWidget::setVisible(false);
 }
