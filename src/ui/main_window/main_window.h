@@ -26,7 +26,6 @@
 #ifndef MAIN_WINDOW_H_
 #define MAIN_WINDOW_H_
 
-#include <deque>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -301,7 +300,7 @@ class MainWindow final : public QMainWindow
                               int width,
                               int height);
 
-    void initialize_ui_signals();
+    void initialize_ui_signals() const;
 
     void initialize_timers();
 
