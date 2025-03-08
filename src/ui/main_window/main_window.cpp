@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -59,7 +59,6 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     , icon_width_base_(100)
     , icon_height_base_(75)
     , currently_selected_stage_(nullptr)
-    , ui_(new Ui::MainWindowUi)
     , host_settings_(std::move(host_settings))
 {
     QCoreApplication::instance()->installEventFilter(this);
@@ -88,8 +87,6 @@ MainWindow::~MainWindow()
 {
     held_buffers_.clear();
     is_window_ready_ = false;
-
-    delete ui_;
 }
 
 
