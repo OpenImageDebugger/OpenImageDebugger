@@ -90,7 +90,7 @@ MainWindow::~MainWindow()
 }
 
 
-void MainWindow::show()
+void MainWindow::showWindow()
 {
     update_timer_.start(static_cast<int>(1000.0 / render_framerate_));
     QMainWindow::show();

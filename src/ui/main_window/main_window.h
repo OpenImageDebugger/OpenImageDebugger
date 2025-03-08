@@ -71,7 +71,7 @@ class MainWindow final : public QMainWindow
 
     ///
     // Assorted methods - implemented in main_window.cpp
-    void show();
+    void showWindow();
 
     void draw() const;
 
