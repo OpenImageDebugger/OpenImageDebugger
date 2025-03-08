@@ -43,6 +43,7 @@ class Background final : public Component
 
     void update() override
     {
+        // Do nothing
     }
 
     void draw(const mat4& projection, const mat4& view_inv) override;
