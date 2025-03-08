@@ -39,8 +39,8 @@ jobs:
             ubuntu-24.04,
             macos-14,
             macos-15,
-            windows-2019,
             windows-2022,
+            windows-2025,
           ]
         include:
           - os: ubuntu-22.04
