@@ -461,7 +461,7 @@ void MainWindow::initialize_symbol_completer()
         QCompleter::CaseInsensitivelySortedModel);
 
     ui_->symbolList->set_completer(symbol_completer_.get());
-    connect(ui_->symbolList->completer(),
+    connect(ui_->symbolList->symbolCompleter(),
             SIGNAL(activated(QString)),
             this,
             SLOT(symbol_completed(QString)));

@@ -63,7 +63,7 @@ void SymbolSearchInput::set_completer(SymbolCompleter* completer)
 }
 
 
-SymbolCompleter* SymbolSearchInput::completer() const
+SymbolCompleter* SymbolSearchInput::symbolCompleter() const
 {
     return completer_;
 }
