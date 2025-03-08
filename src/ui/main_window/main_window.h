@@ -40,6 +40,7 @@
 #include "math/linear_algebra.h"
 #include "ui/go_to_widget.h"
 #include "ui/symbol_completer.h"
+#include "ui_main_window.h"
 #include "visualization/stage.h"
 
 #include <QAbstractButton>
@@ -48,11 +49,6 @@ class QLabel;
 
 namespace oid
 {
-
-namespace Ui
-{
-class MainWindowUi;
-}
 
 struct ConnectionSettings
 {
@@ -213,7 +209,7 @@ class MainWindow final : public QMainWindow
 
     std::unique_ptr<SymbolCompleter> symbol_completer_{};
 
-    Ui::MainWindowUi* ui_;
+    std::unique_ptr<Ui::MainWindowUi> ui_{std::make_unique<Ui::MainWindowUi>()};
 
     std::unique_ptr<QLabel> status_bar_{};
     std::unique_ptr<GoToWidget> go_to_widget_{};
