@@ -436,7 +436,7 @@ void MainWindow::initialize_shortcuts()
             SIGNAL(activated()),
             this,
             SLOT(toggle_go_to_dialog()));
-    connect(go_to_widget_,
+    connect(go_to_widget_.get(),
             SIGNAL(go_to_requested(float, float)),
             this,
             SLOT(go_to_pixel(float, float)));
@@ -453,14 +453,14 @@ void MainWindow::initialize_networking()
 
 void MainWindow::initialize_symbol_completer()
 {
-    symbol_completer_ = new SymbolCompleter(this);
+    symbol_completer_ = std::make_unique<SymbolCompleter>(this);
 
     symbol_completer_->setCaseSensitivity(Qt::CaseSensitivity::CaseInsensitive);
     symbol_completer_->setCompletionMode(QCompleter::PopupCompletion);
     symbol_completer_->setModelSorting(
         QCompleter::CaseInsensitivelySortedModel);
 
-    ui_->symbolList->set_completer(symbol_completer_);
+    ui_->symbolList->set_completer(symbol_completer_.get());
     connect(ui_->symbolList->completer(),
             SIGNAL(activated(QString)),
             this,
@@ -577,16 +577,16 @@ void MainWindow::initialize_visualization_pane()
 
 void MainWindow::initialize_status_bar()
 {
-    status_bar_ = new QLabel(this);
+    status_bar_ = std::make_unique<QLabel>(this);
     status_bar_->setAlignment(Qt::AlignRight);
 
-    statusBar()->addWidget(status_bar_, 1);
+    statusBar()->addWidget(status_bar_.get(), 1);
 }
 
 
 void MainWindow::initialize_go_to_widget()
 {
-    go_to_widget_ = new GoToWidget(ui_->bufferPreview);
+    go_to_widget_ = std::make_unique<GoToWidget>(ui_->bufferPreview);
 }
 
 } // namespace oid

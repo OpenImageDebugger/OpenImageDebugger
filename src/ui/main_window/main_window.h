@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -211,12 +211,12 @@ class MainWindow final : public QMainWindow
 
     std::mutex ui_mutex_;
 
-    SymbolCompleter* symbol_completer_{};
+    std::unique_ptr<SymbolCompleter> symbol_completer_{};
 
     Ui::MainWindowUi* ui_;
 
-    QLabel* status_bar_{};
-    GoToWidget* go_to_widget_{};
+    std::unique_ptr<QLabel> status_bar_{};
+    std::unique_ptr<GoToWidget> go_to_widget_{};
 
     ConnectionSettings host_settings_;
     QTcpSocket socket_;
