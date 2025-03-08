@@ -39,6 +39,14 @@ class Background final : public Component
 
     ~Background() override;
 
+    Background(const Background&) = delete;
+
+    Background& operator=(const Background&) = delete;
+
+    Background(Background&&) = delete;
+
+    Background& operator=(Background&&) = delete;
+
     bool initialize() override;
 
     void update() override
