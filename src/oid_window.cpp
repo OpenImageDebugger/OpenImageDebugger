@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,8 +24,6 @@
  */
 
 #include "ui/main_window/main_window.h"
-
-#include <csignal>
 
 #include <string>
 
@@ -53,6 +51,6 @@ int main(int argc, char* argv[])
     host_settings.port = static_cast<uint16_t>(parser.value("p").toUInt());
 
     MainWindow window(host_settings);
-    window.show();
+    window.showWindow();
     return QApplication::exec();
 }
