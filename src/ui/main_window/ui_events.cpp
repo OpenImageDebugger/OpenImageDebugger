@@ -25,6 +25,8 @@
 
 #include "main_window.h"
 
+#include <memory>
+
 #include <QFileDialog>
 #include <QtMath> // for portable definition of M_PI
 
@@ -312,13 +314,14 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
 void MainWindow::remove_selected_buffer()
 {
     if (ui_->imageList->count() > 0 && currently_selected_stage_ != nullptr) {
-        const QListWidgetItem* removed_item =
-            ui_->imageList->takeItem(ui_->imageList->currentRow());
+        auto removed_item = std::make_unique<QListWidgetItem>();
+        removed_item.reset(
+            ui_->imageList->takeItem(ui_->imageList->currentRow()));
         const string buffer_name =
             removed_item->data(Qt::UserRole).toString().toStdString();
         stages_.erase(buffer_name);
         held_buffers_.erase(buffer_name);
-        delete removed_item;
+        removed_item.reset();
 
         removed_buffer_names_.insert(buffer_name);
 
