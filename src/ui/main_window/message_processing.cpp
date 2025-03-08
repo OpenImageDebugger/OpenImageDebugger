@@ -26,6 +26,7 @@
 #include "main_window.h"
 
 #include <iostream>
+#include <memory>
 
 #include "ui_main_window.h"
 
@@ -215,7 +216,9 @@ void MainWindow::decode_plot_buffer_contents()
     QListWidgetItem* item = find_image_list_item(variable_name_str);
     if (item == nullptr) {
 
-        item = new QListWidgetItem(label_str.c_str(), ui_->imageList);
+        item =
+            std::make_unique<QListWidgetItem>(label_str.c_str(), ui_->imageList)
+                .release();
         item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
         item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
                        Qt::ItemIsDragEnabled);
