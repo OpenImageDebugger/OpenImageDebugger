@@ -24,6 +24,7 @@
  */
 
 #include "main_window.h"
+#include "ipc/message_exchange.h"
 
 #include <iostream>
 #include <memory>
