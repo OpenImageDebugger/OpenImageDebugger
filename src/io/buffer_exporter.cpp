@@ -65,6 +65,13 @@ float get_max_intensity<float>()
 }
 
 
+void repeat_first_channel_into_g_and_b(uint8_t* unformatted_pixel, std::size_t& c) {
+    for (; c < 3; ++c) {
+        unformatted_pixel[c] = unformatted_pixel[0];
+    }
+}
+
+
 template <typename T>
 void export_bitmap(const char* fname, const Buffer* buffer)
 {
@@ -125,9 +132,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
 
             // Grayscale: Repeat first channel into G and B
             if (channels == 1) {
-                for (; c < 3; ++c) {
-                    unformatted_pixel[c] = unformatted_pixel[0];
-                }
+                repeat_first_channel_into_g_and_b(unformatted_pixel, c);
             }
 
             // The remaining, non-filled channels will be set to a default value
