@@ -25,10 +25,11 @@
 
 #include "oid_bridge.h"
 
-
 #include <cstdint>
+
 #include <deque>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -328,7 +329,7 @@ AppHandler oid_initialize(int (*plot_callback)(const char*),
     PyObject* py_oid_path =
         PyDict_GetItemString(optional_parameters, "oid_path");
 
-    const auto app = new OidBridge(plot_callback);
+    auto app = std::make_unique<OidBridge>(plot_callback);
 
     if (py_oid_path) {
         string oid_path_str;
@@ -336,7 +337,7 @@ AppHandler oid_initialize(int (*plot_callback)(const char*),
         app->set_path(oid_path_str);
     }
 
-    return app;
+    return app.release();
 }
 
 
@@ -344,15 +345,15 @@ void oid_cleanup(AppHandler handler)
 {
     PyGILRAII py_gil_raii;
 
-    const auto* app = static_cast<OidBridge*>(handler);
+    auto app = std::unique_ptr<OidBridge>{static_cast<OidBridge*>(handler)};
 
-    if (app == nullptr) {
+    if (!app) {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
                            "oid_terminate received null application handler");
         return;
     }
 
-    delete app;
+    app.reset();
 }
 
 
