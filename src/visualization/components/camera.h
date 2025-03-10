@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -48,6 +48,7 @@ class Camera final : public Component
     Camera& operator=(Camera&& cam) = default;
 
     static constexpr float zoom_factor = 1.1f;
+
     mat4 projection;
 
     vec4 mouse_position = vec4::zero();
@@ -56,6 +57,7 @@ class Camera final : public Component
 
     void draw(const mat4&, const mat4&) override
     {
+        // Do nothing
     }
 
     bool post_buffer_update() override;

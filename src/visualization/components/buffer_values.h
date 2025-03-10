@@ -40,6 +40,7 @@ class BufferValues final : public Component
 
     void update() override
     {
+        // Do nothing
     }
 
     [[nodiscard]] int render_index() const override;
