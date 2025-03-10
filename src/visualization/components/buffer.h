@@ -121,6 +121,8 @@ class Buffer final : public Component
 
     void update_min_color_value(float* lowest, const int i, const int c) const;
 
+    void update_max_color_value(float* upper, const int i, const int c) const;
+
     char pixel_layout_[4] = {'r', 'g', 'b', 'a'};
 
     float min_buffer_values_[4]{};
