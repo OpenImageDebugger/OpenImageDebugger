@@ -45,13 +45,13 @@ class Buffer final : public Component
 
     Buffer(const Buffer&) = default;
 
-    Buffer& operator=(const Buffer&) = delete;
+    Buffer& operator=(const Buffer&) = default;
 
-    Buffer(Buffer&&) = delete;
+    Buffer(Buffer&&) = default;
 
-    Buffer& operator=(Buffer&&) = delete;
+    Buffer& operator=(Buffer&&) = default;
 
-    const int max_texture_size = 2048;
+    static constexpr int max_texture_size = 2048;
 
     std::vector<GLuint> buff_tex;
 
