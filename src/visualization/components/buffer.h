@@ -41,6 +41,16 @@ class Buffer final : public Component
   public:
     Buffer(GameObject* game_object, GLCanvas* gl_canvas);
 
+    ~Buffer() override;
+
+    Buffer(const Buffer&) = default;
+
+    Buffer& operator=(const Buffer&) = delete;
+
+    Buffer(Buffer&&) = delete;
+
+    Buffer& operator=(Buffer&&) = delete;
+
     const int max_texture_size = 2048;
 
     std::vector<GLuint> buff_tex;
@@ -58,8 +68,6 @@ class Buffer final : public Component
     const uint8_t* buffer{};
 
     bool transpose{};
-
-    ~Buffer() override;
 
     bool buffer_update() override;
 
