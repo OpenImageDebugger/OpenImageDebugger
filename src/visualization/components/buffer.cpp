@@ -126,7 +126,9 @@ void Buffer::set_icon_drawing_mode(const bool is_enabled) const
 }
 
 
-void Buffer::update_min_color_value(float* lowest, const int i, const int c) const
+void Buffer::update_min_color_value(float* lowest,
+                                    const int i,
+                                    const int c) const
 {
     if (type == BufferType::Float32 || type == BufferType::Float64) {
         lowest[c] = (std::min)(
@@ -180,12 +182,39 @@ void Buffer::recompute_min_color_values()
 }
 
 
+void Buffer::update_max_color_value(float* upper,
+                                    const int i,
+                                    const int c) const
+{
+    if (type == BufferType::Float32 || type == BufferType::Float64) {
+        upper[c] = (std::max)(
+            upper[c], reinterpret_cast<const float*>(buffer)[channels * i + c]);
+    } else if (type == BufferType::UnsignedByte) {
+        upper[c] =
+            (std::max)(upper[c], static_cast<float>(buffer[channels * i + c]));
+    } else if (type == BufferType::Short) {
+        upper[c] = (std::max)(upper[c],
+                              static_cast<float>(reinterpret_cast<const short*>(
+                                  buffer)[channels * i + c]));
+    } else if (type == BufferType::UnsignedShort) {
+        upper[c] = (std::max)(
+            upper[c],
+            static_cast<float>(reinterpret_cast<const unsigned short*>(
+                buffer)[channels * i + c]));
+    } else if (type == BufferType::Int32) {
+        upper[c] = (std::max)(upper[c],
+                              static_cast<float>(reinterpret_cast<const int*>(
+                                  buffer)[channels * i + c]));
+    }
+}
+
+
 void Buffer::recompute_max_color_values()
 {
-    const int buffer_width_i  = static_cast<int>(buffer_width_f);
-    const int buffer_height_i = static_cast<int>(buffer_height_f);
+    const auto buffer_width_i  = static_cast<int>(buffer_width_f);
+    const auto buffer_height_i = static_cast<int>(buffer_height_f);
 
-    float* upper = max_buffer_values();
+    auto upper = max_buffer_values();
     for (int i = 0; i < 4; ++i) {
         upper[i] = std::numeric_limits<float>::lowest();
     }
@@ -194,31 +223,7 @@ void Buffer::recompute_max_color_values()
         for (int x = 0; x < buffer_width_i; ++x) {
             const int i = y * step + x;
             for (int c = 0; c < channels; ++c) {
-                if (type == BufferType::Float32 ||
-                    type == BufferType::Float64) {
-                    upper[c] = (std::max)(upper[c],
-                                          reinterpret_cast<const float*>(
-                                              buffer)[channels * i + c]);
-                } else if (type == BufferType::UnsignedByte) {
-                    upper[c] = (std::max)(
-                        upper[c], static_cast<float>(buffer[channels * i + c]));
-                } else if (type == BufferType::Short) {
-                    upper[c] = (std::max)(
-                        upper[c],
-                        static_cast<float>(reinterpret_cast<const short*>(
-                            buffer)[channels * i + c]));
-                } else if (type == BufferType::UnsignedShort) {
-                    upper[c] =
-                        (std::max)(upper[c],
-                                   static_cast<float>(
-                                       reinterpret_cast<const unsigned short*>(
-                                           buffer)[channels * i + c]));
-                } else if (type == BufferType::Int32) {
-                    upper[c] = (std::max)(
-                        upper[c],
-                        static_cast<float>(reinterpret_cast<const int*>(
-                            buffer)[channels * i + c]));
-                }
+                update_max_color_value(upper, i, c);
             }
         }
     }
