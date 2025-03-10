@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,6 +27,7 @@
 #define BUFFER_VALUES_H_
 
 #include "component.h"
+#include "visualization/components/buffer.h"
 
 namespace oid
 {
@@ -52,11 +53,16 @@ class BufferValues final : public Component
 
   private:
     static float constexpr padding = 0.125f; // Must be smaller than 0.5
+
     static int constexpr max_float_precision = 10;
+
     static int constexpr min_float_precision = 3;
+
     static float constexpr default_text_scale = 1.0f;
-    int float_precision                       = min_float_precision;
-    float text_pixel_scale                    = default_text_scale;
+
+    int float_precision = min_float_precision;
+
+    float text_pixel_scale = default_text_scale;
 
     void generate_glyphs_texture();
 
@@ -68,6 +74,16 @@ class BufferValues final : public Component
                    float y,
                    float y_offset,
                    float channels);
+
+    void draw_pixel_values(const int& x,
+                           const int& y,
+                           const Buffer& buffer,
+                           const int& pos_center_x,
+                           const int& pos_center_y,
+                           const std::array<float, 4>& recenter_factors,
+                           const mat4& projection,
+                           const mat4& view_inv,
+                           const mat4& buffer_pose);
 };
 
 } // namespace oid

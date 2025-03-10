@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,7 +28,6 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <iostream>
 
 #include "ui/gl_text_renderer.h"
 
@@ -90,6 +89,47 @@ inline void pix2str(const BufferType& type,
 }
 
 
+void BufferValues::draw_pixel_values(
+    const int& x,
+    const int& y,
+    const Buffer& buffer,
+    const int& pos_center_x,
+    const int& pos_center_y,
+    const std::array<float, 4>& recenter_factors,
+    const mat4& projection,
+    const mat4& view_inv,
+    const mat4& buffer_pose)
+{
+    const auto step     = buffer.step;
+    const auto channels = buffer.channels;
+    const auto type     = buffer.type;
+    const auto pos      = (y * step + x) * channels;
+
+    for (int c = 0; c < channels; ++c) {
+        constexpr int label_length = 30;
+        char pix_label[label_length];
+        const float y_off =
+            (0.5f * (channels - 1) - c) / channels - recenter_factors[c];
+
+        pix2str(type,
+                buffer.buffer,
+                pos,
+                c,
+                label_length,
+                float_precision,
+                pix_label);
+        draw_text(projection,
+                  view_inv,
+                  buffer_pose,
+                  pix_label,
+                  x + pos_center_x,
+                  y + pos_center_y,
+                  y_off,
+                  channels);
+    }
+}
+
+
 void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 {
     GameObject* cam_obj = game_object_->stage->get_game_object("camera");
@@ -103,10 +143,7 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
             game_object_->get_component<Buffer>("buffer_component");
         const float buffer_width_f  = buffer_component->buffer_width_f;
         const float buffer_height_f = buffer_component->buffer_height_f;
-        const int step              = buffer_component->step;
         const int channels          = buffer_component->channels;
-        const BufferType type       = buffer_component->type;
-        const uint8_t* buffer       = buffer_component->buffer;
 
         const vec4 tl_ndc(-1.0f, 1.0f, 0.0f, 1.0f);
         const vec4 br_ndc(1.0f, -1.0f, 0.0f, 1.0f);
@@ -161,30 +198,15 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
         for (int y = lower_y - pos_center_y; y < upper_y - pos_center_y; ++y) {
             for (int x = lower_x - pos_center_x; x < upper_x - pos_center_x;
                  ++x) {
-                int pos = (y * step + x) * channels;
-
-                for (int c = 0; c < channels; ++c) {
-                    constexpr int label_length = 30;
-                    char pix_label[label_length];
-                    const float y_off = (0.5f * (channels - 1) - c) / channels -
-                                        recenter_factors[c];
-
-                    pix2str(type,
-                            buffer,
-                            pos,
-                            c,
-                            label_length,
-                            float_precision,
-                            pix_label);
-                    draw_text(projection,
-                              view_inv,
-                              buffer_pose,
-                              pix_label,
-                              x + pos_center_x,
-                              y + pos_center_y,
-                              y_off,
-                              channels);
-                }
+                draw_pixel_values(x,
+                                  y,
+                                  *buffer_component,
+                                  pos_center_x,
+                                  pos_center_y,
+                                  recenter_factors,
+                                  projection,
+                                  view_inv,
+                                  buffer_pose);
             }
         }
     }
