@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -114,7 +115,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
         }
     }
 
-    const auto* in_ptr      = reinterpret_cast<const T*>(buffer->buffer);
+    const auto* in_ptr      = bit_cast<const T*>(buffer->buffer);
     const auto input_stride = buffer->channels * buffer->step;
     std::array<uint8_t, 4> unformatted_pixel;
     const auto channels = static_cast<std::size_t>(buffer->channels);
@@ -213,7 +214,7 @@ void export_binary(const char* fname, const Buffer* buffer)
     const auto width_i  = static_cast<size_t>(buffer->buffer_width_f);
     const auto height_i = static_cast<size_t>(buffer->buffer_height_f);
 
-    const auto* in_ptr = reinterpret_cast<const T*>(buffer->buffer);
+    const auto* in_ptr = bit_cast<const T*>(buffer->buffer);
 
     auto* fhandle = fopen(fname, "wb");
 
