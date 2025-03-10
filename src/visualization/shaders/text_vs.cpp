@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,7 +25,7 @@
 
 namespace oid::shader
 {
-const char* text_vert_shader = R"(
+extern auto const text_vert_shader{R"(
 
 attribute vec4 input_position;
 varying vec2 uv;
@@ -37,5 +37,5 @@ void main(void) {
     uv = input_position.zw;
 }
 
-)";
+)"};
 } // namespace oid::shader
