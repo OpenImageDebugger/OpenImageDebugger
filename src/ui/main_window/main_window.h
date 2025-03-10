@@ -239,6 +239,11 @@ class MainWindow final : public QMainWindow
                                              float pos_window_y) const;
 
     ///
+    // Assorted methods - private - implemented in ui_events.cpp
+    void propagate_key_press_event(const QKeyEvent* key_event,
+                                   EventProcessCode& event_intercepted) const;
+
+    ///
     // Communication with debugger bridge
     void decode_set_available_symbols();
 

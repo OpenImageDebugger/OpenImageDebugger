@@ -34,6 +34,7 @@
 #include "ui_main_window.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
+#include "visualization/events.h"
 #include "visualization/game_object.h"
 
 using namespace std;
@@ -113,6 +114,19 @@ void MainWindow::closeEvent(QCloseEvent*)
 }
 
 
+void MainWindow::propagate_key_press_event(
+    const QKeyEvent* key_event,
+    EventProcessCode& event_intercepted) const
+{
+    for (const auto& [_, stage] : stages_) {
+        if (stage->key_press_event(key_event->key()) ==
+            EventProcessCode::INTERCEPTED) {
+            event_intercepted = EventProcessCode::INTERCEPTED;
+        }
+    }
+}
+
+
 bool MainWindow::eventFilter(QObject* target, QEvent* event)
 {
     KeyboardState::update_keyboard_state(event);
@@ -120,17 +134,10 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
     if (event->type() == QEvent::KeyPress) {
         const auto* key_event = dynamic_cast<QKeyEvent*>(event);
 
-        EventProcessCode event_intercepted = EventProcessCode::IGNORED;
+        auto event_intercepted = EventProcessCode::IGNORED;
 
         if (link_views_enabled_) {
-            for (const auto& [_, stage] : stages_) {
-                const EventProcessCode event_intercepted_stage =
-                    stage->key_press_event(key_event->key());
-
-                if (event_intercepted_stage == EventProcessCode::INTERCEPTED) {
-                    event_intercepted = EventProcessCode::INTERCEPTED;
-                }
-            }
+            propagate_key_press_event(key_event, event_intercepted);
         } else if (currently_selected_stage_ != nullptr) {
             event_intercepted =
                 currently_selected_stage_->key_press_event(key_event->key());
