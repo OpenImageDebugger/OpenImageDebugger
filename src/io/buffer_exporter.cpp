@@ -26,6 +26,7 @@
 #include "buffer_exporter.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -66,8 +67,9 @@ float get_max_intensity<float>()
 }
 
 
-void repeat_first_channel_into_g_and_b(uint8_t* unformatted_pixel,
-                                       std::size_t& c)
+void repeat_first_channel_into_g_and_b(
+    std::array<uint8_t, 4>& unformatted_pixel,
+    std::size_t& c)
 {
     for (; c < 3; ++c) {
         unformatted_pixel[c] = unformatted_pixel[0];
@@ -91,7 +93,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
 
     const auto max_intensity = get_max_intensity<T>();
 
-    uint8_t pixel_layout[4];
+    std::array<uint8_t, 4> pixel_layout;
     for (int c = 0; c < 4; ++c) {
         switch (buffer->get_pixel_layout()[c]) {
         case 'r':
@@ -114,7 +116,7 @@ void export_bitmap(const char* fname, const Buffer* buffer)
 
     const auto* in_ptr      = reinterpret_cast<const T*>(buffer->buffer);
     const auto input_stride = buffer->channels * buffer->step;
-    uint8_t unformatted_pixel[4];
+    std::array<uint8_t, 4> unformatted_pixel;
     const auto channels = static_cast<std::size_t>(buffer->channels);
 
     for (size_t y = 0; y < height_i; ++y) {
