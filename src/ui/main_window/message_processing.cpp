@@ -23,6 +23,7 @@
  * IN THE SOFTWARE.
  */
 
+#include "ipc/message_exchange.h"
 #include "main_window.h"
 
 #include <iostream>
