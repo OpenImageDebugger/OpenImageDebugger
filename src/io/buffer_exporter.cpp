@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <iostream>
 #include <limits>
 
@@ -65,7 +66,9 @@ float get_max_intensity<float>()
 }
 
 
-void repeat_first_channel_into_g_and_b(uint8_t* unformatted_pixel, std::size_t& c) {
+void repeat_first_channel_into_g_and_b(uint8_t* unformatted_pixel,
+                                       std::size_t& c)
+{
     for (; c < 3; ++c) {
         unformatted_pixel[c] = unformatted_pixel[0];
     }
@@ -79,14 +82,14 @@ void export_bitmap(const char* fname, const Buffer* buffer)
     const auto height_i = static_cast<size_t>(buffer->buffer_height_f);
 
     vector<uint8_t> processed_buffer(4 * width_i * height_i);
-    constexpr uint8_t default_channel_vals[] = {0, 0, 0, 255};
+    constexpr std::array<uint8_t, 4> default_channel_vals{0, 0, 0, 255};
 
-    uint8_t* out_ptr = processed_buffer.data();
+    auto* out_ptr = processed_buffer.data();
 
-    const float* bc_comp    = buffer->auto_buffer_contrast_brightness();
-    const float color_scale = get_multiplier<T>();
+    const auto* bc_comp    = buffer->auto_buffer_contrast_brightness();
+    const auto color_scale = get_multiplier<T>();
 
-    const float max_intensity = get_max_intensity<T>();
+    const auto max_intensity = get_max_intensity<T>();
 
     uint8_t pixel_layout[4];
     for (int c = 0; c < 4; ++c) {
@@ -109,22 +112,23 @@ void export_bitmap(const char* fname, const Buffer* buffer)
         }
     }
 
-    const T* in_ptr  = reinterpret_cast<const T*>(buffer->buffer);
-    int input_stride = buffer->channels * buffer->step;
+    const auto* in_ptr      = reinterpret_cast<const T*>(buffer->buffer);
+    const auto input_stride = buffer->channels * buffer->step;
     uint8_t unformatted_pixel[4];
     const auto channels = static_cast<std::size_t>(buffer->channels);
 
     for (size_t y = 0; y < height_i; ++y) {
         for (size_t x = 0; x < width_i; ++x) {
-            const std::size_t col_offset = x * buffer->channels;
-            std::size_t c                = 0;
+            const auto col_offset = x * buffer->channels;
+            std::size_t c         = 0;
 
             // Perform contrast normalization
             for (; c < channels; ++c) {
                 const auto in_val = static_cast<float>(in_ptr[col_offset + c]);
 
                 unformatted_pixel[c] = static_cast<uint8_t>(clamp(
-                    (in_val * bc_comp[c] + bc_comp[4 + c] * max_intensity) *
+                    (in_val * bc_comp[c] +
+                     bc_comp[4 + c] * static_cast<uint8_t>(max_intensity)) *
                         color_scale,
                     0.f,
                     255.f));
@@ -150,14 +154,14 @@ void export_bitmap(const char* fname, const Buffer* buffer)
         in_ptr += input_stride;
     }
 
-    const int bytes_per_line = static_cast<int>(width_i * 4);
-    const QImage output_image(processed_buffer.data(),
+    const auto bytes_per_line = static_cast<int>(width_i * 4);
+    const QImage output_image{processed_buffer.data(),
                               static_cast<int>(width_i),
                               static_cast<int>(height_i),
                               bytes_per_line,
-                              QImage::Format_RGBA8888);
+                              QImage::Format_RGBA8888};
     if (const auto result = output_image.save(fname, "png"); !result) {
-        std::cerr << ("Failed to save image") << std::endl;
+        std::cerr << "Failed to save image" << std::endl;
     }
 }
 
@@ -207,9 +211,9 @@ void export_binary(const char* fname, const Buffer* buffer)
     const auto width_i  = static_cast<size_t>(buffer->buffer_width_f);
     const auto height_i = static_cast<size_t>(buffer->buffer_height_f);
 
-    const T* in_ptr = reinterpret_cast<const T*>(buffer->buffer);
+    const auto* in_ptr = reinterpret_cast<const T*>(buffer->buffer);
 
-    FILE* fhandle = fopen(fname, "wb");
+    auto* fhandle = fopen(fname, "wb");
 
     if (fhandle == nullptr) {
         return;
