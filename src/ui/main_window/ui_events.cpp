@@ -314,9 +314,8 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
 void MainWindow::remove_selected_buffer()
 {
     if (ui_->imageList->count() > 0 && currently_selected_stage_ != nullptr) {
-        auto removed_item = std::make_unique<QListWidgetItem>();
-        removed_item.reset(
-            ui_->imageList->takeItem(ui_->imageList->currentRow()));
+        auto removed_item = std::unique_ptr<QListWidgetItem>{
+            ui_->imageList->takeItem(ui_->imageList->currentRow())};
         const string buffer_name =
             removed_item->data(Qt::UserRole).toString().toStdString();
         stages_.erase(buffer_name);
