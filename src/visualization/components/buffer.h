@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,7 +30,7 @@
 #include <vector>
 
 #include "component.h"
-#include "ipc/message_exchange.h"
+#include "ipc/raw_data_decode.h"
 #include "visualization/shader.h"
 
 namespace oid

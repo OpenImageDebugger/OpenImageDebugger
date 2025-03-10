@@ -35,6 +35,7 @@
 #include <QListWidgetItem>
 #include <QMainWindow>
 #include <QSettings>
+#include <QTcpSocket>
 #include <QTimer>
 
 #include "math/linear_algebra.h"
