@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,7 +25,7 @@
 
 namespace oid::shader
 {
-const char* background_frag_shader = R"(
+extern auto const background_frag_shader{R"(
 
 void main()
 {
@@ -36,5 +36,5 @@ void main()
     gl_FragColor = vec4(vec3(intensity), 1);
 }
 
-)";
+)"};
 } // namespace oid::shader

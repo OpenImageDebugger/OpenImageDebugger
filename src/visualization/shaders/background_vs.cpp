@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,7 +25,7 @@
 
 namespace oid::shader
 {
-const char* background_vert_shader = R"(
+extern auto const background_vert_shader{R"(
 
 attribute vec2 input_position;
 
@@ -33,5 +33,5 @@ void main(void) {
     gl_Position = vec4(input_position, 0.0, 1.0);
 }
 
-)";
+)"};
 } // namespace oid::shader
