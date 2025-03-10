@@ -126,12 +126,39 @@ void Buffer::set_icon_drawing_mode(const bool is_enabled) const
 }
 
 
+void Buffer::update_min_color_value(float* lowest, const int i, const int c) const
+{
+    if (type == BufferType::Float32 || type == BufferType::Float64) {
+        lowest[c] = (std::min)(
+            lowest[c],
+            reinterpret_cast<const float*>(buffer)[channels * i + c]);
+    } else if (type == BufferType::UnsignedByte) {
+        lowest[c] =
+            (std::min)(lowest[c], static_cast<float>(buffer[channels * i + c]));
+    } else if (type == BufferType::Short) {
+        lowest[c] =
+            (std::min)(lowest[c],
+                       static_cast<float>(reinterpret_cast<const short*>(
+                           buffer)[channels * i + c]));
+    } else if (type == BufferType::UnsignedShort) {
+        lowest[c] = (std::min)(
+            lowest[c],
+            static_cast<float>(reinterpret_cast<const unsigned short*>(
+                buffer)[channels * i + c]));
+    } else if (type == BufferType::Int32) {
+        lowest[c] = (std::min)(lowest[c],
+                               static_cast<float>(reinterpret_cast<const int*>(
+                                   buffer)[channels * i + c]));
+    }
+}
+
+
 void Buffer::recompute_min_color_values()
 {
-    const int buffer_width_i  = static_cast<int>(buffer_width_f);
-    const int buffer_height_i = static_cast<int>(buffer_height_f);
+    const auto buffer_width_i  = static_cast<int>(buffer_width_f);
+    const auto buffer_height_i = static_cast<int>(buffer_height_f);
 
-    float* lowest = min_buffer_values();
+    auto lowest = min_buffer_values();
 
     for (int i = 0; i < 4; ++i) {
         lowest[i] = (std::numeric_limits<float>::max)();
@@ -141,32 +168,7 @@ void Buffer::recompute_min_color_values()
         for (int x = 0; x < buffer_width_i; ++x) {
             const int i = y * step + x;
             for (int c = 0; c < channels; ++c) {
-                if (type == BufferType::Float32 ||
-                    type == BufferType::Float64) {
-                    lowest[c] = (std::min)(lowest[c],
-                                           reinterpret_cast<const float*>(
-                                               buffer)[channels * i + c]);
-                } else if (type == BufferType::UnsignedByte) {
-                    lowest[c] = (std::min)(
-                        lowest[c],
-                        static_cast<float>(buffer[channels * i + c]));
-                } else if (type == BufferType::Short) {
-                    lowest[c] = (std::min)(
-                        lowest[c],
-                        static_cast<float>(reinterpret_cast<const short*>(
-                            buffer)[channels * i + c]));
-                } else if (type == BufferType::UnsignedShort) {
-                    lowest[c] =
-                        (std::min)(lowest[c],
-                                   static_cast<float>(
-                                       reinterpret_cast<const unsigned short*>(
-                                           buffer)[channels * i + c]));
-                } else if (type == BufferType::Int32) {
-                    lowest[c] = (std::min)(
-                        lowest[c],
-                        static_cast<float>(reinterpret_cast<const int*>(
-                            buffer)[channels * i + c]));
-                }
+                update_min_color_value(lowest, i, c);
             }
         }
     }
