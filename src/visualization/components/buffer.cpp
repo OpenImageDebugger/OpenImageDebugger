@@ -47,7 +47,7 @@ constexpr float Buffer::no_ac_params[8] =
 Buffer::Buffer(GameObject* game_object, GLCanvas* gl_canvas)
     : Component(game_object, gl_canvas)
     , type{BufferType::UnsignedByte}
-    , buff_prog(gl_canvas)
+    , buff_prog_(gl_canvas)
 {
 }
 
@@ -57,7 +57,7 @@ Buffer::~Buffer()
     const int num_textures = num_textures_x * num_textures_y;
 
     gl_canvas_->glDeleteTextures(num_textures, buff_tex.data());
-    gl_canvas_->glDeleteBuffers(1, &vbo);
+    gl_canvas_->glDeleteBuffers(1, &vbo_);
 }
 
 
@@ -120,9 +120,9 @@ void Buffer::rotate(const float angle)
 
 void Buffer::set_icon_drawing_mode(const bool is_enabled) const
 {
-    buff_prog.use();
+    buff_prog_.use();
 
-    buff_prog.uniform1i("enable_icon_mode", is_enabled ? 1 : 0);
+    buff_prog_.uniform1i("enable_icon_mode", is_enabled ? 1 : 0);
 }
 
 
@@ -358,11 +358,11 @@ void Buffer::update()
     const auto* camera  = cam_obj->get_component<Camera>("camera_component");
     const float zoom    = camera->compute_zoom();
 
-    buff_prog.use();
+    buff_prog_.use();
     if (zoom > 40.0f) {
-        buff_prog.uniform1i("enable_borders", 1);
+        buff_prog_.uniform1i("enable_borders", 1);
     } else {
-        buff_prog.uniform1i("enable_borders", 0);
+        buff_prog_.uniform1i("enable_borders", 0);
     }
 
     update_object_pose();
@@ -407,16 +407,16 @@ void Buffer::create_shader_program()
         channel_type = ShaderProgram::TexelChannels::FormatRGBA;
     }
 
-    buff_prog.create(shader::buff_vert_shader,
-                     shader::buff_frag_shader,
-                     channel_type,
-                     pixel_layout_,
-                     {"mvp",
-                      "sampler",
-                      "brightness_contrast",
-                      "buffer_dimension",
-                      "enable_borders",
-                      "enable_icon_mode"});
+    buff_prog_.create(shader::buff_vert_shader,
+                      shader::buff_frag_shader,
+                      channel_type,
+                      pixel_layout_,
+                      {"mvp",
+                       "sampler",
+                       "brightness_contrast",
+                       "buffer_dimension",
+                       "enable_borders",
+                       "enable_icon_mode"});
 }
 
 
@@ -436,8 +436,8 @@ bool Buffer::initialize()
     };
     // clang-format on
 
-    gl_canvas_->glGenBuffers(1, &vbo);
-    gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    gl_canvas_->glGenBuffers(1, &vbo_);
+    gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     gl_canvas_->glBufferData(GL_ARRAY_BUFFER,
                              sizeof(g_vertex_buffer_data),
                              g_vertex_buffer_data,
@@ -453,19 +453,19 @@ bool Buffer::initialize()
 
 void Buffer::draw(const mat4& projection, const mat4& viewInv)
 {
-    buff_prog.use();
+    buff_prog_.use();
     const mat4 model = game_object_->get_pose();
     const mat4 mvp   = projection * viewInv * model;
 
     gl_canvas_->glEnableVertexAttribArray(0);
     gl_canvas_->glActiveTexture(GL_TEXTURE0);
 
-    buff_prog.uniform1i("sampler", 0);
+    buff_prog_.uniform1i("sampler", 0);
     if (game_object_->stage->contrast_enabled) {
-        buff_prog.uniform4fv(
+        buff_prog_.uniform4fv(
             "brightness_contrast", 2, auto_buffer_contrast_brightness_);
     } else {
-        buff_prog.uniform4fv("brightness_contrast", 2, no_ac_params);
+        buff_prog_.uniform4fv("brightness_contrast", 2, no_ac_params);
     }
 
     const auto buffer_width_i  = static_cast<int>(buffer_width_f);
@@ -513,15 +513,15 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
                                    px,
                                    py,
                                    0.0f);
-            buff_prog.uniform_matrix4fv(
+            buff_prog_.uniform_matrix4fv(
                 "mvp", 1, GL_FALSE, (mvp * tile_model).data());
-            buff_prog.uniform2f("buffer_dimension",
-                                static_cast<float>(buff_w),
-                                static_cast<float>(buff_h));
+            buff_prog_.uniform2f("buffer_dimension",
+                                 static_cast<float>(buff_w),
+                                 static_cast<float>(buff_h));
 
             px += static_cast<float>(buff_w) / 2.0f;
 
-            gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, vbo);
+            gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, vbo_);
             gl_canvas_->glVertexAttribPointer(
                 0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
             gl_canvas_->glDrawArrays(GL_TRIANGLES, 0, 6);

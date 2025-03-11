@@ -56,6 +56,7 @@ Camera::Camera(const Camera& cam)
     update_object_pose();
 }
 
+
 Camera& Camera::operator=(const Camera& cam)
 {
     zoom_power_    = cam.zoom_power_;
