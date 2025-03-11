@@ -34,8 +34,7 @@
 
 
 SymbolSearchInput::SymbolSearchInput(QWidget* parent)
-    : QLineEdit(parent)
-    , completer_(nullptr)
+    : QLineEdit{parent}
 {
 }
 

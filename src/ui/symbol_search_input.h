@@ -55,7 +55,7 @@ class SymbolSearchInput final : public QLineEdit
     void insert_completion(const QString& completion);
 
   private:
-    SymbolCompleter* completer_;
+    SymbolCompleter* completer_{nullptr};
 };
 
 #endif // SYMBOL_SEARCH_INPUT_H_
