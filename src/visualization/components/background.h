@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -60,7 +60,7 @@ class Background final : public Component
 
   private:
     ShaderProgram background_prog;
-    GLuint background_vbo;
+    GLuint background_vbo{0};
 };
 
 } // namespace oid
