@@ -44,6 +44,14 @@ class ShaderProgram
 
     explicit ShaderProgram(GLCanvas* gl_canvas);
 
+    ShaderProgram(const ShaderProgram&) = delete;
+
+    ShaderProgram(ShaderProgram&&) = delete;
+
+    ShaderProgram& operator=(const ShaderProgram&) = delete;
+
+    ShaderProgram& operator=(ShaderProgram&&) = delete;
+
     ~ShaderProgram();
 
     bool create(const char* v_source,
