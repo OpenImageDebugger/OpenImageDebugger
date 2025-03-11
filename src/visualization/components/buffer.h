@@ -43,13 +43,13 @@ class Buffer final : public Component
 
     ~Buffer() override;
 
-    Buffer(const Buffer&) = default;
+    Buffer(const Buffer&) = delete;
 
-    Buffer& operator=(const Buffer&) = default;
+    Buffer& operator=(const Buffer&) = delete;
 
-    Buffer(Buffer&&) = default;
+    Buffer(Buffer&&) = delete;
 
-    Buffer& operator=(Buffer&&) = default;
+    Buffer& operator=(Buffer&&) = delete;
 
     static constexpr int max_texture_size = 2048;
 
@@ -131,8 +131,8 @@ class Buffer final : public Component
         {1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     float angle_ = 0.0f;
 
-    ShaderProgram buff_prog;
-    GLuint vbo{};
+    ShaderProgram buff_prog_;
+    GLuint vbo_{};
 };
 
 } // namespace oid
