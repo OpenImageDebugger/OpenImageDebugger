@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,6 +26,7 @@
 #ifndef GL_CANVAS_H_
 #define GL_CANVAS_H_
 
+#include <array>
 #include <memory>
 
 #include <QMouseEvent>
@@ -89,17 +90,17 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions
     void render_buffer_icon(Stage* stage, int icon_width, int icon_height);
 
   private:
-    bool mouse_down_[2]{};
+    std::array<bool, 2> mouse_down_{};
 
-    int mouse_x_;
-    int mouse_y_;
+    int mouse_x_{0};
+    int mouse_y_{0};
 
-    MainWindow* main_window_;
+    MainWindow* main_window_{nullptr};
 
-    GLuint icon_texture_;
-    GLuint icon_fbo_;
+    GLuint icon_texture_{0};
+    GLuint icon_fbo_{0};
 
-    bool initialized_;
+    bool initialized_{false};
 
     std::unique_ptr<GLTextRenderer> text_renderer_;
 

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -39,14 +39,8 @@ namespace oid
 {
 
 GLCanvas::GLCanvas(QWidget* parent)
-    : QOpenGLWidget(parent)
-    , mouse_x_(0)
-    , mouse_y_(0)
-    , main_window_(nullptr)
-    , icon_texture_(0)
-    , icon_fbo_(0)
-    , initialized_(false)
-    , text_renderer_(new GLTextRenderer(this))
+    : QOpenGLWidget{parent}
+    , text_renderer_{std::make_unique<GLTextRenderer>(this)}
 {
     mouse_down_[0] = mouse_down_[1] = false;
 }
@@ -75,21 +69,25 @@ void GLCanvas::mouseMoveEvent(QMouseEvent* ev)
 
 void GLCanvas::mousePressEvent(QMouseEvent* ev)
 {
-    if (ev->button() == Qt::LeftButton)
+    if (ev->button() == Qt::LeftButton) {
         mouse_down_[0] = true;
+    }
 
-    if (ev->button() == Qt::RightButton)
+    if (ev->button() == Qt::RightButton) {
         mouse_down_[1] = true;
+    }
 }
 
 
 void GLCanvas::mouseReleaseEvent(QMouseEvent* ev)
 {
-    if (ev->button() == Qt::LeftButton)
+    if (ev->button() == Qt::LeftButton) {
         mouse_down_[0] = false;
+    }
 
-    if (ev->button() == Qt::RightButton)
+    if (ev->button() == Qt::RightButton) {
         mouse_down_[1] = false;
+    }
 }
 
 
