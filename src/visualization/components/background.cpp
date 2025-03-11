@@ -35,9 +35,8 @@ namespace oid
 {
 
 Background::Background(GameObject* game_object, GLCanvas* gl_canvas)
-    : Component(game_object, gl_canvas)
-    , background_prog(gl_canvas)
-    , background_vbo(0)
+    : Component{game_object, gl_canvas}
+    , background_prog{gl_canvas}
 {
 }
 
@@ -58,7 +57,7 @@ bool Background::initialize()
 
     // Generate square VBO
     // clang-format off
-    static constexpr GLfloat vertex_buffer_data[] = {
+    static constexpr std::array<GLfloat, 12> vertex_buffer_data {
         -1, -1,
         1, -1,
         1, 1,
@@ -72,7 +71,7 @@ bool Background::initialize()
     gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
     gl_canvas_->glBufferData(GL_ARRAY_BUFFER,
                              sizeof(vertex_buffer_data),
-                             vertex_buffer_data,
+                             vertex_buffer_data.data(),
                              GL_STATIC_DRAW);
 
     return true;
