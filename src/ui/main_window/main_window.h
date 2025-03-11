@@ -54,8 +54,8 @@ namespace oid
 
 struct ConnectionSettings
 {
-    std::string url;
-    uint16_t port;
+    std::string url{};
+    uint16_t port{};
 };
 
 

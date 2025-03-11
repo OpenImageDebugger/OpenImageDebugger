@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -49,7 +49,7 @@ void MainWindow::initialize_settings_ui_list_position(
         return;
     }
 
-    const QString position_str = variant.toString();
+    const auto position_str = variant.toString();
 
     if (position_str == "top" || position_str == "bottom") {
         ui_->splitter->setOrientation(Qt::Vertical);
@@ -65,12 +65,12 @@ void MainWindow::initialize_settings_ui_list_position(
 void MainWindow::initialize_settings_ui_splitter(
     const QSettings& settings) const
 {
-    const QVariant variant = settings.value("splitter");
+    const auto variant = settings.value("splitter");
     if (!variant.canConvert<QVariantList>()) {
         return;
     }
 
-    QVariantList listVariants = variant.toList();
+    auto listVariants = variant.toList();
 
     QList<int> listSizes;
     for (const QVariant& size : listVariants) {
@@ -84,7 +84,7 @@ void MainWindow::initialize_settings_ui_minmax_compact(
     const QSettings& settings) const
 {
     const auto is_minmax_compact = [&] {
-        const QVariant variant = settings.value("minmax_compact");
+        const auto variant = settings.value("minmax_compact");
         if (!variant.canConvert<bool>()) {
             return false;
         }
@@ -97,7 +97,7 @@ void MainWindow::initialize_settings_ui_minmax_compact(
     }
 
     const auto is_minmax_visible = [&] {
-        const QVariant variant = settings.value("minmax_visible");
+        const auto variant = settings.value("minmax_visible");
         if (!variant.canConvert<bool>()) {
             return true;
         }
@@ -144,12 +144,12 @@ MainWindow::initialize_settings_ui_colorspace_channel(const QChar& character)
 
 void MainWindow::initialize_settings_ui_colorspace(const QSettings& settings)
 {
-    const QVariant variant = settings.value("colorspace");
+    const auto variant = settings.value("colorspace");
     if (!variant.canConvert<QString>()) {
         return;
     }
 
-    const QString colorspace_str = variant.toString();
+    const auto colorspace_str = variant.toString();
 
     if (colorspace_str.size() > 0) {
         name_channel_1_ =
@@ -172,12 +172,12 @@ void MainWindow::initialize_settings_ui_colorspace(const QSettings& settings)
 void MainWindow::initialize_settings_ui_minmax_visible(
     const QSettings& settings) const
 {
-    const QVariant variant = settings.value("minmax_visible");
+    const auto variant = settings.value("minmax_visible");
     if (!variant.canConvert<bool>()) {
         return;
     }
 
-    const bool is_minmax_visible = variant.toBool();
+    const auto is_minmax_visible = variant.toBool();
     ui_->acEdit->setChecked(is_minmax_visible);
     ui_->minMaxEditor->setVisible(is_minmax_visible);
 }
@@ -185,7 +185,7 @@ void MainWindow::initialize_settings_ui_minmax_visible(
 void MainWindow::initialize_settings_ui_contrast_enabled(
     const QSettings& settings)
 {
-    const QVariant variant = settings.value("contrast_enabled");
+    const auto variant = settings.value("contrast_enabled");
     if (!variant.canConvert<bool>()) {
         return;
     }
@@ -198,7 +198,7 @@ void MainWindow::initialize_settings_ui_contrast_enabled(
 void MainWindow::initialize_settings_ui_link_views_enabled(
     const QSettings& settings)
 {
-    const QVariant variant = settings.value("link_views_enabled");
+    const auto variant = settings.value("link_views_enabled");
     if (!variant.canConvert<bool>()) {
         return;
     }
@@ -253,14 +253,13 @@ void MainWindow::initialize_settings()
     settings.endGroup();
 
     // Load previous session symbols
-    const QDateTime now   = QDateTime::currentDateTime();
+    const auto now        = QDateTime::currentDateTime();
     auto previous_buffers = settings.value("PreviousSession/buffers")
                                 .value<QList<BufferExpiration>>();
 
-    for (const auto& previous_buffer : previous_buffers) {
-        if (previous_buffer.second >= now) {
-            previous_session_buffers_.insert(
-                previous_buffer.first.toStdString());
+    for (const auto& [name, time] : previous_buffers) {
+        if (time >= now) {
+            previous_session_buffers_.insert(name.toStdString());
         }
     }
 
@@ -306,7 +305,7 @@ void MainWindow::setVectorIcon(QLabel* ui_element,
                                const int width,
                                const int height)
 {
-    const qreal screen_dpi_scale = get_screen_dpi_scale();
+    const auto screen_dpi_scale = get_screen_dpi_scale();
 
     ui_element->setScaledContents(true);
     ui_element->setMinimumWidth(static_cast<int>(std::round(width)));
