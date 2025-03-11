@@ -233,7 +233,7 @@ void BufferValues::draw_text(const mat4& projection,
         auto_buffer_contrast_brightness =
             buffer_component->auto_buffer_contrast_brightness();
     } else {
-        auto_buffer_contrast_brightness = Buffer::no_ac_params;
+        auto_buffer_contrast_brightness = Buffer::no_ac_params.data();
     }
 
     text_renderer->text_prog.use();
