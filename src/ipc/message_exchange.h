@@ -26,6 +26,7 @@
 #ifndef IPC_MESSAGE_EXCHANGE_H_
 #define IPC_MESSAGE_EXCHANGE_H_
 
+#include <bit>
 #include <deque>
 #include <memory>
 
@@ -66,7 +67,7 @@ struct PrimitiveBlock final : MessageBlock
 
     [[nodiscard]] const uint8_t* data() const override
     {
-        return static_cast<const uint8_t*>(static_cast<const void*>(&data_));
+        return std::bit_cast<const uint8_t*>(&data_);
     }
 
   private:
@@ -182,8 +183,7 @@ class MessageDecoder
     {
         assert_primitive_type<PrimitiveType>();
 
-        read_impl(static_cast<char*>(static_cast<void*>(&value)),
-                  sizeof(PrimitiveType));
+        read_impl(std::bit_cast<char*>(&value), sizeof(PrimitiveType));
 
         return *this;
     }
