@@ -26,6 +26,7 @@
 #include "ipc/message_exchange.h"
 #include "main_window.h"
 
+#include <bit>
 #include <iostream>
 #include <memory>
 
@@ -89,13 +90,13 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
         return;
     }
 
-    const std::shared_ptr<Stage>& stage = itStage->second;
+    const auto& stage = itStage->second;
 
     // Buffer icon dimensions
-    const QSizeF icon_size   = get_icon_size();
-    const int icon_width     = static_cast<int>(icon_size.width());
-    const int icon_height    = static_cast<int>(icon_size.height());
-    const int bytes_per_line = icon_width * 3;
+    const auto icon_size      = get_icon_size();
+    const auto icon_width     = static_cast<int>(icon_size.width());
+    const auto icon_height    = static_cast<int>(icon_size.height());
+    const auto bytes_per_line = icon_width * 3;
 
     // Update buffer icon
     ui_->bufferPreview->render_buffer_icon(
@@ -109,7 +110,7 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
                             QImage::Format_RGB888);
 
     // Replace icon in the corresponding item
-    QListWidgetItem* item = find_image_list_item(variable_name_str);
+    auto item = find_image_list_item(variable_name_str);
     if (item != nullptr) {
         item->setIcon(QPixmap::fromImage(bufferIcon));
     }
@@ -120,7 +121,7 @@ void MainWindow::update_image_list_label(const std::string& variable_name_str,
                                          const std::string& label_str) const
 {
     // Replace text in the corresponding item
-    QListWidgetItem* item = find_image_list_item(variable_name_str);
+    auto item = find_image_list_item(variable_name_str);
     if (item != nullptr) {
         item->setText(label_str.c_str());
     }
@@ -160,7 +161,7 @@ void MainWindow::decode_plot_buffer_contents()
     } else {
         held_buffers_[variable_name_str] = std::move(buff_contents);
     }
-    const uint8_t* buff_ptr = held_buffers_[variable_name_str].data();
+    const std::uint8_t* buff_ptr = held_buffers_[variable_name_str].data();
 
     // Human readable dimensions
     int visualized_width;
@@ -173,7 +174,7 @@ void MainWindow::decode_plot_buffer_contents()
         visualized_height = buff_width;
     }
 
-    const string label_str = [&] {
+    const auto label_str = [&] {
         stringstream label_ss;
         label_ss << display_name_str;
         label_ss << "\n[" << visualized_width << "x" << visualized_height
@@ -183,8 +184,8 @@ void MainWindow::decode_plot_buffer_contents()
     }();
 
     // Find corresponding stage buffer
-    auto buffer_stage = stages_.find(variable_name_str);
-    if (buffer_stage == stages_.end()) {
+    if (auto buffer_stage = stages_.find(variable_name_str);
+        buffer_stage == stages_.end()) {
 
         // Construct a new stage buffer if needed
         auto stage = make_shared<Stage>(this);
@@ -199,7 +200,7 @@ void MainWindow::decode_plot_buffer_contents()
             cerr << "[error] Could not initialize opengl canvas!" << endl;
         }
         stage->contrast_enabled = ac_enabled_;
-        buffer_stage = stages_.emplace(variable_name_str, stage).first;
+        buffer_stage = stages_.try_emplace(variable_name_str, stage).first;
     } else {
 
         // Update buffer data
@@ -214,9 +215,7 @@ void MainWindow::decode_plot_buffer_contents()
     }
 
     // Construct a new list widget if needed
-    QListWidgetItem* item = find_image_list_item(variable_name_str);
-    if (item == nullptr) {
-
+    if (auto item = find_image_list_item(variable_name_str); item == nullptr) {
         item =
             std::make_unique<QListWidgetItem>(label_str.c_str(), ui_->imageList)
                 .release();
@@ -257,7 +256,7 @@ void MainWindow::decode_incoming_messages()
     }
 
     MessageType header;
-    if (!socket_.read(reinterpret_cast<char*>(&header),
+    if (!socket_.read(std::bit_cast<char*>(&header),
                       static_cast<qint64>(sizeof(header)))) {
         return;
     }
