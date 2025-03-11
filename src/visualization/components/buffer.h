@@ -26,6 +26,8 @@
 #ifndef BUFFER_H_
 #define BUFFER_H_
 
+#include <cstdint>
+
 #include <array>
 #include <sstream>
 #include <string>
@@ -67,7 +69,7 @@ class Buffer final : public Component
 
     BufferType type{BufferType::UnsignedByte};
 
-    const uint8_t* buffer{};
+    const std::uint8_t* buffer{};
 
     bool transpose{};
 
