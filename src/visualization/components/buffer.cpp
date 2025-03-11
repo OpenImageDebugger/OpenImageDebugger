@@ -25,7 +25,9 @@
 
 #include "buffer.h"
 
+#include <array>
 #include <limits>
+#include <string>
 
 #include "GL/gl.h"
 
@@ -40,13 +42,12 @@ using namespace std;
 namespace oid
 {
 
-constexpr float Buffer::no_ac_params[8] =
+constexpr std::array<float, 8> Buffer::no_ac_params =
     {1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
 
 Buffer::Buffer(GameObject* game_object, GLCanvas* gl_canvas)
     : Component(game_object, gl_canvas)
-    , type{BufferType::UnsignedByte}
     , buff_prog_(gl_canvas)
 {
 }
@@ -54,7 +55,7 @@ Buffer::Buffer(GameObject* game_object, GLCanvas* gl_canvas)
 
 Buffer::~Buffer()
 {
-    const int num_textures = num_textures_x * num_textures_y;
+    const auto num_textures = num_textures_x * num_textures_y;
 
     gl_canvas_->glDeleteTextures(num_textures, buff_tex.data());
     gl_canvas_->glDeleteBuffers(1, &vbo_);
@@ -63,7 +64,7 @@ Buffer::~Buffer()
 
 bool Buffer::buffer_update()
 {
-    const int num_textures = num_textures_x * num_textures_y;
+    const auto num_textures = num_textures_x * num_textures_y;
     glDeleteTextures(num_textures, buff_tex.data());
 
     create_shader_program();
@@ -82,26 +83,26 @@ void Buffer::get_pixel_info(stringstream& message,
         return;
     }
 
-    const int pos = channels * (y * step + x);
+    const auto pos = channels * (y * step + x);
 
     message << "[";
 
     for (int c = 0; c < channels; ++c) {
         if (type == BufferType::Float32 || type == BufferType::Float64) {
-            const float fpix = reinterpret_cast<const float*>(buffer)[pos + c];
+            const auto fpix = reinterpret_cast<const float*>(buffer)[pos + c];
             message << fpix;
         } else if (type == BufferType::UnsignedByte) {
             const short fpix = buffer[pos + c];
             message << fpix;
         } else if (type == BufferType::Short) {
-            const short fpix = reinterpret_cast<const short*>(buffer)[pos + c];
+            const auto fpix = reinterpret_cast<const short*>(buffer)[pos + c];
             message << fpix;
         } else if (type == BufferType::UnsignedShort) {
-            const unsigned short fpix =
+            const auto fpix =
                 reinterpret_cast<const unsigned short*>(buffer)[pos + c];
             message << fpix;
         } else if (type == BufferType::Int32) {
-            const int fpix = reinterpret_cast<const int*>(buffer)[pos + c];
+            const auto fpix = reinterpret_cast<const int*>(buffer)[pos + c];
             message << fpix;
         }
         if (c < channels - 1) {
@@ -246,14 +247,15 @@ void Buffer::reset_contrast_brightness_parameters()
 
 void Buffer::compute_contrast_brightness_parameters()
 {
-    const float* lowest = min_buffer_values();
-    const float* upper  = max_buffer_values();
+    const auto lowest = min_buffer_values();
+    const auto upper  = max_buffer_values();
 
-    float* auto_buffer_contrast   = auto_buffer_contrast_brightness_;
-    float* auto_buffer_brightness = auto_buffer_contrast_brightness_ + 4;
+    const auto auto_buffer_contrast = auto_buffer_contrast_brightness_.data();
+    const auto auto_buffer_brightness =
+        auto_buffer_contrast_brightness_.data() + 4;
 
     for (int c = 0; c < channels; ++c) {
-        float maxIntensity = 1.0f;
+        auto maxIntensity = 1.0f;
         if (type == BufferType::UnsignedByte) {
             maxIntensity = 255.0f;
         } else if (type == BufferType::Short) {
@@ -269,7 +271,7 @@ void Buffer::compute_contrast_brightness_parameters()
         } else if (type == BufferType::Float32 || type == BufferType::Float64) {
             maxIntensity = 1.0f;
         }
-        float upp_minus_low = upper[c] - lowest[c];
+        auto upp_minus_low = upper[c] - lowest[c];
 
         if (upp_minus_low == 0.0f) {
             upp_minus_low = 1.0f;
@@ -288,23 +290,23 @@ void Buffer::compute_contrast_brightness_parameters()
 
 int Buffer::sub_texture_id_at_coord(const int x, const int y) const
 {
-    const int tx = x / max_texture_size;
-    const int ty = y / max_texture_size;
+    const auto tx = x / max_texture_size;
+    const auto ty = y / max_texture_size;
     return static_cast<int>(buff_tex[ty * num_textures_x + tx]);
 }
 
 
-void Buffer::set_pixel_layout(const string& pixel_layout)
+void Buffer::set_pixel_layout(const std::string& pixel_layout)
 {
     ///
     // Make sure the provided pixel_layout is valid
     if (pixel_layout.size() != 4) {
         return;
     }
-    constexpr char valid_characters[] = {'r', 'g', 'b', 'a'};
+    constexpr char valid_characters[]{'r', 'g', 'b', 'a'};
 
     for (const char i : pixel_layout) {
-        bool is_character_valid = false;
+        auto is_character_valid = false;
         for (const char valid_character : valid_characters) {
             if (i == valid_character) {
                 is_character_valid = true;
@@ -326,15 +328,15 @@ void Buffer::set_pixel_layout(const string& pixel_layout)
 
 const char* Buffer::get_pixel_layout() const
 {
-    return pixel_layout_;
+    return pixel_layout_.data();
 }
 
 
 float Buffer::tile_coord_x(const int x) const
 {
-    const int buffer_width_i = static_cast<int>(buffer_width_f);
-    const int last_width     = buffer_width_i % max_texture_size;
-    const int tile_width =
+    const auto buffer_width_i = static_cast<int>(buffer_width_f);
+    const auto last_width     = buffer_width_i % max_texture_size;
+    const auto tile_width =
         x > buffer_width_i - last_width ? last_width : max_texture_size;
     return static_cast<float>(x % max_texture_size) /
            static_cast<float>(tile_width - 1);
@@ -343,9 +345,9 @@ float Buffer::tile_coord_x(const int x) const
 
 float Buffer::tile_coord_y(int y) const
 {
-    const int buffer_height_i = static_cast<int>(buffer_height_f);
-    const int last_height     = buffer_height_i % max_texture_size;
-    const int tile_height =
+    const auto buffer_height_i = static_cast<int>(buffer_height_f);
+    const auto last_height     = buffer_height_i % max_texture_size;
+    const auto tile_height =
         y > buffer_height_i - last_height ? last_height : max_texture_size;
     return static_cast<float>(y % max_texture_size) /
            static_cast<float>(tile_height - 1);
@@ -354,9 +356,9 @@ float Buffer::tile_coord_y(int y) const
 
 void Buffer::update()
 {
-    GameObject* cam_obj = game_object_->stage->get_game_object("camera");
-    const auto* camera  = cam_obj->get_component<Camera>("camera_component");
-    const float zoom    = camera->compute_zoom();
+    auto cam_obj       = game_object_->stage->get_game_object("camera");
+    const auto* camera = cam_obj->get_component<Camera>("camera_component");
+    const auto zoom    = camera->compute_zoom();
 
     buff_prog_.use();
     if (zoom > 40.0f) {
@@ -371,7 +373,7 @@ void Buffer::update()
 
 void Buffer::update_object_pose() const
 {
-    const mat4 rotation = mat4::rotation(angle_);
+    const auto rotation = mat4::rotation(angle_);
 
     mat4 transposition;
 
@@ -410,7 +412,7 @@ void Buffer::create_shader_program()
     buff_prog_.create(shader::buff_vert_shader,
                       shader::buff_frag_shader,
                       channel_type,
-                      pixel_layout_,
+                      pixel_layout_.data(),
                       {"mvp",
                        "sampler",
                        "brightness_contrast",
@@ -454,8 +456,8 @@ bool Buffer::initialize()
 void Buffer::draw(const mat4& projection, const mat4& viewInv)
 {
     buff_prog_.use();
-    const mat4 model = game_object_->get_pose();
-    const mat4 mvp   = projection * viewInv * model;
+    const auto model = game_object_->get_pose();
+    const auto mvp   = projection * viewInv * model;
 
     gl_canvas_->glEnableVertexAttribArray(0);
     gl_canvas_->glActiveTexture(GL_TEXTURE0);
@@ -463,23 +465,23 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
     buff_prog_.uniform1i("sampler", 0);
     if (game_object_->stage->contrast_enabled) {
         buff_prog_.uniform4fv(
-            "brightness_contrast", 2, auto_buffer_contrast_brightness_);
+            "brightness_contrast", 2, auto_buffer_contrast_brightness_.data());
     } else {
-        buff_prog_.uniform4fv("brightness_contrast", 2, no_ac_params);
+        buff_prog_.uniform4fv("brightness_contrast", 2, no_ac_params.data());
     }
 
     const auto buffer_width_i  = static_cast<int>(buffer_width_f);
     const auto buffer_height_i = static_cast<int>(buffer_height_f);
 
-    int remaining_h = buffer_height_i;
+    auto remaining_h = buffer_height_i;
 
-    float py = static_cast<float>(-buffer_height_i) / 2.0f;
+    auto py = static_cast<float>(-buffer_height_i) / 2.0f;
     if (buffer_height_i % 2 == 1) {
         py -= 0.5f;
     }
 
     for (int ty = 0; ty < num_textures_y; ++ty) {
-        const int buff_h = (std::min)(remaining_h, max_texture_size);
+        const auto buff_h = (std::min)(remaining_h, max_texture_size);
         remaining_h -= buff_h;
 
         py += static_cast<float>(buff_h) / 2.0f;
@@ -487,15 +489,15 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
             py += 0.5f;
         }
 
-        int remaining_w = buffer_width_i;
+        auto remaining_w = buffer_width_i;
 
-        float px = static_cast<float>(-buffer_width_i) / 2.0f;
+        auto px = static_cast<float>(-buffer_width_i) / 2.0f;
         if (buffer_width_i % 2 == 1) {
             px -= 0.5f;
         }
 
         for (int tx = 0; tx < num_textures_x; ++tx) {
-            const int buff_w = (std::min)(remaining_w, max_texture_size);
+            const auto buff_w = (std::min)(remaining_w, max_texture_size);
             remaining_w -= buff_w;
 
             glBindTexture(GL_TEXTURE_2D, buff_tex[ty * num_textures_x + tx]);
@@ -534,26 +536,26 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
 
 float* Buffer::min_buffer_values()
 {
-    return min_buffer_values_;
+    return min_buffer_values_.data();
 }
 
 
 float* Buffer::max_buffer_values()
 {
-    return max_buffer_values_;
+    return max_buffer_values_.data();
 }
 
 
 const float* Buffer::auto_buffer_contrast_brightness() const
 {
-    return auto_buffer_contrast_brightness_;
+    return auto_buffer_contrast_brightness_.data();
 }
 
 
 void Buffer::setup_gl_buffer()
 {
-    const int buffer_width_i  = static_cast<int>(buffer_width_f);
-    const int buffer_height_i = static_cast<int>(buffer_height_f);
+    const auto buffer_width_i  = static_cast<int>(buffer_width_f);
+    const auto buffer_height_i = static_cast<int>(buffer_height_f);
 
     // Initialize contrast parameters
     reset_contrast_brightness_parameters();
@@ -593,22 +595,22 @@ void Buffer::setup_gl_buffer()
         tex_format = GL_RGBA;
     }
 
-    int remaining_h = buffer_height_i;
+    auto remaining_h = buffer_height_i;
 
     glPixelStoref(GL_UNPACK_ALIGNMENT, 1);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, step);
 
     for (int ty = 0; ty < num_textures_y; ++ty) {
-        const int buff_h = (std::min)(remaining_h, max_texture_size);
+        const auto buff_h = (std::min)(remaining_h, max_texture_size);
         remaining_h -= buff_h;
 
-        int remaining_w = buffer_width_i;
+        auto remaining_w = buffer_width_i;
         for (int tx = 0; tx < num_textures_x; ++tx) {
-            const int buff_w = (std::min)(remaining_w, max_texture_size);
+            const auto buff_w = (std::min)(remaining_w, max_texture_size);
             remaining_w -= buff_w;
 
-            const int tex_id = ty * num_textures_x + tx;
+            const auto tex_id = ty * num_textures_x + tx;
             gl_canvas_->glBindTexture(GL_TEXTURE_2D, buff_tex[tex_id]);
 
             gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_ROWS,

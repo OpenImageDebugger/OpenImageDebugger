@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,6 +24,7 @@
  */
 
 #include <set>
+#include <string>
 
 #include "stage.h"
 
@@ -60,7 +61,7 @@ bool Stage::initialize(const uint8_t* buffer,
                        const int channels,
                        const BufferType type,
                        const int step,
-                       const string& pixel_layout,
+                       const std::string& pixel_layout,
                        const bool transpose_buffer)
 {
     const auto camera_obj = std::make_shared<GameObject>();
@@ -117,7 +118,7 @@ bool Stage::buffer_update(const uint8_t* buffer,
                           const int channels,
                           const BufferType type,
                           const int step,
-                          const string& pixel_layout,
+                          const std::string& pixel_layout,
                           const bool transpose_buffer)
 {
     GameObject* buffer_obj = all_game_objects["buffer"].get();

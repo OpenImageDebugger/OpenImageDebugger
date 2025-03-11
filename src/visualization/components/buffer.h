@@ -26,7 +26,9 @@
 #ifndef BUFFER_H_
 #define BUFFER_H_
 
+#include <array>
 #include <sstream>
+#include <string>
 #include <vector>
 
 #include "component.h"
@@ -53,9 +55,9 @@ class Buffer final : public Component
 
     static constexpr int max_texture_size = 2048;
 
-    std::vector<GLuint> buff_tex;
+    std::vector<GLuint> buff_tex{};
 
-    static const float no_ac_params[8];
+    static const std::array<float, 8> no_ac_params;
 
     float buffer_width_f{};
     float buffer_height_f{};
@@ -63,7 +65,7 @@ class Buffer final : public Component
     int channels{};
     int step{};
 
-    BufferType type;
+    BufferType type{BufferType::UnsignedByte};
 
     const uint8_t* buffer{};
 
@@ -123,13 +125,19 @@ class Buffer final : public Component
 
     void update_max_color_value(float* upper, const int i, const int c) const;
 
-    char pixel_layout_[4] = {'r', 'g', 'b', 'a'};
+    std::string pixel_layout_{'r', 'g', 'b', 'a'};
 
-    float min_buffer_values_[4]{};
-    float max_buffer_values_[4]{};
-    float auto_buffer_contrast_brightness_[8] =
-        {1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-    float angle_ = 0.0f;
+    std::array<float, 4> min_buffer_values_{};
+    std::array<float, 4> max_buffer_values_{};
+    std::array<float, 8> auto_buffer_contrast_brightness_{1.0f,
+                                                          1.0f,
+                                                          1.0f,
+                                                          1.0f,
+                                                          0.0f,
+                                                          0.0f,
+                                                          0.0f,
+                                                          0.0f};
+    float angle_{0.0f};
 
     ShaderProgram buff_prog_;
     GLuint vbo_{};
