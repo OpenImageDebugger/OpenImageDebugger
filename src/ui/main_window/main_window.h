@@ -26,6 +26,7 @@
 #ifndef MAIN_WINDOW_H_
 #define MAIN_WINDOW_H_
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -179,34 +180,34 @@ class MainWindow final : public QMainWindow
     void persist_settings();
 
   private:
-    bool is_window_ready_;
-    bool request_render_update_;
-    bool request_icons_update_;
-    bool completer_updated_;
-    bool ac_enabled_;
-    bool link_views_enabled_;
+    bool is_window_ready_{true};
+    bool request_render_update_{true};
+    bool request_icons_update_{true};
+    bool completer_updated_{false};
+    bool ac_enabled_{false};
+    bool link_views_enabled_{false};
 
-    const int icon_width_base_;
-    const int icon_height_base_;
+    const int icon_width_base_{100};
+    const int icon_height_base_{75};
 
     double render_framerate_{};
 
-    QTimer settings_persist_timer_;
-    QTimer update_timer_;
+    QTimer settings_persist_timer_{};
+    QTimer update_timer_{};
 
-    QString default_export_suffix_;
+    QString default_export_suffix_{};
 
-    Stage* currently_selected_stage_;
+    Stage* currently_selected_stage_{nullptr};
 
-    std::map<std::string, std::vector<uint8_t>> held_buffers_;
-    std::map<std::string, std::shared_ptr<Stage>> stages_;
+    std::map<std::string, std::vector<uint8_t>, std::less<>> held_buffers_{};
+    std::map<std::string, std::shared_ptr<Stage>, std::less<>> stages_{};
 
-    std::set<std::string> previous_session_buffers_;
-    std::set<std::string> removed_buffer_names_;
+    std::set<std::string, std::less<>> previous_session_buffers_{};
+    std::set<std::string, std::less<>> removed_buffer_names_{};
 
-    QStringList available_vars_;
+    QStringList available_vars_{};
 
-    std::mutex ui_mutex_;
+    std::mutex ui_mutex_{};
 
     std::unique_ptr<SymbolCompleter> symbol_completer_{};
 
@@ -215,8 +216,8 @@ class MainWindow final : public QMainWindow
     std::unique_ptr<QLabel> status_bar_{};
     std::unique_ptr<GoToWidget> go_to_widget_{};
 
-    ConnectionSettings host_settings_;
-    QTcpSocket socket_;
+    ConnectionSettings host_settings_{};
+    QTcpSocket socket_{};
 
     QString name_channel_1_{"red"};
     QString name_channel_2_{"green"};

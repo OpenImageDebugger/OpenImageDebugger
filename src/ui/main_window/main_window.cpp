@@ -26,13 +26,12 @@
 #include "main_window.h"
 
 #include <iomanip>
+#include <utility>
 
 #include <QDateTime>
 #include <QScreen>
 #include <QSettings>
-#include <utility>
 
-#include "ipc/message_exchange.h"
 #include "math/linear_algebra.h"
 #include "ui_main_window.h"
 #include "visualization/components/buffer_values.h"
@@ -49,17 +48,8 @@ namespace oid
 {
 
 MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
-    : QMainWindow(parent)
-    , is_window_ready_(false)
-    , request_render_update_(true)
-    , request_icons_update_(true)
-    , completer_updated_(false)
-    , ac_enabled_(false)
-    , link_views_enabled_(false)
-    , icon_width_base_(100)
-    , icon_height_base_(75)
-    , currently_selected_stage_(nullptr)
-    , host_settings_(std::move(host_settings))
+    : QMainWindow{parent}
+    , host_settings_{std::move(host_settings)}
 {
     QCoreApplication::instance()->installEventFilter(this);
 
@@ -78,8 +68,6 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     initialize_go_to_widget();
     initialize_shortcuts();
     initialize_networking();
-
-    is_window_ready_ = true;
 }
 
 
@@ -150,8 +138,8 @@ void MainWindow::loop()
     // Update an icon of every entry in image list
     if (request_icons_update_) {
 
-        for (auto& pair_stage : stages_) {
-            repaint_image_list_icon(pair_stage.first);
+        for (const auto& [name, _] : stages_) {
+            repaint_image_list_icon(name);
         }
 
         request_icons_update_ = false;
@@ -284,23 +272,21 @@ void MainWindow::update_status_bar() const
     if (currently_selected_stage_ != nullptr) {
         stringstream message;
 
-        GameObject* cam_obj =
-            currently_selected_stage_->get_game_object("camera");
+        auto* cam_obj   = currently_selected_stage_->get_game_object("camera");
         const auto* cam = cam_obj->get_component<Camera>("camera_component");
 
-        GameObject* buffer_obj =
-            currently_selected_stage_->get_game_object("buffer");
+        auto* buffer_obj = currently_selected_stage_->get_game_object("buffer");
         const auto* buffer =
             buffer_obj->get_component<Buffer>("buffer_component");
 
-        auto* text_comp =
+        const auto* text_comp =
             buffer_obj->get_component<BufferValues>("text_component");
 
         const auto mouse_x = static_cast<float>(ui_->bufferPreview->mouse_x());
         const auto mouse_y = static_cast<float>(ui_->bufferPreview->mouse_y());
 
         // Position
-        vec4 mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
+        auto mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
 
         // Zoom
         message << std::fixed << std::setprecision(3) << "("
