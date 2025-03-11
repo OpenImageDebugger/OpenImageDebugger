@@ -33,16 +33,7 @@ namespace oid
 {
 
 GLTextRenderer::GLTextRenderer(GLCanvas* gl_canvas)
-    : font("Times New Roman", font_size)
-    , text_vbo(0)
-    , text_tex(0)
-    , text_texture_offsets{}
-    , text_texture_advances{}
-    , text_texture_sizes{}
-    , text_texture_tls{}
-    , text_prog(gl_canvas)
-    , text_texture_width(0)
-    , text_texture_height(0)
+    : text_prog(gl_canvas)
     , gl_canvas_(gl_canvas)
 {
 }
