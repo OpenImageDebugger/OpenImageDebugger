@@ -33,10 +33,7 @@ namespace oid
 {
 
 ShaderProgram::ShaderProgram(GLCanvas* gl_canvas)
-    : program_(0)
-    , gl_canvas_(gl_canvas)
-    , texel_format_()
-    , pixel_layout_{}
+    : gl_canvas_(gl_canvas)
 {
 }
 
@@ -49,7 +46,7 @@ ShaderProgram::~ShaderProgram()
 
 bool ShaderProgram::is_shader_outdated(const TexelChannels texel_format,
                                        const std::vector<std::string>& uniforms,
-                                       const char* pixel_layout)
+                                       const std::string& pixel_layout)
 {
     // If the texel format or the uniform container size changed,
     // the program must be created again
@@ -78,7 +75,7 @@ bool ShaderProgram::is_shader_outdated(const TexelChannels texel_format,
 bool ShaderProgram::create(const char* v_source,
                            const char* f_source,
                            const TexelChannels texel_format,
-                           const char* pixel_layout,
+                           const std::string& pixel_layout,
                            const std::vector<std::string>& uniforms)
 {
     if (program_ != 0) {
@@ -91,10 +88,10 @@ bool ShaderProgram::create(const char* v_source,
     }
 
     texel_format_ = texel_format;
-    memcpy(pixel_layout_, pixel_layout, 4);
-    pixel_layout_[4]             = '\0';
-    const GLuint vertex_shader   = compile(GL_VERTEX_SHADER, v_source);
-    const GLuint fragment_shader = compile(GL_FRAGMENT_SHADER, f_source);
+    memcpy(pixel_layout_.data(), pixel_layout.data(), 4);
+    pixel_layout_[4]           = '\0';
+    const auto vertex_shader   = compile(GL_VERTEX_SHADER, v_source);
+    const auto fragment_shader = compile(GL_FRAGMENT_SHADER, f_source);
 
     if (vertex_shader == 0 || fragment_shader == 0) {
         return false;
@@ -111,7 +108,7 @@ bool ShaderProgram::create(const char* v_source,
 
     // Get uniform locations
     for (const auto& name : uniforms) {
-        const GLuint loc =
+        const auto loc =
             gl_canvas_->glGetUniformLocation(program_, name.c_str());
         uniforms_[name] = loc;
     }
@@ -168,21 +165,34 @@ void ShaderProgram::use() const
 }
 
 
+const char* ShaderProgram::get_texel_format_define() const
+{
+    switch (texel_format_) {
+    case TexelChannels::FormatR:
+        return "#define FORMAT_R\n";
+    case TexelChannels::FormatRG:
+        return "#define FORMAT_RG\n";
+    case TexelChannels::FormatRGB:
+        return "#define FORMAT_RGB\n";
+    case TexelChannels::FormatRGBA:
+        return "#define FORMAT_RGBA\n";
+    default:
+        return "";
+    }
+}
+
+
 GLuint ShaderProgram::compile(const GLuint type, const GLchar* source)
 {
     const GLuint shader = gl_canvas_->glCreateShader(type);
 
-    const char* src[] = {
-        "#version 120\n",
-        texel_format_ == TexelChannels::FormatR     ? "#define FORMAT_R\n"
-        : texel_format_ == TexelChannels::FormatRG  ? "#define FORMAT_RG\n"
-        : texel_format_ == TexelChannels::FormatRGB ? "#define FORMAT_RGB\n"
-                                                    : "",
-        "#define PIXEL_LAYOUT ",
-        pixel_layout_,
-        source};
+    std::array<const char*, 5> src{"#version 120\n",
+                                   get_texel_format_define(),
+                                   "#define PIXEL_LAYOUT ",
+                                   pixel_layout_.data(),
+                                   source};
 
-    gl_canvas_->glShaderSource(shader, 5, src, nullptr);
+    gl_canvas_->glShaderSource(shader, 5, src.data(), nullptr);
     gl_canvas_->glCompileShader(shader);
 
     GLint compiled;

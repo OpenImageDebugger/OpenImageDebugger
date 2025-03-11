@@ -26,6 +26,7 @@
 #ifndef SHADER_H_
 #define SHADER_H_
 
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -57,7 +58,7 @@ class ShaderProgram
     bool create(const char* v_source,
                 const char* f_source,
                 TexelChannels texel_format,
-                const char* pixel_layout,
+                const std::string& pixel_layout,
                 const std::vector<std::string>& uniforms);
 
     // Uniform handlers
@@ -80,15 +81,15 @@ class ShaderProgram
     void use() const;
 
   private:
-    GLuint program_;
+    GLuint program_{0};
 
-    GLCanvas* gl_canvas_;
+    GLCanvas* gl_canvas_{};
 
-    TexelChannels texel_format_;
+    TexelChannels texel_format_{};
 
-    std::map<std::string, GLuint> uniforms_;
+    std::map<std::string, GLuint, std::less<>> uniforms_{};
 
-    char pixel_layout_[5];
+    std::string pixel_layout_{};
 
     GLuint compile(GLuint type, GLchar const* source);
 
@@ -96,7 +97,9 @@ class ShaderProgram
 
     bool is_shader_outdated(TexelChannels texel_format,
                             const std::vector<std::string>& uniforms,
-                            const char* pixel_layout);
+                            const std::string& pixel_layout);
+
+    const char* get_texel_format_define() const;
 };
 
 } // namespace oid
