@@ -27,18 +27,20 @@
 
 #include <cassert>
 
+#include <bit>
+
 namespace oid
 {
 
 std::vector<std::uint8_t>
 make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
 {
-    const std::size_t element_count = buff_double.size() / sizeof(double);
+    const auto element_count = buff_double.size() / sizeof(double);
     std::vector<std::uint8_t> buff_float(element_count * sizeof(float));
 
     // Cast from double to float
-    const auto src = reinterpret_cast<const double*>(buff_double.data());
-    auto* dst      = reinterpret_cast<float*>(buff_float.data());
+    const auto src = std::bit_cast<const double*>(buff_double.data());
+    auto* dst      = std::bit_cast<float*>(buff_float.data());
     for (std::size_t i = 0; i < element_count; ++i) {
         dst[i] = static_cast<float>(src[i]);
     }
