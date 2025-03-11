@@ -27,12 +27,15 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cstdint>
+#include <string>
 
-#include "ui/gl_text_renderer.h"
+#include <GL/glcorearb.h>
 
 #include "buffer.h"
 #include "camera.h"
+#include "ui/gl_text_renderer.h"
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
 
@@ -41,6 +44,10 @@ using namespace std;
 
 namespace oid
 {
+
+template <typename T>
+using Array_4_4 = const std::array<const std::array<T, 4>, 4>;
+
 
 BufferValues::BufferValues(GameObject* game_object, GLCanvas* gl_canvas)
     : Component(game_object, gl_canvas)
@@ -66,21 +73,19 @@ inline void pix2str(const BufferType& type,
                     char* pix_label)
 {
     if (type == BufferType::Float32 || type == BufferType::Float64) {
-        const float fpix =
-            reinterpret_cast<const float*>(buffer)[pos + channel];
+        const float fpix = std::bit_cast<const float*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%.*f", float_precision, fpix);
     } else if (type == BufferType::UnsignedByte) {
         snprintf(pix_label, label_length, "%d", buffer[pos + channel]);
     } else if (type == BufferType::Short) {
-        const short fpix =
-            reinterpret_cast<const short*>(buffer)[pos + channel];
+        const short fpix = std::bit_cast<const short*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%d", fpix);
     } else if (type == BufferType::UnsignedShort) {
         const unsigned short fpix =
-            reinterpret_cast<const unsigned short*>(buffer)[pos + channel];
+            std::bit_cast<const unsigned short*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%d", fpix);
     } else if (type == BufferType::Int32) {
-        const int fpix = reinterpret_cast<const int*>(buffer)[pos + channel];
+        const int fpix = std::bit_cast<const int*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%d", fpix);
         if (string{pix_label}.length() > 7) {
             snprintf(pix_label, label_length, "%.3e", static_cast<float>(fpix));
@@ -107,7 +112,8 @@ void BufferValues::draw_pixel_values(
 
     for (int c = 0; c < channels; ++c) {
         constexpr int label_length = 30;
-        char pix_label[label_length];
+        std::string pix_label{};
+        pix_label.reserve(label_length);
         const float y_off =
             (0.5f * (channels - 1) - c) / channels - recenter_factors[c];
 
@@ -117,11 +123,11 @@ void BufferValues::draw_pixel_values(
                 c,
                 label_length,
                 float_precision,
-                pix_label);
+                pix_label.data());
         draw_text(projection,
                   view_inv,
                   buffer_pose,
-                  pix_label,
+                  pix_label.data(),
                   x + pos_center_x,
                   y + pos_center_y,
                   y_off,
@@ -332,15 +338,15 @@ void BufferValues::draw_text(const mat4& projection,
          * box format: <pixel coord x, pixel coord y, texture coord x, texture
          * coord y>
          */
-        const GLfloat box[4][4] = {
+        const Array_4_4<GLfloat> box{{
             {x2, y2, tex_lower_x, tex_lower_y},
             {x2 + w, y2, tex_upper_x, tex_lower_y},
             {x2, y2 + h, tex_lower_x, tex_upper_y},
             {x2 + w, y2 + h, tex_upper_x, tex_upper_y},
-        };
+        }};
 
         gl_canvas_->glBufferData(
-            GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
+            GL_ARRAY_BUFFER, sizeof box, box.data(), GL_DYNAMIC_DRAW);
         gl_canvas_->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         vec4 char_step_direction(
