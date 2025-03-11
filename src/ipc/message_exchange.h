@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -66,7 +66,7 @@ struct PrimitiveBlock final : MessageBlock
 
     [[nodiscard]] const uint8_t* data() const override
     {
-        return reinterpret_cast<const uint8_t*>(&data_);
+        return static_cast<const uint8_t*>(static_cast<const void*>(&data_));
     }
 
   private:
@@ -182,7 +182,8 @@ class MessageDecoder
     {
         assert_primitive_type<PrimitiveType>();
 
-        read_impl(reinterpret_cast<char*>(&value), sizeof(PrimitiveType));
+        read_impl(static_cast<char*>(static_cast<void*>(&value)),
+                  sizeof(PrimitiveType));
 
         return *this;
     }
