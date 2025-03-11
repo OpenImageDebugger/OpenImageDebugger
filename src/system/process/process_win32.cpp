@@ -31,19 +31,12 @@
 #include <QProcess>
 #include <QString>
 
-using namespace std;
-
 namespace oid
 {
 
 class ProcessImplWin32 final : public ProcessImpl
 {
   public:
-    ProcessImplWin32()
-        : proc_()
-    {
-    }
-
     void start(std::vector<std::string>& command) override
     {
         const auto program = QString::fromStdString(command[0]);
@@ -67,12 +60,12 @@ class ProcessImplWin32 final : public ProcessImpl
     }
 
   private:
-    QProcess proc_;
+    QProcess proc_{};
 };
 
 void Process::createImpl()
 {
-    impl_ = make_shared<ProcessImplWin32>();
+    impl_ = std::make_shared<ProcessImplWin32>();
 }
 
 } // namespace oid
