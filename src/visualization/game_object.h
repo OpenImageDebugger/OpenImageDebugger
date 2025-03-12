@@ -26,6 +26,7 @@
 #ifndef GAME_OBJECT_H_
 #define GAME_OBJECT_H_
 
+#include <functional>
 #include <memory>
 
 #include "events.h"
@@ -43,7 +44,7 @@ class Stage;
 class GameObject
 {
   public:
-    Stage* stage;
+    Stage* stage{nullptr};
 
     GameObject();
 
@@ -77,10 +78,12 @@ class GameObject
 
     [[nodiscard]] EventProcessCode key_press_event(int key_code) const;
 
-    const std::map<std::string, std::shared_ptr<Component>>& get_components();
+    const std::map<std::string, std::shared_ptr<Component>, std::less<>>&
+    get_components() const;
 
   private:
-    std::map<std::string, std::shared_ptr<Component>> all_components_;
+    std::map<std::string, std::shared_ptr<Component>, std::less<>>
+        all_components_;
     mat4 pose_;
 };
 

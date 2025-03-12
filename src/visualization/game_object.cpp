@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,6 +25,7 @@
 
 #include "game_object.h"
 
+#include <functional>
 #include <map>
 
 #include "ui/main_window/main_window.h"
@@ -35,7 +36,6 @@ namespace oid
 {
 
 GameObject::GameObject()
-    : stage(nullptr)
 {
     pose_.set_identity();
 }
@@ -124,8 +124,8 @@ EventProcessCode GameObject::key_press_event(int key_code) const
 }
 
 
-const std::map<std::string, std::shared_ptr<Component>>&
-GameObject::get_components()
+const std::map<std::string, std::shared_ptr<Component>, std::less<>>&
+GameObject::get_components() const
 {
     return all_components_;
 }
