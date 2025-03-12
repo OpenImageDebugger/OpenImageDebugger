@@ -27,6 +27,7 @@
 
 #include <cstdint>
 
+#include <bit>
 #include <deque>
 #include <iostream>
 #include <memory>
@@ -237,7 +238,7 @@ class OidBridge
             }
 
             MessageType header;
-            client_->read(reinterpret_cast<char*>(&header),
+            client_->read(std::bit_cast<char*>(&header),
                           static_cast<qint64>(sizeof(header)));
 
             switch (header) {
