@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,23 +36,22 @@ namespace oid
 {
 
 Camera::Camera(GameObject* game_object, GLCanvas* gl_canvas)
-    : Component(game_object, gl_canvas)
-    , canvas_width_(0)
-    , canvas_height_(0)
+    : Component{game_object, gl_canvas}
+    , canvas_width_{0}
+    , canvas_height_{0}
 {
 }
 
 
 Camera::Camera(const Camera& cam)
-    : Component(cam)
+    : Component{cam}
+    , zoom_power_{cam.zoom_power_}
+    , camera_pos_x_{cam.camera_pos_x_}
+    , camera_pos_y_{cam.camera_pos_y_}
+    , canvas_width_{cam.canvas_width_}
+    , canvas_height_{cam.canvas_height_}
+    , scale_{cam.scale_}
 {
-    zoom_power_    = cam.zoom_power_;
-    camera_pos_x_  = cam.camera_pos_x_;
-    camera_pos_y_  = cam.camera_pos_y_;
-    canvas_width_  = cam.canvas_width_;
-    canvas_height_ = cam.canvas_height_;
-    scale_         = cam.scale_;
-
     update_object_pose();
 }
 
@@ -313,10 +312,10 @@ void Camera::set_initial_zoom()
 
     zoom_power_ = 0.0f;
 
-    const auto canvas_width_f  = static_cast<float>(canvas_width_);
-    const auto canvas_height_f = static_cast<float>(canvas_height_);
+    const auto canvas_width_f = static_cast<float>(canvas_width_);
 
-    if (canvas_width_f > init_buffer_width &&
+    if (const auto canvas_height_f = static_cast<float>(canvas_height_);
+        canvas_width_f > init_buffer_width &&
         canvas_height_f > init_buffer_height) {
         // Zoom in
         zoom_power_ += zoom_power_step;
