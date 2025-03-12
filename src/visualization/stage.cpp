@@ -135,8 +135,8 @@ bool Stage::buffer_update(const uint8_t* buffer,
     buffer_component->set_pixel_layout(pixel_layout);
 
     for (const auto& [_, game_obj_it] : all_game_objects) {
-        GameObject* game_obj = game_obj_it.get();
-        game_obj->stage      = this;
+        auto game_obj   = game_obj_it.get();
+        game_obj->stage = this;
         for (const auto& [_, comp] : game_obj->get_components()) {
             if (!comp->buffer_update()) {
                 return false;
@@ -145,7 +145,7 @@ bool Stage::buffer_update(const uint8_t* buffer,
     }
 
     for (const auto& [_, game_obj_it] : all_game_objects) {
-        GameObject* game_obj = game_obj_it.get();
+        GameObject const* game_obj = game_obj_it.get();
         for (const auto& [_, comp] : game_obj->get_components()) {
             if (!comp->post_buffer_update()) {
                 return false;
@@ -182,7 +182,7 @@ void Stage::draw()
     // TODO use camera tags so I can have multiple cameras (useful for drawing
     // GUI)
 
-    GameObject* camera_obj = all_game_objects["camera"].get();
+    auto camera_obj = all_game_objects["camera"].get();
     const auto* camera_component =
         camera_obj->get_component<Camera>("camera_component");
 
@@ -190,7 +190,7 @@ void Stage::draw()
         return;
     }
 
-    const mat4 view_inv = camera_obj->get_pose().inv();
+    const auto view_inv = camera_obj->get_pose().inv();
 
     for (const auto& [_, game_obj] : all_game_objects) {
         for (const auto& [_, component] : game_obj->get_components()) {
@@ -206,16 +206,16 @@ void Stage::draw()
 
 void Stage::scroll_callback(const float delta)
 {
-    GameObject* cam_obj    = all_game_objects["camera"].get();
-    auto* camera_component = cam_obj->get_component<Camera>("camera_component");
+    auto cam_obj          = all_game_objects["camera"].get();
+    auto camera_component = cam_obj->get_component<Camera>("camera_component");
     camera_component->scroll_callback(delta);
 }
 
 
 void Stage::resize_callback(int w, int h)
 {
-    GameObject* cam_obj    = all_game_objects["camera"].get();
-    auto* camera_component = cam_obj->get_component<Camera>("camera_component");
+    auto cam_obj          = all_game_objects["camera"].get();
+    auto camera_component = cam_obj->get_component<Camera>("camera_component");
     camera_component->window_resized(w, h);
 }
 
@@ -255,8 +255,8 @@ EventProcessCode Stage::key_press_event(const int key_code) const
 
 void Stage::go_to_pixel(const float x, const float y)
 {
-    GameObject* cam_obj    = all_game_objects["camera"].get();
-    auto* camera_component = cam_obj->get_component<Camera>("camera_component");
+    auto cam_obj          = all_game_objects["camera"].get();
+    auto camera_component = cam_obj->get_component<Camera>("camera_component");
 
     camera_component->move_to(x, y);
 }
@@ -264,7 +264,7 @@ void Stage::go_to_pixel(const float x, const float y)
 
 void Stage::set_icon_drawing_mode(const bool is_enabled)
 {
-    GameObject* buffer_obj = all_game_objects["buffer"].get();
+    auto buffer_obj = all_game_objects["buffer"].get();
     if (buffer_obj == nullptr) {
         return;
     }

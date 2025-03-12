@@ -26,6 +26,7 @@
 #ifndef STAGE_H_
 #define STAGE_H_
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -86,7 +87,8 @@ class Stage
     void set_icon_drawing_mode(bool is_enabled);
 
   private:
-    std::map<std::string, std::shared_ptr<GameObject>> all_game_objects;
+    std::map<std::string, std::shared_ptr<GameObject>, std::less<>>
+        all_game_objects;
 };
 } // namespace oid
 
