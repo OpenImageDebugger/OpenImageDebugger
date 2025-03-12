@@ -151,7 +151,7 @@ void MainWindow::initialize_settings_ui_colorspace(const QSettings& settings)
 
     const auto colorspace_str = variant.toString();
 
-    if (colorspace_str.size() > 0) {
+    if (!colorspace_str.isEmpty()) {
         name_channel_1_ =
             initialize_settings_ui_colorspace_channel(colorspace_str.at(0));
     }
