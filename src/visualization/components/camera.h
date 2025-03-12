@@ -47,11 +47,11 @@ class Camera final : public Component
 
     Camera& operator=(Camera&& cam) = default;
 
-    static constexpr float zoom_factor = 1.1f;
+    static constexpr float zoom_factor{1.1f};
 
-    mat4 projection;
+    mat4 projection{};
 
-    vec4 mouse_position = vec4::zero();
+    vec4 mouse_position{vec4::zero()};
 
     void update() override;
 
@@ -91,14 +91,14 @@ class Camera final : public Component
 
     void handle_key_events();
 
-    float zoom_power_   = 0.0f;
-    float camera_pos_x_ = 0.0f;
-    float camera_pos_y_ = 0.0f;
+    float zoom_power_{0.0f};
+    float camera_pos_x_{0.0f};
+    float camera_pos_y_{0.0f};
 
-    int canvas_width_;
-    int canvas_height_;
+    int canvas_width_{};
+    int canvas_height_{};
 
-    mat4 scale_;
+    mat4 scale_{};
 };
 
 } // namespace oid
