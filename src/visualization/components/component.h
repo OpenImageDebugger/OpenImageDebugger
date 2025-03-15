@@ -75,7 +75,6 @@ class Component
 
     virtual ~Component();
 
-  protected:
     GameObject* game_object_;
 
     GLCanvas* gl_canvas_;
