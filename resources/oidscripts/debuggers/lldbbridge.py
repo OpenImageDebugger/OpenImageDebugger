@@ -162,8 +162,10 @@ class LldbBridge(BridgeInterface):
         return lldb_object.get_casted_pointer()
 
     def _get_observable_children_members(self, symbol, member_name_chain,
-                                         output_set, visited_typenames=set()):
+                                         output_set, visited_typenames=None):
         # type: (lldb.SBValue, list[str], set, set) -> None
+        if visited_typenames is None:
+            visited_typenames = set()
         if symbol.GetTypeName() in visited_typenames:
             # Prevent endless recursion in cyclic data types
             return
