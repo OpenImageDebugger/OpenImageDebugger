@@ -12,8 +12,8 @@ from oidscripts.logger import log
 def debug_buffer_metadata(func):
     def wrapper(self, obj_name, picked_obj, debugger_bridge):
         try:
-            # metadata is used for debugging purposed, so we are supressing the next lgtm alert
-            metadata = func(self, obj_name, picked_obj, debugger_bridge) # lgtm [py/unused-local-variable]
+            # metadata is used for debugging purposes
+            metadata = func(self, obj_name, picked_obj, debugger_bridge)
 
             log.info(f"[{str(picked_obj.type)}] [{obj_name}] was parsed by oidtype [{type(self).__name__}]")
         except Exception as error:

@@ -78,7 +78,7 @@ def register_ide_hooks(debugger,  # type: BridgeInterface
         try:
             initializer(debugger, event_handler)
             return
-        except Exception as err:
+        except Exception:
             error_traces.append(traceback.format_exc())
 
     log.info('Could not activate hooks for any IDEs')
@@ -104,7 +104,7 @@ def get_debugger_bridge():
     for bridge in debugger_bridges:
         try:
             return bridge(type_bridge_object)
-        except Exception as err:
+        except Exception:
             error_traces.append(traceback.format_exc())
 
     log.error('Could not instantiate any debugger bridge')
