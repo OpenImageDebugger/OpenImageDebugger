@@ -85,7 +85,7 @@ class CvMat(interface.TypeInspectorInterface):
             data = data[0]
         buffer = debugger_bridge.get_casted_pointer('char', data)
         if buffer == 0x0:
-            raise Exception('Received null buffer!')
+            raise RuntimeError('Received null buffer!')
 
         width = int(picked_obj['cols'])
         height = int(picked_obj['rows'])
@@ -143,7 +143,7 @@ class IplImage(interface.TypeInspectorInterface):
     def get_buffer_metadata(self, obj_name, picked_obj, debugger_bridge):
         buffer = debugger_bridge.get_casted_pointer('char', picked_obj['imageData'])
         if buffer == 0x0:
-            raise Exception('Received null buffer!')
+            raise RuntimeError('Received null buffer!')
 
         width = int(picked_obj['width'])
         height = int(picked_obj['height'])
