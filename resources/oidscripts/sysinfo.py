@@ -85,7 +85,7 @@ def get_available_memory():
     elif platform == 'win32':
         return _get_available_memory_win32()
     else:
-        raise Exception('Platform %s not supported' % platform)
+        raise ValueError('Platform %s not supported' % platform)
 
 
 def get_type_name(typevalue):
