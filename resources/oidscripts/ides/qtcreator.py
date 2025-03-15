@@ -67,4 +67,4 @@ def register_symbol_fetch_hook(debugger, event_handler):
     elif backend_name == 'lldb':
         lldb_fetch_hook(debugger, event_handler)
     else:
-        raise Exception('Invalid debugger provided to qtcreator integration module')
+        raise ValueError('Invalid debugger provided to qtcreator integration module')
