@@ -219,6 +219,6 @@ class DeferredVariablePlotter(object):
 
         except Exception as err:
             import traceback
-            log.error(f"Could not plot variable")
+            log.error("Could not plot variable")
             log.error(err)
             traceback.print_exc()
