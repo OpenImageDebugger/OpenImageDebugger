@@ -72,11 +72,11 @@ class GdbBridge(BridgeInterface):
 
         # Check if buffer is initialized
         if buffer_metadata['pointer'] == 0x0:
-            raise Exception('Invalid null buffer pointer')
+            raise RuntimeError('Invalid null buffer pointer')
         if bufsize == 0:
-            raise Exception('Invalid buffer of zero bytes')
+            raise ValueError('Invalid buffer of zero bytes')
         elif bufsize >= sysinfo.get_available_memory() / 10:
-            raise Exception('Invalid buffer size larger than available memory')
+            raise MemoryError('Invalid buffer size larger than available memory')
 
         # Check if buffer is valid. If it isn't, this function will throw an
         # exception
