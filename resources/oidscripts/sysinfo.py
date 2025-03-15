@@ -32,7 +32,7 @@ def _get_available_memory_darwin():
     sep = re.compile(r':[\s]+')
     vm_stats = {}
 
-    psre = 'page size of ([0-9]+) bytes'
+    psre = 'page size of (\d+) bytes'
     match = re.search(psre, vm_lines[0])
     page_size = int(match.group(1)) if match else 16384
 
