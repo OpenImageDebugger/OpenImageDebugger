@@ -332,8 +332,8 @@ void MainWindow::initialize_ui_icons() const
     setFontIcon(ui_->acToggle, L"\ue804");
     setFontIcon(ui_->reposition_buffer, L"\ue800");
     setFontIcon(ui_->linkViewsToggle, L"\ue805");
-    setFontIcon(ui_->rotate_90_cw, L"\ue801");
-    setFontIcon(ui_->rotate_90_ccw, L"\ue802");
+    setFontIcon(ui_->rotate_90_ccw, L"\ue801");
+    setFontIcon(ui_->rotate_90_cw, L"\ue802");
     setFontIcon(ui_->shift_precision_left, L"\ue806");
     setFontIcon(ui_->shift_precision_right, L"\ue807");
     setFontIcon(ui_->go_to_pixel, L"\uf031");
