@@ -57,10 +57,13 @@
   <style>
     path {
       fill: black;
-      stroke-width: 0px
+      stroke: white;
     }
     @media (prefers-color-scheme: dark) {
-      path { fill: white; }
+      path {
+         fill: white;
+         stroke: black;
+      }
     }
   </style>
   <g
