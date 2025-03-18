@@ -5,7 +5,7 @@ sessions, compatible with both GDB and LLDB. It works out of the box with
 instances of the OpenCV `Mat` class and `Eigen` matrices, but can also be
 customized to work with any arbitrary data structure.
 
-![](doc/sample_window.png)
+![Sample window](doc/sample_window.png)
 
 ## Features
 
