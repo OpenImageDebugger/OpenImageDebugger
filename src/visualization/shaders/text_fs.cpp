@@ -25,7 +25,7 @@
 
 namespace oid::shader
 {
-extern auto const text_frag_shader{R"(
+extern auto const text_frag_shader{R"glsl(
 
 uniform sampler2D buff_sampler;
 uniform sampler2D text_sampler;
@@ -67,5 +67,5 @@ void main()
     gl_FragColor = color;
 }
 
-)"};
+)glsl"};
 } // namespace oid::shader

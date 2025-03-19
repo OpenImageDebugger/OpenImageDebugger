@@ -25,7 +25,7 @@
 
 namespace oid::shader
 {
-extern auto const background_vert_shader{R"(
+extern auto const background_vert_shader{R"glsl(
 
 attribute vec2 input_position;
 
@@ -33,5 +33,5 @@ void main(void) {
     gl_Position = vec4(input_position, 0.0, 1.0);
 }
 
-)"};
+)glsl"};
 } // namespace oid::shader

@@ -25,7 +25,7 @@
 
 namespace oid::shader
 {
-extern auto const text_vert_shader{R"(
+extern auto const text_vert_shader{R"glsl(
 
 attribute vec4 input_position;
 varying vec2 uv;
@@ -37,5 +37,5 @@ void main(void) {
     uv = input_position.zw;
 }
 
-)"};
+)glsl"};
 } // namespace oid::shader
