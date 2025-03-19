@@ -25,7 +25,7 @@
 
 namespace oid::shader
 {
-extern auto const buff_vert_shader{R"(
+extern auto const buff_vert_shader{R"glsl(
 
 attribute vec2 input_position;
 varying vec2 uv;
@@ -37,5 +37,5 @@ void main(void) {
     gl_Position = mvp*vec4(input_position, 0.0, 1.0);
 }
 
-)"};
+)glsl"};
 } // namespace oid::shader

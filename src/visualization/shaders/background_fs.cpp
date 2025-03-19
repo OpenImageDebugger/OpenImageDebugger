@@ -25,7 +25,7 @@
 
 namespace oid::shader
 {
-extern auto const background_frag_shader{R"(
+extern auto const background_frag_shader{R"glsl(
 
 void main()
 {
@@ -36,5 +36,5 @@ void main()
     gl_FragColor = vec4(vec3(intensity), 1);
 }
 
-)"};
+)glsl"};
 } // namespace oid::shader
