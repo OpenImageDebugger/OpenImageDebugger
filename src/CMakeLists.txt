@@ -81,7 +81,7 @@ target_include_directories(${PROJECT_NAME} SYSTEM
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen/Eigen
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Khronos)
 
-target_compile_options(${PROJECT_NAME} PRIVATE "$<$<PLATFORM_ID:UNIX>:-Wl,--exclude-libs,ALL>")
+target_compile_options(${PROJECT_NAME} PRIVATE "$<$<PLATFORM_ID:Linux>:-Wl,--exclude-libs,ALL>")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
                       Qt5::Core
