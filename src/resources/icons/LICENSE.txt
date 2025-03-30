@@ -28,12 +28,20 @@ Font license info
    Homepage:  http://www.entypo.com
 
 
-## MFG Labs
+## Elusive
 
-   Copyright (C) 2012 by Daniel Bruce
+   Copyright (C) 2013 by Aristeides Stathopoulos
 
-   Author:    MFG Labs
+   Author:    Aristeides Stathopoulos
    License:   SIL (http://scripts.sil.org/OFL)
-   Homepage:  http://www.mfglabs.com/
+   Homepage:  http://aristeides.com/
 
 
+## MaterialDesign
+
+   Copyright (C) 2014 by Austin Andrews
+
+   Author:    Austin Andrews
+   License:   Apache 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+   Homepage:  https://github.com/Templarian/MaterialDesign
+   Modifications: decimal-decrease.svg and decimal-increase.svg were resized to fit content before being added to custom fontello font.
