@@ -26,6 +26,7 @@
 #include "main_window.h"
 
 #include <memory>
+#include <ranges>
 
 #include <QFileDialog>
 #include <QtMath> // for portable definition of M_PI
@@ -44,7 +45,7 @@ namespace oid
 
 void MainWindow::resize_callback(const int w, const int h) const
 {
-    for (const auto& [_, stage] : stages_) {
+    for (const auto& stage : stages_ | views::values) {
         stage->resize_callback(w, h);
     }
 
@@ -56,7 +57,7 @@ void MainWindow::resize_callback(const int w, const int h) const
 void MainWindow::scroll_callback(const float delta)
 {
     if (link_views_enabled_) {
-        for (const auto& [_, stage] : stages_) {
+        for (const auto& stage : stages_ | std::views::values) {
             stage->scroll_callback(delta);
         }
     } else if (currently_selected_stage_ != nullptr) {
@@ -77,7 +78,7 @@ void MainWindow::mouse_drag_event(const int mouse_x, const int mouse_y)
     const QPoint virtual_motion(mouse_x, mouse_y);
 
     if (link_views_enabled_) {
-        for (const auto& [_, stage] : stages_) {
+        for (const auto& stage : stages_ | views::values) {
             stage->mouse_drag_event(virtual_motion.x(), virtual_motion.y());
         }
     } else if (currently_selected_stage_ != nullptr) {
@@ -118,7 +119,7 @@ void MainWindow::propagate_key_press_event(
     const QKeyEvent* key_event,
     EventProcessCode& event_intercepted) const
 {
-    for (const auto& [_, stage] : stages_) {
+    for (const auto& stage : stages_ | views::values) {
         if (stage->key_press_event(key_event->key()) ==
             EventProcessCode::INTERCEPTED) {
             event_intercepted = EventProcessCode::INTERCEPTED;
@@ -161,7 +162,7 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
 void MainWindow::recenter_buffer()
 {
     if (link_views_enabled_) {
-        for (const auto& [_, stage] : stages_) {
+        for (const auto& stage : stages_ | views::values) {
             GameObject* cam_obj = stage->get_game_object("camera");
             auto* cam = cam_obj->get_component<Camera>("camera_component");
             cam->recenter_camera();
@@ -195,7 +196,7 @@ void MainWindow::shift_precision_left()
     };
 
     if (link_views_enabled_) {
-        for (const auto& [_, stage] : stages_) {
+        for (const auto& stage : stages_ | views::values) {
             shift_precision_left_impl(stage.get());
         }
     } else {
@@ -218,7 +219,7 @@ void MainWindow::shift_precision_right()
     };
 
     if (link_views_enabled_) {
-        for (const auto& [_, stage] : stages_) {
+        for (const auto& stage : stages_ | views::values) {
             shift_precision_right_impl(stage.get());
         }
     } else {
@@ -263,7 +264,7 @@ void MainWindow::rotate_90_cw()
     };
 
     if (link_views_enabled_) {
-        for (const auto& [_, stage] : stages_) {
+        for (const auto& stage : stages_ | views::values) {
             request_90_cw_rotation(stage.get());
         }
     } else {
@@ -287,7 +288,7 @@ void MainWindow::rotate_90_ccw()
     };
 
     if (link_views_enabled_) {
-        for (const auto& [_, stage] : stages_) {
+        for (const auto& stage : stages_ | views::values) {
             request_90_ccw_rotation(stage.get());
         }
     } else {
@@ -468,7 +469,7 @@ void MainWindow::toggle_go_to_dialog() const
 void MainWindow::go_to_pixel(const float x, const float y)
 {
     if (link_views_enabled_) {
-        for (const auto& [_, stage] : stages_) {
+        for (const auto& stage : stages_ | views::values) {
             stage->go_to_pixel(x, y);
         }
     } else if (currently_selected_stage_ != nullptr) {

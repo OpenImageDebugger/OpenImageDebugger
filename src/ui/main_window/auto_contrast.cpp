@@ -25,6 +25,8 @@
 
 #include "main_window.h"
 
+#include <ranges>
+
 #include <QLineEdit>
 
 #include "ui_main_window.h"
@@ -207,7 +209,7 @@ void MainWindow::ac_max_reset()
 void MainWindow::ac_toggle(const bool is_checked)
 {
     ac_enabled_ = is_checked;
-    for (const auto& [_, stage] : stages_) {
+    for (const auto& stage : stages_ | views::values) {
         stage->contrast_enabled = ac_enabled_;
     }
 
