@@ -26,6 +26,7 @@
 #include "main_window.h"
 
 #include <iomanip>
+#include <ranges>
 #include <utility>
 
 #include <QDateTime>
@@ -138,7 +139,7 @@ void MainWindow::loop()
     // Update an icon of every entry in image list
     if (request_icons_update_) {
 
-        for (const auto& [name, _] : stages_) {
+        for (const auto& name : stages_ | views::keys) {
             repaint_image_list_icon(name);
         }
 
@@ -195,7 +196,7 @@ void MainWindow::persist_settings()
         }
     }
 
-    for (const auto& [buffer, _] : held_buffers_) {
+    for (const auto& buffer : held_buffers_ | views::keys) {
         persisted_session_buffers.append(
             BufferExpiration(buffer.c_str(), next_expiration));
     }

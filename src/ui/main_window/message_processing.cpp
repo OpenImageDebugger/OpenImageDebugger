@@ -29,6 +29,7 @@
 #include <bit>
 #include <iostream>
 #include <memory>
+#include <ranges>
 
 #include "ui_main_window.h"
 
@@ -60,7 +61,7 @@ void MainWindow::respond_get_observed_symbols()
     MessageComposer message_composer;
     message_composer.push(MessageType::GetObservedSymbolsResponse)
         .push(held_buffers_.size());
-    for (const auto& [name, _] : held_buffers_) {
+    for (const auto& name : held_buffers_ | views::keys) {
         message_composer.push(name);
     }
     message_composer.send(&socket_);
