@@ -30,19 +30,15 @@
 
 #include "visualization/components/buffer.h"
 
-namespace oid
+namespace oid::BufferExporter
 {
 
-class BufferExporter
-{
-  public:
-    enum class OutputType { Bitmap, OctaveMatrix };
+enum class OutputType { Bitmap, OctaveMatrix };
 
-    static void export_buffer(const Buffer* buffer,
-                              const std::string& path,
-                              OutputType type);
-};
+void export_buffer(const Buffer* buffer,
+                   const std::string& path,
+                   OutputType type);
 
-} // namespace oid
+} // namespace oid::BufferExporter
 
 #endif // BUFFER_EXPORTER_H_

@@ -29,15 +29,12 @@
 #include <array>
 #include <bit>
 #include <cassert>
-#include <cstdint>
 #include <iostream>
 #include <limits>
 
 #include <QPixmap>
 
-using namespace std;
-
-namespace oid
+namespace oid::BufferExporter
 {
 
 template <typename T>
@@ -69,7 +66,7 @@ float get_max_intensity<float>()
 
 
 void repeat_first_channel_into_g_and_b(
-    std::array<uint8_t, 4>& unformatted_pixel,
+    std::array<std::uint8_t, 4>& unformatted_pixel,
     std::size_t& c)
 {
     for (; c < 3; ++c) {
@@ -81,20 +78,19 @@ void repeat_first_channel_into_g_and_b(
 template <typename T>
 void export_bitmap(const char* fname, const Buffer* buffer)
 {
-    const auto width_i  = static_cast<size_t>(buffer->buffer_width_f);
-    const auto height_i = static_cast<size_t>(buffer->buffer_height_f);
+    const auto width_i  = static_cast<std::size_t>(buffer->buffer_width_f);
+    const auto height_i = static_cast<std::size_t>(buffer->buffer_height_f);
 
-    vector<uint8_t> processed_buffer(4 * width_i * height_i);
-    constexpr std::array<uint8_t, 4> default_channel_vals{0, 0, 0, 255};
+    auto processed_buffer = std::vector<std::uint8_t>(4 * width_i * height_i);
 
-    auto* out_ptr = processed_buffer.data();
+    auto out_ptr = processed_buffer.data();
 
-    const auto* bc_comp    = buffer->auto_buffer_contrast_brightness();
+    const auto bc_comp     = buffer->auto_buffer_contrast_brightness();
     const auto color_scale = get_multiplier<T>();
 
     const auto max_intensity = get_max_intensity<T>();
 
-    std::array<uint8_t, 4> pixel_layout;
+    auto pixel_layout = std::array<std::uint8_t, 4>{};
     for (int c = 0; c < 4; ++c) {
         switch (buffer->get_pixel_layout()[c]) {
         case 'r':
@@ -115,26 +111,27 @@ void export_bitmap(const char* fname, const Buffer* buffer)
         }
     }
 
-    const auto* in_ptr      = bit_cast<const T*>(buffer->buffer);
+    auto in_ptr             = std::bit_cast<const T*>(buffer->buffer);
     const auto input_stride = buffer->channels * buffer->step;
-    std::array<uint8_t, 4> unformatted_pixel;
-    const auto channels = static_cast<std::size_t>(buffer->channels);
+    auto unformatted_pixel  = std::array<std::uint8_t, 4>{};
+    const auto channels     = static_cast<std::size_t>(buffer->channels);
 
-    for (size_t y = 0; y < height_i; ++y) {
-        for (size_t x = 0; x < width_i; ++x) {
+    for (std::size_t y = 0; y < height_i; ++y) {
+        for (std::size_t x = 0; x < width_i; ++x) {
             const auto col_offset = x * buffer->channels;
-            std::size_t c         = 0;
+            auto c                = std::size_t{0};
 
             // Perform contrast normalization
             for (; c < channels; ++c) {
                 const auto in_val = static_cast<float>(in_ptr[col_offset + c]);
 
-                unformatted_pixel[c] = static_cast<uint8_t>(clamp(
-                    (in_val * bc_comp[c] +
-                     bc_comp[4 + c] * static_cast<uint8_t>(max_intensity)) *
-                        color_scale,
-                    0.f,
-                    255.f));
+                unformatted_pixel[c] = static_cast<std::uint8_t>(
+                    std::clamp((in_val * bc_comp[c] +
+                                bc_comp[4 + c] *
+                                    static_cast<std::uint8_t>(max_intensity)) *
+                                   color_scale,
+                               0.f,
+                               255.f));
             }
 
             // Grayscale: Repeat first channel into G and B
@@ -144,6 +141,8 @@ void export_bitmap(const char* fname, const Buffer* buffer)
 
             // The remaining, non-filled channels will be set to a default value
             for (; c < 4; ++c) {
+                constexpr auto default_channel_vals =
+                    std::array<std::uint8_t, 4>{0, 0, 0, 255};
                 unformatted_pixel[c] = default_channel_vals[c];
             }
 
@@ -158,12 +157,12 @@ void export_bitmap(const char* fname, const Buffer* buffer)
     }
 
     const auto bytes_per_line = static_cast<int>(width_i * 4);
-    const QImage output_image{processed_buffer.data(),
-                              static_cast<int>(width_i),
-                              static_cast<int>(height_i),
-                              bytes_per_line,
-                              QImage::Format_RGBA8888};
-    if (const auto result = output_image.save(fname, "png"); !result) {
+    const auto output_image   = QImage{processed_buffer.data(),
+                                     static_cast<int>(width_i),
+                                     static_cast<int>(height_i),
+                                     bytes_per_line,
+                                     QImage::Format_RGBA8888};
+    if (!output_image.save(fname, "png")) {
         std::cerr << "Failed to save image" << std::endl;
     }
 }
@@ -174,28 +173,28 @@ const char* get_type_descriptor();
 
 
 template <>
-const char* get_type_descriptor<uint8_t>()
+const char* get_type_descriptor<std::uint8_t>()
 {
     return "uint8";
 }
 
 
 template <>
-const char* get_type_descriptor<uint16_t>()
+const char* get_type_descriptor<std::uint16_t>()
 {
     return "uint16";
 }
 
 
 template <>
-const char* get_type_descriptor<int16_t>()
+const char* get_type_descriptor<std::int16_t>()
 {
     return "int16";
 }
 
 
 template <>
-const char* get_type_descriptor<int32_t>()
+const char* get_type_descriptor<std::int32_t>()
 {
     return "int32";
 }
@@ -211,12 +210,12 @@ const char* get_type_descriptor<float>()
 template <typename T>
 void export_binary(const char* fname, const Buffer* buffer)
 {
-    const auto width_i  = static_cast<size_t>(buffer->buffer_width_f);
-    const auto height_i = static_cast<size_t>(buffer->buffer_height_f);
+    const auto width_i  = static_cast<std::size_t>(buffer->buffer_width_f);
+    const auto height_i = static_cast<std::size_t>(buffer->buffer_height_f);
 
-    const auto* in_ptr = bit_cast<const T*>(buffer->buffer);
+    const auto in_ptr = std::bit_cast<const T*>(buffer->buffer);
 
-    auto* fhandle = fopen(fname, "wb");
+    auto fhandle = fopen(fname, "wb");
 
     if (fhandle == nullptr) {
         return;
@@ -226,33 +225,33 @@ void export_binary(const char* fname, const Buffer* buffer)
     fwrite(&height_i, sizeof(int), 1, fhandle);
     fwrite(&width_i, sizeof(int), 1, fhandle);
     fwrite(&buffer->channels, sizeof(int), 1, fhandle);
-    for (size_t y = 0; y < height_i; ++y) {
+    for (std::size_t y = 0; y < height_i; ++y) {
         fwrite(in_ptr + y * buffer->step * buffer->channels,
                sizeof(T),
-               width_i * static_cast<size_t>(buffer->channels),
+               width_i * static_cast<std::size_t>(buffer->channels),
                fhandle);
     }
     fclose(fhandle);
 }
 
 
-void BufferExporter::export_buffer(const Buffer* buffer,
-                                   const std::string& path,
-                                   const OutputType type)
+void export_buffer(const Buffer* buffer,
+                   const std::string& path,
+                   const OutputType type)
 {
     if (type == OutputType::Bitmap) {
         switch (buffer->type) {
         case BufferType::UnsignedByte:
-            export_bitmap<uint8_t>(path.c_str(), buffer);
+            export_bitmap<std::uint8_t>(path.c_str(), buffer);
             break;
         case BufferType::UnsignedShort:
-            export_bitmap<uint16_t>(path.c_str(), buffer);
+            export_bitmap<std::uint16_t>(path.c_str(), buffer);
             break;
         case BufferType::Short:
-            export_bitmap<int16_t>(path.c_str(), buffer);
+            export_bitmap<std::int16_t>(path.c_str(), buffer);
             break;
         case BufferType::Int32:
-            export_bitmap<int32_t>(path.c_str(), buffer);
+            export_bitmap<std::int32_t>(path.c_str(), buffer);
             break;
         case BufferType::Float32:
             [[fallthrough]];
@@ -264,16 +263,16 @@ void BufferExporter::export_buffer(const Buffer* buffer,
         // Matlab/Octave matrix (load with the oid_load.m function)
         switch (buffer->type) {
         case BufferType::UnsignedByte:
-            export_binary<uint8_t>(path.c_str(), buffer);
+            export_binary<std::uint8_t>(path.c_str(), buffer);
             break;
         case BufferType::UnsignedShort:
-            export_binary<uint16_t>(path.c_str(), buffer);
+            export_binary<std::uint16_t>(path.c_str(), buffer);
             break;
         case BufferType::Short:
-            export_binary<int16_t>(path.c_str(), buffer);
+            export_binary<std::int16_t>(path.c_str(), buffer);
             break;
         case BufferType::Int32:
-            export_binary<int32_t>(path.c_str(), buffer);
+            export_binary<std::int32_t>(path.c_str(), buffer);
             break;
         case BufferType::Float32:
             [[fallthrough]];
@@ -284,4 +283,4 @@ void BufferExporter::export_buffer(const Buffer* buffer,
     }
 }
 
-} // namespace oid
+} // namespace oid::BufferExporter

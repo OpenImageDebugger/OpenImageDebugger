@@ -48,7 +48,7 @@ uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, const int tuple_index)
 void copy_py_string(std::string& dst, PyObject* src)
 {
     if (PyUnicode_Check(src)) {
-        // Unicode sring
+        // Unicode string
         PyObject* src_bytes = PyUnicode_AsEncodedString(src, "ASCII", "strict");
         dst                 = PyBytes_AS_STRING(src_bytes);
         Py_DECREF(src_bytes);
