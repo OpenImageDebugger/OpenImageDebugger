@@ -33,7 +33,7 @@ namespace oid
 {
 
 ShaderProgram::ShaderProgram(GLCanvas* gl_canvas)
-    : gl_canvas_(gl_canvas)
+    : gl_canvas_{gl_canvas}
 {
 }
 
@@ -46,7 +46,7 @@ ShaderProgram::~ShaderProgram()
 
 bool ShaderProgram::is_shader_outdated(const TexelChannels texel_format,
                                        const std::vector<std::string>& uniforms,
-                                       const std::string& pixel_layout)
+                                       const std::string& pixel_layout) const
 {
     // If the texel format or the uniform container size changed,
     // the program must be created again
@@ -54,10 +54,10 @@ bool ShaderProgram::is_shader_outdated(const TexelChannels texel_format,
         return true;
     }
 
-    // The program must also be created again if an uniform name
+    // The program must also be created again if a uniform name
     // changed
     for (const auto& uniform_name : uniforms) {
-        if (uniforms_.find(uniform_name) == uniforms_.end()) {
+        if (!uniforms_.contains(uniform_name)) {
             return true;
         }
     }
@@ -182,28 +182,28 @@ const char* ShaderProgram::get_texel_format_define() const
 }
 
 
-GLuint ShaderProgram::compile(const GLuint type, const GLchar* source)
+GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const
 {
-    const GLuint shader = gl_canvas_->glCreateShader(type);
+    const auto shader = gl_canvas_->glCreateShader(type);
 
-    std::array<const char*, 5> src{"#version 120\n",
-                                   get_texel_format_define(),
-                                   "#define PIXEL_LAYOUT ",
-                                   pixel_layout_.data(),
-                                   source};
+    auto src = std::array{"#version 120\n",
+                          get_texel_format_define(),
+                          "#define PIXEL_LAYOUT ",
+                          pixel_layout_.data(),
+                          source};
 
     gl_canvas_->glShaderSource(shader, 5, src.data(), nullptr);
     gl_canvas_->glCompileShader(shader);
 
-    GLint compiled;
+    auto compiled = GLint{};
     gl_canvas_->glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 
     if (!compiled) {
         GLint length;
         gl_canvas_->glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
-        std::string log(length, ' ');
+        auto log = std::string(length, ' ');
         gl_canvas_->glGetShaderInfoLog(shader, length, &length, &log[0]);
-        std::cerr << "Failed to compile shadertype: " + get_shader_type(type)
+        std::cerr << "Failed to compile shader_type: " + get_shader_type(type)
                   << std::endl
                   << log << std::endl;
         return false;
@@ -214,7 +214,7 @@ GLuint ShaderProgram::compile(const GLuint type, const GLchar* source)
 
 std::string ShaderProgram::get_shader_type(const GLuint type)
 {
-    std::string name;
+    auto name = std::string{};
     switch (type) {
     case GL_VERTEX_SHADER:
         name = "Vertex Shader";

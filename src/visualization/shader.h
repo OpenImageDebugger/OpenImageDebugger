@@ -91,13 +91,13 @@ class ShaderProgram
 
     std::string pixel_layout_{};
 
-    GLuint compile(GLuint type, GLchar const* source);
+    GLuint compile(GLuint type, GLchar const* source) const;
 
     static std::string get_shader_type(GLuint type);
 
     bool is_shader_outdated(TexelChannels texel_format,
                             const std::vector<std::string>& uniforms,
-                            const std::string& pixel_layout);
+                            const std::string& pixel_layout) const;
 
     const char* get_texel_format_define() const;
 };
