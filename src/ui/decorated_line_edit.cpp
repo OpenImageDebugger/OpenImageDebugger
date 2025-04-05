@@ -28,7 +28,6 @@
 #include <memory>
 
 #include <QAction>
-#include <QHBoxLayout>
 #include <QIcon>
 #include <QPainter>
 
@@ -38,9 +37,9 @@ namespace oid
 DecoratedLineEdit::DecoratedLineEdit(const char* icon_path,
                                      const char* tooltip,
                                      QWidget* parent)
-    : QLineEdit(parent)
+    : QLineEdit{parent}
 {
-    const QIcon label_icon(icon_path);
+    const auto label_icon = QIcon{icon_path};
     auto label_widget = std::make_unique<QAction>(label_icon, tooltip, this);
     addAction(label_widget.release(), LeadingPosition);
 }
