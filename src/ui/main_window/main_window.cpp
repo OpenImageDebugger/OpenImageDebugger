@@ -40,9 +40,6 @@
 #include "visualization/game_object.h"
 
 
-using namespace std;
-
-
 Q_DECLARE_METATYPE(QList<QString>)
 
 namespace oid
@@ -82,7 +79,7 @@ MainWindow::~MainWindow()
 void MainWindow::showWindow()
 {
     update_timer_.start(static_cast<int>(1000.0 / render_framerate_));
-    QMainWindow::show();
+    show();
 }
 
 
@@ -102,7 +99,7 @@ GLCanvas* MainWindow::gl_canvas() const
 
 QSizeF MainWindow::get_icon_size() const
 {
-    const qreal screen_dpi_scale = get_screen_dpi_scale();
+    const auto screen_dpi_scale = get_screen_dpi_scale();
     return {icon_width_base_ * screen_dpi_scale,
             icon_height_base_ * screen_dpi_scale};
 }
@@ -139,7 +136,7 @@ void MainWindow::loop()
     // Update an icon of every entry in image list
     if (request_icons_update_) {
 
-        for (const auto& name : stages_ | views::keys) {
+        for (const auto& name : stages_ | std::views::keys) {
             repaint_image_list_icon(name);
         }
 
@@ -164,30 +161,28 @@ void MainWindow::persist_settings()
 {
     using BufferExpiration = QPair<QString, QDateTime>;
 
-    QSettings settings(QSettings::Format::IniFormat,
-                       QSettings::Scope::UserScope,
-                       "OpenImageDebugger");
+    auto settings = QSettings{QSettings::Format::IniFormat,
+                              QSettings::Scope::UserScope,
+                              "OpenImageDebugger"};
 
-    QList<BufferExpiration> persisted_session_buffers;
+    auto persisted_session_buffers = QList<BufferExpiration>{};
 
     // Load previous session symbols
-    auto previous_session_buffers_qlist =
+    const auto previous_session_buffers_qlist =
         settings.value("PreviousSession/buffers")
             .value<QList<BufferExpiration>>();
 
-    const QDateTime now             = QDateTime::currentDateTime();
-    const QDateTime next_expiration = now.addDays(1);
+    const auto now             = QDateTime::currentDateTime();
+    const auto next_expiration = now.addDays(1);
 
     // Of the buffers not currently being visualized, only keep those whose
     // timer hasn't expired yet and is not in the set of removed names
     for (const auto& prev_buff : previous_session_buffers_qlist) {
-        const string buff_name_std_str = prev_buff.first.toStdString();
+        const auto buff_name_std_str = prev_buff.first.toStdString();
 
-        const bool being_viewed =
-            held_buffers_.find(buff_name_std_str) != held_buffers_.end();
-        const bool was_removed =
-            removed_buffer_names_.find(buff_name_std_str) !=
-            removed_buffer_names_.end();
+        const auto being_viewed = held_buffers_.contains(buff_name_std_str);
+        const auto was_removed =
+            removed_buffer_names_.contains(buff_name_std_str);
 
         if (was_removed) {
             previous_session_buffers_.erase(buff_name_std_str);
@@ -196,7 +191,7 @@ void MainWindow::persist_settings()
         }
     }
 
-    for (const auto& buffer : held_buffers_ | views::keys) {
+    for (const auto& buffer : held_buffers_ | std::views::keys) {
         persisted_session_buffers.append(
             BufferExpiration(buffer.c_str(), next_expiration));
     }
@@ -214,10 +209,10 @@ void MainWindow::persist_settings()
     // Write UI geometry.
     settings.beginGroup("UI");
     {
-        const QList<int> listSizesInt = ui_->splitter->sizes();
+        const auto listSizesInt = ui_->splitter->sizes();
 
-        QList<QVariant> listSizesVariant;
-        for (int size : listSizesInt) {
+        auto listSizesVariant = QList<QVariant>{};
+        for (const int size : listSizesInt) {
             listSizesVariant.append(size);
         }
 
@@ -243,26 +238,28 @@ void MainWindow::persist_settings()
 vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
                                        const float pos_window_y) const
 {
-    GameObject* cam_obj = currently_selected_stage_->get_game_object("camera");
-    const auto* cam     = cam_obj->get_component<Camera>("camera_component");
+    const auto cam_obj = currently_selected_stage_->get_game_object("camera");
+    const auto cam     = cam_obj->get_component<Camera>("camera_component");
 
-    GameObject* buffer_obj =
+    const auto buffer_obj =
         currently_selected_stage_->get_game_object("buffer");
-    const auto* buffer = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto buffer = buffer_obj->get_component<Buffer>("buffer_component");
 
-    const auto win_w = static_cast<float>(ui_->bufferPreview->width());
-    const auto win_h = static_cast<float>(ui_->bufferPreview->height());
-    const vec4 mouse_pos_ndc(2.0f * (pos_window_x - win_w / 2) / win_w,
-                             -2.0f * (pos_window_y - win_h / 2) / win_h,
-                             0,
-                             1);
-    const mat4 view      = cam_obj->get_pose().inv();
-    const mat4 buff_pose = buffer_obj->get_pose();
-    const mat4 vp_inv    = (cam->projection * view * buff_pose).inv();
+    const auto win_w         = static_cast<float>(ui_->bufferPreview->width());
+    const auto win_h         = static_cast<float>(ui_->bufferPreview->height());
+    const auto mouse_pos_ndc = vec4{2.0f * (pos_window_x - win_w / 2) / win_w,
+                                    -2.0f * (pos_window_y - win_h / 2) / win_h,
+                                    0.0f,
+                                    1.0f};
+    const auto view          = cam_obj->get_pose().inv();
+    const auto buff_pose     = buffer_obj->get_pose();
+    const auto vp_inv        = (cam->projection * view * buff_pose).inv();
 
-    vec4 mouse_pos = vp_inv * mouse_pos_ndc;
-    mouse_pos +=
-        vec4(buffer->buffer_width_f / 2.f, buffer->buffer_height_f / 2.f, 0, 0);
+    auto mouse_pos = vp_inv * mouse_pos_ndc;
+    mouse_pos += vec4(buffer->buffer_width_f / 2.0f,
+                      buffer->buffer_height_f / 2.f,
+                      0.0f,
+                      0.0f);
 
     return mouse_pos;
 }
@@ -271,23 +268,25 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
 void MainWindow::update_status_bar() const
 {
     if (currently_selected_stage_ != nullptr) {
-        stringstream message;
+        auto message = std::stringstream{};
 
-        auto* cam_obj   = currently_selected_stage_->get_game_object("camera");
-        const auto* cam = cam_obj->get_component<Camera>("camera_component");
+        const auto cam_obj =
+            currently_selected_stage_->get_game_object("camera");
+        const auto cam = cam_obj->get_component<Camera>("camera_component");
 
-        auto* buffer_obj = currently_selected_stage_->get_game_object("buffer");
-        const auto* buffer =
+        const auto buffer_obj =
+            currently_selected_stage_->get_game_object("buffer");
+        const auto buffer =
             buffer_obj->get_component<Buffer>("buffer_component");
 
-        const auto* text_comp =
+        const auto text_comp =
             buffer_obj->get_component<BufferValues>("text_component");
 
         const auto mouse_x = static_cast<float>(ui_->bufferPreview->mouse_x());
         const auto mouse_y = static_cast<float>(ui_->bufferPreview->mouse_y());
 
         // Position
-        auto mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
+        const auto mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
 
         // Zoom
         message << std::fixed << std::setprecision(3) << "("
@@ -320,9 +319,9 @@ qreal MainWindow::get_screen_dpi_scale()
 }
 
 
-string MainWindow::get_type_label(const BufferType type, const int channels)
+std::string MainWindow::get_type_label(const BufferType type, const int channels)
 {
-    stringstream result;
+    auto result = std::stringstream{};
     if (type == BufferType::Float32) {
         result << "float32";
     } else if (type == BufferType::UnsignedByte) {
