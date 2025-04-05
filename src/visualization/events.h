@@ -26,13 +26,12 @@
 #ifndef EVENTS_H_
 #define EVENTS_H_
 
-#include <QEvent>
 #include <set>
+
+#include <QEvent>
 
 namespace oid
 {
-
-class MainWindow;
 
 enum class EventProcessCode { IGNORED, INTERCEPTED };
 
