@@ -54,8 +54,8 @@ class GoToWidget final : public QWidget
 
 
   private:
-    std::unique_ptr<DecoratedLineEdit> x_coordinate_;
-    std::unique_ptr<DecoratedLineEdit> y_coordinate_;
+    std::unique_ptr<DecoratedLineEdit> x_coordinate_{};
+    std::unique_ptr<DecoratedLineEdit> y_coordinate_{};
 };
 
 } // namespace oid

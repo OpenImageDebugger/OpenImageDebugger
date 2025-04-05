@@ -36,7 +36,7 @@ namespace oid
 {
 
 GoToWidget::GoToWidget(QWidget* parent)
-    : QWidget(parent)
+    : QWidget{parent}
 {
     auto layout = std::make_unique<QHBoxLayout>(this);
     layout->setMargin(0);
@@ -85,7 +85,7 @@ void GoToWidget::keyPressEvent(QKeyEvent* e)
 
 void GoToWidget::toggle_visible()
 {
-    auto* parent_widget = dynamic_cast<QWidget*>(parent());
+    const auto parent_widget = dynamic_cast<QWidget*>(parent());
 
     if (isVisible()) {
         hide();
