@@ -44,7 +44,7 @@ namespace oid
 void MainWindow::initialize_settings_ui_list_position(
     const QSettings& settings) const
 {
-    const QVariant variant = settings.value("list_position");
+    const auto variant = settings.value("list_position");
     if (!variant.canConvert<QString>()) {
         return;
     }
@@ -70,9 +70,9 @@ void MainWindow::initialize_settings_ui_splitter(
         return;
     }
 
-    auto listVariants = variant.toList();
+    const auto listVariants = variant.toList();
 
-    QList<int> listSizes;
+    auto listSizes = QList<int>{};
     for (const QVariant& size : listVariants) {
         listSizes.append(size.toInt());
     }
@@ -229,9 +229,9 @@ void MainWindow::initialize_settings()
     qRegisterMetaTypeStreamOperators<QList<BufferExpiration>>(
         "QList<QPair<QString, QDateTime>>");
 
-    QSettings settings(QSettings::Format::IniFormat,
-                       QSettings::Scope::UserScope,
-                       "OpenImageDebugger");
+    auto settings = QSettings{QSettings::Format::IniFormat,
+                              QSettings::Scope::UserScope,
+                              "OpenImageDebugger"};
 
     settings.sync();
 
@@ -254,8 +254,8 @@ void MainWindow::initialize_settings()
 
     // Load previous session symbols
     const auto now        = QDateTime::currentDateTime();
-    auto previous_buffers = settings.value("PreviousSession/buffers")
-                                .value<QList<BufferExpiration>>();
+    const auto previous_buffers = settings.value("PreviousSession/buffers")
+                                      .value<QList<BufferExpiration>>();
 
     for (const auto& [name, time] : previous_buffers) {
         if (time >= now) {
@@ -291,7 +291,7 @@ void MainWindow::initialize_settings()
 void MainWindow::setFontIcon(QAbstractButton* ui_element,
                              const wchar_t unicode_id[])
 {
-    QFont icons_font;
+    auto icons_font = QFont{};
     icons_font.setFamily("fontello");
     icons_font.setPointSizeF(10.f);
 
@@ -423,7 +423,7 @@ void MainWindow::initialize_shortcuts()
             SLOT(setFocus()));
 
     auto buffer_removal_shortcut = std::make_unique<QShortcut>(
-        QKeySequence(Qt::Key_Delete), ui_->imageList);
+        QKeySequence{Qt::Key_Delete}, ui_->imageList);
     connect(buffer_removal_shortcut.release(),
             SIGNAL(activated()),
             this,
