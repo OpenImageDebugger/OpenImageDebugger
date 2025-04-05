@@ -183,14 +183,14 @@ void MainWindow::link_views_toggle()
     link_views_enabled_ = !link_views_enabled_;
 }
 
-void MainWindow::shift_precision_left()
+void MainWindow::decrease_float_precision()
 {
     const auto shift_precision_left_impl = [](Stage* stage) {
         const auto buffer_obj = stage->get_game_object("buffer");
         const auto buffer_comp =
             buffer_obj->get_component<BufferValues>("text_component");
 
-        buffer_comp->shift_precision_left();
+        buffer_comp->decrease_float_precision();
     };
 
     if (link_views_enabled_) {
@@ -206,14 +206,14 @@ void MainWindow::shift_precision_left()
     request_render_update_ = true;
 }
 
-void MainWindow::shift_precision_right()
+void MainWindow::increase_float_precision()
 {
     const auto shift_precision_right_impl = [](Stage* stage) {
         const auto buffer_obj = stage->get_game_object("buffer");
         const auto buffer_comp =
             buffer_obj->get_component<BufferValues>("text_component");
 
-        buffer_comp->shift_precision_right();
+        buffer_comp->increase_float_precision();
     };
 
     if (link_views_enabled_) {
@@ -239,15 +239,15 @@ void MainWindow::update_shift_precision() const
 
         if (BufferType::Float32 == buffer->type ||
             BufferType::Float64 == buffer->type) {
-            ui_->shift_precision_left->setEnabled(true);
-            ui_->shift_precision_right->setEnabled(true);
+            ui_->decrease_float_precision->setEnabled(true);
+            ui_->increase_float_precision->setEnabled(true);
         } else {
-            ui_->shift_precision_left->setEnabled(false);
-            ui_->shift_precision_right->setEnabled(false);
+            ui_->decrease_float_precision->setEnabled(false);
+            ui_->increase_float_precision->setEnabled(false);
         }
     } else {
-        ui_->shift_precision_left->setEnabled(false);
-        ui_->shift_precision_right->setEnabled(false);
+        ui_->decrease_float_precision->setEnabled(false);
+        ui_->increase_float_precision->setEnabled(false);
     }
 }
 

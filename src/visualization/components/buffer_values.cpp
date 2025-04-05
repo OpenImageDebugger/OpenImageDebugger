@@ -40,8 +40,6 @@
 #include "visualization/stage.h"
 
 
-using namespace std;
-
 namespace oid
 {
 
@@ -50,7 +48,7 @@ using Array_4_4 = const std::array<const std::array<T, 4>, 4>;
 
 
 BufferValues::BufferValues(GameObject* game_object, GLCanvas* gl_canvas)
-    : Component(game_object, gl_canvas)
+    : Component{game_object, gl_canvas}
 {
 }
 
@@ -87,7 +85,7 @@ inline void pix2str(const BufferType& type,
     } else if (type == BufferType::Int32) {
         const int fpix = std::bit_cast<const int*>(buffer)[pos + channel];
         snprintf(pix_label, label_length, "%d", fpix);
-        if (string{pix_label}.length() > 7) {
+        if (std::string{pix_label}.length() > 7) {
             snprintf(pix_label, label_length, "%.3e", static_cast<float>(fpix));
         }
     }
@@ -111,8 +109,8 @@ void BufferValues::draw_pixel_values(
     const auto pos      = (y * step + x) * channels;
 
     for (int c = 0; c < channels; ++c) {
-        constexpr int label_length = 30;
-        std::string pix_label{};
+        constexpr auto label_length{30};
+        auto pix_label = std::string{};
         pix_label.reserve(label_length);
         const float y_off =
             (0.5f * (channels - 1) - c) / channels - recenter_factors[c];
@@ -122,7 +120,7 @@ void BufferValues::draw_pixel_values(
                 pos,
                 c,
                 label_length,
-                float_precision,
+                float_precision_,
                 pix_label.data());
         draw_text(projection,
                   view_inv,
@@ -138,66 +136,66 @@ void BufferValues::draw_pixel_values(
 
 void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 {
-    GameObject* cam_obj = game_object_->stage->get_game_object("camera");
-    const auto* camera  = cam_obj->get_component<Camera>("camera_component");
-    const float zoom    = camera->compute_zoom();
+    const auto cam_obj = game_object_->stage->get_game_object("camera");
+    const auto camera  = cam_obj->get_component<Camera>("camera_component");
+    const auto zoom    = camera->compute_zoom();
 
     if (zoom > 40.0f) {
-        const mat4 buffer_pose = game_object_->get_pose();
+        const auto buffer_pose = game_object_->get_pose();
 
-        const auto* buffer_component =
+        const auto buffer_component =
             game_object_->get_component<Buffer>("buffer_component");
-        const float buffer_width_f  = buffer_component->buffer_width_f;
-        const float buffer_height_f = buffer_component->buffer_height_f;
-        const int channels          = buffer_component->channels;
+        const auto buffer_width_f  = buffer_component->buffer_width_f;
+        const auto buffer_height_f = buffer_component->buffer_height_f;
+        const auto channels        = buffer_component->channels;
 
-        const vec4 tl_ndc(-1.0f, 1.0f, 0.0f, 1.0f);
-        const vec4 br_ndc(1.0f, -1.0f, 0.0f, 1.0f);
-        const mat4 vp_inv = (projection * view_inv * buffer_pose).inv();
-        vec4 tl           = vp_inv * tl_ndc;
-        vec4 br           = vp_inv * br_ndc;
+        const auto tl_ndc = vec4{-1.0f, 1.0f, 0.0f, 1.0f};
+        const auto br_ndc = vec4{1.0f, -1.0f, 0.0f, 1.0f};
+        const auto vp_inv = (projection * view_inv * buffer_pose).inv();
+        auto tl           = vp_inv * tl_ndc;
+        auto br           = vp_inv * br_ndc;
 
         // Since the clip ROI may be rotated, we need to re-compute TL and BR
         // from their Xs and Ys
-        const int tl_x = min(tl.x(), br.x());
-        const int tl_y = min(tl.y(), br.y());
-        const int br_x = max(tl.x(), br.x());
-        const int br_y = max(tl.y(), br.y());
+        const int tl_x = (std::min)(tl.x(), br.x());
+        const int tl_y = (std::min)(tl.y(), br.y());
+        const int br_x = (std::max)(tl.x(), br.x());
+        const int br_y = (std::max)(tl.y(), br.y());
         tl.x() = tl_x, tl.y() = tl_y;
         br.x() = br_x, br.y() = br_y;
 
 
-        const int lower_x = clamp(truncf(tl.x()) - 1.0f,
-                                  -buffer_width_f / 2.0f,
-                                  buffer_width_f / 2.0f - 1.0f);
-        const int upper_x = clamp(ceilf(br.x()) + 1.0f,
-                                  -(buffer_width_f + 1.0f) / 2.0f + 1.0f,
-                                  (buffer_width_f + 1.0f) / 2.0f);
+        const int lower_x = std::clamp(truncf(tl.x()) - 1.0f,
+                                       -buffer_width_f / 2.0f,
+                                       buffer_width_f / 2.0f - 1.0f);
+        const int upper_x = std::clamp(ceilf(br.x()) + 1.0f,
+                                       -(buffer_width_f + 1.0f) / 2.0f + 1.0f,
+                                       (buffer_width_f + 1.0f) / 2.0f);
 
-        const int lower_y = clamp(truncf(tl.y()) - 1.0f,
-                                  -buffer_height_f / 2.0f,
-                                  buffer_height_f / 2.0f - 1.0f);
-        const int upper_y = clamp(ceilf(br.y()) + 1.0f,
-                                  -(buffer_height_f + 1.0f) / 2.0f + 1.0f,
-                                  (buffer_height_f + 1.0f) / 2.0f);
+        const int lower_y = std::clamp(truncf(tl.y()) - 1.0f,
+                                       -buffer_height_f / 2.0f,
+                                       buffer_height_f / 2.0f - 1.0f);
+        const int upper_y = std::clamp(ceilf(br.y()) + 1.0f,
+                                       -(buffer_height_f + 1.0f) / 2.0f + 1.0f,
+                                       (buffer_height_f + 1.0f) / 2.0f);
 
         const int pos_center_x = -buffer_width_f / 2;
         const int pos_center_y = -buffer_height_f / 2;
 
         // Offset for vertical channel position to account for padding
-        array<float, 4> recenter_factors{};
+        auto recenter_factors = std::array<float, 4>{};
 
         if (channels == 1) {
             recenter_factors = {0.0f, 0.0f, 0.0f, 0.0f};
         } else if (channels == 2) {
-            const auto rfUp  = padding / 3.0f / channels;
+            const auto rfUp  = padding_ / 3.0f / channels;
             recenter_factors = {rfUp, -rfUp, 0.0f, 0.0f};
         } else if (channels == 3) {
-            const auto rfUp  = padding / 2.0f / channels;
+            const auto rfUp  = padding_ / 2.0f / channels;
             recenter_factors = {rfUp, 0.0f, -rfUp, 0.0f};
         } else if (channels == 4) {
-            const auto rfUp   = 3.0f * padding / 5.0f / channels;
-            const auto rfDown = padding / 5.0f / channels;
+            const auto rfUp   = 3.0f * padding_ / 5.0f / channels;
+            const auto rfDown = padding_ / 5.0f / channels;
             recenter_factors  = {rfUp, rfDown, -rfDown, -rfUp};
         }
 
@@ -228,12 +226,12 @@ void BufferValues::draw_text(const mat4& projection,
                              const float y_offset,
                              const float channels)
 {
-    const GLTextRenderer* text_renderer = gl_canvas_->get_text_renderer();
+    const auto text_renderer = gl_canvas_->get_text_renderer();
 
-    const auto* buffer_component =
+    const auto buffer_component =
         game_object_->get_component<Buffer>("buffer_component");
 
-    const float* auto_buffer_contrast_brightness;
+    const float* auto_buffer_contrast_brightness{};
 
     if (game_object_->stage->contrast_enabled) {
         auto_buffer_contrast_brightness =
@@ -273,26 +271,27 @@ void BufferValues::draw_text(const mat4& projection,
         "brightness_contrast", 2, auto_buffer_contrast_brightness);
 
     // Compute text box size
-    float boxW = 0.0f;
-    float boxH = 0.0f;
-    for (const auto c : string{text}) {
+    auto boxW = 0.0f;
+    auto boxH = 0.0f;
+    for (const auto c : std::string{text}) {
         const auto uchar = static_cast<unsigned char>(c);
         boxW +=
             static_cast<float>(text_renderer->text_texture_advances[uchar][0]);
-        boxH = max(
-            boxH,
-            static_cast<float>(text_renderer->text_texture_sizes[uchar][1]));
+        boxH = (std::max)(boxH,
+                          static_cast<float>(
+                              text_renderer->text_texture_sizes[uchar][1]));
     }
 
-    constexpr float paddingScale = 1.0f / (1.0f - 2.0f * padding);
-    text_pixel_scale =
-        max(text_pixel_scale, max(boxW, boxH) * paddingScale * channels);
-    const float sx = 1.0f / text_pixel_scale;
-    const float sy = 1.0f / text_pixel_scale;
+    constexpr auto paddingScale = 1.0f / (1.0f - 2.0f * padding_);
+    text_pixel_scale_ =
+        (std::max)(text_pixel_scale_,
+                   (std::max)(boxW, boxH) * paddingScale * channels);
+    const auto sx = 1.0f / text_pixel_scale_;
+    const auto sy = 1.0f / text_pixel_scale_;
 
-    vec4 channel_offset(0.0f, y_offset, 0.0f, 0.0f);
+    auto channel_offset = vec4{0.0f, y_offset, 0.0f, 0.0f};
 
-    vec4 centeredCoord(x, y, 0.0f, 1.0f);
+    auto centeredCoord = vec4{x, y, 0.0f, 1.0f};
 
     if (static_cast<int>(buffer_component->buffer_width_f) % 2 == 0) {
         centeredCoord.x() += 0.5f;
@@ -306,31 +305,31 @@ void BufferValues::draw_text(const mat4& projection,
     y = centeredCoord.y() + boxH / 2.0f * sy - channel_offset.y();
     x = centeredCoord.x() - boxW / 2.0f * sx - channel_offset.x();
 
-    for (const auto c : string{text}) {
+    for (const auto c : std::string{text}) {
         const auto uchar = static_cast<unsigned char>(c);
-        const float x2 =
+        const auto x2 =
             x +
             static_cast<float>(text_renderer->text_texture_tls[uchar][0]) * sx;
-        const float y2 =
+        const auto y2 =
             y -
             static_cast<float>(text_renderer->text_texture_tls[uchar][1]) * sy;
 
-        const int tex_wid = text_renderer->text_texture_sizes[uchar][0];
-        const int tex_hei = text_renderer->text_texture_sizes[uchar][1];
+        const auto tex_wid = text_renderer->text_texture_sizes[uchar][0];
+        const auto tex_hei = text_renderer->text_texture_sizes[uchar][1];
 
-        const float w = static_cast<float>(tex_wid) * sx;
-        const float h = static_cast<float>(tex_hei) * sy;
+        const auto w = static_cast<float>(tex_wid) * sx;
+        const auto h = static_cast<float>(tex_hei) * sy;
 
-        const float tex_lower_x =
+        const auto tex_lower_x =
             static_cast<float>(text_renderer->text_texture_offsets[uchar][0]) /
             text_renderer->text_texture_width;
-        const float tex_lower_y =
+        const auto tex_lower_y =
             static_cast<float>(text_renderer->text_texture_offsets[uchar][1]) /
             text_renderer->text_texture_height;
-        const float tex_upper_x =
+        const auto tex_upper_x =
             tex_lower_x + (static_cast<float>(tex_wid) - 1.0f) /
                               text_renderer->text_texture_width;
-        const float tex_upper_y =
+        const auto tex_upper_y =
             tex_lower_y + (static_cast<float>(tex_hei) - 1.0f) /
                               text_renderer->text_texture_height;
 
@@ -338,7 +337,7 @@ void BufferValues::draw_text(const mat4& projection,
          * box format: <pixel coord x, pixel coord y, texture coord x, texture
          * coord y>
          */
-        const Array_4_4<GLfloat> box{{
+        const auto box = Array_4_4<GLfloat>{{
             {x2, y2, tex_lower_x, tex_lower_y},
             {x2 + w, y2, tex_upper_x, tex_lower_y},
             {x2, y2 + h, tex_lower_x, tex_upper_y},
@@ -349,40 +348,40 @@ void BufferValues::draw_text(const mat4& projection,
             GL_ARRAY_BUFFER, sizeof box, box.data(), GL_DYNAMIC_DRAW);
         gl_canvas_->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-        vec4 char_step_direction(
+        auto char_step_direction = vec4{
             static_cast<float>(text_renderer->text_texture_advances[uchar][0]) *
                 sx,
             static_cast<float>(text_renderer->text_texture_advances[uchar][1]) *
                 sy,
             0.0f,
-            1.0f);
+            1.0f};
 
         x += char_step_direction.x();
         y += char_step_direction.y();
     }
 }
 
-void BufferValues::shift_precision_left()
+void BufferValues::decrease_float_precision()
 {
-    if (min_float_precision < float_precision) {
-        float_precision--;
+    if (min_float_precision_ < float_precision_) {
+        float_precision_--;
         // reset text scaling
-        text_pixel_scale = default_text_scale;
+        text_pixel_scale_ = default_text_scale_;
     }
 }
 
-void BufferValues::shift_precision_right()
+void BufferValues::increase_float_precision()
 {
-    if (max_float_precision > float_precision) {
-        float_precision++;
+    if (max_float_precision_ > float_precision_) {
+        float_precision_++;
         // reset text scaling
-        text_pixel_scale = default_text_scale;
+        text_pixel_scale_ = default_text_scale_;
     }
 }
 
 int BufferValues::get_float_precision() const
 {
-    return float_precision;
+    return float_precision_;
 }
 
 } // namespace oid

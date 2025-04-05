@@ -147,9 +147,9 @@ class MainWindow final : public QMainWindow
 
     void rotate_90_ccw();
 
-    void shift_precision_left();
+    void decrease_float_precision();
 
-    void shift_precision_right();
+    void increase_float_precision();
 
     void update_shift_precision() const;
 
