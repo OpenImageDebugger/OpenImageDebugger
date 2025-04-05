@@ -34,8 +34,6 @@
 #include "stage.h"
 
 
-class GLCanvas;
-
 namespace oid
 {
 
