@@ -37,8 +37,6 @@
 namespace oid
 {
 
-class GameObject;
-
 class Stage
 {
   public:

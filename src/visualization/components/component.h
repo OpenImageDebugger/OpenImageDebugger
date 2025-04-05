@@ -26,6 +26,8 @@
 #ifndef COMPONENT_H_
 #define COMPONENT_H_
 
+#include "math/linear_algebra.h"
+#include "ui/gl_canvas.h"
 #include "visualization/events.h"
 
 
@@ -33,8 +35,6 @@ namespace oid
 {
 
 class GameObject;
-class GLCanvas;
-class mat4;
 
 class Component
 {

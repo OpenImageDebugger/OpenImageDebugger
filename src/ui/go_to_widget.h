@@ -26,11 +26,13 @@
 #ifndef GO_TO_WIDGET_H_
 #define GO_TO_WIDGET_H_
 
-#include "decorated_line_edit.h"
-
 #include <memory>
 
-class QWidget;
+
+#include <qwidget.h>
+
+
+#include "decorated_line_edit.h"
 
 namespace oid
 {

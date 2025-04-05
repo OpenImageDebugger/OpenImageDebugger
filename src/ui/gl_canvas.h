@@ -29,6 +29,8 @@
 #include <array>
 #include <memory>
 
+#include <GL/gl.h>
+
 #include <QMouseEvent>
 #include <QOpenGLFunctions>
 #include <QOpenGLWidget>
