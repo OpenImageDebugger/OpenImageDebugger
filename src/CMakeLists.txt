@@ -73,6 +73,16 @@ set(QT_RESOURCES resources/resources.qrc)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
 
+set_target_properties(${PROJECT_NAME}
+        PROPERTIES CXX_SCAN_FOR_MODULES On
+)
+
+target_sources(${PROJECT_NAME}
+        PUBLIC
+        FILE_SET cxx_modules TYPE CXX_MODULES FILES
+        io/BufferExporter.cppm
+)
+
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

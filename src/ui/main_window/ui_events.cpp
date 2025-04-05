@@ -31,12 +31,14 @@
 #include <QFileDialog>
 #include <QtMath> // for portable definition of M_PI
 
-#include "io/buffer_exporter.h"
 #include "ui_main_window.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
 #include "visualization/events.h"
 #include "visualization/game_object.h"
+
+import BufferExporter;
+
 
 namespace oid
 {
