@@ -68,7 +68,7 @@ void oid_cleanup(AppHandler handler);
 /**
  * Execute GUI loop
  *
- * This methods blocks the caller until the OID window is closed. If
+ * This method blocks the caller until the OID window is closed. If
  * non-blocking behavior is desired, it must be called from a dedicated thread.
  * Notice that it must also be called in the same thread as oid_initialize().
  *
