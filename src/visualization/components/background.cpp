@@ -57,13 +57,13 @@ bool Background::initialize()
 
     // Generate square VBO
     // clang-format off
-    static constexpr std::array<GLfloat, 12> vertex_buffer_data {
-        -1, -1,
-        1, -1,
-        1, 1,
-        1, 1,
-        -1, 1,
-        -1, -1,
+    static constexpr auto vertex_buffer_data = std::array{
+        -1.0f, -1.0f,
+        1.0f, -1.0f,
+        1.0f, 1.0f,
+        1.0f, 1.0f,
+        -1.0f, 1.0f,
+        -1.0f, -1.0f,
     };
     // clang-format on
     gl_canvas_->glGenBuffers(1, &background_vbo);

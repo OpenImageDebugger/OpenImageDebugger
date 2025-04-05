@@ -59,7 +59,7 @@ class Background final : public Component
     [[nodiscard]] int render_index() const override;
 
   private:
-    ShaderProgram background_prog;
+    ShaderProgram background_prog{nullptr};
     GLuint background_vbo{0};
 };
 
