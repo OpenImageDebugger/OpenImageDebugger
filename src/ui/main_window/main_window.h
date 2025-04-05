@@ -33,8 +33,6 @@
 #include <string>
 
 #include <QLabel>
-#include <QListWidgetItem>
-#include <QMainWindow>
 #include <QSettings>
 #include <QTcpSocket>
 #include <QTimer>
@@ -45,9 +43,6 @@
 #include "ui_main_window.h"
 #include "visualization/stage.h"
 
-#include <QAbstractButton>
-
-class QLabel;
 
 namespace oid
 {
