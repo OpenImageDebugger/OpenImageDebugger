@@ -35,6 +35,8 @@
 
 #include "ui/symbol_completer.h"
 
+namespace oid
+{
 
 class SymbolSearchInput final : public QLineEdit
 {
@@ -57,5 +59,7 @@ class SymbolSearchInput final : public QLineEdit
   private:
     SymbolCompleter* completer_{nullptr};
 };
+
+} // namespace oid
 
 #endif // SYMBOL_SEARCH_INPUT_H_

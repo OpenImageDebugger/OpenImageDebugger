@@ -33,6 +33,9 @@
 #include <QKeyEvent>
 
 
+namespace oid
+{
+
 SymbolSearchInput::SymbolSearchInput(QWidget* parent)
     : QLineEdit{parent}
 {
@@ -119,3 +122,5 @@ void SymbolSearchInput::keyPressEvent(QKeyEvent* e)
     completer_->popup()->setCurrentIndex(
         completer_->completionModel()->index(0, 0));
 }
+
+} // namespace oid

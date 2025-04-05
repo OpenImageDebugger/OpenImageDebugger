@@ -30,6 +30,8 @@
 #include <QStringList>
 #include <QStringListModel>
 
+namespace oid
+{
 
 class SymbolCompleter final : public QCompleter
 {
@@ -45,9 +47,11 @@ class SymbolCompleter final : public QCompleter
     [[nodiscard]] const QString& word() const;
 
   private:
-    QStringList list_;
-    QStringListModel model_;
-    QString word_;
+    QStringList list_{};
+    QStringListModel model_{};
+    QString word_{};
 };
+
+} // namespace oid
 
 #endif // SYMBOL_COMPLETER_H_
