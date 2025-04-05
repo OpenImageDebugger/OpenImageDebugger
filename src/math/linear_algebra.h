@@ -40,7 +40,7 @@ class vec4
   public:
     vec4() = default;
 
-    vec4(const float x, const float y, const float z, const float w);
+    vec4(float x, float y, float z, float w);
 
     vec4& operator+=(const vec4& b);
 
@@ -62,7 +62,7 @@ class vec4
 
     friend vec4 operator*(const vec4& vec, const float scalar)
     {
-        vec4 result(vec);
+        auto result = vec4{vec};
         result.vec_ *= scalar;
 
         return result;
@@ -85,7 +85,7 @@ class vec4
     static vec4 zero();
 
   private:
-    Eigen::Vector4f vec_;
+    Eigen::Vector4f vec_{};
 };
 
 vec4 operator-(const vec4& vector);
@@ -123,7 +123,7 @@ class mat4
 
     friend mat4 operator*(const mat4& a, const mat4& b)
     {
-        mat4 res;
+        auto res = mat4{};
 
         res.mat_ = a.mat_ * b.mat_;
 
@@ -141,7 +141,7 @@ class mat4
     static mat4 scale(const vec4& factor);
 
   private:
-    Eigen::Matrix4f mat_;
+    Eigen::Matrix4f mat_{};
 };
 
 } // namespace oid

@@ -33,7 +33,7 @@ namespace oid
 
 
 vec4::vec4(const float x, const float y, const float z, const float w)
-    : vec_(x, y, z, w)
+    : vec_{x, y, z, w}
 {
 }
 
@@ -148,10 +148,10 @@ void mat4::set_from_st(const float scaleX,
     data[13] = y;
     data[14] = z;
 
-    data[1] = data[2] = data[3] = data[4] = 0.0;
-    data[6] = data[7] = data[8] = data[9] = 0.0;
-    data[11]                              = 0.0;
-    data[15]                              = 1.0;
+    data[1] = data[2] = data[3] = data[4] = 0.0f;
+    data[6] = data[7] = data[8] = data[9] = 0.0f;
+    data[11]                              = 0.0f;
+    data[15]                              = 1.0f;
 }
 
 
@@ -167,7 +167,7 @@ void mat4::set_from_srt(const float scaleX,
     using Eigen::AngleAxisf;
     using Eigen::Vector3f;
 
-    Affine3f t = Affine3f::Identity();
+    auto t = Affine3f::Identity();
     t.translate(Vector3f(x, y, z))
         .rotate(AngleAxisf(rZ, Vector3f(0.0f, 0.0f, 1.0f)))
         .scale(Vector3f(scaleX, scaleY, scaleZ));
@@ -193,8 +193,8 @@ mat4 mat4::rotation(const float angle)
     using Eigen::AngleAxisf;
     using Eigen::Vector3f;
 
-    mat4 result;
-    Affine3f t = Affine3f::Identity();
+    auto result = mat4{};
+    auto t      = Affine3f::Identity();
     t.rotate(AngleAxisf(angle, Vector3f(0.0f, 0.0f, 1.0f)));
 
     result.mat_ = t.matrix();
@@ -207,9 +207,9 @@ mat4 mat4::translation(const vec4& vector)
     using Eigen::Affine3f;
     using Eigen::Vector3f;
 
-    mat4 result;
+    auto result = mat4{};
 
-    Affine3f t = Affine3f::Identity();
+    auto t = Affine3f::Identity();
     t.translate(Vector3f(vector.x(), vector.y(), vector.z()));
     result.mat_ = t.matrix();
 
@@ -222,9 +222,9 @@ mat4 mat4::scale(const vec4& factor)
     using Eigen::Affine3f;
     using Eigen::Vector3f;
 
-    mat4 result;
+    auto result = mat4{};
 
-    Affine3f t = Affine3f::Identity();
+    auto t = Affine3f::Identity();
     t.scale(Vector3f(factor.x(), factor.y(), factor.z()));
     result.mat_ = t.matrix();
 
@@ -237,7 +237,7 @@ void mat4::set_ortho_projection(const float right,
                                 const float near,
                                 const float far)
 {
-    float* data = this->data();
+    const auto data = this->data();
 
     data[0]  = 1.0f / right;
     data[5]  = -1.0f / top;
@@ -259,10 +259,10 @@ void mat4::print() const
 
 mat4 mat4::inv() const
 {
-    mat4 res;
-    res.mat_ = this->mat_.inverse();
+    auto result = mat4{};
+    result.mat_ = this->mat_.inverse();
 
-    return res;
+    return result;
 }
 
 
@@ -273,10 +273,10 @@ float& mat4::operator()(const int row, const int col)
 
 vec4 mat4::operator*(const vec4& vec) const
 {
-    vec4 res;
-    res.vec_ = this->mat_ * vec.vec_;
+    auto result = vec4{};
+    result.vec_ = this->mat_ * vec.vec_;
 
-    return res;
+    return result;
 }
 
 } // namespace oid
