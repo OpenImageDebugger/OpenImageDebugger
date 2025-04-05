@@ -33,8 +33,6 @@
 #include "visualization/game_object.h"
 
 
-using namespace std;
-
 namespace oid
 {
 
@@ -51,8 +49,8 @@ GLCanvas::~GLCanvas() = default;
 
 void GLCanvas::mouseMoveEvent(QMouseEvent* ev)
 {
-    const int last_mouse_x = mouse_x_;
-    const int last_mouse_y = mouse_y_;
+    const auto last_mouse_x = mouse_x_;
+    const auto last_mouse_y = mouse_y_;
 
     mouse_x_ = static_cast<int>(ev->localPos().x());
     mouse_y_ = static_cast<int>(ev->localPos().y());
@@ -103,7 +101,7 @@ void GLCanvas::initializeGL()
     ///
     // Texture for generating icons
     assert(main_window_ != nullptr);
-    const QSizeF icon_size = main_window_->get_icon_size();
+    const auto icon_size   = main_window_->get_icon_size();
     const auto icon_width  = static_cast<int>(icon_size.width());
     const auto icon_height = static_cast<int>(icon_size.height());
     glGenTextures(1, &icon_texture_);
@@ -132,8 +130,8 @@ void GLCanvas::initializeGL()
 
     // Check if the GPU won't freak out about our FBO
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        cerr << "Error: FBO configuration is not supported -- sorry mate!"
-             << endl;
+        std::cerr << "Error: FBO configuration is not supported -- sorry mate!"
+                  << std::endl;
         return;
     }
 
@@ -174,13 +172,13 @@ void GLCanvas::render_buffer_icon(Stage* stage,
 
     glViewport(0, 0, icon_width, icon_height);
 
-    GameObject* camera = stage->get_game_object("camera");
-    auto* cam          = camera->get_component<Camera>("camera_component");
+    const auto camera = stage->get_game_object("camera");
+    const auto cam    = camera->get_component<Camera>("camera_component");
 
     // Save original camera pose
-    const Camera original_pose = *cam;
+    const auto original_pose = Camera{*cam};
 
-    // Adapt camera to the thumbnail dimentions
+    // Adapt camera to the thumbnail dimensions
     cam->window_resized(icon_width, icon_height);
     // Flips the projected image along the horizontal axis
     cam->projection.set_ortho_projection(static_cast<float>(icon_width) / 2.0f,
@@ -224,17 +222,17 @@ void GLCanvas::resizeGL(const int w, const int h)
 
 void GLCanvas::set_main_window(MainWindow* mw)
 {
-    main_window_ = mw;
+    main_window_.reset(mw);
 }
 
 
 void list_gl_extensions()
 {
-    GLint num_exts = 0;
+    auto num_exts = GLint{0};
     glGetIntegerv(GL_NUM_EXTENSIONS, &num_exts);
 
-    cout << "Supported OpenGL extensions:" << glGetString(GL_EXTENSIONS)
-         << endl;
+    std::cout << "Supported OpenGL extensions:" << glGetString(GL_EXTENSIONS)
+              << std::endl;
 }
 
 } // namespace oid
