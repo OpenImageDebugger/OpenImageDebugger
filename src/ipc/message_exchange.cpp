@@ -33,7 +33,7 @@ namespace oid
 MessageBlock::~MessageBlock() = default;
 
 StringBlock::StringBlock(std::string value)
-    : data_(std::move(value))
+    : data_{std::move(value)}
 {
 }
 

@@ -47,7 +47,7 @@ enum class MessageType {
 
 struct MessageBlock
 {
-    [[nodiscard]] virtual size_t size() const         = 0;
+    [[nodiscard]] virtual std::size_t size() const    = 0;
     [[nodiscard]] virtual const uint8_t* data() const = 0;
     virtual ~MessageBlock();
 };
@@ -56,11 +56,11 @@ template <typename Primitive>
 struct PrimitiveBlock final : MessageBlock
 {
     explicit PrimitiveBlock(Primitive value)
-        : data_(value)
+        : data_{value}
     {
     }
 
-    [[nodiscard]] size_t size() const override
+    [[nodiscard]] std::size_t size() const override
     {
         return sizeof(Primitive);
     }
@@ -71,7 +71,7 @@ struct PrimitiveBlock final : MessageBlock
     }
 
   private:
-    Primitive data_;
+    Primitive data_{};
 };
 
 
@@ -79,23 +79,23 @@ struct StringBlock final : MessageBlock
 {
     explicit StringBlock(std::string value);
 
-    [[nodiscard]] size_t size() const override;
+    [[nodiscard]] std::size_t size() const override;
 
     [[nodiscard]] const uint8_t* data() const override;
 
   private:
-    std::string data_;
+    std::string data_{};
 };
 
 struct BufferBlock final : MessageBlock
 {
-    BufferBlock(const uint8_t* buffer, const size_t length)
-        : buffer_(buffer)
-        , length_(length)
+    BufferBlock(const uint8_t* buffer, const std::size_t length)
+        : buffer_{buffer}
+        , length_{length}
     {
     }
 
-    [[nodiscard]] size_t size() const override
+    [[nodiscard]] std::size_t size() const override
     {
         return length_;
     }
@@ -106,8 +106,8 @@ struct BufferBlock final : MessageBlock
     }
 
   private:
-    const uint8_t* buffer_;
-    size_t length_;
+    const uint8_t* buffer_{};
+    std::size_t length_{};
 };
 
 template <typename PrimitiveType>
@@ -135,7 +135,7 @@ class MessageComposer
         return *this;
     }
 
-    MessageComposer& push(const uint8_t* buffer, const size_t size)
+    MessageComposer& push(const uint8_t* buffer, const std::size_t size)
     {
         push(size);
         message_blocks_.emplace_back(new BufferBlock(buffer, size));
@@ -146,7 +146,7 @@ class MessageComposer
     void send(QTcpSocket* socket) const
     {
         for (const auto& block : message_blocks_) {
-            qint64 offset = 0;
+            auto offset = qint64{0};
             do {
                 offset +=
                     socket->write(reinterpret_cast<const char*>(block->data()),
@@ -167,14 +167,14 @@ class MessageComposer
     }
 
   private:
-    std::deque<std::unique_ptr<MessageBlock>> message_blocks_;
+    std::deque<std::unique_ptr<MessageBlock>> message_blocks_{};
 };
 
 class MessageDecoder
 {
   public:
     explicit MessageDecoder(QTcpSocket* socket)
-        : socket_(socket)
+        : socket_{socket}
     {
     }
 
@@ -191,12 +191,18 @@ class MessageDecoder
     template <typename StringContainer, typename StringType>
     MessageDecoder& read(StringContainer& symbol_container)
     {
-        size_t number_symbols;
-        read(number_symbols);
+        const auto number_symbols = [&] {
+            auto num{std::size_t{}};
+            read(num);
+            return num;
+        }();
 
         for (int s = 0; s < static_cast<int>(number_symbols); ++s) {
-            StringType symbol_value;
-            read(symbol_value);
+            const auto symbol_value = [&] {
+                auto value{StringType{}};
+                read(value);
+                return value;
+            }();
 
             symbol_container.push_back(symbol_value);
         }
@@ -205,11 +211,11 @@ class MessageDecoder
     }
 
   private:
-    QTcpSocket* socket_;
+    QTcpSocket* socket_{};
 
-    void read_impl(char* dst, const size_t read_length) const
+    void read_impl(char* dst, const std::size_t read_length) const
     {
-        size_t offset = 0;
+        auto offset = std::size_t{0};
         do {
             offset += socket_->read(dst + offset,
                                     static_cast<qint64>(read_length - offset));
@@ -245,8 +251,11 @@ template <>
 inline MessageDecoder&
 MessageDecoder::read<std::vector<uint8_t>>(std::vector<uint8_t>& value)
 {
-    size_t container_size;
-    read(container_size);
+    const auto container_size = [&] {
+        auto size = std::size_t{};
+        read(size);
+        return size;
+    }();
 
     value.resize(container_size);
     read_impl(reinterpret_cast<char*>(value.data()), container_size);
@@ -257,8 +266,11 @@ MessageDecoder::read<std::vector<uint8_t>>(std::vector<uint8_t>& value)
 template <>
 inline MessageDecoder& MessageDecoder::read<std::string>(std::string& value)
 {
-    size_t symbol_length;
-    read(symbol_length);
+    const auto symbol_length = [&] {
+        auto length = std::size_t{};
+        read(length);
+        return length;
+    }();
 
     value.resize(symbol_length);
     read_impl(&value.front(), symbol_length);
@@ -269,13 +281,20 @@ inline MessageDecoder& MessageDecoder::read<std::string>(std::string& value)
 template <>
 inline MessageDecoder& MessageDecoder::read<QString>(QString& value)
 {
-    size_t symbol_length;
-    read(symbol_length);
+    const auto symbol_length = [&] {
+        auto length = std::size_t{};
+        read(length);
+        return length;
+    }();
 
-    std::vector<char> temp_string;
-    temp_string.resize(symbol_length + 1, '\0');
-    read_impl(temp_string.data(), symbol_length);
-    value = QString(temp_string.data());
+    const auto temp_string = [&] {
+        auto string = std::vector<char>{};
+        string.resize(symbol_length + 1, '\0');
+        read_impl(string.data(), symbol_length);
+        return string;
+    }();
+
+    value = QString{temp_string.data()};
 
     return *this;
 }
