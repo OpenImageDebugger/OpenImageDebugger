@@ -25,8 +25,10 @@
 
 #include "game_object.h"
 
+#include <algorithm>
 #include <functional>
 #include <map>
+#include <ranges>
 
 #include "ui/main_window/main_window.h"
 #include "visualization/components/component.h"
@@ -43,25 +45,23 @@ GameObject::GameObject()
 
 bool GameObject::initialize() const
 {
-    return std::all_of(
-        all_components_.begin(), all_components_.end(), [](const auto& comp) {
-            return comp.second->initialize();
-        });
+    return std::ranges::all_of(all_components_, [](const auto& comp) {
+        return comp.second->initialize();
+    });
 }
 
 
 bool GameObject::post_initialize() const
 {
-    return std::all_of(
-        all_components_.begin(), all_components_.end(), [](const auto& comp) {
-            return comp.second->post_initialize();
-        });
+    return std::ranges::all_of(all_components_, [](const auto& comp) {
+        return comp.second->post_initialize();
+    });
 }
 
 
 void GameObject::update() const
 {
-    for (const auto& [_, comp] : all_components_) {
+    for (const auto& comp : all_components_ | std::views::values) {
         comp->update();
     }
 }
@@ -93,7 +93,7 @@ void GameObject::request_render_update() const
 
 void GameObject::mouse_drag_event(const int mouse_x, const int mouse_y) const
 {
-    for (const auto& [_, comp] : all_components_) {
+    for (const auto& comp : all_components_ | std::views::values) {
         comp->mouse_drag_event(mouse_x, mouse_y);
     }
 }
@@ -101,7 +101,7 @@ void GameObject::mouse_drag_event(const int mouse_x, const int mouse_y) const
 
 void GameObject::mouse_move_event(const int mouse_x, const int mouse_y) const
 {
-    for (const auto& [_, comp] : all_components_) {
+    for (const auto& comp : all_components_ | std::views::values) {
         comp->mouse_move_event(mouse_x, mouse_y);
     }
 }
@@ -111,7 +111,7 @@ EventProcessCode GameObject::key_press_event(int key_code) const
 {
     auto event_intercepted = EventProcessCode::IGNORED;
 
-    for (const auto& [_, comp] : all_components_) {
+    for (const auto& comp : all_components_ | std::views::values) {
         const auto event_intercepted_component =
             comp->key_press_event(key_code);
 
