@@ -385,8 +385,9 @@ void MainWindow::export_buffer()
     file_dialog.setAcceptMode(QFileDialog::AcceptSave);
     file_dialog.setFileMode(QFileDialog::AnyFile);
 
-    auto output_extensions                      = QHash<QString, BufferExporter::OutputType>{};
-    output_extensions[tr("Image File (*.png)")] = BufferExporter::OutputType::Bitmap;
+    auto output_extensions = QHash<QString, BufferExporter::OutputType>{};
+    output_extensions[tr("Image File (*.png)")] =
+        BufferExporter::OutputType::Bitmap;
     output_extensions[tr("Octave Raw Matrix (*.oct)")] =
         BufferExporter::OutputType::OctaveMatrix;
 
