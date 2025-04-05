@@ -26,8 +26,6 @@
 #ifndef BUFFER_H_
 #define BUFFER_H_
 
-#include <cstdint>
-
 #include <array>
 #include <sstream>
 #include <string>
@@ -107,9 +105,6 @@ class Buffer final : public Component
 
     [[nodiscard]] const float* auto_buffer_contrast_brightness() const;
 
-    void set_min_buffer_values();
-    void set_max_buffer_values();
-
     void get_pixel_info(std::stringstream& message, int x, int y) const;
 
     void rotate(float angle);
@@ -141,7 +136,7 @@ class Buffer final : public Component
                                                           0.0f};
     float angle_{0.0f};
 
-    ShaderProgram buff_prog_;
+    ShaderProgram buff_prog_{nullptr};
     GLuint vbo_{};
 };
 
