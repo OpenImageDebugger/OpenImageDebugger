@@ -36,14 +36,13 @@ module;
 
 #include <QPixmap>
 
-#include "visualization/components/buffer.h"
 #include "ipc/raw_data_decode.h"
+#include "visualization/components/buffer.h"
 
-export module BufferExporter;
+module BufferExporter;
 
 namespace oid::BufferExporter
 {
-export enum class OutputType { Bitmap, OctaveMatrix };
 
 template <typename T>
 float get_multiplier()
@@ -233,9 +232,9 @@ void export_binary(const std::string& fname, const Buffer* buffer)
 }
 
 
-export void export_buffer(const Buffer* buffer,
-                          const std::string& path,
-                          const OutputType type)
+void export_buffer(const Buffer* buffer,
+                   const std::string& path,
+                   const OutputType type)
 {
     using enum BufferType;
     if (type == OutputType::Bitmap) {
@@ -282,4 +281,4 @@ export void export_buffer(const Buffer* buffer,
     }
 }
 
-} // namespace BufferExporter
+} // namespace oid::BufferExporter
