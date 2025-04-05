@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,7 +33,7 @@
 namespace oid
 {
 
-std::set<int> KeyboardState::pressed_keys_;
+std::set<int> KeyboardState::pressed_keys_{};
 
 
 bool KeyboardState::is_modifier_key_pressed(const ModifierKey key)
@@ -56,17 +56,17 @@ bool KeyboardState::is_key_pressed(const Key key)
 {
     switch (key) {
     case Key::Left:
-        return pressed_keys_.find(Qt::Key_Left) != pressed_keys_.end();
+        return pressed_keys_.contains(Qt::Key_Left);
     case Key::Right:
-        return pressed_keys_.find(Qt::Key_Right) != pressed_keys_.end();
+        return pressed_keys_.contains(Qt::Key_Right);
     case Key::Up:
-        return pressed_keys_.find(Qt::Key_Up) != pressed_keys_.end();
+        return pressed_keys_.contains(Qt::Key_Up);
     case Key::Down:
-        return pressed_keys_.find(Qt::Key_Down) != pressed_keys_.end();
+        return pressed_keys_.contains(Qt::Key_Down);
     case Key::Plus:
-        return pressed_keys_.find(Qt::Key_Plus) != pressed_keys_.end();
+        return pressed_keys_.contains(Qt::Key_Plus);
     case Key::Minus:
-        return pressed_keys_.find(Qt::Key_Minus) != pressed_keys_.end();
+        return pressed_keys_.contains(Qt::Key_Minus);
     default:
         assert(!"Invalid key requested");
         return false;

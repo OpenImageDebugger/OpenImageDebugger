@@ -33,7 +33,7 @@ uniform vec2 pix_coord;
 uniform vec4 brightness_contrast[2];
 
 
-// Ouput data
+// Output data
 varying vec2 uv;
 
 

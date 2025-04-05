@@ -33,7 +33,7 @@ uniform vec2 buffer_dimension;
 uniform int enable_borders;
 uniform int enable_icon_mode;
 
-// Ouput data
+// Output data
 varying vec2 uv;
 
 void main()
