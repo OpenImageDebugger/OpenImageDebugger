@@ -378,8 +378,8 @@ QStatusBar::item { border: 0; };</string>
                </property>
               </widget>
              </item>
-            <item row="0" column="7">
-              <widget class="QToolButton" name="shift_precision_left">
+             <item row="0" column="7">
+              <widget class="QToolButton" name="decrease_float_precision">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                  <horstretch>0</horstretch>
@@ -403,8 +403,8 @@ QStatusBar::item { border: 0; };</string>
                </property>
               </widget>
              </item>
-            <item row="0" column="8">
-              <widget class="QToolButton" name="shift_precision_right">
+             <item row="0" column="8">
+              <widget class="QToolButton" name="increase_float_precision">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                  <horstretch>0</horstretch>
@@ -1015,8 +1015,8 @@ Larger values will be clamped at this level when auto contrast is enabled</strin
   <tabstop>rotate_90_ccw</tabstop>
   <tabstop>rotate_90_cw</tabstop>
   <tabstop>go_to_pixel</tabstop>
-  <tabstop>shift_precision_left</tabstop>
-  <tabstop>shift_precision_right</tabstop>
+  <tabstop>decrease_float_precision</tabstop>
+  <tabstop>increase_float_precision</tabstop>
   <tabstop>ac_reset_min</tabstop>
   <tabstop>ac_reset_max</tabstop>
  </tabstops>

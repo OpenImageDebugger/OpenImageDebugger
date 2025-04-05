@@ -113,8 +113,8 @@ void MainWindow::initialize_settings_ui_minmax_compact(
         ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_ccw, 1, 0);
         ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_cw, 1, 1);
         ui_->gridLayout_toolbar->addWidget(ui_->acToggle, 1, 2);
-        ui_->gridLayout_toolbar->addWidget(ui_->shift_precision_left, 1, 3);
-        ui_->gridLayout_toolbar->addWidget(ui_->shift_precision_right, 1, 4);
+        ui_->gridLayout_toolbar->addWidget(ui_->decrease_float_precision, 1, 3);
+        ui_->gridLayout_toolbar->addWidget(ui_->increase_float_precision, 1, 4);
     }
 
     ui_->horizontalLayout_container_toolbar->addWidget(ui_->minMaxEditor, 2);
@@ -334,8 +334,8 @@ void MainWindow::initialize_ui_icons() const
     setFontIcon(ui_->linkViewsToggle, L"\ue805");
     setFontIcon(ui_->rotate_90_ccw, L"\ue801");
     setFontIcon(ui_->rotate_90_cw, L"\ue802");
-    setFontIcon(ui_->shift_precision_left, L"\ue806");
-    setFontIcon(ui_->shift_precision_right, L"\ue807");
+    setFontIcon(ui_->decrease_float_precision, L"\ue806");
+    setFontIcon(ui_->increase_float_precision, L"\ue807");
     setFontIcon(ui_->go_to_pixel, L"\uf031");
 
     setFontIcon(ui_->ac_reset_min, L"\ue808");
@@ -552,19 +552,19 @@ void MainWindow::initialize_toolbar() const
 
     connect(ui_->rotate_90_cw, SIGNAL(clicked()), this, SLOT(rotate_90_cw()));
     connect(ui_->rotate_90_ccw, SIGNAL(clicked()), this, SLOT(rotate_90_ccw()));
-    connect(ui_->shift_precision_right,
+    connect(ui_->increase_float_precision,
             SIGNAL(clicked()),
             this,
-            SLOT(shift_precision_right()));
-    connect(ui_->shift_precision_left,
+            SLOT(increase_float_precision()));
+    connect(ui_->decrease_float_precision,
             SIGNAL(clicked()),
             this,
-            SLOT(shift_precision_left()));
+            SLOT(decrease_float_precision()));
     connect(
         ui_->go_to_pixel, SIGNAL(clicked()), this, SLOT(toggle_go_to_dialog()));
 
-    ui_->shift_precision_right->setEnabled(false);
-    ui_->shift_precision_left->setEnabled(false);
+    ui_->increase_float_precision->setEnabled(false);
+    ui_->decrease_float_precision->setEnabled(false);
 }
 
 
