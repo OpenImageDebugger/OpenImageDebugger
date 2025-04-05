@@ -46,7 +46,7 @@ enum class BufferType {
 std::vector<std::uint8_t>
 make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double);
 
-std::size_t typesize(BufferType type);
+std::size_t type_size(BufferType type);
 
 } // namespace oid
 

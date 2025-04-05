@@ -40,7 +40,7 @@ make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
 
     // Cast from double to float
     const auto src = std::bit_cast<const double*>(buff_double.data());
-    auto* dst      = std::bit_cast<float*>(buff_float.data());
+    const auto dst = std::bit_cast<float*>(buff_float.data());
     for (std::size_t i = 0; i < element_count; ++i) {
         dst[i] = static_cast<float>(src[i]);
     }
@@ -49,15 +49,15 @@ make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
 }
 
 
-size_t typesize(const BufferType type)
+size_t type_size(const BufferType type)
 {
     switch (type) {
     case BufferType::Int32:
-        return sizeof(int32_t);
+        return sizeof(std::int32_t);
     case BufferType::Short:
         [[fallthrough]];
     case BufferType::UnsignedShort:
-        return sizeof(int16_t);
+        return sizeof(std::int16_t);
     case BufferType::Float32:
         return sizeof(float);
     case BufferType::Float64:
