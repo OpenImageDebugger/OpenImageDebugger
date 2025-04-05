@@ -36,7 +36,7 @@ find_package(Qt5 5.15.1 REQUIRED COMPONENTS Core Gui OpenGL Widgets)
 
 set(SOURCES
     oid_window.cpp
-    io/buffer_exporter.cpp
+#    io/buffer_exporter.cpp
     ipc/message_exchange.cpp
     ipc/raw_data_decode.cpp
     math/linear_algebra.cpp
@@ -72,6 +72,16 @@ set(QT_FORMS ui/main_window/main_window.ui)
 set(QT_RESOURCES resources/resources.qrc)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
+
+set_target_properties(${PROJECT_NAME}
+        PROPERTIES CXX_SCAN_FOR_MODULES On
+)
+
+target_sources(${PROJECT_NAME}
+        PUBLIC
+        FILE_SET cxx_modules TYPE CXX_MODULES FILES
+        io/buffer_exporter.cpp
+)
 
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

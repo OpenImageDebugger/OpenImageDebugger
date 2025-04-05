@@ -28,6 +28,7 @@
 #include <cassert>
 
 #include <bit>
+#include <vector>
 
 namespace oid
 {

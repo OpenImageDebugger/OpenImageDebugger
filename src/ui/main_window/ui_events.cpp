@@ -31,12 +31,14 @@
 #include <QFileDialog>
 #include <QtMath> // for portable definition of M_PI
 
-#include "io/buffer_exporter.h"
 #include "ui_main_window.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
 #include "visualization/events.h"
 #include "visualization/game_object.h"
+
+import BufferExporter;
+
 
 namespace oid
 {
@@ -383,9 +385,8 @@ void MainWindow::export_buffer()
     file_dialog.setAcceptMode(QFileDialog::AcceptSave);
     file_dialog.setFileMode(QFileDialog::AnyFile);
 
-    auto output_extensions = QHash<QString, BufferExporter::OutputType>{};
-    output_extensions[tr("Image File (*.png)")] =
-        BufferExporter::OutputType::Bitmap;
+    auto output_extensions                      = QHash<QString, BufferExporter::OutputType>{};
+    output_extensions[tr("Image File (*.png)")] = BufferExporter::OutputType::Bitmap;
     output_extensions[tr("Octave Raw Matrix (*.oct)")] =
         BufferExporter::OutputType::OctaveMatrix;
 
