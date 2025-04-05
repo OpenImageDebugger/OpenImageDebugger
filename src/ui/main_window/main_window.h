@@ -151,7 +151,7 @@ class MainWindow final : public QMainWindow
 
     void shift_precision_right();
 
-    void update_shift_precision();
+    void update_shift_precision() const;
 
     void buffer_selected(QListWidgetItem* item);
 
