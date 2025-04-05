@@ -38,14 +38,12 @@
 #include "visualization/events.h"
 #include "visualization/game_object.h"
 
-using namespace std;
-
 namespace oid
 {
 
 void MainWindow::resize_callback(const int w, const int h) const
 {
-    for (const auto& stage : stages_ | views::values) {
+    for (const auto& stage : stages_ | std::views::values) {
         stage->resize_callback(w, h);
     }
 
@@ -75,10 +73,10 @@ void MainWindow::scroll_callback(const float delta)
 
 void MainWindow::mouse_drag_event(const int mouse_x, const int mouse_y)
 {
-    const QPoint virtual_motion(mouse_x, mouse_y);
+    const auto virtual_motion = QPoint{mouse_x, mouse_y};
 
     if (link_views_enabled_) {
-        for (const auto& stage : stages_ | views::values) {
+        for (const auto& stage : stages_ | std::views::values) {
             stage->mouse_drag_event(virtual_motion.x(), virtual_motion.y());
         }
     } else if (currently_selected_stage_ != nullptr) {
@@ -119,7 +117,7 @@ void MainWindow::propagate_key_press_event(
     const QKeyEvent* key_event,
     EventProcessCode& event_intercepted) const
 {
-    for (const auto& stage : stages_ | views::values) {
+    for (const auto& stage : stages_ | std::views::values) {
         if (stage->key_press_event(key_event->key()) ==
             EventProcessCode::INTERCEPTED) {
             event_intercepted = EventProcessCode::INTERCEPTED;
@@ -162,16 +160,16 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
 void MainWindow::recenter_buffer()
 {
     if (link_views_enabled_) {
-        for (const auto& stage : stages_ | views::values) {
-            GameObject* cam_obj = stage->get_game_object("camera");
-            auto* cam = cam_obj->get_component<Camera>("camera_component");
+        for (const auto& stage : stages_ | std::views::values) {
+            const auto cam_obj = stage->get_game_object("camera");
+            const auto cam = cam_obj->get_component<Camera>("camera_component");
             cam->recenter_camera();
         }
     } else {
         if (currently_selected_stage_ != nullptr) {
-            GameObject* cam_obj =
+            const auto cam_obj =
                 currently_selected_stage_->get_game_object("camera");
-            auto* cam = cam_obj->get_component<Camera>("camera_component");
+            const auto cam = cam_obj->get_component<Camera>("camera_component");
             cam->recenter_camera();
         }
     }
@@ -188,15 +186,15 @@ void MainWindow::link_views_toggle()
 void MainWindow::shift_precision_left()
 {
     const auto shift_precision_left_impl = [](Stage* stage) {
-        GameObject* buffer_obj = stage->get_game_object("buffer");
-        auto* buffer_comp =
+        const auto buffer_obj = stage->get_game_object("buffer");
+        const auto buffer_comp =
             buffer_obj->get_component<BufferValues>("text_component");
 
         buffer_comp->shift_precision_left();
     };
 
     if (link_views_enabled_) {
-        for (const auto& stage : stages_ | views::values) {
+        for (const auto& stage : stages_ | std::views::values) {
             shift_precision_left_impl(stage.get());
         }
     } else {
@@ -211,15 +209,15 @@ void MainWindow::shift_precision_left()
 void MainWindow::shift_precision_right()
 {
     const auto shift_precision_right_impl = [](Stage* stage) {
-        GameObject* buffer_obj = stage->get_game_object("buffer");
-        auto* buffer_comp =
+        const auto buffer_obj = stage->get_game_object("buffer");
+        const auto buffer_comp =
             buffer_obj->get_component<BufferValues>("text_component");
 
         buffer_comp->shift_precision_right();
     };
 
     if (link_views_enabled_) {
-        for (const auto& stage : stages_ | views::values) {
+        for (const auto& stage : stages_ | std::views::values) {
             shift_precision_right_impl(stage.get());
         }
     } else {
@@ -231,16 +229,16 @@ void MainWindow::shift_precision_right()
     request_render_update_ = true;
 }
 
-void MainWindow::update_shift_precision()
+void MainWindow::update_shift_precision() const
 {
     if (currently_selected_stage_ != nullptr) {
-        GameObject* buffer_obj =
+        const auto buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        const auto* buffer =
+        const auto buffer =
             buffer_obj->get_component<Buffer>("buffer_component");
 
-        if ((BufferType::Float32 == buffer->type) ||
-            (BufferType::Float64 == buffer->type)) {
+        if (BufferType::Float32 == buffer->type ||
+            BufferType::Float64 == buffer->type) {
             ui_->shift_precision_left->setEnabled(true);
             ui_->shift_precision_right->setEnabled(true);
         } else {
@@ -256,15 +254,15 @@ void MainWindow::update_shift_precision()
 void MainWindow::rotate_90_cw()
 {
     const auto request_90_cw_rotation = [](Stage* stage) {
-        GameObject* buffer_obj = stage->get_game_object("buffer");
-        auto* buffer_comp =
+        const auto buffer_obj = stage->get_game_object("buffer");
+        const auto buffer_comp =
             buffer_obj->get_component<Buffer>("buffer_component");
 
         buffer_comp->rotate(90.0f * static_cast<float>(M_PI) / 180.0f);
     };
 
     if (link_views_enabled_) {
-        for (const auto& stage : stages_ | views::values) {
+        for (const auto& stage : stages_ | std::views::values) {
             request_90_cw_rotation(stage.get());
         }
     } else {
@@ -280,15 +278,15 @@ void MainWindow::rotate_90_cw()
 void MainWindow::rotate_90_ccw()
 {
     const auto request_90_ccw_rotation = [](Stage* stage) {
-        GameObject* buffer_obj = stage->get_game_object("buffer");
-        auto* buffer_comp =
+        const auto buffer_obj = stage->get_game_object("buffer");
+        const auto buffer_comp =
             buffer_obj->get_component<Buffer>("buffer_component");
 
         buffer_comp->rotate(-90.0f * static_cast<float>(M_PI) / 180.0f);
     };
 
     if (link_views_enabled_) {
-        for (const auto& stage : stages_ | views::values) {
+        for (const auto& stage : stages_ | std::views::values) {
             request_90_ccw_rotation(stage.get());
         }
     } else {
@@ -324,7 +322,7 @@ void MainWindow::remove_selected_buffer()
     if (ui_->imageList->count() > 0 && currently_selected_stage_ != nullptr) {
         auto removed_item = std::unique_ptr<QListWidgetItem>{
             ui_->imageList->takeItem(ui_->imageList->currentRow())};
-        const string buffer_name =
+        const auto buffer_name =
             removed_item->data(Qt::UserRole).toString().toStdString();
         stages_.erase(buffer_name);
         held_buffers_.erase(buffer_name);
@@ -348,8 +346,8 @@ void MainWindow::symbol_selected()
         return;
     }
 
-    const QByteArray symbol_name_qba = ui_->symbolList->text().toLocal8Bit();
-    const char* symbol_name          = symbol_name_qba.constData();
+    const auto symbol_name_qba = ui_->symbolList->text().toLocal8Bit();
+    const auto symbol_name     = symbol_name_qba.constData();
     request_plot_buffer(symbol_name);
     // Clear symbol input
     ui_->symbolList->setText("");
@@ -362,7 +360,7 @@ void MainWindow::symbol_completed(const QString& str)
         return;
     }
 
-    const QByteArray symbol_name_qba = str.toLocal8Bit();
+    const auto symbol_name_qba = str.toLocal8Bit();
     request_plot_buffer(symbol_name_qba.constData());
     // Clear symbol input
     ui_->symbolList->setText("");
@@ -377,24 +375,24 @@ void MainWindow::export_buffer()
     const auto stage =
         stages_.find(sender_action->data().toString().toStdString())->second;
 
-    GameObject* buffer_obj = stage->get_game_object("buffer");
-    const auto* component =
+    const auto buffer_obj = stage->get_game_object("buffer");
+    const auto component =
         buffer_obj->get_component<Buffer>("buffer_component");
 
-    QFileDialog file_dialog(this);
+    auto file_dialog = QFileDialog{this};
     file_dialog.setAcceptMode(QFileDialog::AcceptSave);
     file_dialog.setFileMode(QFileDialog::AnyFile);
 
-    QHash<QString, BufferExporter::OutputType> output_extensions;
+    auto output_extensions = QHash<QString, BufferExporter::OutputType>{};
     output_extensions[tr("Image File (*.png)")] =
         BufferExporter::OutputType::Bitmap;
     output_extensions[tr("Octave Raw Matrix (*.oct)")] =
         BufferExporter::OutputType::OctaveMatrix;
 
     // Generate the save suffix string
-    QHashIterator it(output_extensions);
+    auto it = QHashIterator{output_extensions};
 
-    QString save_message;
+    auto save_message = QString{};
 
     while (it.hasNext()) {
         it.next();
@@ -408,7 +406,7 @@ void MainWindow::export_buffer()
     file_dialog.selectNameFilter(default_export_suffix_);
 
     if (file_dialog.exec() == QDialog::Accepted) {
-        const string file_name = file_dialog.selectedFiles()[0].toStdString();
+        const auto file_name = file_dialog.selectedFiles()[0].toStdString();
         const auto selected_filter = file_dialog.selectedNameFilter();
 
         // Export buffer
@@ -428,19 +426,19 @@ void MainWindow::show_context_menu(const QPoint& pos)
 {
     if (ui_->imageList->itemAt(pos) != nullptr) {
         // Handle global position
-        const QPoint globalPos = ui_->imageList->mapToGlobal(pos);
+        const auto globalPos = ui_->imageList->mapToGlobal(pos);
 
         // Create menu and insert context actions
-        QMenu myMenu(this);
+        auto menu = QMenu{this};
 
-        QAction* exportAction =
-            myMenu.addAction("Export buffer", this, SLOT(export_buffer()));
+        const auto exportAction =
+            menu.addAction("Export buffer", this, SLOT(export_buffer()));
 
         // Add parameter to action: buffer name
         exportAction->setData(ui_->imageList->itemAt(pos)->data(Qt::UserRole));
 
         // Show context menu at handling position
-        myMenu.exec(globalPos);
+        menu.exec(globalPos);
     }
 }
 
@@ -448,13 +446,12 @@ void MainWindow::show_context_menu(const QPoint& pos)
 void MainWindow::toggle_go_to_dialog() const
 {
     if (!go_to_widget_->isVisible()) {
-        vec4 default_goal(0, 0, 0, 0);
+        auto default_goal = vec4{0.0f, 0.0f, 0.0f, 0.0f};
 
         if (currently_selected_stage_ != nullptr) {
-            GameObject* cam_obj =
+            const auto cam_obj =
                 currently_selected_stage_->get_game_object("camera");
-            const auto* cam =
-                cam_obj->get_component<Camera>("camera_component");
+            const auto cam = cam_obj->get_component<Camera>("camera_component");
 
             default_goal = cam->get_position();
         }
@@ -469,7 +466,7 @@ void MainWindow::toggle_go_to_dialog() const
 void MainWindow::go_to_pixel(const float x, const float y)
 {
     if (link_views_enabled_) {
-        for (const auto& stage : stages_ | views::values) {
+        for (const auto& stage : stages_ | std::views::values) {
             stage->go_to_pixel(x, y);
         }
     } else if (currently_selected_stage_ != nullptr) {
