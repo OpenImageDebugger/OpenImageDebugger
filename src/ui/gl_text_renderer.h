@@ -58,7 +58,7 @@ class GLTextRenderer
 
     void generate_glyphs_texture();
 
-    ShaderProgram text_prog;
+    ShaderProgram text_prog{nullptr};
 
     float text_texture_width{0};
     float text_texture_height{0};

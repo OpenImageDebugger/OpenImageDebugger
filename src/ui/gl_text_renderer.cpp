@@ -33,8 +33,8 @@ namespace oid
 {
 
 GLTextRenderer::GLTextRenderer(GLCanvas* gl_canvas)
-    : text_prog(gl_canvas)
-    , gl_canvas_(gl_canvas)
+    : text_prog{gl_canvas}
+    , gl_canvas_{gl_canvas}
 {
 }
 
@@ -72,17 +72,17 @@ bool GLTextRenderer::initialize()
 void GLTextRenderer::generate_glyphs_texture()
 {
     // Required characters for numbers, scientific notation (e), nan, inf
-    constexpr char text[] = "0123456789., -+enaif";
-    const unsigned char* p;
-    constexpr int border_size = 0;
+    constexpr auto text = "0123456789., -+enaif";
+    const unsigned char* p{};
+    constexpr auto border_size = 0;
 
-    QFontMetrics g(font);
+    const auto g = QFontMetrics{font};
 
     gl_canvas_->glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, text_tex);
 
     // Generate text bitmap
-    const QSize texture_size(g.size(Qt::TextSingleLine, text));
+    const auto texture_size = g.size(Qt::TextSingleLine, text);
 
     text_texture_width = text_texture_height = 1.0f;
     while (text_texture_width < static_cast<float>(texture_size.width())) {
@@ -93,9 +93,9 @@ void GLTextRenderer::generate_glyphs_texture()
     }
 
     {
-        constexpr int mipmap_levels = 5;
-        auto tex_level_width        = static_cast<int>(text_texture_width);
-        auto tex_level_height       = static_cast<int>(text_texture_height);
+        constexpr auto mipmap_levels = 5;
+        auto tex_level_width         = static_cast<int>(text_texture_width);
+        auto tex_level_height        = static_cast<int>(text_texture_height);
 
         for (int i = 0; i < mipmap_levels; ++i) {
             gl_canvas_->glTexImage2D(GL_TEXTURE_2D,
@@ -113,33 +113,34 @@ void GLTextRenderer::generate_glyphs_texture()
         }
     }
 
-    QPixmap pixmap(texture_size);
+    auto pixmap = QPixmap{texture_size};
     pixmap.fill(QColor(0, 0, 0));
-    QPainter painter(&pixmap);
+    auto painter = QPainter{&pixmap};
     painter.setPen(QColor(255, 255, 255));
     painter.setFont(font);
     painter.drawText(0, g.ascent(), text);
-    QImage img = pixmap.toImage().convertToFormat(QImage::Format_Grayscale8);
+    const auto img =
+        pixmap.toImage().convertToFormat(QImage::Format_Grayscale8);
 
     std::vector<uint8_t> packed_texture(
         static_cast<std::size_t>(text_texture_width * text_texture_height));
-    uint8_t* packed_texture_ptr = packed_texture.data();
+    auto packed_texture_ptr = packed_texture.data();
 
-    int real_ascent  = texture_size.height() - 1;
-    int real_descent = 0;
+    auto real_ascent  = texture_size.height() - 1;
+    auto real_descent = 0;
 
-    bool found_real_descent = false;
-    bool found_real_ascent  = false;
+    auto found_real_descent = false;
+    auto found_real_ascent  = false;
     // Pack bitmap and compute real ascent and descent lines
     for (int y = 0; y < texture_size.height(); ++y) {
-        const uint8_t* imgptr = img.scanLine(y);
-        int x                 = 0;
+        const auto img_ptr = img.scanLine(y);
+        auto x             = 0;
 
-        bool found_filled_pixel = false;
+        auto found_filled_pixel = false;
         for (; x < texture_size.width(); ++x) {
-            packed_texture_ptr[x] = imgptr[x];
+            packed_texture_ptr[x] = img_ptr[x];
 
-            found_filled_pixel = found_filled_pixel || imgptr[x] > 0;
+            found_filled_pixel = found_filled_pixel || img_ptr[x] > 0;
         }
 
         // If the row was completely empty...
@@ -162,13 +163,13 @@ void GLTextRenderer::generate_glyphs_texture()
 
 
     // Compute text box size
-    float box_h = 0;
+    auto box_h = 0.0f;
 
-    const int cropped_bitmap_height = real_ascent - real_descent;
+    const auto cropped_bitmap_height = real_ascent - real_descent;
 
     for (p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
-        const int advance_x     = g.horizontalAdvance(*p);
-        const int bitmap_height = g.height();
+        const auto advance_x     = g.horizontalAdvance(*p);
+        const auto bitmap_height = g.height();
 
         text_texture_advances[*p][0] = advance_x;
         text_texture_advances[*p][1] = 0;
@@ -194,9 +195,9 @@ void GLTextRenderer::generate_glyphs_texture()
                                     packed_texture.data());
     }
 
-    int x = 0;
+    auto x = 0;
     for (p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
-        const int advance_x = g.horizontalAdvance(*p);
+        const auto advance_x = g.horizontalAdvance(*p);
 
         text_texture_offsets[*p][0] = x + border_size;
         text_texture_offsets[*p][1] = real_descent + border_size;
