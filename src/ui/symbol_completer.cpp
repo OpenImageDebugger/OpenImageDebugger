@@ -25,9 +25,11 @@
 
 #include "symbol_completer.h"
 
+namespace oid
+{
 
 SymbolCompleter::SymbolCompleter(QObject* parent)
-    : QCompleter(parent)
+    : QCompleter{parent}
 {
     setModel(&model_);
 }
@@ -35,7 +37,7 @@ SymbolCompleter::SymbolCompleter(QObject* parent)
 
 void SymbolCompleter::update(const QString& word)
 {
-    const QStringList filtered = list_.filter(word, caseSensitivity());
+    const auto filtered = list_.filter(word, caseSensitivity());
     model_.setStringList(filtered);
     word_ = word;
     complete();
@@ -52,3 +54,5 @@ const QString& SymbolCompleter::word() const
 {
     return word_;
 }
+
+} // namespace oid
