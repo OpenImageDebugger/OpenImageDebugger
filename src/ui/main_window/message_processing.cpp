@@ -33,21 +33,18 @@
 
 #include "ui_main_window.h"
 
-using namespace std;
-
 namespace oid
 {
 
 void MainWindow::decode_set_available_symbols()
 {
-    std::unique_lock lock(ui_mutex_);
-    MessageDecoder message_decoder(&socket_);
+    const auto lock      = std::unique_lock{ui_mutex_};
+    auto message_decoder = MessageDecoder{&socket_};
     message_decoder.read<QStringList, QString>(available_vars_);
 
     for (const auto& symbol_value : available_vars_) {
         // Plot buffer if it was available in the previous session
-        if (previous_session_buffers_.find(symbol_value.toStdString()) !=
-            previous_session_buffers_.end()) {
+        if (previous_session_buffers_.contains(symbol_value.toStdString())) {
             request_plot_buffer(symbol_value.toStdString().data());
         }
     }
@@ -58,10 +55,10 @@ void MainWindow::decode_set_available_symbols()
 
 void MainWindow::respond_get_observed_symbols()
 {
-    MessageComposer message_composer;
+    auto message_composer = MessageComposer{};
     message_composer.push(MessageType::GetObservedSymbolsResponse)
         .push(held_buffers_.size());
-    for (const auto& name : held_buffers_ | views::keys) {
+    for (const auto& name : held_buffers_ | std::views::keys) {
         message_composer.push(name);
     }
     message_composer.send(&socket_);
@@ -73,7 +70,7 @@ MainWindow::find_image_list_item(const std::string& variable_name_str) const
 {
     // Looking for corresponding item...
     for (int i = 0; i < ui_->imageList->count(); ++i) {
-        QListWidgetItem* item = ui_->imageList->item(i);
+        const auto item = ui_->imageList->item(i);
         if (item->data(Qt::UserRole) != variable_name_str.c_str()) {
             continue;
         }
@@ -104,15 +101,15 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
         stage.get(), icon_width, icon_height);
 
     // Construct icon widget
-    const QImage bufferIcon(stage->buffer_icon.data(),
-                            icon_width,
-                            icon_height,
-                            bytes_per_line,
-                            QImage::Format_RGB888);
+    const auto bufferIcon = QImage{stage->buffer_icon.data(),
+                                   icon_width,
+                                   icon_height,
+                                   bytes_per_line,
+                                   QImage::Format_RGB888};
 
     // Replace icon in the corresponding item
-    auto item = find_image_list_item(variable_name_str);
-    if (item != nullptr) {
+    if (const auto item = find_image_list_item(variable_name_str);
+        item != nullptr) {
         item->setIcon(QPixmap::fromImage(bufferIcon));
     }
 }
@@ -122,8 +119,8 @@ void MainWindow::update_image_list_label(const std::string& variable_name_str,
                                          const std::string& label_str) const
 {
     // Replace text in the corresponding item
-    auto item = find_image_list_item(variable_name_str);
-    if (item != nullptr) {
+    if (const auto item = find_image_list_item(variable_name_str);
+        item != nullptr) {
         item->setText(label_str.c_str());
     }
 }
@@ -132,18 +129,18 @@ void MainWindow::update_image_list_label(const std::string& variable_name_str,
 void MainWindow::decode_plot_buffer_contents()
 {
     // Read buffer info
-    string variable_name_str;
-    string display_name_str;
-    string pixel_layout_str;
-    bool transpose_buffer;
-    int buff_width;
-    int buff_height;
-    int buff_channels;
-    int buff_stride;
-    BufferType buff_type;
-    vector<uint8_t> buff_contents;
+    auto variable_name_str = std::string{};
+    auto display_name_str  = std::string{};
+    auto pixel_layout_str  = std::string{};
+    auto transpose_buffer  = bool{};
+    auto buff_width        = int{};
+    auto buff_height       = int{};
+    auto buff_channels     = int{};
+    auto buff_stride       = int{};
+    auto buff_type         = BufferType{};
+    auto buff_contents     = std::vector<std::uint8_t>{};
 
-    MessageDecoder message_decoder(&socket_);
+    auto message_decoder = MessageDecoder{&socket_};
     message_decoder.read(variable_name_str)
         .read(display_name_str)
         .read(pixel_layout_str)
@@ -162,11 +159,11 @@ void MainWindow::decode_plot_buffer_contents()
     } else {
         held_buffers_[variable_name_str] = std::move(buff_contents);
     }
-    const std::uint8_t* buff_ptr = held_buffers_[variable_name_str].data();
+    const auto buff_ptr = held_buffers_[variable_name_str].data();
 
     // Human readable dimensions
-    int visualized_width;
-    int visualized_height;
+    auto visualized_width  = int{};
+    auto visualized_height = int{};
     if (!transpose_buffer) {
         visualized_width  = buff_width;
         visualized_height = buff_height;
@@ -176,7 +173,7 @@ void MainWindow::decode_plot_buffer_contents()
     }
 
     const auto label_str = [&] {
-        stringstream label_ss;
+        std::stringstream label_ss;
         label_ss << display_name_str;
         label_ss << "\n[" << visualized_width << "x" << visualized_height
                  << "]";
@@ -189,7 +186,7 @@ void MainWindow::decode_plot_buffer_contents()
         buffer_stage == stages_.end()) {
 
         // Construct a new stage buffer if needed
-        auto stage = make_shared<Stage>(this);
+        auto stage = std::make_shared<Stage>(this);
         if (!stage->initialize(buff_ptr,
                                buff_width,
                                buff_height,
@@ -198,7 +195,8 @@ void MainWindow::decode_plot_buffer_contents()
                                buff_stride,
                                pixel_layout_str,
                                transpose_buffer)) {
-            cerr << "[error] Could not initialize opengl canvas!" << endl;
+            std::cerr << "[error] Could not initialize opengl canvas!"
+                      << std::endl;
         }
         stage->contrast_enabled = ac_enabled_;
         buffer_stage = stages_.try_emplace(variable_name_str, stage).first;
@@ -256,7 +254,7 @@ void MainWindow::decode_incoming_messages()
         return;
     }
 
-    MessageType header;
+    auto header = MessageType{};
     if (!socket_.read(std::bit_cast<char*>(&header),
                       static_cast<qint64>(sizeof(header)))) {
         return;
@@ -282,7 +280,7 @@ void MainWindow::decode_incoming_messages()
 
 void MainWindow::request_plot_buffer(const char* buffer_name)
 {
-    MessageComposer message_composer;
+    auto message_composer = MessageComposer{};
     message_composer.push(MessageType::PlotBufferRequest)
         .push(std::string(buffer_name))
         .send(&socket_);
