@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2025 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -47,7 +47,7 @@ class GameObject
     template <typename T>
     T* get_component(const std::string& tag)
     {
-        if (all_components_.find(tag) == all_components_.end()) {
+        if (!all_components_.contains(tag)) {
             return nullptr;
         }
         return dynamic_cast<T*>(all_components_[tag].get());
@@ -79,8 +79,8 @@ class GameObject
 
   private:
     std::map<std::string, std::shared_ptr<Component>, std::less<>>
-        all_components_;
-    mat4 pose_;
+        all_components_{};
+    mat4 pose_{};
 };
 
 } // namespace oid
