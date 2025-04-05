@@ -319,7 +319,8 @@ qreal MainWindow::get_screen_dpi_scale()
 }
 
 
-std::string MainWindow::get_type_label(const BufferType type, const int channels)
+std::string MainWindow::get_type_label(const BufferType type,
+                                       const int channels)
 {
     auto result = std::stringstream{};
     if (type == BufferType::Float32) {

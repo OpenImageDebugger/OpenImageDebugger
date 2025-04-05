@@ -33,12 +33,10 @@
 #include "visualization/game_object.h"
 
 
-using namespace std;
-
 namespace oid
 {
 
-void enable_inputs(const initializer_list<QLineEdit*>& inputs)
+void enable_inputs(const std::initializer_list<QLineEdit*>& inputs)
 {
     for (auto& input : inputs) {
         input->setEnabled(true);
@@ -46,7 +44,7 @@ void enable_inputs(const initializer_list<QLineEdit*>& inputs)
 }
 
 
-void disable_inputs(const initializer_list<QLineEdit*>& inputs)
+void disable_inputs(const std::initializer_list<QLineEdit*>& inputs)
 {
     for (auto& input : inputs) {
         input->setEnabled(false);
@@ -57,10 +55,10 @@ void disable_inputs(const initializer_list<QLineEdit*>& inputs)
 
 void MainWindow::reset_ac_min_labels() const
 {
-    GameObject* buffer_obj =
+    const auto buffer_obj =
         currently_selected_stage_->get_game_object("buffer");
-    auto* buffer        = buffer_obj->get_component<Buffer>("buffer_component");
-    const float* ac_min = buffer->min_buffer_values();
+    const auto buffer = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto ac_min = buffer->min_buffer_values();
 
     ui_->ac_c1_min->setText(QString::number(ac_min[0]));
 
@@ -91,10 +89,10 @@ void MainWindow::reset_ac_min_labels() const
 
 void MainWindow::reset_ac_max_labels() const
 {
-    GameObject* buffer_obj =
+    const auto buffer_obj =
         currently_selected_stage_->get_game_object("buffer");
-    auto* buffer        = buffer_obj->get_component<Buffer>("buffer_component");
-    const float* ac_max = buffer->max_buffer_values();
+    const auto buffer = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto ac_max = buffer->max_buffer_values();
 
     ui_->ac_c1_max->setText(QString::number(ac_max[0]));
     if (buffer->channels == 4) {
@@ -173,9 +171,9 @@ void MainWindow::ac_c4_max_update()
 void MainWindow::ac_min_reset()
 {
     if (currently_selected_stage_ != nullptr) {
-        GameObject* buffer_obj =
+        const auto buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
+        const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
         buff->recompute_min_color_values();
         buff->compute_contrast_brightness_parameters();
 
@@ -191,9 +189,9 @@ void MainWindow::ac_min_reset()
 void MainWindow::ac_max_reset()
 {
     if (currently_selected_stage_ != nullptr) {
-        GameObject* buffer_obj =
+        const auto buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
+        const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
         buff->recompute_max_color_values();
         buff->compute_contrast_brightness_parameters();
 
@@ -209,7 +207,7 @@ void MainWindow::ac_max_reset()
 void MainWindow::ac_toggle(const bool is_checked)
 {
     ac_enabled_ = is_checked;
-    for (const auto& stage : stages_ | views::values) {
+    for (const auto& stage : stages_ | std::views::values) {
         stage->contrast_enabled = ac_enabled_;
     }
 
@@ -221,9 +219,9 @@ void MainWindow::ac_toggle(const bool is_checked)
 void MainWindow::set_ac_min_value(const int idx, const float value)
 {
     if (currently_selected_stage_ != nullptr) {
-        GameObject* buffer_obj =
+        const auto buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
+        const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
         buff->min_buffer_values()[idx] = value;
         buff->compute_contrast_brightness_parameters();
 
@@ -236,9 +234,9 @@ void MainWindow::set_ac_min_value(const int idx, const float value)
 void MainWindow::set_ac_max_value(const int idx, const float value)
 {
     if (currently_selected_stage_ != nullptr) {
-        GameObject* buffer_obj =
+        const auto buffer_obj =
             currently_selected_stage_->get_game_object("buffer");
-        auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
+        const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
         buff->max_buffer_values()[idx] = value;
         buff->compute_contrast_brightness_parameters();
 
