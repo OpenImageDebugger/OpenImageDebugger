@@ -572,7 +572,7 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 
     const size_t buff_size_expected =
         static_cast<size_t>(buff_stride * buff_height * buff_channels) *
-        typesize(buff_type);
+        type_size(buff_type);
 
     if (buff_ptr == nullptr) {
         RAISE_PY_EXCEPTION(
