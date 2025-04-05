@@ -30,8 +30,10 @@
 #include <csignal>
 #include <spawn.h>
 
-using namespace std;
-using namespace oid;
+extern char** environ;
+
+namespace oid
+{
 
 class ProcessImplUnix final : public ProcessImpl
 {
@@ -55,14 +57,12 @@ class ProcessImplUnix final : public ProcessImpl
     {
         const auto& windowBinaryPath = command[0];
 
-        vector<char*> argv;
+        auto argv = std::vector<char*>{};
         argv.reserve(command.size());
         for (auto& arg : command) {
             argv.push_back(arg.data());
         }
         argv.push_back(nullptr);
-
-        extern char** environ;
 
         posix_spawn(&pid_,
                     windowBinaryPath.c_str(),
@@ -88,5 +88,7 @@ class ProcessImplUnix final : public ProcessImpl
 
 void Process::createImpl()
 {
-    impl_ = make_shared<ProcessImplUnix>();
+    impl_ = std::make_shared<ProcessImplUnix>();
 }
+
+} // namespace oid

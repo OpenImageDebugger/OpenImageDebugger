@@ -69,7 +69,7 @@ class Process final
     void createImpl();
 
     // pimpl idiom
-    std::shared_ptr<ProcessImpl> impl_;
+    std::shared_ptr<ProcessImpl> impl_{};
 };
 
 } // namespace oid
