@@ -31,15 +31,13 @@
 
 #include "events.h"
 #include "math/linear_algebra.h"
+#include "stage.h"
 
 
 class GLCanvas;
 
 namespace oid
 {
-
-class Component;
-class Stage;
 
 class GameObject
 {
