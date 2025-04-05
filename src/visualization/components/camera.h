@@ -95,8 +95,8 @@ class Camera final : public Component
     float camera_pos_x_{0.0f};
     float camera_pos_y_{0.0f};
 
-    int canvas_width_{};
-    int canvas_height_{};
+    int canvas_width_{0};
+    int canvas_height_{0};
 
     mat4 scale_{};
 };

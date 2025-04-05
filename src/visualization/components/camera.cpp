@@ -37,8 +37,6 @@ namespace oid
 
 Camera::Camera(GameObject* game_object, GLCanvas* gl_canvas)
     : Component{game_object, gl_canvas}
-    , canvas_width_{0}
-    , canvas_height_{0}
 {
 }
 
@@ -89,10 +87,10 @@ void Camera::scroll_callback(const float delta)
     const auto win_w   = static_cast<float>(gl_canvas_->width());
     const auto win_h   = static_cast<float>(gl_canvas_->height());
 
-    const vec4 mouse_pos_ndc(2.0f * (mouse_x - win_w / 2.0f) / win_w,
-                             -2.0f * (mouse_y - win_h / 2.0f) / win_h,
-                             0.0f,
-                             1.0f);
+    const auto mouse_pos_ndc = vec4{2.0f * (mouse_x - win_w / 2.0f) / win_w,
+                                    -2.0f * (mouse_y - win_h / 2.0f) / win_h,
+                                    0.0f,
+                                    1.0f};
 
     scale_at(mouse_pos_ndc, delta);
 }
@@ -105,14 +103,15 @@ void Camera::update()
 
 std::pair<float, float> Camera::get_buffer_initial_dimensions() const
 {
-    GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
-    const auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto buffer_obj = game_object_->stage->get_game_object("buffer");
+    const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
 
-    vec4 buf_dim = buffer_obj->get_pose() *
-                   vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1);
+    const auto buf_dim =
+        buffer_obj->get_pose() *
+        vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1);
 
-    const float x = std::abs(buf_dim.x());
-    const float y = std::abs(buf_dim.y());
+    const auto x = std::abs(buf_dim.x());
+    const auto y = std::abs(buf_dim.y());
 
     return std::make_pair(x, y);
 }
@@ -125,7 +124,7 @@ void Camera::update_object_pose() const
         // Since the view matrix of the camera is inverted before being applied
         // to the world coordinates, the order in which the operations below are
         // applied to world coordinates during rendering will also be reversed
-        const mat4 pose = scale_ * mat4::translation(position);
+        const auto pose = scale_ * mat4::translation(position);
 
         game_object_->set_pose(pose);
     }
@@ -151,7 +150,7 @@ void Camera::handle_key_events()
 
     if (KeyboardState::is_modifier_key_pressed(
             KeyboardState::ModifierKey::Control)) {
-        vec4 delta_pos(0.0f, 0.0f, 0.0f, 0.0f);
+        auto delta_pos = vec4{0.0f, 0.0f, 0.0f, 0.0f};
 
         if (KeyboardState::is_key_pressed(Key::Up)) {
             delta_pos.y()     = -1.0f;
@@ -174,8 +173,8 @@ void Camera::handle_key_events()
             camera_pos_x_ -= delta_pos.x() + scale_(0, 3);
             camera_pos_y_ -= delta_pos.y() + scale_(1, 3);
 
-            const float zoom = 1.0f / compute_zoom();
-            scale_           = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
+            const auto zoom = 1.0f / compute_zoom();
+            scale_          = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
 
             update_object_pose();
 
@@ -189,8 +188,8 @@ EventProcessCode Camera::key_press_event(int)
 {
     using Key = KeyboardState::Key;
 
-    const vec4 screen_center(0.0f, 0.0f, 0.0f, 1.0f);
-    auto event_intercepted = EventProcessCode::IGNORED;
+    const auto screen_center = vec4{0.0f, 0.0f, 0.0f, 1.0f};
+    auto event_intercepted   = EventProcessCode::IGNORED;
 
     if (KeyboardState::is_modifier_key_pressed(
             KeyboardState::ModifierKey::Control)) {
@@ -222,58 +221,58 @@ void Camera::scale_at(const vec4& center_ndc, const float delta)
     if (new_delta < 0) {
 
         // Ratio which defines farthest zoom limit. (0; 1].
-        // 1 forbids to zoom farther then window size.
+        // 1 forbids to zoom farther than window size.
         // 0 allows unlimited zoom-out.
-        static constexpr float ratio_lowest = 0.75f;
+        static constexpr auto ratio_lowest{0.75f};
 
         // Get initial dimensions of buffer (without zoom).
         const auto [buffer_width, buffer_height] =
             get_buffer_initial_dimensions();
 
-        // Find lowest allowed zoom ratio.
-        const float zoom_lowest_x =
+        // Find the lowest allowed zoom ratio.
+        const auto zoom_lowest_x =
             ratio_lowest * static_cast<float>(canvas_width_) / buffer_width;
-        const float zoom_lowest_y =
+        const auto zoom_lowest_y =
             ratio_lowest * static_cast<float>(canvas_height_) / buffer_height;
-        const float zoom_lowest = std::min(zoom_lowest_x, zoom_lowest_y);
+        const auto zoom_lowest = (std::min)(zoom_lowest_x, zoom_lowest_y);
 
-        // Find lowest allowed zoom power.
-        const float zoom_power_lowest =
+        // Find the lowest allowed zoom power.
+        const auto zoom_power_lowest =
             std::log(zoom_lowest) / std::log(zoom_factor);
 
-        // Find lowest allowed delta.
-        const float delta_lowest = zoom_power_lowest - zoom_power_;
+        // Find the lowest allowed delta.
+        const auto delta_lowest = zoom_power_lowest - zoom_power_;
         if (delta_lowest >= 0) {
             return;
         }
 
         // Update delta if view matrix is near its lowest zoom.
-        new_delta = std::max(new_delta, delta_lowest);
+        new_delta = (std::max)(new_delta, delta_lowest);
     }
 
     // Check if greatest zoom value has been reached.
     if (new_delta > 0) {
 
         // Closest zoom power. It may be any positive value.
-        // 1 forbids to zoom closer then original matrix scale.
+        // 1 forbids to zoom closer than original matrix scale.
         // infinity allows unlimited zoom-in.
-        static constexpr float zoom_power_greatest = 50.0f;
+        static constexpr auto zoom_power_greatest{50.0f};
 
-        // Find greatest allowed delta.
-        const float delta_greatest = zoom_power_greatest - zoom_power_;
+        // Find the greatest allowed delta.
+        const auto delta_greatest{zoom_power_greatest - zoom_power_};
         if (delta_greatest <= 0) {
             return;
         }
 
         // Update delta if view matrix is near its greatest zoom.
-        new_delta = std::min(new_delta, delta_greatest);
+        new_delta = (std::min)(new_delta, delta_greatest);
     }
 
-    const mat4 vp_inv = game_object_->get_pose() * projection.inv();
+    const auto vp_inv = game_object_->get_pose() * projection.inv();
 
-    const float delta_zoom = std::pow(zoom_factor, -new_delta);
+    const auto delta_zoom = std::pow(zoom_factor, -new_delta);
 
-    const vec4 center_pos = scale_.inv() * vp_inv * center_ndc;
+    const auto center_pos = scale_.inv() * vp_inv * center_ndc;
 
     // Since the view matrix of the camera is inverted before being applied
     // to the world coordinates, the order in which the operations below are
@@ -304,7 +303,7 @@ void Camera::scale_at(const vec4& center_ndc, const float delta)
 
 void Camera::set_initial_zoom()
 {
-    static constexpr float zoom_power_step = 0.1f;
+    static constexpr auto zoom_power_step{0.1f};
 
     // Get initial dimensions of buffer (without zoom).
     const auto [init_buffer_width, init_buffer_height] =
@@ -343,8 +342,8 @@ void Camera::set_initial_zoom()
         }
     }
 
-    const float zoom = 1.0f / compute_zoom();
-    scale_           = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
+    const auto zoom{1.0f / compute_zoom()};
+    scale_ = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
 }
 
 
@@ -356,18 +355,18 @@ float Camera::compute_zoom() const
 
 void Camera::move_to(const float x, const float y)
 {
-    GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
+    const auto buffer_obj = game_object_->stage->get_game_object("buffer");
 
-    const auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
     const auto buf_dim =
         vec4(buff->buffer_width_f, buff->buffer_height_f, 0.0f, 1.0f);
-    const vec4 centered_coord = buf_dim * 0.5f - vec4(x, y, 0.0f, 0.0f);
+    const auto centered_coord = buf_dim * 0.5f - vec4(x, y, 0.0f, 0.0f);
 
     // Recompute zoom matrix to discard its internal translation
-    const float zoom = 1.0f / compute_zoom();
-    scale_           = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
+    const auto zoom{1.0f / compute_zoom()};
+    scale_ = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
 
-    vec4 transformed_goal =
+    const auto transformed_goal =
         scale_.inv() * buffer_obj->get_pose() * centered_coord;
 
     camera_pos_x_ = transformed_goal.x();
@@ -379,12 +378,12 @@ void Camera::move_to(const float x, const float y)
 
 vec4 Camera::get_position() const
 {
-    GameObject* buffer_obj = game_object_->stage->get_game_object("buffer");
+    const auto buffer_obj = game_object_->stage->get_game_object("buffer");
 
-    const auto* buff = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
     const auto buf_dim =
         vec4(buff->buffer_width_f, buff->buffer_height_f, 0.0f, 1.0f);
-    const vec4 pos_vec(camera_pos_x_, camera_pos_y_, 0.0f, 1.0f);
+    const auto pos_vec = vec4{camera_pos_x_, camera_pos_y_, 0.0f, 1.0f};
 
     return buf_dim * 0.5f - buffer_obj->get_pose().inv() * scale_ * pos_vec;
 }
