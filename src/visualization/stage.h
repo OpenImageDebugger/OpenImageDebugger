@@ -41,8 +41,8 @@ class Stage
 {
   public:
     bool contrast_enabled{};
-    std::vector<uint8_t> buffer_icon;
-    MainWindow* main_window;
+    std::vector<uint8_t> buffer_icon{};
+    MainWindow* main_window{nullptr};
 
     explicit Stage(MainWindow* main_window);
 
@@ -86,7 +86,7 @@ class Stage
 
   private:
     std::map<std::string, std::shared_ptr<GameObject>, std::less<>>
-        all_game_objects;
+        all_game_objects{};
 };
 } // namespace oid
 
