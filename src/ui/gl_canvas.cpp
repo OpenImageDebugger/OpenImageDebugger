@@ -222,7 +222,7 @@ void GLCanvas::resizeGL(const int w, const int h)
 
 void GLCanvas::set_main_window(MainWindow* mw)
 {
-    main_window_.reset(mw);
+    main_window_ = mw;
 }
 
 
