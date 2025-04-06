@@ -17,5 +17,5 @@ enum class OutputType { Bitmap, OctaveMatrix };
 
 void export_buffer(const Buffer* buffer,
                    const std::string& path,
-                   const OutputType type);
+                   OutputType type);
 } // namespace oid::BufferExporter
