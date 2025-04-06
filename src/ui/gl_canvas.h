@@ -97,7 +97,7 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions
     int mouse_x_{0};
     int mouse_y_{0};
 
-    std::unique_ptr<MainWindow> main_window_{nullptr};
+    MainWindow* main_window_{nullptr};
 
     GLuint icon_texture_{0};
     GLuint icon_fbo_{0};
