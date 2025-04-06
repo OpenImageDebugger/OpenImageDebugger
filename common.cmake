@@ -25,7 +25,7 @@ cmake_minimum_required(VERSION 3.22.1)
 
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type")
 set(CMAKE_INSTALL_PREFIX /usr/local CACHE PATH "Install path")
-set(CMAKE_CXX_COMPILER /opt/homebrew/opt/llvm/bin/clang++ CACHE PATH "CXX compiler")
+set(CMAKE_CXX_COMPILER /opt/homebrew/Cellar/llvm/20.1.1/bin/clang++ CACHE PATH "CXX compiler")
 
 # We want to be as strict as possible with the standards
 set(CMAKE_CXX_STANDARD 20)
