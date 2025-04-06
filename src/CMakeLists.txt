@@ -23,7 +23,7 @@
 
 cmake_minimum_required(VERSION 3.22.1)
 
-project(oidwindow)
+project(oidwindow CXX)
 
 set(OpenGL_GL_PREFERENCE LEGACY)
 find_package(OpenGL 2.1 REQUIRED)
