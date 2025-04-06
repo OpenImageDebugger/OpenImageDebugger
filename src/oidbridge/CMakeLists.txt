@@ -21,7 +21,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.28)
 
 project(oidbridge CXX)
 
@@ -41,6 +41,19 @@ add_dependencies(${PROJECT_NAME} oidipc)
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       INSTALL_RPATH
                       "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_SOURCE_DIR}/lib/ipc")
+
+target_sources(${PROJECT_NAME}
+                PUBLIC FILE_SET HEADERS
+                BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+                FILES
+                oid_bridge.h
+                ../debuggerinterface/preprocessor_directives.h
+                ../debuggerinterface/python_native_interface.h
+                ../ipc/message_exchange.h
+                ../ipc/raw_data_decode.h
+                ../system/process/process.h
+                ../system/process/process_impl.h
+)
 
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-fvisibility=hidden>")
 

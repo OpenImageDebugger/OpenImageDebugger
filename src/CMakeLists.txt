@@ -21,7 +21,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.28)
 
 project(oidwindow CXX)
 
@@ -79,6 +79,32 @@ add_dependencies(${PROJECT_NAME} oidipc)
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       INSTALL_RPATH
                       "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_SOURCE_DIR}/lib/ipc")
+
+target_sources(${PROJECT_NAME}
+               PUBLIC FILE_SET HEADERS
+               FILES
+               io/buffer_exporter.h
+               ipc/message_exchange.h
+               ipc/raw_data_decode.h
+               math/linear_algebra.h
+               ui/decorated_line_edit.h
+               ui/gl_canvas.h
+               ui/gl_text_renderer.h
+               ui/go_to_widget.h
+               ui/main_window/main_window.h
+               ui/symbol_completer.h
+               ui/symbol_search_input.h
+               visualization/components/background.h
+               visualization/components/buffer.h
+               visualization/components/buffer_values.h
+               visualization/components/camera.h
+               visualization/components/component.h
+               visualization/events.h
+               visualization/game_object.h
+               visualization/shader.h
+               visualization/shaders/oid_shaders.h
+               visualization/stage.h
+)
 
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
