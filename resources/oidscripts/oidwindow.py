@@ -91,14 +91,11 @@ class OpenImageDebuggerWindow(object):
         Return the name of the binary library, including its extension, which
         is platform dependent.
         """
-        python_version = '_python%d' % sys.version_info[0]
-
-        if PLATFORM_NAME == 'linux':
-            return 'liboidbridge%s.so' % python_version
-        elif PLATFORM_NAME == 'darwin':
-            return 'liboidbridge%s.dylib' % python_version
+        if PLATFORM_NAME == 'linux' or PLATFORM_NAME == 'darwin':
+            return 'liboidbridge.so'
         elif PLATFORM_NAME == 'windows':
-            return 'oidbridge%s.dll' % python_version
+            return 'oidbridge.dll'
+        return None
 
     def plot_variable(self, requested_symbol):
         """
