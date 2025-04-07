@@ -25,7 +25,7 @@
 
 #include "background.h"
 
-#include "math/vec4.h"
+#include "math/linear_algebra.h"
 #include "visualization/game_object.h"
 #include "visualization/shader.h"
 #include "visualization/shaders/oid_shaders.h"

@@ -26,7 +26,7 @@
 #ifndef COMPONENT_H_
 #define COMPONENT_H_
 
-#include "math/mat4.h"
+#include "math/linear_algebra.h"
 #include "ui/gl_canvas.h"
 #include "visualization/events.h"
 

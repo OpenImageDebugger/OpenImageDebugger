@@ -33,7 +33,7 @@
 #include "GL/gl.h"
 
 #include "camera.h"
-#include "math/vec4.h"
+#include "math/linear_algebra.h"
 #include "visualization/game_object.h"
 #include "visualization/shaders/oid_shaders.h"
 #include "visualization/stage.h"
