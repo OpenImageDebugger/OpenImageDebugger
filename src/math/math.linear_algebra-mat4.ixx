@@ -23,6 +23,4 @@
  * IN THE SOFTWARE.
  */
 
-export module Math.LinearAlgebra;
-
-export import :mat4;
+export module math.linear_algebra:mat4;
