@@ -37,7 +37,7 @@
 #include <QTcpSocket>
 #include <QTimer>
 
-#include "math/linear_algebra.h"
+#include "math/vec4.h"
 #include "ui/go_to_widget.h"
 #include "ui/symbol_completer.h"
 #include "ui_main_window.h"

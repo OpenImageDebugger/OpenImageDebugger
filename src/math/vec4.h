@@ -23,62 +23,71 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef COMPONENT_H_
-#define COMPONENT_H_
+#ifndef MATH_VEC4_H_
+#define MATH_VEC4_H_
 
-#include "math/mat4.h"
-#include "ui/gl_canvas.h"
-#include "visualization/events.h"
-
+#include <Eigen>
 
 namespace oid
 {
 
-class GameObject;
-
-class Component
+class vec4
 {
+    friend class mat4;
+
   public:
-    Component(GameObject* game_object, GLCanvas* gl_canvas);
+    vec4() = default;
 
-    virtual bool initialize();
+    vec4(float x, float y, float z, float w);
 
-    virtual bool buffer_update();
+    vec4& operator+=(const vec4& b);
 
-    virtual bool post_buffer_update();
-
-    [[nodiscard]] virtual int render_index() const;
-
-    // Called after all components are initialized
-    virtual bool post_initialize();
-
-    virtual void update() = 0;
-
-    virtual void draw(const mat4& projection, const mat4& viewInv) = 0;
-
-    ///
-    // Events
-    virtual EventProcessCode key_press_event(int /* key_code */)
+    friend vec4 operator+(const vec4& a, const vec4& b)
     {
-        return EventProcessCode::IGNORED;
+        return {a.vec_[0] + b.vec_[0],
+                a.vec_[1] + b.vec_[1],
+                a.vec_[2] + b.vec_[2],
+                a.vec_[3] + b.vec_[3]};
     }
 
-    virtual void mouse_drag_event(int /* mouse_x */, int /* mouse_y */)
+    friend vec4 operator-(const vec4& a, const vec4& b)
     {
-        // Do nothing
+        return {a.vec_[0] - b.vec_[0],
+                a.vec_[1] - b.vec_[1],
+                a.vec_[2] - b.vec_[2],
+                a.vec_[3] - b.vec_[3]};
     }
 
-    virtual void mouse_move_event(int /* mouse_x */, int /* mouse_y */)
+    friend vec4 operator*(const vec4& vec, const float scalar)
     {
-        // Do nothing
+        auto result = vec4{vec};
+        result.vec_ *= scalar;
+
+        return result;
     }
 
-    virtual ~Component();
+    void print() const;
 
-    GameObject* game_object_{};
+    float* data();
 
-    GLCanvas* gl_canvas_{};
+    float& x();
+    float& y();
+    float& z();
+    float& w();
+
+    [[nodiscard]] const float& x() const;
+    [[nodiscard]] const float& y() const;
+    [[nodiscard]] const float& z() const;
+    [[nodiscard]] const float& w() const;
+
+    static vec4 zero();
+
+  private:
+    Eigen::Vector4f vec_{};
 };
 
+vec4 operator-(const vec4& vector);
+
 } // namespace oid
-#endif // COMPONENT_H_
+
+#endif // MATH_VEC4_H_

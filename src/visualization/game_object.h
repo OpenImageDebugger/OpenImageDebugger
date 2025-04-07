@@ -30,7 +30,7 @@
 #include <memory>
 
 #include "events.h"
-#include "math/linear_algebra.h"
+#include "math/vec4.h"
 #include "stage.h"
 
 

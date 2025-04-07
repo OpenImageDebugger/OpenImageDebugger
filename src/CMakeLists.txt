@@ -39,7 +39,8 @@ set(SOURCES
     io/buffer_exporter.cpp
     ipc/message_exchange.cpp
     ipc/raw_data_decode.cpp
-    math/linear_algebra.cpp
+    math/mat4.cpp
+    math/vec4.cpp
     ui/decorated_line_edit.cpp
     ui/gl_canvas.cpp
     ui/gl_text_renderer.cpp

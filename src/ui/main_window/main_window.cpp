@@ -33,7 +33,7 @@
 #include <QScreen>
 #include <QSettings>
 
-#include "math/linear_algebra.h"
+#include "math/vec4.h"
 #include "ui_main_window.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
