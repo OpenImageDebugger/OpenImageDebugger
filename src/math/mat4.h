@@ -23,73 +23,16 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef LINEAR_ALGEBRA_H_
-#define LINEAR_ALGEBRA_H_
+#ifndef MATH_MAT4_H
+#define MATH_MAT4_H
 
 #include <Eigen>
 
+#include "math/vec4.h"
+
+
 namespace oid
 {
-
-class mat4;
-
-class vec4
-{
-    friend class mat4;
-
-  public:
-    vec4() = default;
-
-    vec4(float x, float y, float z, float w);
-
-    vec4& operator+=(const vec4& b);
-
-    friend vec4 operator+(const vec4& a, const vec4& b)
-    {
-        return {a.vec_[0] + b.vec_[0],
-                a.vec_[1] + b.vec_[1],
-                a.vec_[2] + b.vec_[2],
-                a.vec_[3] + b.vec_[3]};
-    }
-
-    friend vec4 operator-(const vec4& a, const vec4& b)
-    {
-        return {a.vec_[0] - b.vec_[0],
-                a.vec_[1] - b.vec_[1],
-                a.vec_[2] - b.vec_[2],
-                a.vec_[3] - b.vec_[3]};
-    }
-
-    friend vec4 operator*(const vec4& vec, const float scalar)
-    {
-        auto result = vec4{vec};
-        result.vec_ *= scalar;
-
-        return result;
-    }
-
-    void print() const;
-
-    float* data();
-
-    float& x();
-    float& y();
-    float& z();
-    float& w();
-
-    [[nodiscard]] const float& x() const;
-    [[nodiscard]] const float& y() const;
-    [[nodiscard]] const float& z() const;
-    [[nodiscard]] const float& w() const;
-
-    static vec4 zero();
-
-  private:
-    Eigen::Vector4f vec_{};
-};
-
-vec4 operator-(const vec4& vector);
-
 
 class mat4
 {
@@ -146,4 +89,4 @@ class mat4
 
 } // namespace oid
 
-#endif // LINEAR_ALGEBRA_H_
+#endif // MATH_MAT4_H

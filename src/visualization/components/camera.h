@@ -27,7 +27,7 @@
 #define CAMERA_H_
 
 #include "component.h"
-#include "math/linear_algebra.h"
+#include "math/vec4.h"
 
 namespace oid
 {
