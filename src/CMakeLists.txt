@@ -80,8 +80,8 @@ set_target_properties(${PROJECT_NAME}
 target_sources(${PROJECT_NAME}
         PUBLIC
         FILE_SET cxx_modules TYPE CXX_MODULES FILES
-        math/math.linear_algebra.ixx
-        math/math.linear_algebra-mat4.ixx
+        math/linear_algebra.ixx
+        math/mat4.ixx
 )
 
 target_include_directories(${PROJECT_NAME}
