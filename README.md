@@ -9,7 +9,7 @@ cmake --build build --config Debug --target install -j
 ### Requirements
 * CMake 3.28+
   * Check how CMakeFiles are changed
-  * No CPP extensions
+  * No C++ extensions
   * Standard 20
   * `set_target_properties(${PROJECT_NAME} PROPERTIES CXX_SCAN_FOR_MODULES On)`
   * `target_sources(${PROJECT_NAME} PUBLIC FILE_SET cxx_modules TYPE CXX_MODULES FILES io/BufferExporter.cppm)`
