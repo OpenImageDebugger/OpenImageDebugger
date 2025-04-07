@@ -82,6 +82,7 @@ target_sources(${PROJECT_NAME}
         FILE_SET cxx_modules TYPE CXX_MODULES FILES
         math/linear_algebra.ixx
         math/mat4.ixx
+        math/vec4.ixx
 )
 
 target_include_directories(${PROJECT_NAME}
