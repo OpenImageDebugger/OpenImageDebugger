@@ -74,12 +74,12 @@ set(QT_RESOURCES resources/resources.qrc)
 add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
 
 set_target_properties(${PROJECT_NAME}
-        PROPERTIES CXX_SCAN_FOR_MODULES On
+        PROPERTIES CXX_SCAN_FOR_MODULES ON
 )
 
 target_sources(${PROJECT_NAME}
         PUBLIC
-        FILE_SET cxx_modules TYPE CXX_MODULES FILES
+        FILE_SET CXX_MODULES FILES
         math/linear_algebra.ixx
         math/mat4.ixx
         math/vec4.ixx
