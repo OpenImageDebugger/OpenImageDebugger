@@ -47,7 +47,7 @@ customized to work with any arbitrary data structure.
 
 * A C++20 compliant compiler
 * GDB **12.1+** or LLDB **14.0.0+**
-* Qt **5.15.1+**
+* Qt **5.15.2+**
 * CMake **3.22.1+**
 * Python **3.10.12+** development packages
 * OpenGL **2.1+** support
