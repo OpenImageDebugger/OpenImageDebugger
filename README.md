@@ -45,8 +45,8 @@ customized to work with any arbitrary data structure.
 
 ## Requirements
 
-* A C++17 compliant compiler
-* GDB **7.10+** or LLDB **6+**
+* A C++20 compliant compiler
+* GDB **12.1+** or LLDB **14.0.0+**
 * Qt **5.15.1+**
 * CMake **3.22.1+**
 * Python **3.10.12+** development packages
