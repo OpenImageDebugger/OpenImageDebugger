@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2024 OpenImageDebugger contributors
+# Copyright (c) 2015-2025 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,9 +21,9 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.28)
 
-project(oidwindow)
+project(oidwindow CXX)
 
 set(OpenGL_GL_PREFERENCE LEGACY)
 find_package(OpenGL 2.1 REQUIRED)
@@ -72,6 +72,32 @@ set(QT_FORMS ui/main_window/main_window.ui)
 set(QT_RESOURCES resources/resources.qrc)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
+
+target_sources(${PROJECT_NAME}
+               PUBLIC FILE_SET HEADERS
+               FILES
+               io/buffer_exporter.h
+               ipc/message_exchange.h
+               ipc/raw_data_decode.h
+               math/linear_algebra.h
+               ui/decorated_line_edit.h
+               ui/gl_canvas.h
+               ui/gl_text_renderer.h
+               ui/go_to_widget.h
+               ui/main_window/main_window.h
+               ui/symbol_completer.h
+               ui/symbol_search_input.h
+               visualization/components/background.h
+               visualization/components/buffer.h
+               visualization/components/buffer_values.h
+               visualization/components/camera.h
+               visualization/components/component.h
+               visualization/events.h
+               visualization/game_object.h
+               visualization/shader.h
+               visualization/shaders/oid_shaders.h
+               visualization/stage.h
+)
 
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
