@@ -34,4 +34,5 @@ set(CMAKE_CXX_EXTENSIONS False)
 find_package(Threads REQUIRED)
 find_package(Qt5 5.15.1 REQUIRED COMPONENTS Network)
 
-add_compile_options("$<$<PLATFORM_ID:Linux,Darwin>:-Wall;-Wextra;-pedantic;-fvisibility=hidden>")
+add_compile_options("$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic;-fvisibility=hidden>")
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/W4>")
