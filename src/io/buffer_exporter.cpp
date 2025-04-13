@@ -29,6 +29,8 @@
 #include <array>
 #include <bit>
 #include <cassert>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <limits>
 
@@ -76,7 +78,7 @@ void repeat_first_channel_into_g_and_b(
 
 
 template <typename T>
-void export_bitmap(const char* fname, const Buffer* buffer)
+void export_bitmap(const std::string& fname, const Buffer* buffer)
 {
     const auto width_i  = static_cast<std::size_t>(buffer->buffer_width_f);
     const auto height_i = static_cast<std::size_t>(buffer->buffer_height_f);
@@ -162,76 +164,67 @@ void export_bitmap(const char* fname, const Buffer* buffer)
                                      static_cast<int>(height_i),
                                      bytes_per_line,
                                      QImage::Format_RGBA8888};
-    if (!output_image.save(fname, "png")) {
+    if (!output_image.save(fname.c_str(), "png")) {
         std::cerr << "Failed to save image" << std::endl;
     }
 }
 
 
 template <typename T>
-const char* get_type_descriptor();
+std::string get_type_descriptor();
 
 
 template <>
-const char* get_type_descriptor<std::uint8_t>()
+std::string get_type_descriptor<std::uint8_t>()
 {
     return "uint8";
 }
 
 
 template <>
-const char* get_type_descriptor<std::uint16_t>()
+std::string get_type_descriptor<std::uint16_t>()
 {
     return "uint16";
 }
 
 
 template <>
-const char* get_type_descriptor<std::int16_t>()
+std::string get_type_descriptor<std::int16_t>()
 {
     return "int16";
 }
 
 
 template <>
-const char* get_type_descriptor<std::int32_t>()
+std::string get_type_descriptor<std::int32_t>()
 {
     return "int32";
 }
 
 
 template <>
-const char* get_type_descriptor<float>()
+std::string get_type_descriptor<float>()
 {
     return "float";
 }
 
 
 template <typename T>
-void export_binary(const char* fname, const Buffer* buffer)
+void export_binary(const std::string& fname, const Buffer* buffer)
 {
     const auto width_i  = static_cast<std::size_t>(buffer->buffer_width_f);
     const auto height_i = static_cast<std::size_t>(buffer->buffer_height_f);
 
     const auto in_ptr = std::bit_cast<const T*>(buffer->buffer);
 
-    auto fhandle = fopen(fname, "wb");
+    const auto output_path = std::filesystem::path{fname};
+    auto ofs               = std::ofstream{output_path};
 
-    if (fhandle == nullptr) {
-        return;
-    }
-
-    fprintf(fhandle, "%s\n", get_type_descriptor<T>());
-    fwrite(&height_i, sizeof(int), 1, fhandle);
-    fwrite(&width_i, sizeof(int), 1, fhandle);
-    fwrite(&buffer->channels, sizeof(int), 1, fhandle);
+    ofs << get_type_descriptor<T>() << height_i << width_i << buffer->channels;
     for (std::size_t y = 0; y < height_i; ++y) {
-        fwrite(in_ptr + y * buffer->step * buffer->channels,
-               sizeof(T),
-               width_i * static_cast<std::size_t>(buffer->channels),
-               fhandle);
+        ofs << in_ptr + y * buffer->step * buffer->channels;
     }
-    fclose(fhandle);
+    ofs.close();
 }
 
 
@@ -239,45 +232,46 @@ void export_buffer(const Buffer* buffer,
                    const std::string& path,
                    const OutputType type)
 {
+    using enum BufferType;
     if (type == OutputType::Bitmap) {
         switch (buffer->type) {
-        case BufferType::UnsignedByte:
-            export_bitmap<std::uint8_t>(path.c_str(), buffer);
+        case UnsignedByte:
+            export_bitmap<std::uint8_t>(path, buffer);
             break;
-        case BufferType::UnsignedShort:
-            export_bitmap<std::uint16_t>(path.c_str(), buffer);
+        case UnsignedShort:
+            export_bitmap<std::uint16_t>(path, buffer);
             break;
-        case BufferType::Short:
-            export_bitmap<std::int16_t>(path.c_str(), buffer);
+        case Short:
+            export_bitmap<std::int16_t>(path, buffer);
             break;
-        case BufferType::Int32:
-            export_bitmap<std::int32_t>(path.c_str(), buffer);
+        case Int32:
+            export_bitmap<std::int32_t>(path, buffer);
             break;
-        case BufferType::Float32:
+        case Float32:
             [[fallthrough]];
-        case BufferType::Float64:
-            export_bitmap<float>(path.c_str(), buffer);
+        case Float64:
+            export_bitmap<float>(path, buffer);
             break;
         }
     } else {
         // Matlab/Octave matrix (load with the oid_load.m function)
         switch (buffer->type) {
-        case BufferType::UnsignedByte:
-            export_binary<std::uint8_t>(path.c_str(), buffer);
+        case UnsignedByte:
+            export_binary<std::uint8_t>(path, buffer);
             break;
-        case BufferType::UnsignedShort:
-            export_binary<std::uint16_t>(path.c_str(), buffer);
+        case UnsignedShort:
+            export_binary<std::uint16_t>(path, buffer);
             break;
-        case BufferType::Short:
-            export_binary<std::int16_t>(path.c_str(), buffer);
+        case Short:
+            export_binary<std::int16_t>(path, buffer);
             break;
-        case BufferType::Int32:
-            export_binary<std::int32_t>(path.c_str(), buffer);
+        case Int32:
+            export_binary<std::int32_t>(path, buffer);
             break;
-        case BufferType::Float32:
+        case Float32:
             [[fallthrough]];
-        case BufferType::Float64:
-            export_binary<float>(path.c_str(), buffer);
+        case Float64:
+            export_binary<float>(path, buffer);
             break;
         }
     }
