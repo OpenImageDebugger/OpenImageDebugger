@@ -224,7 +224,6 @@ void export_binary(const std::string& fname, const Buffer* buffer)
     for (std::size_t y = 0; y < height_i; ++y) {
         ofs << in_ptr + y * buffer->step * buffer->channels;
     }
-    ofs.close();
 }
 
 
