@@ -60,7 +60,7 @@ jobs:
 
       - if: contains(matrix.os, 'windows')
         name: Install Qt (Windows)
-        uses: Kidev/install-qt-action@c0028438279cbb31d33ea0b302343cf399d6dd23 # 4.5.0
+        uses: Kidev/install-qt-action@9f59c28b380bfebb77d2654ccbf188b40be907a2 # 4.6.0
         with:
           version: "5.15.2"
           aqtversion: "==3.1.*"
