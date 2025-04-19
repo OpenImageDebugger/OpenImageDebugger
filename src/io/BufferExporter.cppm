@@ -23,14 +23,15 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef BUFFER_EXPORTER_H_
-#define BUFFER_EXPORTER_H_
+module;
 
 #include <string>
 
 #include "visualization/components/buffer.h"
 
-namespace oid::BufferExporter
+export module BufferExporter;
+
+export namespace oid::BufferExporter
 {
 
 enum class OutputType { Bitmap, OctaveMatrix };
@@ -40,5 +41,3 @@ void export_buffer(const Buffer* buffer,
                    OutputType type);
 
 } // namespace oid::BufferExporter
-
-#endif // BUFFER_EXPORTER_H_
