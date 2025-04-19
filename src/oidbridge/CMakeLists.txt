@@ -21,7 +21,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.28)
 
 project(oidbridge CXX)
 
@@ -35,6 +35,19 @@ add_library(${PROJECT_NAME} MODULE
             ../system/process/process.cpp
             $<$<BOOL:${UNIX}>:../system/process/process_unix.cpp>
             $<$<BOOL:${WIN32}>:../system/process/process_win32.cpp>)
+
+target_sources(${PROJECT_NAME}
+                PUBLIC FILE_SET HEADERS
+                BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+                FILES
+                oid_bridge.h
+                ../debuggerinterface/preprocessor_directives.h
+                ../debuggerinterface/python_native_interface.h
+                ../ipc/message_exchange.h
+                ../ipc/raw_data_decode.h
+                ../system/process/process.h
+                ../system/process/process_impl.h
+)
 
 target_compile_options(${PROJECT_NAME}
                        PUBLIC "$<$<PLATFORM_ID:UNIX>:-Wl,--exclude-libs,ALL>")
