@@ -67,6 +67,11 @@ jobs:
           setup-python: false
           cache: true
 
+      - if: contains(matrix.os, 'windows')
+        name: Config CMake Toolchain File (Windows)
+        run: |
+          echo "CMAKE_TOOLCHAIN_FILE=src/thirdparty/WindowsToolchain/Windows.MSVC.toolchain.cmake" >> "$GITHUB_ENV"
+
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
         run: |
