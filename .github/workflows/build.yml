@@ -47,6 +47,10 @@ jobs:
             container: ghcr.io/openimagedebugger/oid:22.04
           - os: ubuntu-24.04
             container: ghcr.io/openimagedebugger/oid:24.04
+          - os: windows-2022
+            toolchain_file: src/thirdparty/WindowsToolchain/Windows.MSVC.toolchain.cmake
+          - os: windows-2025
+            toolchain_file: src/thirdparty/WindowsToolchain/Windows.MSVC.toolchain.cmake
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
@@ -67,11 +71,6 @@ jobs:
           setup-python: false
           cache: true
 
-      - if: contains(matrix.os, 'windows')
-        name: Config CMake Toolchain File (Windows)
-        run: |
-          echo "CMAKE_TOOLCHAIN_FILE=src/thirdparty/WindowsToolchain/Windows.MSVC.toolchain.cmake" >> "$GITHUB_ENV"
-
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
         run: |
@@ -80,10 +79,12 @@ jobs:
 
       - name: Build
         shell: bash
+        env:
+          CMAKE_TOOLCHAIN_FILE: ${{ matrix.toolchain_file }}
+        # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
-          cmake -S . -B build -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release --target install -j 4
+          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --target install
 
       - name: Tar files
         shell: bash
