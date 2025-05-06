@@ -32,7 +32,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5 5.15.1 REQUIRED COMPONENTS Core Gui OpenGL Widgets)
+find_package(Qt5 "5.15.1...<6" REQUIRED COMPONENTS Core Gui OpenGL Widgets)
 
 set(SOURCES
     oid_window.cpp
