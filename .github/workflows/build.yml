@@ -47,10 +47,6 @@ jobs:
             container: ghcr.io/openimagedebugger/oid:22.04
           - os: ubuntu-24.04
             container: ghcr.io/openimagedebugger/oid:24.04
-          - os: windows-2022
-            toolchain_file: src/thirdparty/WindowsToolchain/Windows.MSVC.toolchain.cmake
-          - os: windows-2025
-            toolchain_file: src/thirdparty/WindowsToolchain/Windows.MSVC.toolchain.cmake
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
@@ -61,6 +57,10 @@ jobs:
           submodules: "recursive"
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
+
+      - if: contains(matrix.os, 'windows')
+        name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
 
       - if: contains(matrix.os, 'windows')
         name: Install Qt (Windows)
@@ -79,8 +79,6 @@ jobs:
 
       - name: Build
         shell: bash
-        env:
-          CMAKE_TOOLCHAIN_FILE: ${{ matrix.toolchain_file }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
           cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
