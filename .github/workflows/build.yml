@@ -62,9 +62,9 @@ jobs:
         uses: hendrikmuhs/ccache-action@63069e3931dedbf3b63792097479563182fe70d1 # 1.2.18
         with:
           verbose: 1
-          key: ccache-${{matrix.os}}-${{github.ref_name}}
+          key: ${{matrix.os}}-${{github.ref_name}}
           restore-keys: |
-            build-${{matrix.os}}-main
+            ${{matrix.os}}-main
           append-timestamp: true
 
       # Needed for ninja to work with msvc
