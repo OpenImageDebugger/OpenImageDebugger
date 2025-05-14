@@ -58,6 +58,16 @@ jobs:
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
 
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@63069e3931dedbf3b63792097479563182fe70d1 # 1.2.18
+        with:
+          verbose: 1
+          key: ccache-${{matrix.os}}-${{github.ref_name}}
+          restore-keys: |
+            build-${{matrix.os}}-main
+          append-timestamp: true
+
+      # Needed for ninja to work with msvc
       - if: contains(matrix.os, 'windows')
         name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
@@ -79,6 +89,9 @@ jobs:
 
       - name: Build
         shell: bash
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
           cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
