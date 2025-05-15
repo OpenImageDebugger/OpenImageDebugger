@@ -30,25 +30,32 @@ find_package(Python 3.10.12 REQUIRED COMPONENTS Development)
 add_library(${PROJECT_NAME} MODULE
             oid_bridge.cpp
             ../debuggerinterface/python_native_interface.cpp
-            ../ipc/message_exchange.cpp
-            ../ipc/raw_data_decode.cpp
             ../system/process/process.cpp
             $<$<BOOL:${UNIX}>:../system/process/process_unix.cpp>
             $<$<BOOL:${WIN32}>:../system/process/process_win32.cpp>)
 
-target_compile_options(${PROJECT_NAME}
-                       PUBLIC "$<$<PLATFORM_ID:UNIX>:-Wl,--exclude-libs,ALL>")
+add_dependencies(${PROJECT_NAME} oidipc)
+
+# Things get a bit when loading a shared lib from another shared lib or module
+# We need to set the RPATH to ensure that one shared lib can find the other
+set_target_properties(${PROJECT_NAME} PROPERTIES
+                      INSTALL_RPATH
+                      "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_SOURCE_DIR}/lib/ipc")
+
+target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-fvisibility=hidden>")
+
+target_link_options(${PROJECT_NAME}
+                     PUBLIC "$<$<PLATFORM_ID:Linux>:-Wl,--exclude-libs,ALL;>")
 
 target_include_directories(${PROJECT_NAME}
-                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../)
+                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../
+                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../ipc)
 
 target_include_directories(${PROJECT_NAME} SYSTEM
                            PRIVATE ${Python_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-                      Qt5::Core
-                      Qt5::Network
-                      Threads::Threads
+                      oidipc
                       ${Python_LIBRARIES})
 
 install(TARGETS ${PROJECT_NAME} DESTINATION OpenImageDebugger)
