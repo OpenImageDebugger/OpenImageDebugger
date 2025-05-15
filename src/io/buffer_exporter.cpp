@@ -23,7 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "buffer_exporter.h"
+module;
 
 #include <algorithm>
 #include <array>
@@ -35,6 +35,11 @@
 #include <limits>
 
 #include <QPixmap>
+
+#include "ipc/raw_data_decode.h"
+#include "visualization/components/buffer.h"
+
+module BufferExporter;
 
 namespace oid::BufferExporter
 {
