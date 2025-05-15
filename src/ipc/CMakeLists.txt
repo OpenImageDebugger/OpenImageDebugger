@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2024 OpenImageDebugger contributors
+# Copyright (c) 2015-2025 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,10 +23,21 @@
 
 cmake_minimum_required(VERSION 3.22.1)
 
-project(OpenImageDebugger)
+project(oidipc CXX)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
+add_library(${PROJECT_NAME} SHARED
+            message_exchange.cpp
+            raw_data_decode.cpp)
 
-add_subdirectory(src)
-add_subdirectory(src/ipc)
-add_subdirectory(src/oidbridge)
+set_target_properties(${PROJECT_NAME} PROPERTIES
+                      WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
+target_include_directories(${PROJECT_NAME}
+                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(${PROJECT_NAME} PUBLIC
+                      Qt5::Network)
+
+install(TARGETS ${PROJECT_NAME}
+        RUNTIME DESTINATION OpenImageDebugger)
+

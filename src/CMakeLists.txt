@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2024 OpenImageDebugger contributors
+# Copyright (c) 2015-2025 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,7 +23,7 @@
 
 cmake_minimum_required(VERSION 3.22.1)
 
-project(oidwindow)
+project(oidwindow CXX)
 
 set(OpenGL_GL_PREFERENCE LEGACY)
 find_package(OpenGL 2.1 REQUIRED)
@@ -37,8 +37,6 @@ find_package(Qt5 "5.15.1...<6" REQUIRED COMPONENTS Core Gui OpenGL Widgets)
 set(SOURCES
     oid_window.cpp
     io/buffer_exporter.cpp
-    ipc/message_exchange.cpp
-    ipc/raw_data_decode.cpp
     math/linear_algebra.cpp
     ui/decorated_line_edit.cpp
     ui/gl_canvas.cpp
@@ -73,26 +71,33 @@ set(QT_RESOURCES resources/resources.qrc)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
 
+add_dependencies(${PROJECT_NAME} oidipc)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+                      INSTALL_RPATH
+                      "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_SOURCE_DIR}/lib/ipc")
+
 target_include_directories(${PROJECT_NAME}
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ipc)
 
 # Include external dependencies as "system dependencies" so compilation errors from them are ignored
 target_include_directories(${PROJECT_NAME} SYSTEM
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen/Eigen
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Khronos)
 
-target_compile_options(${PROJECT_NAME} PRIVATE "$<$<PLATFORM_ID:Linux>:-Wl,--exclude-libs,ALL>")
+target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-fvisibility=hidden>")
+
+target_link_options(${PROJECT_NAME}
+                     PUBLIC "$<$<PLATFORM_ID:Unix>:-Wl,--exclude-libs,ALL;>")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-                      Qt5::Core
+                      oidipc
                       Qt5::Gui
                       Qt5::OpenGL
-                      Qt5::Network
                       Qt5::Widgets
                       Threads::Threads
                       ${OPENGL_gl_LIBRARY})
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)
-
-add_subdirectory(oidbridge)
