@@ -99,7 +99,7 @@ jobs:
 
       - name: Tar files
         shell: bash
-        run: tar --strip-components 1 -cvf build-${{ matrix.os }}.tar out/OpenImageDebugger
+        run: tar --strip-components 1 -cvf build-${{ matrix.os }}.tar out
 
       - name: Upload build
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # 4.6.2
