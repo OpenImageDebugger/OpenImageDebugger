@@ -39,14 +39,17 @@ jobs:
             ubuntu-24.04,
             macos-14,
             macos-15,
-            windows-2022,
-            windows-2025,
           ]
+        ccache-variant: [ccache]
         include:
           - os: ubuntu-22.04
             container: ghcr.io/openimagedebugger/oid:22.04
           - os: ubuntu-24.04
             container: ghcr.io/openimagedebugger/oid:24.04
+          - os: windows-2022
+            ccache-variant: "sccache"
+          - os: windows-2025
+            ccache-variant: "sccache"
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
@@ -66,6 +69,7 @@ jobs:
           restore-keys: |
             ${{matrix.os}}-main
           append-timestamp: true
+          variant: ${{ matrix.ccache-variant }}
 
       # Needed for ninja to work with msvc
       - if: contains(matrix.os, 'windows')
@@ -90,8 +94,8 @@ jobs:
       - name: Build
         shell: bash
         env:
-          CMAKE_C_COMPILER_LAUNCHER: ccache
-          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+          CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
+          CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
           cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
