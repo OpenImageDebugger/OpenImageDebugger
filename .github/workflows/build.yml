@@ -50,7 +50,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
-      - if: matrix.os == 'ubuntu-22.04'
+      - if: ${{ matrix.os == 'ubuntu-22.04' }}
         name: Collect Workflow Telemetry
         uses: catchpoint/workflow-telemetry-action@f974e0c5942f8f37973c4cc395704165fbe629ba # 2.0.0
         with:
