@@ -52,6 +52,9 @@ jobs:
     steps:
       - name: Collect Workflow Telemetry
         uses: catchpoint/workflow-telemetry-action@f974e0c5942f8f37973c4cc395704165fbe629ba # 2.0.0
+        with:
+          comment_on_pr: false
+
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
         with:
           fetch-depth: 1
