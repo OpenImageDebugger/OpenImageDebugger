@@ -68,11 +68,11 @@ jobs:
           key: ${{matrix.os}}-${{github.ref_name}}
           restore-keys: |
             ${{matrix.os}}-main
-          append-timestamp: false
+          append-timestamp: true
           variant: ${{ matrix.ccache-variant }}
 
       # Needed for ninja to work with msvc
-      - if: contains(matrix.os, 'windows')
+      - if: false && contains(matrix.os, 'windows')
         name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
 
@@ -84,6 +84,34 @@ jobs:
           aqtversion: "==3.1.*"
           setup-python: false
           cache: true
+      # - uses: conan-io/setup-conan@v1
+
+      - if: contains(matrix.os, 'ubuntu')
+        name: Install pipx (ubuntu)
+        run: |
+          apt update && apt install -y pipx
+          pipx ensurepath
+          echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
+
+      - name: Setup conan
+        run: |
+          pipx install conan
+          conan profile detect --force
+
+      - if: true
+        shell: bash
+        name: Get Conan home
+        id: get_conan_home
+        run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
+
+      - if: true
+        name: Setup Conan cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          path: ${{ steps.get_conan_home.outputs.conan_home }}
+          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', '**/build.yml') }}
+          restore-keys: |
+            conan-${{ matrix.os }}-
 
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
@@ -91,15 +119,52 @@ jobs:
           brew install qt@5
           echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
-      - name: Build
+      - if: contains(matrix.os, 'windows')
+        name: Conan install (windows)
+        shell: powershell
+        run: |
+          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --conf=tools.env.virtualenv:powershell=pwsh --settings=tools.cmake.cmaketoolchain:generator=Ninja
+
+      - if: ${{ !contains(matrix.os, 'windows') }}
+        name: Conan install (unix)
+        run: |
+          conan install . --output-folder=. --build=missing --settings=compiler.cppstd=17 #--settings=tools.cmake.cmaketoolchain:generator=Ninja
+
+      - if: contains(matrix.os, 'windows')
+        name: Build (windows)
+        shell: powershell
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
+          CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
+        run: |
+          chmod +x build\generators\conanbuild.ps1
+          build\generators\conanbuild.ps1
+          cmake --version
+          ninja --version
+          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out -DCMAKE_VERBOSE=1  #-GNinja
+          dir .
+          dir build
+          dir build\generators
+          cat build\CMakeCache.txt
+          cmake --build build --target install
+
+      - if: ${{ !contains(matrix.os, 'windows') }}
+        name: Build (unix)
         shell: bash
         env:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release --target install
+          source build/Release/generators/conanbuild.sh
+          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out
+          # cmake --build build --preset conan-release --target install
+          # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
+          # cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
+          # cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
+          # cd build/Release
+          # ninja install
+          cmake --build build/Release --target install
 
       - name: Tar files
         shell: bash
