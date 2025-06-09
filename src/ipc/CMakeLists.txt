@@ -29,7 +29,10 @@ project(oidipc CXX)
 find_package(Qt5 "5.15.1...<6" REQUIRED COMPONENTS Network)
 
 # Find required protobuf package
-find_package(Protobuf REQUIRED)
+find_package(Protobuf CONFIG)
+if(NOT Protobuf_FOUND)
+  find_package(Protobuf REQUIRED)
+endif()
 
 # if(protobuf_VERBOSE)
   message(STATUS "Using Protocol Buffers ${protobuf_VERSION}")
