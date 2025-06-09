@@ -25,9 +25,26 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project(oidipc CXX)
 
+
+find_package(Qt5 "5.15.1...<6" REQUIRED COMPONENTS Network)
+
+# Find required protobuf package
+find_package(Protobuf REQUIRED)
+
+# if(protobuf_VERBOSE)
+  message(STATUS "Using Protocol Buffers ${protobuf_VERSION}")
+# endif()
+
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+
+set(PROTO_FILES
+    buffer.proto
+)
+
 add_library(${PROJECT_NAME} SHARED
             message_exchange.cpp
-            raw_data_decode.cpp)
+            raw_data_decode.cpp
+            ${PROTO_FILES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -36,7 +53,10 @@ target_include_directories(${PROJECT_NAME}
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
-                      Qt5::Network)
+                      Qt5::Network
+                      protobuf::libprotobuf)
+
+protobuf_generate(TARGET ${PROJECT_NAME})
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)
