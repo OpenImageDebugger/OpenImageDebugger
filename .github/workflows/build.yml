@@ -85,10 +85,17 @@ jobs:
           setup-python: false
           cache: true
 
-      - if: contains(matrix.os, 'windows')
-        name: Install protobuf (Windows)
+      - if: contains(matrix.os, 'ubuntu')
+        name: Install pipx (ubuntu)
         run: |
-          choco install protoc
+          apt update && apt install -y pipx
+          pipx ensurepath
+          echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
+
+      - name: Setup conan
+        run: |
+          pipx install conan
+          conan profile detect --force
 
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
@@ -103,7 +110,8 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
+          conan install . --build=missing --update
+          cmake --preset conan-release -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out
           cmake --build build --config Release --target install
 
       - name: Tar files
