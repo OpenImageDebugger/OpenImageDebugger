@@ -34,9 +34,9 @@ if(NOT Protobuf_FOUND)
   find_package(Protobuf REQUIRED)
 endif()
 
-# if(protobuf_VERBOSE)
+if(protobuf_VERBOSE)
   message(STATUS "Using Protocol Buffers ${protobuf_VERSION}")
-# endif()
+endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
