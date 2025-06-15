@@ -100,7 +100,7 @@ jobs:
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
         run: |
-          brew install qt@5 protobuf
+          brew install qt@5
           echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
       - name: Build
@@ -111,8 +111,12 @@ jobs:
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
           conan install . --build=missing --update
-          cmake --preset conan-release -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out
-          cmake --build build --config Release --target install
+          # cmake version >= 3.25 is required for conan presets
+          # cmake --preset conan-release -G "Ninja" -DCMAKE_INSTALL_PREFIX=out
+          # cmake --build build --preset conan-release --target install -j
+          cd build/Release
+          cmake ../.. -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
+          ninja install
 
       - name: Tar files
         shell: bash
