@@ -103,6 +103,12 @@ jobs:
           brew install qt@5
           echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{github.workspace }}/.conan2
+          key: conan-${{matrix.os}}-${{github.ref_name}}
+
       - name: Build
         shell: bash
         env:
@@ -116,6 +122,12 @@ jobs:
           # cmake --build build --preset conan-release --target install -j
           cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
           cmake --build build/Release --target install
+
+      - uses: actions/cache/save@v4
+        id: save-cache
+        with:
+          path: ${{github.workspace }}/.conan2
+          key: conan-${{matrix.os}}-${{github.ref_name}}
 
       - name: Tar files
         shell: bash
