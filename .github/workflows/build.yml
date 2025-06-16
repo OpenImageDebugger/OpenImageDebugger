@@ -85,29 +85,28 @@ jobs:
           setup-python: false
           cache: true
 
-      - if: contains(matrix.os, 'ubuntu')
-        name: Install pipx (ubuntu)
-        run: |
-          apt update && apt install -y pipx
-          pipx ensurepath
-          echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
+      # - if: contains(matrix.os, 'ubuntu')
+      #   name: Install pipx (ubuntu)
+      #   run: |
+      #     apt update && apt install -y pipx
+      #     pipx ensurepath
+      #     echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
 
-      - name: Setup conan
-        run: |
-          pipx install conan
-          conan profile detect --force
+      # - name: Setup conan
+      #   run: |
+      #     pipx install conan
+      #     conan profile detect --force
+
+      - uses: conan-io/setup-conan@v1
+        with:
+          cache_packages: 'true'
+          python_version: '3.12.3'
 
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
         run: |
           brew install qt@5
           echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
-
-      - uses: actions/cache/restore@v4
-        id: cache
-        with:
-          path: ${{github.workspace }}/.conan2
-          key: conan-${{matrix.os}}-${{github.ref_name}}
 
       - name: Build
         shell: bash
@@ -122,12 +121,6 @@ jobs:
           # cmake --build build --preset conan-release --target install -j
           cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
           cmake --build build/Release --target install
-
-      - uses: actions/cache/save@v4
-        id: save-cache
-        with:
-          path: ${{github.workspace }}/.conan2
-          key: conan-${{matrix.os}}-${{github.ref_name}}
 
       - name: Tar files
         shell: bash
