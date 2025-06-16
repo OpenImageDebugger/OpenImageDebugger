@@ -92,7 +92,7 @@ jobs:
           pipx ensurepath
           echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
 
-      - name: Setup conan
+      - name: Setup Conan
         id: setup_conan
         run: |
           pipx install conan
@@ -111,6 +111,7 @@ jobs:
           key: conan-${{ matrix.os }}-${{ github.ref_name }}
           restore-keys: |
             conan-${{ matrix.os }}-main
+            conan-${{ matrix.os }}-
 
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
