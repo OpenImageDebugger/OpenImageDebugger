@@ -61,6 +61,14 @@ jobs:
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
 
+      # windows-2025 image have Python 3.13.4, which is bugged on Windows, see https://github.com/python/cpython/issues/135151
+      # TODO: Remove this once Python 3.13.5 is available on windows-2025 image
+      - if: matrix.os == 'windows-2025'
+        name: Setup Python (Windows 2025)
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.13.5'
+
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@63069e3931dedbf3b63792097479563182fe70d1 # 1.2.18
         with:
