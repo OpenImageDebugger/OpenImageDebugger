@@ -109,6 +109,8 @@ jobs:
         with:
           path: ${{ steps.setup_conan.outputs.conan_home }}
           key: conan-${{ matrix.os }}-${{ github.ref_name }}
+          restore-keys: |
+            conan-${{ matrix.os }}-main
 
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
