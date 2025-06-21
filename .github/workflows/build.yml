@@ -113,6 +113,11 @@ jobs:
             conan-${{ matrix.os }}-main
             conan-${{ matrix.os }}-
 
+      - name: Create Conan profile for C++17
+        run: |
+          conan profile new cxx17 --detect --force
+          conan profile update settings.compiler.cppstd=17 cxx17
+
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
         run: |
@@ -126,7 +131,7 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          conan install . --build=missing --update
+          conan install . --profile=cxx17 --build=missing --update
           # cmake version >= 3.25 is required for conan presets
           # cmake --preset conan-release -G "Ninja" -DCMAKE_INSTALL_PREFIX=out
           # cmake --build build --preset conan-release --target install -j
