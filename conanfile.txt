@@ -1,7 +1,3 @@
-[tool_requires]
-ninja/1.12.1
-cmake/3.31.8
-
 [requires]
 protobuf/6.30.1
 
