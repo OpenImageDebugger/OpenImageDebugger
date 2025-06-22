@@ -84,30 +84,15 @@ jobs:
           aqtversion: "==3.1.*"
           setup-python: false
           cache: true
-
-      - if: contains(matrix.os, 'ubuntu')
-        name: Install pipx (ubuntu)
-        run: |
-          apt update && apt install -y pipx
-          pipx ensurepath
-          echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
-
-      - name: Setup Conan
-        id: setup_conan
-        run: |
-          pipx install conan
-          conan profile detect --force
-          echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
-
-      # - uses: conan-io/setup-conan@v1
-      #   with:
-      #     cache_packages: 'true'
-      #     python_version: '3.12.3'
+      - uses: conan-io/setup-conan@v1
+      - name: Get Conan home
+        id: get_conan_home
+        run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
 
       - name: Setup Conan cache
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
-          path: ${{ steps.setup_conan.outputs.conan_home }}
+          path: ${{ steps.get_conan_home.outputs.conan_home }}
           key: conan-${{ matrix.os }}-${{ github.ref_name }}
           restore-keys: |
             conan-${{ matrix.os }}-main
