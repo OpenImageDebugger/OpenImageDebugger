@@ -6,5 +6,6 @@ ninja/1.12.1
 [generators]
 CMakeDeps
 CMakeToolchain
+Ninja
 [layout]
 cmake_layout
