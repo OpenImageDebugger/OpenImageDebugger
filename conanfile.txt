@@ -1,6 +1,9 @@
 [requires]
 protobuf/6.30.1
 
+[tool_requires]
+cmake/4.0.3
+
 [generators]
 CMakeDeps
 CMakeToolchain
