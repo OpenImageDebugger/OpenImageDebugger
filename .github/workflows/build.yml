@@ -115,7 +115,9 @@ jobs:
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
           conan install . --build=missing --update --settings=compiler.cppstd=17
-          source build/conanbuild.sh
+          cd build
+          conanbuild.bat
+          cd ..
           # cmake version >= 3.25 is required for conan presets
           cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out
           cmake --build build --preset conan-default --target install
