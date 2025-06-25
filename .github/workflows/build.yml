@@ -29,9 +29,6 @@ on:
 
 jobs:
   build:
-    defaults:
-      run:
-        shell: bash
     name: Build
     strategy:
       fail-fast: false
