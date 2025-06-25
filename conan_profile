@@ -1,7 +1,0 @@
-[settings]
-build_type=Release
-compiler.cppstd=17
-
-[tool_requires]
-cmake/4.0.3
-ninja/1.12.1
