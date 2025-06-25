@@ -116,7 +116,7 @@ jobs:
         run: |
           conan install . --build=missing --update --settings=compiler.cppstd=17
           ls -lah .
-          ls -lah build/Release
+          ls -lah build
           ./conanbuild.bat
           # cmake version >= 3.25 is required for conan presets
           cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out
