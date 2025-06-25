@@ -1,9 +1,13 @@
 from conan import ConanFile
+from conan.tools.cmake import cmake_layout
 
-class MyProjectConan(ConanFile):
-    name = "myproject"
-    version = "0.1"
-    settings = "os", "arch", "compiler", "build_type"
-    requires = "protobuf/3.21.12"
-    generators = "CMakeToolchain", "CMakeDeps"
-    exports_sources = "CMakeLists.txt", "main.cpp"
+
+class ExampleRecipe(ConanFile):
+    settings = "os", "compiler", "build_type", "arch"
+    generators = "CMakeDeps", "CMakeToolchain"
+
+    def requirements(self):
+        self.requires("protobuf/6.30.1")
+
+    def layout(self):
+        cmake_layout(self)
