@@ -114,7 +114,6 @@ jobs:
           path: ${{ steps.get_conan_home.outputs.conan_home }}
           key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt') }}
           restore-keys: |
-            conan-${{ matrix.os }}-main
             conan-${{ matrix.os }}-
 
       - if: contains(matrix.os, 'macos')
