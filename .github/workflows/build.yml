@@ -128,7 +128,6 @@ jobs:
         shell: cmd
         run: |
           cd build\generators
-          dir
           conanbuild.bat
           cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -GNinja
           cmake --build build/Release --target install
