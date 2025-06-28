@@ -125,7 +125,7 @@ jobs:
       - if: contains(matrix.os, 'windows')
         name: Set conan environment (windows)
         run: |
-          dir build
+          dir build\generators
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Build (unix)
