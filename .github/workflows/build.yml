@@ -129,6 +129,7 @@ jobs:
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Build (unix)
+        shell: bash
         env:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
