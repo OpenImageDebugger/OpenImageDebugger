@@ -118,6 +118,10 @@ jobs:
           brew install qt@5
           echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
+      - name: Conan install
+        run: |
+          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17
+
       - if: contains(matrix.os, 'windows')
         name: Set conan environment (windows)
         run:
