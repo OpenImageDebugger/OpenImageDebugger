@@ -128,8 +128,8 @@ jobs:
         shell: bash
         run: |
           chmod +x build/generators/conanbuild.bat
-          cmd /c build/generators/conanbuild.bat
-          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out -GNinja
+          cmd /c build\generators\conanbuild.bat
+          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out # -GNinja
           cmake --build build/Release --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
