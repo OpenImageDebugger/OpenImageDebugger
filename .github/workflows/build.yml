@@ -130,6 +130,9 @@ jobs:
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Set conan environment
         run:
+          ls -lah build
+          ls -lah build/Release
+          ls -lah build/Release/generators
           source build/Release/generators/conanbuild.sh
 
       - name: Build
