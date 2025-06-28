@@ -127,14 +127,16 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          conan install . --output-folder=build --build=missing --update --settings=compiler.cppstd=17
+          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17
           # cmake version >= 3.25 is required for conan presets
-          # cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out
+          cmake --preset conan-release -GNinja -DCMAKE_INSTALL_PREFIX=out
           # cmake --build build --preset conan-release --target install
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
-          cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
+          # cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
           # cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
-          cmake --build build/Release --target install
+          cd build/Release
+          ninja install
+          # cmake --build build/Release --target install
 
       - name: Tar files
         shell: bash
