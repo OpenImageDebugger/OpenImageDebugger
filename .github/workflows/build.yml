@@ -108,9 +108,11 @@ jobs:
       - if: true
         name: Setup Conan cache
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        env:
+          CONAN_HOME: ${{ steps.get_conan_home.outputs.conan_home }}
         with:
           path: ${{ steps.get_conan_home.outputs.conan_home }}
-          key: conan-${{ matrix.os }}-${{ github.ref_name }}
+          key: conan-${{ matrix.os }}-${{ github.ref_name }}-${{ hashFiles('$CONAN_HOME/**') }}
           restore-keys: |
             conan-${{ matrix.os }}-main
             conan-${{ matrix.os }}-
@@ -132,8 +134,8 @@ jobs:
           # cmake version >= 3.25 is required for conan presets
           # cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out
           # cmake --build build --preset conan-release --target install
-          ls -lah build
-          cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
+          # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
+          cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
           cmake --build build/Release --target install
 
       - name: Tar files
