@@ -71,7 +71,7 @@ jobs:
           key: ${{matrix.os}}-${{github.ref_name}}
           restore-keys: |
             ${{matrix.os}}-main
-          append-timestamp: false
+          append-timestamp: true
           variant: ${{ matrix.ccache-variant }}
 
       # Needed for ninja to work with msvc
@@ -129,13 +129,13 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=20 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=20
           # cmake version >= 3.25 is required for conan presets
           # cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out
           # cmake --build build --preset conan-release --target install
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
           cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
-          cmake --build build/Release --target install
+          cmake --build build/Release --target install -- -j
 
       - name: Tar files
         shell: bash
