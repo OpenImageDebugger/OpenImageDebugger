@@ -29,9 +29,6 @@ on:
 
 jobs:
   build:
-    defaults:
-      run:
-        shell: bash
     name: Build
     strategy:
       fail-fast: false
@@ -101,11 +98,12 @@ jobs:
           pipx install conan
           conan profile detect --force
 
-      - name: Get Conan home
+      - if: false
+        name: Get Conan home
         id: get_conan_home
         run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
 
-      - if: true
+      - if: false
         name: Setup Conan cache
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
@@ -120,19 +118,23 @@ jobs:
           brew install qt@5
           echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
+      - if: contains(matrix.os, 'windows')
+        name: Set conan environment (windows)
+        run:
+          build/Release/conanbuild.bat
+
+      - if: ${{ !contains(matrix.os, 'windows') }}
+        name: Set conan environment (windows)
+        run:
+          source build/Release/conanbuild.sh
+
       - name: Build
-        shell: bash
         env:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17
-          # cmake version >= 3.25 is required for conan presets
-          export PLATFORM=''
-          unset PLATFORM
-          source build/Release/generators/conanbuild.sh
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out
+          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -GNinja
           # cmake --build build --preset conan-release --target install
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
           # cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
