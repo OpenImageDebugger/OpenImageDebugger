@@ -125,24 +125,16 @@ jobs:
       - if: contains(matrix.os, 'windows')
         name: Set conan environment (windows)
         run: |
-          cd build\Release\generators
-          conanbuild.bat
+          dir build
 
       - if: ${{ !contains(matrix.os, 'windows') }}
-        shell: bash
-        name: Set conan environment
-        run: |
-          ls -lah build
-          ls -lah build/Release
-          ls -lah build/Release/generators
-          source build/Release/generators/conanbuild.sh
-
-      - name: Build
+        name: Build (unix)
         env:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
+          source build/Release/generators/conanbuild.sh
           cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -GNinja
           # cmake --build build --preset conan-release --target install
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
