@@ -130,7 +130,7 @@ jobs:
           cd build/generators
           chmod +x conanbuild.bat
           cmd /c conanbuild.bat
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -GNinja
+          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out -GNinja
           cmake --build build/Release --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
