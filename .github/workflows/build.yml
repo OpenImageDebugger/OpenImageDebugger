@@ -123,9 +123,12 @@ jobs:
           conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17
 
       - if: contains(matrix.os, 'windows')
-        name: Set conan environment (windows)
+        name: Build (windows)
         run: |
-          dir build\generators
+          cd build\generators
+          conanbuild.bat
+          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -GNinja
+          cmake --build build/Release --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Build (unix)
