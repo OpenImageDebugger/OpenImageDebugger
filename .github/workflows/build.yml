@@ -112,7 +112,7 @@ jobs:
           CONAN_HOME: ${{ steps.get_conan_home.outputs.conan_home }}
         with:
           path: ${{ steps.get_conan_home.outputs.conan_home }}
-          key: conan-${{ matrix.os }}-${{ github.ref_name }}-${{ hashFiles('$CONAN_HOME/**') }}
+          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt') }}
           restore-keys: |
             conan-${{ matrix.os }}-main
             conan-${{ matrix.os }}-
