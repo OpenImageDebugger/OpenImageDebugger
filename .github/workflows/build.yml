@@ -124,13 +124,14 @@ jobs:
 
       - if: contains(matrix.os, 'windows')
         name: Set conan environment (windows)
-        run:
+        run: |
           cd build\Release\generators
           conanbuild.bat
 
       - if: ${{ !contains(matrix.os, 'windows') }}
+        shell: bash
         name: Set conan environment
-        run:
+        run: |
           ls -lah build
           ls -lah build/Release
           ls -lah build/Release/generators
