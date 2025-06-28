@@ -132,7 +132,7 @@ jobs:
           export PLATFORM=''
           unset PLATFORM
           source build/Release/generators/conanbuild.sh
-          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out
+          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out
           # cmake --build build --preset conan-release --target install
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
           # cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
