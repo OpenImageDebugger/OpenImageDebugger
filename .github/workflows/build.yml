@@ -125,10 +125,11 @@ jobs:
 
       - if: contains(matrix.os, 'windows')
         name: Build (windows)
-        shell: cmd
+        shell: bash
         run: |
-          cd build\generators
-          conanbuild.bat
+          cd build/generators
+          chmod +x conanbuild.bat
+          cmd /c conanbuild.bat
           cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -GNinja
           cmake --build build/Release --target install
 
