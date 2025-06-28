@@ -127,9 +127,8 @@ jobs:
         name: Build (windows)
         shell: bash
         run: |
-          cd build/generators
-          chmod +x conanbuild.bat
-          cmd /c conanbuild.bat
+          chmod +x build/generators/conanbuild.bat
+          cmd /c build/generators/conanbuild.bat
           cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out -GNinja
           cmake --build build/Release --target install
 
