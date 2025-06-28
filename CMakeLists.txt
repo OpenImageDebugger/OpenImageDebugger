@@ -25,6 +25,9 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project(OpenImageDebugger)
 
+# Find conan dependencies first
+find_package(protobuf REQUIRED)
+
 include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
 
 add_subdirectory(src)

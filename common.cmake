@@ -34,5 +34,13 @@ set(CMAKE_CXX_EXTENSIONS False)
 find_package(Threads REQUIRED)
 find_package(Qt5 5.15.1 REQUIRED COMPONENTS Network)
 
+# Enable ccache if available
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND AND NOT CMAKE_C_COMPILER_LAUNCHER AND NOT CMAKE_CXX_COMPILER_LAUNCHER)
+    message(STATUS "Using ccache for compilation caching")
+    set(CMAKE_C_COMPILER_LAUNCHER ccache)
+    set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
+endif()
+
 add_compile_options("$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic;>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/W4>")

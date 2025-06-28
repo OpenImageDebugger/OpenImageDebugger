@@ -1,0 +1,17 @@
+[requires]
+protobuf/3.21.12
+qt/5.15.14
+
+[generators]
+CMakeDeps
+CMakeToolchain
+
+[options]
+protobuf:shared=True
+qt:shared=True
+
+[tool_requires]
+cmake/[>=3.22.1]
+
+[layout]
+cmake_layout

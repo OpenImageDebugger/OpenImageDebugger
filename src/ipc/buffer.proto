@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package oid.ipc;
+
+// Message for exchanging buffer data between debugger and UI
+message BufferData {
+  // Unique identifier for the buffer
+  string buffer_id = 1;
+  
+  // Buffer metadata
+  BufferMetadata metadata = 2;
+  
+  // Raw buffer data
+  bytes data = 3;
+}
+
+// Metadata describing the buffer structure
+message BufferMetadata {
+  // Data type (float32, float64, int32, uint8, etc.)
+  string data_type = 1;
+  
+  // Buffer dimensions
+  repeated uint32 dimensions = 2;
+  
+  // Number of channels (for images)
+  uint32 channels = 3;
+  
+  // Timestamp when buffer was captured
+  uint64 timestamp = 4;
+  
+  // Optional variable name from debugger
+  string variable_name = 5;
+}
+
+// Request message for buffer operations
+message BufferRequest {
+  enum RequestType {
+    GET_BUFFER = 0;
+    LIST_BUFFERS = 1;
+    DELETE_BUFFER = 2;
+  }
+  
+  RequestType type = 1;
+  string buffer_id = 2;
+}
+
+// Response message for buffer operations
+message BufferResponse {
+  enum Status {
+    SUCCESS = 0;
+    ERROR = 1;
+    NOT_FOUND = 2;
+  }
+  
+  Status status = 1;
+  string error_message = 2;
+  
+  // Response data (varies by request type)
+  oneof response_data {
+    BufferData buffer_data = 3;
+    BufferList buffer_list = 4;
+  }
+}
+
+// List of available buffers
+message BufferList {
+  repeated BufferMetadata buffers = 1;
+}

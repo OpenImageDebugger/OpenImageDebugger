@@ -1,0 +1,42 @@
+{
+    "version": 6,
+    "vendor": {
+        "conan": {}
+    },
+    "configurePresets": [
+        {
+            "name": "default",
+            "displayName": "Default config",
+            "description": "Default build using Ninja generator with ccache",
+            "generator": "Ninja",
+            "toolchainFile": "conan_toolchain.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER_LAUNCHER": "ccache",
+                "CMAKE_CXX_COMPILER_LAUNCHER": "ccache"
+            }
+        },
+        {
+            "name": "debug",
+            "displayName": "Debug config",
+            "description": "Debug build using Ninja generator with ccache",
+            "generator": "Ninja",
+            "toolchainFile": "conan_toolchain.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_C_COMPILER_LAUNCHER": "ccache",
+                "CMAKE_CXX_COMPILER_LAUNCHER": "ccache"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "default",
+            "configurePreset": "default"
+        },
+        {
+            "name": "debug", 
+            "configurePreset": "debug"
+        }
+    ]
+}
