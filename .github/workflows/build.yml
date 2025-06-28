@@ -126,11 +126,14 @@ jobs:
       - if: contains(matrix.os, 'windows')
         name: Build (windows)
         shell: bash
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
+          CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         run: |
           chmod +x build/generators/conanbuild.bat
           cmd /c build\generators\conanbuild.bat
           cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out # -GNinja
-          cmake --build build/Release --target install
+          cmake --build build --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Build (unix)
