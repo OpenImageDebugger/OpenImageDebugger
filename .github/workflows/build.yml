@@ -129,8 +129,10 @@ jobs:
         run: |
           conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17
           # cmake version >= 3.25 is required for conan presets
+          export PLATFORM=''
           unset PLATFORM
-          cmake --preset conan-default -GNinja -DCMAKE_INSTALL_PREFIX=out
+          source build/Release/generators/conanbuild.sh
+          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out
           # cmake --build build --preset conan-release --target install
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
           # cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
