@@ -123,7 +123,7 @@ jobs:
         name: Conan install (windows)
         shell: powershell
         run: |
-          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17 #settings=tools.cmake.cmaketoolchain:generator=Ninja
+          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --conf=tools.env.virtualenv:powershell=pwsh #settings=tools.cmake.cmaketoolchain:generator=Ninja
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Conan install (unix)
@@ -132,14 +132,14 @@ jobs:
 
       - if: contains(matrix.os, 'windows')
         name: Build (windows)
-        shell: cmd
+        shell: powershell
         env:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         run: |
           dir build\generators
-          chmod +x build\generators\conanbuild.bat
-          build\generators\conanbuild.bat
+          chmod +x build\generators\conanbuild.ps1
+          build\generators\conanbuild.ps1
           cmake --version
           cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out
           cmake --build build --target install
