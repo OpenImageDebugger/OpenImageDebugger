@@ -137,7 +137,9 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         run: |
+          dir build
           dir build\generators
+          cat build\CMakeCache.txt
           chmod +x build\generators\conanbuild.ps1
           build\generators\conanbuild.ps1
           cmake --version
