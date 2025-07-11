@@ -1,3 +1,5 @@
+edition = "2023";
+
 syntax = "proto3";
 
 package oid.proto;
