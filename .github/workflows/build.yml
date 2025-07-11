@@ -98,13 +98,13 @@ jobs:
           pipx install conan
           conan profile detect --force
 
-      - if: true
+      - if: false
         shell: bash
         name: Get Conan home
         id: get_conan_home
         run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
 
-      - if: true
+      - if: false
         name: Setup Conan cache
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
@@ -125,14 +125,14 @@ jobs:
 
       - if: contains(matrix.os, 'windows')
         name: Build (windows)
-        shell: bash
+        shell: powershell
         env:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         run: |
-          chmod +x build/generators/conanbuild.bat
+          chmod +x build\generators\conanbuild.bat
           cmd /c build\generators\conanbuild.bat
-          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out # -GNinja
+          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out -GNinja
           cmake --build build --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
