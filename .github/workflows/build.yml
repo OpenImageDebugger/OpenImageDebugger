@@ -98,13 +98,13 @@ jobs:
           pipx install conan
           conan profile detect --force
 
-      - if: false
+      - if: true
         shell: bash
         name: Get Conan home
         id: get_conan_home
         run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
 
-      - if: false
+      - if: true
         name: Setup Conan cache
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
