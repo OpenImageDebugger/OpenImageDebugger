@@ -54,12 +54,12 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 target_include_directories(${PROJECT_NAME}
-                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
-                           PUBLIC protobuf::protobuf)
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+                           PRIVATE protobuf::protobuf)
 
-target_link_libraries(${PROJECT_NAME} PUBLIC
-                      Qt5::Network
-                      protobuf::protobuf)
+target_link_libraries(${PROJECT_NAME}
+                      PUBLIC Qt5::Network
+                      PRIVATE protobuf::libprotobuf)
 
 protobuf_generate(TARGET ${PROJECT_NAME})
 
