@@ -141,7 +141,7 @@ jobs:
           chmod +x build\generators\conanbuild.ps1
           build\generators\conanbuild.ps1
           cmake --version
-          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out -GNinja
+          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out #-GNinja
           cmake --build build --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
