@@ -53,7 +53,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 target_include_directories(${PROJECT_NAME}
-                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+                           PRIVATE ${Protobuf_INCLUDE_DIR})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
                       Qt5::Network
