@@ -119,9 +119,16 @@ jobs:
           brew install qt@5
           echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
-      - name: Conan install
+      - if: contains(matrix.os, 'windows')
+        name: Conan install (windows)
+        shell: powershell
         run: |
-          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          conan install . --output-folder=. --build=missing # --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+
+      - if: ${{ !contains(matrix.os, 'windows') }}
+        name: Conan install (unix)
+        run: |
+          conan install . --output-folder=. --build=missing --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
 
       - if: contains(matrix.os, 'windows')
         name: Build (windows)
@@ -130,8 +137,8 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         run: |
-          chmod +x build\generators\conanbuild.bat
-          cmd /c build\generators\conanbuild.bat
+          chmod +x build\generators\conanbuild.ps1
+          build\generators\conanbuild.ps1
           cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out
           cmake --build build --target install
 
