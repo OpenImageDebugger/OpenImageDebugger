@@ -121,7 +121,7 @@ jobs:
 
       - name: Conan install
         run: |
-          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17
+          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
 
       - if: contains(matrix.os, 'windows')
         name: Build (windows)
@@ -132,7 +132,7 @@ jobs:
         run: |
           chmod +x build\generators\conanbuild.bat
           cmd /c build\generators\conanbuild.bat
-          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out -GNinja
+          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out
           cmake --build build --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
@@ -144,7 +144,7 @@ jobs:
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
           source build/Release/generators/conanbuild.sh
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -GNinja
+          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out
           # cmake --build build --preset conan-release --target install
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
           # cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
