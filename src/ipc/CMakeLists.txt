@@ -55,7 +55,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-                           PRIVATE protobuf::protobuf)
+                           PRIVATE ${Protobuf_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC Qt5::Network
