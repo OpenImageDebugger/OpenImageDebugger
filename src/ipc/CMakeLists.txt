@@ -29,10 +29,10 @@ project(oidipc CXX)
 find_package(Qt5 "5.15.1...<6" REQUIRED COMPONENTS Network)
 
 # Find required protobuf package
-find_package(Protobuf CONFIG)
-if(NOT Protobuf_FOUND)
+# find_package(Protobuf CONFIG)
+# if(NOT Protobuf_FOUND)
   find_package(Protobuf REQUIRED)
-endif()
+# endif()
 
 if(protobuf_VERBOSE)
   message(STATUS "Using Protocol Buffers ${protobuf_VERSION}")
@@ -57,7 +57,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
                       Qt5::Network
-                      protobuf::libprotobuf)
+                      protobuf::protobuf)
 
 protobuf_generate(TARGET ${PROJECT_NAME})
 
