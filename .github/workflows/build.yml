@@ -137,9 +137,9 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         run: |
-          dir build\generators
-          chmod +x build\generators\conanbuild.ps1
-          build\generators\conanbuild.ps1
+          chmod +x build\generators\conanbuild.bat
+          build\generators\conanbuild.bat
+          cmake --version
           cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out
           cmake --build build --target install
 
