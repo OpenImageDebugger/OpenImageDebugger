@@ -28,10 +28,13 @@ project(oidipc CXX)
 find_package(Qt5 "5.15.1...<6" REQUIRED COMPONENTS Network)
 
 # Find required protobuf package
-find_package(Protobuf CONFIG REQUIRED)
+find_package(Protobuf "6.30.1" CONFIG)
+if(NOT Protobuf_FOUND)
+  find_package(Protobuf "6.30.1" REQUIRED)
+endif()
 
-message(STATUS "Using Protocol Buffers ${protobuf_VERSION}")
-message(WARNING "Using Protocol Buffers include dirs: ${Protobuf_INCLUDE_DIRS}")
+message(WARNING "Using Protocol Buffers ${protobuf_VERSION}")
+message(WARNING "Using Protocol Buffers include dirs: ${PROTOBUF_INCLUDE_DIRS}")
 
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
@@ -47,11 +50,8 @@ add_library(${PROJECT_NAME} SHARED
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-include_directories(${Protobuf_INCLUDE_DIRS})
-
 target_include_directories(${PROJECT_NAME}
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-                           PUBLIC "${PROTOBUF_INCLUDE_DIRS}")
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC Qt5::Network
