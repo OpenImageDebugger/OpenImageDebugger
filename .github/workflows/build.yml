@@ -104,7 +104,7 @@ jobs:
         id: get_conan_home
         run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
 
-      - if: true
+      - if: always()
         name: Setup Conan cache
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
