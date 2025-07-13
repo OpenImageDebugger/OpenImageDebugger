@@ -1,5 +1,6 @@
 [requires]
 protobuf/6.30.1
+ninja/1.12.1
 [generators]
 CMakeDeps
 CMakeToolchain
