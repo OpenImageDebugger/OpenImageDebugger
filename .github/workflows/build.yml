@@ -137,8 +137,8 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         run: |
-          chmod +x build\generators\conanbuild.ps1
-          build\generators\conanbuild.ps1
+          # chmod +x build\generators\conanbuild.ps1
+          # build\generators\conanbuild.ps1
           cmake --version
           ninja --version
           cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out  #-GNinja
@@ -156,7 +156,7 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          source build/Release/generators/conanbuild.sh
+          # source build/Release/generators/conanbuild.sh
           cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
           # cmake --build build --preset conan-release --target install
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out

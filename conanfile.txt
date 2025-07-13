@@ -2,7 +2,6 @@
 protobuf/6.30.1
 
 [tool_requires]
-cmake/3.31.8
 ninja/1.12.1
 
 [generators]
