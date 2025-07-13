@@ -1,5 +1,5 @@
 [requires]
-protobuf/3.20.3
+protobuf/4.25.3
 
 [tool_requires]
 cmake/4.0.3
