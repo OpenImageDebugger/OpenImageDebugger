@@ -145,6 +145,7 @@ jobs:
           dir .
           dir build
           dir build\generators
+          cat build\CMakeCache.txt
           cmake --build build --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
