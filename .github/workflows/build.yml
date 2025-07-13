@@ -72,7 +72,7 @@ jobs:
           variant: ${{ matrix.ccache-variant }}
 
       # Needed for ninja to work with msvc
-      - if: false && contains(matrix.os, 'windows')
+      - if: contains(matrix.os, 'windows')
         name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
 
@@ -132,20 +132,21 @@ jobs:
 
       - if: contains(matrix.os, 'windows')
         name: Build (windows)
-        shell: powershell
+        shell: bash
         env:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         run: |
           # chmod +x build\generators\conanbuild.ps1
           # build\generators\conanbuild.ps1
+          #
           cmake --version
-          ninja --version
-          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out  #-GNinja
+          # cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out  #-GNinja
           dir .
           dir build
-          dir build\generators
-          cat build\CMakeCache.txt
+          dir build/generators
+          cmake -S . -B build -G "Visual Studio 17 2022" -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+          cat build/CMakeCache.txt
           cmake --build build --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
