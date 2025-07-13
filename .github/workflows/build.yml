@@ -141,7 +141,7 @@ jobs:
           build\generators\conanbuild.ps1
           cmake --version
           ninja --version
-          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out -DCMAKE_VERBOSE=1  #-GNinja
+          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out  #-GNinja
           dir .
           dir build
           dir build\generators
