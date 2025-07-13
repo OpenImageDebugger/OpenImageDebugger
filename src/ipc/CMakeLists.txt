@@ -42,8 +42,7 @@ set(PROTO_FILES
 add_library(${PROJECT_NAME} SHARED
             message_exchange.cpp
             raw_data_decode.cpp
-            ${PROTO_FILES}
-            ${PROTO_HDRS})
+            ${PROTO_FILES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -51,7 +50,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 include_directories(${Protobuf_INCLUDE_DIRS})
 
 target_include_directories(${PROJECT_NAME}
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+                           PRIVATE ${PROTOBUF_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC Qt5::Network
