@@ -54,9 +54,10 @@ add_library(${PROJECT_NAME} SHARED
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
+include_directories(${Protobuf_INCLUDE_DIRS})
+
 target_include_directories(${PROJECT_NAME}
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-                           PRIVATE ${Protobuf_INCLUDE_DIRS})
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC Qt5::Network
