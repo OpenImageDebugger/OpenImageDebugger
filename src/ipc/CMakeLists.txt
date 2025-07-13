@@ -51,7 +51,7 @@ include_directories(${Protobuf_INCLUDE_DIRS})
 
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-                           PRIVATE ${PROTOBUF_INCLUDE_DIRS})
+                           PUBLIC "${PROTOBUF_INCLUDE_DIRS}")
 
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC Qt5::Network
