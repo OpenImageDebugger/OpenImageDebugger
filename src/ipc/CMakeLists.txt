@@ -25,18 +25,12 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project(oidipc CXX)
 
-
 find_package(Qt5 "5.15.1...<6" REQUIRED COMPONENTS Network)
 
 # Find required protobuf package
-find_package(Protobuf CONFIG)
-if(NOT Protobuf_FOUND)
-  find_package(Protobuf REQUIRED)
-endif()
+find_package(Protobuf CONFIG REQUIRED)
 
-# if(protobuf_VERBOSE)
-  message(STATUS "Using Protocol Buffers ${protobuf_VERSION}")
-# endif()
+message(STATUS "Using Protocol Buffers ${protobuf_VERSION}")
 message(WARNING "Using Protocol Buffers include dirs: ${Protobuf_INCLUDE_DIRS}")
 
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
