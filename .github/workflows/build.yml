@@ -93,6 +93,7 @@ jobs:
           echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
 
       - name: Setup Conan
+        shell: bash
         id: setup_conan
         run: |
           pipx install conan
