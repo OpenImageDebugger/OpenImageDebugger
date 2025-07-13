@@ -109,7 +109,7 @@ jobs:
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
           path: ${{ steps.get_conan_home.outputs.conan_home }}
-          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', '**/build.yml') }}
+          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', '.github/workflows/build.yml') }}
           restore-keys: |
             conan-${{ matrix.os }}-
 
