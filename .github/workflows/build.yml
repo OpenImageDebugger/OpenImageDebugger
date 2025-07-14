@@ -146,7 +146,7 @@ jobs:
           ls -lah build
           ls -lah build/build/generators
           rm build/build/generators/FindProtobuf.cmake
-          cmake -S . -B build/build -G "Visual Studio 17 2022" -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+          cmake -S . -B build/build -G "Visual Studio 17 2022" -DCMAKE_TOOLCHAIN_FILE=build/build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
           cat build/build/CMakeCache.txt
           cmake --build build/build --target install
 

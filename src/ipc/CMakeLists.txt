@@ -28,13 +28,13 @@ project(oidipc CXX)
 find_package(Qt5 "5.15.1...<6" REQUIRED COMPONENTS Network)
 
 # Find required protobuf package
-find_package(Protobuf "6.30.1" CONFIG)
+find_package(protobuf "6.30.1" CONFIG)
 if(NOT Protobuf_FOUND)
-  find_package(Protobuf "6.30.1" REQUIRED)
+  find_package(protobuf "6.30.1" REQUIRED)
 endif()
 
 message(WARNING "Using Protocol Buffers ${protobuf_VERSION}")
-message(WARNING "Using Protocol Buffers include dirs: ${PROTOBUF_INCLUDE_DIRS}")
+message(WARNING "Using Protocol Buffers include dirs: ${protobuf_INCLUDE_DIRS}")
 
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
