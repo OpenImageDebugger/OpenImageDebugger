@@ -60,10 +60,13 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC Qt5::Network
-                      PRIVATE protobuf::libprotobuf
-                      PRIVATE protobuf::protobuf
-                      PRIVATE protobuf::libprotoc
-                      PRIVATE abseil::abseil)
+                      PUBLIC protobuf::libprotobuf
+                      PUBLIC protobuf::protobuf
+                      PUBLIC protobuf::libprotoc
+                      PUBLIC abseil::abseil
+                      PUBLIC absl::base
+                      PUBLIC absl::strings
+                      PUBLIC absl::synchronization)
 
 protobuf_generate(TARGET ${PROJECT_NAME})
 
