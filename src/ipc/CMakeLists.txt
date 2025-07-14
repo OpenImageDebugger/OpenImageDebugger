@@ -51,15 +51,14 @@ add_library(${PROJECT_NAME} SHARED
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
+include_directories(${protobuf_INCLUDE_DIRS} ${absl_INCLUDE_DIRS})
+
 target_include_directories(${PROJECT_NAME}
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-                           PRIVATE ${protobuf_INCLUDE_DIRS}
-                           PRIVATE ${absl_INCLUDE_DIRS})
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC Qt5::Network
-                      PRIVATE protobuf::libprotobuf
-                      PRIVATE absl::log)
+                      PRIVATE protobuf::libprotobuf)
 
 protobuf_generate(TARGET ${PROJECT_NAME})
 
