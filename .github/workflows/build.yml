@@ -72,7 +72,7 @@ jobs:
           variant: ${{ matrix.ccache-variant }}
 
       # Needed for ninja to work with msvc
-      - if: contains(matrix.os, 'windows')
+      - if: false && contains(matrix.os, 'windows')
         name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
 
