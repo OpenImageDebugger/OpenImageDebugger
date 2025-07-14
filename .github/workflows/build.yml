@@ -136,7 +136,7 @@ jobs:
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Conan install (unix)
         run: |
-          conan install . --output-folder=. --build=missing --settings=compiler.cppstd=20 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          conan install . --output-folder=. --build=missing --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
 
       - if: contains(matrix.os, 'windows')
         name: Build (windows)
