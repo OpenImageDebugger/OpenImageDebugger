@@ -131,7 +131,7 @@ jobs:
         name: Conan install (windows)
         shell: powershell
         run: |
-          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=20 --conf=tools.env.virtualenv:powershell=pwsh
+          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --conf=tools.env.virtualenv:powershell=pwsh
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Conan install (unix)
