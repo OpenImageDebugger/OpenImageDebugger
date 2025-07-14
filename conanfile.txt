@@ -1,5 +1,5 @@
 [requires]
-protobuf/3.9.1
+protobuf/5.29.3
 
 [tool_requires]
 ninja/1.12.1
