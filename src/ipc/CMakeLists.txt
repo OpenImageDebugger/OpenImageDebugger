@@ -55,14 +55,14 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 include_directories(${protobuf_INCLUDE_DIRS} ${absl_INCLUDE_DIRS})
 
-link_libraries(${protobuf_LIBRARIES})
-
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC Qt5::Network
                       PRIVATE protobuf::libprotobuf
+                      PRIVATE protobuf::protobuf
+                      PRIVATE protobuf::libprotoc
                       PRIVATE abseil::abseil)
 
 protobuf_generate(TARGET ${PROJECT_NAME})
