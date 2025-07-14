@@ -84,31 +84,39 @@ jobs:
           aqtversion: "==3.1.*"
           setup-python: false
           cache: true
-      # - uses: conan-io/setup-conan@v1
 
-      - if: contains(matrix.os, 'ubuntu')
-        name: Install pipx (ubuntu)
-        run: |
-          apt update && apt install -y pipx
-          pipx ensurepath
-          echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # 5.6.0
+        with:
+          python-version: 3.x
 
-      - name: Setup conan
-        run: |
-          pipx install conan
-          conan profile detect --force
+      - name: Setup Conan
+        id: setup_conan
+        uses: conan-io/setup-conan@434f093a557d1ee6972c4ed78693c3191653537b # 1.1.0
 
-      - if: true
-        shell: bash
-        name: Get Conan home
-        id: get_conan_home
-        run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
+      # - if: contains(matrix.os, 'ubuntu')
+      #   name: Install pipx (ubuntu)
+      #   run: |
+      #     apt update && apt install -y pipx
+      #     pipx ensurepath
+      #     echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
+
+      # - name: Setup conan
+      #   run: |
+      #     pipx install conan
+      #     conan profile detect --force
+
+      # - if: true
+      #   shell: bash
+      #   name: Get Conan home
+      #   id: get_conan_home
+      #   run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
 
       - if: always()
         name: Setup Conan cache
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
-          path: ${{ steps.get_conan_home.outputs.conan_home }}
+          path: ${{ steps.setup_conan.outputs.conan-home }}
           key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', '.github/workflows/build.yml') }}
           restore-keys: |
             conan-${{ matrix.os }}-
