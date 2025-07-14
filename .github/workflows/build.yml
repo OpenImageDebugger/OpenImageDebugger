@@ -123,12 +123,12 @@ jobs:
         name: Conan install (windows)
         shell: powershell
         run: |
-          conan install . --output-folder=build --build=missing --update --settings=compiler.cppstd=17 --conf=tools.env.virtualenv:powershell=pwsh --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --conf=tools.env.virtualenv:powershell=pwsh --settings=tools.cmake.cmaketoolchain:generator=Ninja
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Conan install (unix)
         run: |
-          conan install . --output-folder=build --build=missing --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          conan install . --output-folder=. --build=missing --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
 
       - if: contains(matrix.os, 'windows')
         name: Build (windows)
@@ -144,10 +144,10 @@ jobs:
           # cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out  #-GNinja
           ls -lah .
           ls -lah build
-          ls -lah build/build/generators
-          cmake -S . -B build/build -G "Visual Studio 17 2022" -DCMAKE_TOOLCHAIN_FILE=build/build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
-          cat build/build/CMakeCache.txt
-          cmake --build build/build --target install
+          ls -lah build/generators
+          cmake -S . -B build -G "Visual Studio 17 2022" -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+          cat build/CMakeCache.txt
+          cmake --build build --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Build (unix)
@@ -161,11 +161,11 @@ jobs:
           # cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
           # cmake --build build --preset conan-release --target install
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
-          cmake -S . -B build/build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+          cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
           # cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
           # cd build/Release
           # ninja install
-          cmake --build build/build/Release --target install
+          cmake --build build/Release --target install
 
       - name: Tar files
         shell: bash
