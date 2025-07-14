@@ -36,6 +36,8 @@ endif()
 message(WARNING "Using Protocol Buffers ${protobuf_VERSION}")
 message(WARNING "Using Protocol Buffers include dirs: ${protobuf_INCLUDE_DIRS}")
 message(WARNING "Using Protocol Buffers libraries: ${protobuf_LIBRARIES}")
+message(WARNING "Using Abseil include dirs: ${absl_INCLUDE_DIRS}")
+message(WARNING "Using Abseil libraries: ${absl_LIBRARIES}")
 
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
@@ -51,7 +53,7 @@ add_library(${PROJECT_NAME} SHARED
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-include_directories(${protobuf_INCLUDE_DIRS})
+include_directories(${protobuf_INCLUDE_DIRS} ${absl_INCLUDE_DIRS})
 
 link_libraries(${protobuf_LIBRARIES})
 
@@ -61,7 +63,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC Qt5::Network
                       PRIVATE protobuf::libprotobuf
-                      PRIVATE protobuf::protobuf)
+                      PRIVATE abseil::abseil)
 
 protobuf_generate(TARGET ${PROJECT_NAME})
 
