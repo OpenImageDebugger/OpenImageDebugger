@@ -53,8 +53,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
-      - if: contains(matrix.os, 'windows')
-        run: git config --global core.autocrlf input
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
         with:
           fetch-depth: 1
@@ -63,8 +61,6 @@ jobs:
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
 
-      - if: contains(matrix.os, 'windows')
-        uses: msys2/setup-msys2@v2
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@63069e3931dedbf3b63792097479563182fe70d1 # 1.2.18
         with:
