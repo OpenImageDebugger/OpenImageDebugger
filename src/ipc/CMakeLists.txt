@@ -66,6 +66,7 @@ target_include_directories(${PROJECT_NAME}
                           #  PRIVATE ${absl_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME}
+                      PUBLIC Qt5::Core
                       PUBLIC Qt5::Network
                       PUBLIC protobuf::libprotobuf)
                       # PUBLIC libprotobuf.lib
