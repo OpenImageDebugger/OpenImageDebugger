@@ -136,12 +136,12 @@ jobs:
         name: Conan install (windows)
         shell: powershell
         run: |
-          conan install . -pr=mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --conf=tools.env.virtualenv:powershell=pwsh
+          conan install . -pr=mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=20 --settings=tools.cmake.cmaketoolchain:generator=Ninja --conf=tools.env.virtualenv:powershell=pwsh
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Conan install (unix)
         run: |
-          conan install . --output-folder=. --build=missing --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          conan install . --output-folder=. --build=missing --settings=compiler.cppstd=20 --settings=tools.cmake.cmaketoolchain:generator=Ninja
 
       - name: Save Conan cache
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
