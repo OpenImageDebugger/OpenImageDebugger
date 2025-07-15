@@ -148,6 +148,8 @@ jobs:
           # chmod +x build\generators\conanbuild.ps1
           # build\generators\conanbuild.ps1
           #
+          echo "SHOWING PROTOBUF LIB DIR"
+          ls C:/Users/runneradmin/.conan2/p/proto0019175345864/p/lib
           cmake --version
           cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out  #-GNinja
           ls -lah .
