@@ -112,6 +112,10 @@ jobs:
       #   id: get_conan_home
       #   run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
 
+      - name: Copy mingw conan profile
+        run: |
+          cp -v mingw-profile '${{ steps.setup_conan.outputs.conan-home }}\profiles'
+
       - if: always()
         name: Setup Conan cache
         uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
@@ -131,7 +135,7 @@ jobs:
         name: Conan install (windows)
         shell: powershell
         run: |
-          conan install . --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --conf=tools.env.virtualenv:powershell=pwsh
+          conan install . -pr=mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --conf=tools.env.virtualenv:powershell=pwsh
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Conan install (unix)
