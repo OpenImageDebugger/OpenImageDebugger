@@ -72,7 +72,7 @@ jobs:
           variant: ${{ matrix.ccache-variant }}
 
       # Needed for ninja to work with msvc
-      - if: false && contains(matrix.os, 'windows')
+      - if: contains(matrix.os, 'windows')
         name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
 
@@ -136,16 +136,16 @@ jobs:
         run: |
           conan install . -pr=mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --conf=tools.env.virtualenv:powershell=pwsh
 
+      - if: ${{ !contains(matrix.os, 'windows') }}
+        name: Conan install (unix)
+        run: |
+          conan install . --output-folder=. --build=missing --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+
       - name: Save Conan cache
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
           path: ${{ steps.setup_conan.outputs.conan-home }}
           key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', '.github/workflows/build.yml') }}
-
-      - if: ${{ !contains(matrix.os, 'windows') }}
-        name: Conan install (unix)
-        run: |
-          conan install . --output-folder=. --build=missing --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
 
       - if: contains(matrix.os, 'windows')
         name: Build (windows)
@@ -162,11 +162,13 @@ jobs:
           # echo "SHOWING ABSEIL LIB DIR"
           # ls C:/Users/runneradmin/.conan2/p/absei5eb9410e442ac/p/lib
           cmake --version
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out  #-GNinja
-          # ls -lah .
-          # ls -lah build
-          # ls -lah build/generators
-          # cmake -S . -B build -G "Visual Studio 17 2022" -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+          # cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out  #-GNinja
+          ls -lah .
+          ls -lah build
+          ls -lah build/Release
+          # ls -lah build/Release/generators
+          cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+          # cmake -S . -B build -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
           # cat build/CMakeCache.txt
           cmake --build build --target install
 
