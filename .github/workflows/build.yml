@@ -119,16 +119,15 @@ jobs:
       #   id: get_conan_home
       #   run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
 
-      - if: contains(matrix.os, 'windows')
-        name: Copy mingw conan profile
+      - name: Copy conan profiles
         run: |
-          cp mingw-profile '${{ steps.setup_conan.outputs.conan-home }}\profiles'
+          cp conan-profiles/* '${{ steps.setup_conan.outputs.conan-home }}/profiles'
 
       - name: Restore Conan cache
         uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
           path: ${{ steps.setup_conan.outputs.conan-home }}
-          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'mingw-profile') }}
+          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profiles') }}
           restore-keys: |
             conan-${{ matrix.os }}-
 
