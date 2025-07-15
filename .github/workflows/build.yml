@@ -166,7 +166,8 @@ jobs:
           ls -lah .
           ls -lah build
           ls -lah build/Release
-          # ls -lah build/Release/generators
+          ls -lah build/Release/generators
+          rm CMakeUserPresets.json
           cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
           # cmake -S . -B build -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
           # cat build/CMakeCache.txt
