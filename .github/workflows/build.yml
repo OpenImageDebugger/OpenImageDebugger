@@ -128,14 +128,14 @@ jobs:
         uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
           path: ${{ steps.setup_conan.outputs.conan-home }}
-          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', '.github/workflows/build.yml') }}
+          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'mingw-profile') }}
           restore-keys: |
             conan-${{ matrix.os }}-
 
       - if: contains(matrix.os, 'windows')
         name: Conan install (windows)
         run: |
-          conan install . -pr=mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja --conf=tools.env.virtualenv:powershell=pwsh
+          conan install . -pr=mingw-profile --output-folder=. --build=missing --update
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Conan install (unix)
