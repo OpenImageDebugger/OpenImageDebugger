@@ -82,6 +82,7 @@ jobs:
         with:
           version: "5.15.2"
           aqtversion: "==3.1.*"
+          arch: 'win64_mingw81'
           setup-python: false
           cache: true
 
