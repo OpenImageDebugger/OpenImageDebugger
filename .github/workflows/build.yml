@@ -150,6 +150,8 @@ jobs:
           #
           echo "SHOWING PROTOBUF LIB DIR"
           ls C:/Users/runneradmin/.conan2/p/proto0019175345864/p/lib
+          echo "SHOWING ABSEIL LIB DIR"
+          ls C:/Users/runneradmin/.conan2/p/absei5eb9410e442ac/p/lib
           cmake --version
           cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out  #-GNinja
           ls -lah .
