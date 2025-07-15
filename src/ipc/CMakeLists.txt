@@ -52,6 +52,10 @@ add_library(${PROJECT_NAME} SHARED
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
+# Ugly hack to ensure that the protobuf library is linked on Windows
+target_link_directories(${PROJECT_NAME}
+                       PUBLIC "${protobuf_INCLUDE_DIRS}/../lib")
+
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
                            PRIVATE ${protobuf_INCLUDE_DIRS}
