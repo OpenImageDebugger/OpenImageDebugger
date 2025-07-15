@@ -156,18 +156,12 @@ jobs:
         run: |
           chmod +x build\Release\generators\conanbuild.ps1
           build\Release\generators\conanbuild.ps1
-          #
-          # echo "SHOWING PROTOBUF LIB DIR"
-          # ls C:/Users/runneradmin/.conan2/p/proto0019175345864/p/lib
-          # echo "SHOWING ABSEIL LIB DIR"
-          # ls C:/Users/runneradmin/.conan2/p/absei5eb9410e442ac/p/lib
           cmake --version
           cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -GNinja
-          # ls -lah .
-          # ls -lah build
-          # ls -lah build/Release
-          # ls -lah build/Release/generators
-          # rm CMakeUserPresets.json
+          dir .
+          dir build
+          dir build/Release
+          dir build/Release/generators
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
           # cmake -S . -B build -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
           # cat build/CMakeCache.txt
