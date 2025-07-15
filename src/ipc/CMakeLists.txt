@@ -33,14 +33,6 @@ if(NOT Protobuf_FOUND)
   find_package(Protobuf "6.30.1" REQUIRED)
 endif()
 
-# message(WARNING "Using Protocol Buffers ${protobuf_VERSION}")
-# message(WARNING "Using Protocol Buffers include dirs: ${protobuf_INCLUDE_DIRS}")
-# message(WARNING "Using Protocol Buffers libraries: ${protobuf_LIBRARIES}")
-
-# message(WARNING "Using Abseil ${absl_VERSION}")
-# message(WARNING "Using Abseil include dirs: ${absl_INCLUDE_DIRS}")
-# message(WARNING "Using Abseil libraries: ${absl_LIBRARIES}")
-
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
 set(PROTO_FILES
@@ -55,22 +47,12 @@ add_library(${PROJECT_NAME} SHARED
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-# # Ugly hack to ensure that the protobuf library is linked on Windows
-# target_link_directories(${PROJECT_NAME}
-#                        PUBLIC "${protobuf_INCLUDE_DIRS}/../lib"
-#                        PUBLIC "${absl_INCLUDE_DIRS}/../lib")
-
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-                          #  PRIVATE ${protobuf_INCLUDE_DIRS}
-                          #  PRIVATE ${absl_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME}
-                      PUBLIC Qt5::Core
                       PUBLIC Qt5::Network
                       PUBLIC protobuf::libprotobuf)
-                      # PUBLIC libprotobuf.lib
-                      # PUBLIC abseil::abseil)
 
 protobuf_generate(TARGET ${PROJECT_NAME})
 

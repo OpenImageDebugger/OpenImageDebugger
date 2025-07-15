@@ -121,7 +121,7 @@ jobs:
 
       - name: Copy mingw conan profile
         run: |
-          cp -v mingw-profile '${{ steps.setup_conan.outputs.conan-home }}\profiles'
+          cp mingw-profile '${{ steps.setup_conan.outputs.conan-home }}\profiles'
 
       - name: Restore Conan cache
         uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
@@ -159,13 +159,6 @@ jobs:
           build\Release\generators\conanbuild.ps1
           cmake --version
           cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -GNinja
-          dir .
-          dir build
-          dir build/Release
-          dir build/Release/generators
-          # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
-          # cmake -S . -B build -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
-          # cat build/CMakeCache.txt
           cmake --build build/Release --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
