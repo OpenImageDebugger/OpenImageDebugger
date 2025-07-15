@@ -165,7 +165,7 @@ jobs:
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
           # cmake -S . -B build -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
           # cat build/CMakeCache.txt
-          cmake --build build --target install
+          cmake --build build/Release --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Build (unix)
