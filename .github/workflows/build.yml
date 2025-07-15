@@ -119,7 +119,8 @@ jobs:
       #   id: get_conan_home
       #   run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
 
-      - name: Copy mingw conan profile
+      - if: contains(matrix.os, 'windows')
+        name: Copy mingw conan profile
         run: |
           cp mingw-profile '${{ steps.setup_conan.outputs.conan-home }}\profiles'
 
@@ -158,7 +159,7 @@ jobs:
           chmod +x build\Release\generators\conanbuild.ps1
           build\Release\generators\conanbuild.ps1
           cmake --version
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -GNinja
+          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
           cmake --build build/Release --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
@@ -169,11 +170,12 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          # source build/Release/generators/conanbuild.sh
-          # cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
+          source build/Release/generators/conanbuild.sh
+          cmake --version
+          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
           # cmake --build build --preset conan-release --target install
           # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
-          cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+          # cmake -S . -B build/Release -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
           # cmake -S . -B build/Release -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
           # cd build/Release
           # ninja install
