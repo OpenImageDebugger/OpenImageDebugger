@@ -155,11 +155,6 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         run: |
-          dir .
-          dir build
-          dir build\Release
-          dir build\Release\generators
-          chmod +x build\Release\generators\conanbuild.ps1
           build\Release\generators\conanbuild.ps1
           cmake --version
           cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
