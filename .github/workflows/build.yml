@@ -61,7 +61,7 @@ jobs:
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
 
-      - name: Setup ccache
+      - name: Setup Ccache
         uses: hendrikmuhs/ccache-action@63069e3931dedbf3b63792097479563182fe70d1 # 1.2.18
         with:
           verbose: 1
@@ -119,7 +119,7 @@ jobs:
       #   id: get_conan_home
       #   run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
 
-      - name: Copy conan profiles
+      - name: Copy Conan profiles
         run: |
           cp conan-profiles/* '${{ steps.setup_conan.outputs.conan-home }}/profiles'
 
@@ -132,7 +132,6 @@ jobs:
             conan-${{ matrix.os }}-
 
       - if: contains(matrix.os, 'windows')
-        shell: powershell
         name: Conan install (windows)
         run: |
           conan install . -pr=mingw-profile --output-folder=. --build=missing --update --conf=tools.env.virtualenv:powershell=pwsh
@@ -149,7 +148,7 @@ jobs:
           key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profiles') }}
 
       - if: contains(matrix.os, 'windows')
-        name: Build (windows)
+        name: Build (Windows)
         shell: powershell
         env:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
@@ -162,7 +161,7 @@ jobs:
           cmake --build build\Release --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
-        name: Build (unix)
+        name: Build (Unix)
         shell: bash
         env:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
