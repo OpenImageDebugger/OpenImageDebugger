@@ -146,7 +146,7 @@ jobs:
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
           path: ${{ steps.setup_conan.outputs.conan-home }}
-          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', '.github/workflows/build.yml') }}
+          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profiles') }}
 
       - if: contains(matrix.os, 'windows')
         name: Build (windows)
