@@ -1,5 +1,6 @@
 [requires]
 protobuf/6.30.1
+qt/5.15.16
 
 [tool_requires]
 cmake/4.0.3
