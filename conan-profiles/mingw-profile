@@ -13,3 +13,4 @@ tools.env.virtualenv:powershell=pwsh
 
 [tool_requires]
 mingw-builds/14.2.0
+# msys2/cci.latest

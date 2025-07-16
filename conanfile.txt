@@ -1,9 +1,11 @@
 [requires]
-protobuf/6.30.1
+grpc/1.72.0
+protobuf/5.27.0
 
 [tool_requires]
 cmake/4.0.3
 ninja/1.13.0
+protobuf/5.27.0
 
 [generators]
 CMakeDeps

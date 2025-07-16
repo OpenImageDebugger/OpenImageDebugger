@@ -76,6 +76,11 @@ jobs:
         name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
 
+      # - if: contains(matrix.os, 'windows')
+      #   uses: msys2/setup-msys2@v2
+      #   with:
+      #     path-type: inherit
+
       - if: contains(matrix.os, 'windows')
         name: Install Qt (Windows)
         uses: jurplel/install-qt-action@d325aaf2a8baeeda41ad0b5d39f84a6af9bcf005 # 4.3.0
@@ -108,7 +113,8 @@ jobs:
       #     pipx ensurepath
       #     echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
 
-      # - name: Setup conan
+      # - if: contains(matrix.os, 'windows')
+      #   name: Setup conan
       #   run: |
       #     pipx install conan
       #     conan profile detect --force
@@ -132,12 +138,14 @@ jobs:
             conan-${{ matrix.os }}-
 
       - if: contains(matrix.os, 'windows')
-        name: Conan install (windows)
+        name: Conan install (Windows)
+        # shell: bash
+        # shell: C:\msys64\usr\bin\bash.exe {0}
         run: |
-          conan install . -pr=mingw-profile --output-folder=. --build=missing --update --conf=tools.env.virtualenv:powershell=pwsh
+          conan install . -pr=default --output-folder=. --build=missing --settings=compiler.cppstd=17 --update --conf=tools.env.virtualenv:powershell=pwsh -s compiler.runtime=static -o protobuf/*:shared=False -o abseil/*:shared=False
 
       - if: ${{ !contains(matrix.os, 'windows') }}
-        name: Conan install (unix)
+        name: Conan install (Unix)
         run: |
           conan install . --output-folder=. --build=missing --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
 
@@ -154,11 +162,14 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         run: |
-          build\Release\generators\conanbuild.ps1
+          # build\Release\generators\conanbuild.ps1
+          build\generators\conanbuild.ps1
           cmake --version
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
+          # cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
+          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out # -G "Ninja"
           # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
-          cmake --build build\Release --target install
+          # cmake --build build\Release --target install
+          cmake --build build --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Build (Unix)

@@ -28,10 +28,12 @@ project(oidipc CXX)
 find_package(Qt5 "5.15.1...<6" REQUIRED COMPONENTS Network)
 
 # Find required protobuf package
-find_package(protobuf "6.30.1" CONFIG)
+find_package(protobuf "5.27.0" CONFIG)
 if(NOT Protobuf_FOUND)
-  find_package(Protobuf "6.30.1" REQUIRED)
+  find_package(Protobuf "5.27.0" REQUIRED)
 endif()
+
+find_package(gRPC REQUIRED)
 
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
@@ -48,11 +50,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 target_include_directories(${PROJECT_NAME}
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+                           PRIVATE ${protobuf_INCLUDE_DIRS}
+                           PRIVATE ${absl_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC Qt5::Network
-                      PUBLIC protobuf::libprotobuf)
+                      PUBLIC grpc::grpc)
 
 protobuf_generate(TARGET ${PROJECT_NAME})
 
