@@ -132,9 +132,10 @@ jobs:
             conan-${{ matrix.os }}-
 
       - if: contains(matrix.os, 'windows')
+        shell: powershell
         name: Conan install (windows)
         run: |
-          conan install . -pr=mingw-profile --output-folder=. --build=missing --update
+          conan install . -pr=mingw-profile --output-folder=. --build=missing --update --conf=tools.env.virtualenv:powershell=pwsh
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Conan install (unix)
@@ -154,12 +155,16 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         run: |
-          # chmod +x build\Release\generators\conanbuild.ps1
+          dir .
+          dir build
+          dir build\Release
+          dir build\Release\generators
+          chmod +x build\Release\generators\conanbuild.ps1
           build\Release\generators\conanbuild.ps1
           cmake --version
           cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
           # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
-          cmake --build build/Release --target install
+          cmake --build build\Release --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Build (unix)

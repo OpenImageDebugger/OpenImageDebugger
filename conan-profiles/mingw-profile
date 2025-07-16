@@ -12,4 +12,4 @@ tools.cmake.cmaketoolchain:generator=Ninja
 tools.env.virtualenv:powershell=pwsh
 
 [tool_requires]
-mingw-builds/15.1.0
+mingw-builds/14.2.0
