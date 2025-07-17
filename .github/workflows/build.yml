@@ -28,6 +28,42 @@ on:
   workflow_call:
 
 jobs:
+  cross-build-win-deps:
+    name: Build Conan Dependencies
+    runs-on: [ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
+      - name: Setup Conan
+        id: setup_conan
+        uses: conan-io/setup-conan@434f093a557d1ee6972c4ed78693c3191653537b # 1.1.0
+
+      - name: Install mingw-cross-compiler
+        run: |
+          sudo apt update && sudo apt install gcc-mingw-w64-x86-64-posix g++-mingw-w64-x86-64-posix
+          sudo ln -s /usr/lib/llvm-18/bin/llvm-windres /usr/bin/windres
+
+      - name: Copy Conan profiles
+        run: |
+          cp conan-profiles/* '${{ steps.setup_conan.outputs.conan-home }}/profiles'
+
+      - name: Restore Conan cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          path: ${{ steps.setup_conan.outputs.conan-home }}
+          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles') }}
+          restore-keys: |
+            conan-mingw-
+
+      - name: Conan install
+        run: |
+          conan install . -pr=mingw-cross-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja -o openssl/*:shared=True
+
+      - name: Save Conan cache
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          path: ${{ steps.setup_conan.outputs.conan-home }}
+          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles') }}
+
   build:
     name: Build
     strategy:
