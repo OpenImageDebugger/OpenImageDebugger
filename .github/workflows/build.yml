@@ -40,16 +40,15 @@ jobs:
             macos-14,
             macos-15,
           ]
-        ccache-variant: [ccache]
+        # ccache-variant: [ccache]
+        profile: [default]
         include:
           - os: ubuntu-22.04
             container: ghcr.io/openimagedebugger/oid:22.04
           - os: ubuntu-24.04
             container: ghcr.io/openimagedebugger/oid:24.04
-          - os: windows-2022
-            ccache-variant: "sccache"
-          - os: windows-2025
-            ccache-variant: "sccache"
+          - os: ubuntu-24.04
+            profile: mingw-cross-profile
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
@@ -69,22 +68,7 @@ jobs:
           restore-keys: |
             ${{matrix.os}}-main
           append-timestamp: true
-          variant: ${{ matrix.ccache-variant }}
-
-      # Needed for ninja to work with msvc
-      - if: contains(matrix.os, 'windows')
-        name: Setup MSVC
-        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
-
-      - if: contains(matrix.os, 'windows')
-        name: Install Qt (Windows)
-        uses: jurplel/install-qt-action@d325aaf2a8baeeda41ad0b5d39f84a6af9bcf005 # 4.3.0
-        with:
-          version: "5.15.2"
-          aqtversion: "==3.1.*"
-          arch: 'win64_mingw81'
-          setup-python: false
-          cache: true
+          # variant: ${{ matrix.ccache-variant }}
 
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
@@ -100,6 +84,13 @@ jobs:
       - name: Setup Conan
         id: setup_conan
         uses: conan-io/setup-conan@434f093a557d1ee6972c4ed78693c3191653537b # 1.1.0
+
+      - if: contains(matrix.profile, 'mingw-cross-profile')
+        name: Install mingw-cross-compiler
+        run: |
+          sudo apt update && sudo apt install gcc-mingw-w64-x86-64-posix g++-mingw-w64-x86-64-posix
+          sudo ln -s /usr/lib/llvm-18/bin/llvm-windres /usr/bin/windres
+          # sudo ln -s /usr/bin/x86_64-w64-mingw32-windres /usr/bin/windres
 
       # - if: contains(matrix.os, 'ubuntu')
       #   name: Install pipx (ubuntu)
@@ -131,15 +122,11 @@ jobs:
           restore-keys: |
             conan-${{ matrix.os }}-
 
-      - if: contains(matrix.os, 'windows')
-        name: Conan install (windows)
+      - name: Conan install
+        env:
+          profile: ${{ matrix.profile }}
         run: |
-          conan install . -pr=mingw-profile --output-folder=. --build=missing --update --conf=tools.env.virtualenv:powershell=pwsh
-
-      - if: ${{ !contains(matrix.os, 'windows') }}
-        name: Conan install (unix)
-        run: |
-          conan install . --output-folder=. --build=missing --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          conan install . -pr="$profile" --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja -o openssl/*:shared=True
 
       - name: Save Conan cache
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
@@ -147,25 +134,11 @@ jobs:
           path: ${{ steps.setup_conan.outputs.conan-home }}
           key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profiles') }}
 
-      - if: contains(matrix.os, 'windows')
-        name: Build (Windows)
-        shell: powershell
-        env:
-          CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
-          CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
-        run: |
-          build\Release\generators\conanbuild.ps1
-          cmake --version
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
-          # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
-          cmake --build build\Release --target install
-
-      - if: ${{ !contains(matrix.os, 'windows') }}
-        name: Build (Unix)
+      - name: Build (Unix)
         shell: bash
         env:
-          CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
-          CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}        
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
         run: |
           source build/Release/generators/conanbuild.sh
           cmake --version
