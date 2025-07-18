@@ -28,67 +28,9 @@ on:
   workflow_call:
 
 jobs:
-  cross-build-win-deps:
-    name: Build Conan Dependencies
-    runs-on: [ubuntu-24.04]
-    env:
-      CONAN_CACHE: conan_cache
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
-      - name: Setup Conan
-        id: setup_conan
-        uses: conan-io/setup-conan@434f093a557d1ee6972c4ed78693c3191653537b # 1.1.0
-
-      - name: Copy Conan profiles
-        run: |
-          cp conan-profiles/* '${{ steps.setup_conan.outputs.conan-home }}/profiles'
-
-      - name: Restore Conan cache
-        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
-        id: restore-conan-cache
-        with:
-          enableCrossOsArchive: true
-          path: ${{ steps.setup_conan.outputs.conan-home }}
-          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
-          restore-keys: |
-            conan-mingw-
-
-      - name: Install mingw-cross-compiler
-        run: |
-          sudo apt update && sudo apt install gcc-mingw-w64-x86-64-posix g++-mingw-w64-x86-64-posix
-          sudo ln -s /usr/lib/llvm-18/bin/llvm-windres /usr/bin/windres
-
-      - name: Conan install
-        run: |
-          conan install conan-mingw-recipe -pr=mingw-cross-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
-          # conan install . -pr=mingw-cross-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja -o openssl/*:shared=True conanfile-mingw-cross.txt
-
-      - if: ${{ !steps.restore-conan-cache.outputs.cache-hit }}
-        name: Save Conan cache
-        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
-        with:
-          enableCrossOsArchive: true
-          path: ${{ steps.setup_conan.outputs.conan-home }}
-          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
-
-      - env:
-          conan_home: ${{ steps.setup_conan.outputs.conan-home }}
-        run: |
-          cp -r $conan_home $CONAN_CACHE
-
-      - name: Save Conan cache (new path)
-        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
-        with:
-          enableCrossOsArchive: true
-          path: ${{ env.CONAN_CACHE }}
-          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
-
   build-win:
     name: Build (Windows)
     runs-on: [windows-2025]
-    needs: [cross-build-win-deps]
-    env:
-      CONAN_CACHE: conan_cache
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
         with:
@@ -107,39 +49,26 @@ jobs:
         uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
           enableCrossOsArchive: true
-          path: ${{ env.CONAN_CACHE }}
-          # key: conan-mingw-278a17183bfd70b3986de181521dab5cacee259a441343b439082c5b7efc7f1c
-          key: conan-mingw-full-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+          path: ${{ steps.setup_conan.outputs.conan-home }}
+          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
           restore-keys: |
-            conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
             conan-mingw-
 
-      - shell: bash
-        run: |
-          echo "CONAN_HOME=$(readlink -f $CONAN_CACHE)" >> $GITHUB_ENV
-          conan config home
-
-      - name: Conan detect
-        run: |
-          conan profile detect --force
-
       - name: Copy Conan profiles
-        shell: bash
         run: |
-          cp conan-profiles/* $CONAN_HOME/profiles
-          ls -lah $CONAN_HOME/profiles
+          cp conan-profiles/* '${{ steps.setup_conan.outputs.conan-home }}/profiles'
 
       - name: Conan install
         run: |
-          conan install . -pr=conan-profiles/mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          conan install . -pr=mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
           # conan install . -pr=mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja -o openssl/*:shared=True
 
       - name: Save Conan cache
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
           enableCrossOsArchive: true
-          path: ${{ env.CONAN_CACHE }}
-          key: conan-mingw-full-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+          path: ${{ steps.setup_conan.outputs.conan-home }}
+          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
 
       - name: Setup Ccache
         uses: hendrikmuhs/ccache-action@63069e3931dedbf3b63792097479563182fe70d1 # 1.2.18
