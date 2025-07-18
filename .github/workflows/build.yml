@@ -94,16 +94,19 @@ jobs:
           cache: true
 
       - name: Build (Windows)
-        shell: powershell
+        shell: cmd
         env:
           CMAKE_C_COMPILER_LAUNCHER: sccache
           CMAKE_CXX_COMPILER_LAUNCHER: sccache
         run: |
-          build/Release/generators/conanbuild.bat
+          # build/Release/generators/conanbuild.bat
+          cd build\Release\generators
+          conanbuild.bat
           cmake --version
           cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
           # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
-          cmake --build build/Release --target install
+          # cmake --build build/Release --target install
+          cmake --build build\Release --target install
 
   build:
     name: Build
