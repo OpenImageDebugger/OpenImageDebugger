@@ -81,8 +81,8 @@ jobs:
           variant: sccache
 
       # Needed for ninja to work with msvc
-      - name: Setup MSVC
-        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
+      # - name: Setup MSVC
+      #   uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
 
       - name: Install Qt (Windows)
         uses: jurplel/install-qt-action@d325aaf2a8baeeda41ad0b5d39f84a6af9bcf005 # 4.3.0
