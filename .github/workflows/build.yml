@@ -99,12 +99,7 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: sccache
           CMAKE_CXX_COMPILER_LAUNCHER: sccache
         run: |
-          cd build\Release\generators
-          conanbuild.bat
-          cd ..\..\..
-          cmake --version
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
-          cmake --build build\Release --target install
+          cd build\Release\generators && conanbuild.bat && cd ..\..\.. && cmake --version && cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja" && cmake --build build\Release --target install
 
   build:
     name: Build
