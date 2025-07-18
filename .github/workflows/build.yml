@@ -109,8 +109,9 @@ jobs:
           enableCrossOsArchive: true
           path: ${{ env.CONAN_CACHE }}
           # key: conan-mingw-278a17183bfd70b3986de181521dab5cacee259a441343b439082c5b7efc7f1c
-          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+          key: conan-mingw-full-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
           restore-keys: |
+            conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
             conan-mingw-
 
       - shell: bash
@@ -133,13 +134,12 @@ jobs:
           conan install . -pr=conan-profiles/mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
           # conan install . -pr=mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja -o openssl/*:shared=True
 
-      - if: ${{ !steps.restore-conan-cache.outputs.cache-hit }}
-        name: Save Conan cache
+      - name: Save Conan cache
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
           enableCrossOsArchive: true
           path: ${{ steps.setup_conan.outputs.conan-home }}
-          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+          key: conan-mingw-full-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
 
       - name: Setup Ccache
         uses: hendrikmuhs/ccache-action@63069e3931dedbf3b63792097479563182fe70d1 # 1.2.18
