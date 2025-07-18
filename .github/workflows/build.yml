@@ -88,7 +88,7 @@ jobs:
 
       - name: Conan install
         run: |
-          conan install . -pr=mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          conan install . -pr=${{ matrix.profile }} --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
 
       - name: Save Conan cache
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
