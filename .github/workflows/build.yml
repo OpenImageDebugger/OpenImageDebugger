@@ -48,7 +48,7 @@ jobs:
             container: ghcr.io/openimagedebugger/oid:24.04
           - os: windows-2025
             ccache-variant: "sccache"
-            profile: [mingw-profile]
+            profile: "mingw-profile"
     name: Build
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
