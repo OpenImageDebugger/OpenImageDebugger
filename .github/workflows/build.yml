@@ -138,7 +138,7 @@ jobs:
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
           enableCrossOsArchive: true
-          path: ${{ steps.setup_conan.outputs.conan-home }}
+          path: ${{ env.CONAN_CACHE }}
           key: conan-mingw-full-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
 
       - name: Setup Ccache
