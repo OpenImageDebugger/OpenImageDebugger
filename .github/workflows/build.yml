@@ -81,11 +81,9 @@ jobs:
         with:
           enableCrossOsArchive: true
           path: ${{ steps.setup_conan.outputs.conan-home }}
-          key: conan-${{ matrix.os }}-${{ matrix.profile }}-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
           restore-keys: |
-            conan-${{ matrix.os }}-${{ matrix.profile }}
             conan-${{ matrix.os }}-
-            conan-mingw-
 
       - name: Copy Conan profiles
         run: |
