@@ -28,7 +28,7 @@ on:
   workflow_call:
 
 jobs:
-  build-win:
+  build:
     strategy:
       fail-fast: false
       matrix:
@@ -49,8 +49,9 @@ jobs:
           - os: windows-2025
             ccache-variant: "sccache"
             profile: [mingw-profile]
-    name: Build (Windows)
+    name: Build
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
         with:
@@ -155,7 +156,7 @@ jobs:
           name: build-${{ matrix.os }}
           path: build-${{ matrix.os }}.tar
 
-  build:
+  build-old:
     if: false
     name: Build
     strategy:
