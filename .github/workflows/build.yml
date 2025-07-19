@@ -90,7 +90,7 @@ jobs:
           conan install . -pr=${{ matrix.profile }} --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
 
       - name: Save Conan cache
-        if: ${{ !steps.restore-conan-cache.outputs.cache-hit }}
+        if: ${{ steps.restore-conan-cache.outputs.cache-hit == false }}
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
           enableCrossOsArchive: true
