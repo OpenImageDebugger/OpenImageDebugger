@@ -125,7 +125,7 @@ jobs:
 
       - name: Build (Windows)
         if: contains(matrix.os, 'windows')
-        shell: cmd
+        shell: cmd {0}
         env:
           CMAKE_C_COMPILER_LAUNCHER: sccache
           CMAKE_CXX_COMPILER_LAUNCHER: sccache
