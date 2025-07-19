@@ -49,13 +49,9 @@ jobs:
           - os: windows-2025
             ccache-variant: "sccache"
             profile: "mingw-profile"
-
     name: Build
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
-    env:
-      CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
-      CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
         with:
@@ -129,12 +125,18 @@ jobs:
       - if: contains(matrix.os, 'windows')
         name: Build (Windows)
         shell: cmd
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: sccache
+          CMAKE_CXX_COMPILER_LAUNCHER: sccache
         run: |
           cd build\Release\generators && conanbuild.bat && cd ..\..\.. && cmake --version && cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja" && cmake --build build\Release --target install
 
       - if: ${{ !contains(matrix.os, 'windows') }}
         name: Build (Unix)
         shell: bash
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
         run: |
           source build/Release/generators/conanbuild.sh
           cmake --version
