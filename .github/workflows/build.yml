@@ -123,19 +123,16 @@ jobs:
           brew install qt@5
           echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
-      # Use YAML's folded style (>) to keep the command readable across multiple lines,
-      # but have it executed as a single line in the shell. This is necessary for Windows 'cmd' steps
-      # to ensure all commands run in the same shell session and directory changes persist.
       - name: Build (Windows)
         if: contains(matrix.os, 'windows')
         shell: cmd
         env:
           CMAKE_C_COMPILER_LAUNCHER: sccache
           CMAKE_CXX_COMPILER_LAUNCHER: sccache
-        run: >
-          build\Release\generators\conanbuild.bat &&
-          cmake --version &&
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja" &&
+        run: |
+          build\Release\generators\conanbuild.bat
+          cmake --version
+          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
           cmake --build build\Release --target install
 
       - name: Build (Unix)
