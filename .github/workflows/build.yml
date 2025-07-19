@@ -98,7 +98,7 @@ jobs:
         with:
           enableCrossOsArchive: true
           path: ${{ steps.setup_conan.outputs.conan-home }}
-          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
 
       - name: Setup Ccache
         uses: hendrikmuhs/ccache-action@63069e3931dedbf3b63792097479563182fe70d1 # 1.2.18
