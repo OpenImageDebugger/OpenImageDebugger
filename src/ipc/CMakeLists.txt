@@ -53,7 +53,7 @@ target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(${PROJECT_NAME}
-                      PRIVATE Qt5::Network
+                      PUBLIC Qt5::Network
                       PRIVATE protobuf::libprotobuf
                       PRIVATE grpc::grpc)
 
