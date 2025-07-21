@@ -128,15 +128,15 @@ jobs:
       # to ensure all commands run in the same shell session and directory changes persist.
       - name: Build (Windows)
         if: contains(matrix.os, 'windows')
-        shell: cmd
+        shell: powershell
         env:
           CMAKE_C_COMPILER_LAUNCHER: sccache
           CMAKE_CXX_COMPILER_LAUNCHER: sccache
-        run: >
-          build\Release\generators\conanbuild.bat &&
-          cmake --version &&
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja" &&
-          cmake --build build\Release --target install
+        run: |
+          build/Release/generators/conanbuild.ps1
+          cmake --version
+          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
+          cmake --build build/Release --target install
 
       - name: Build (Unix)
         if: ${{ !contains(matrix.os, 'windows') }}
