@@ -33,6 +33,8 @@ if(NOT Protobuf_FOUND)
   find_package(Protobuf "5.27.0" REQUIRED)
 endif()
 
+find_package(gRPC "1.72" REQUIRED)
+
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
 set(PROTO_FILES
@@ -51,8 +53,9 @@ target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(${PROJECT_NAME}
-                      PUBLIC Qt5::Network
-                      PUBLIC protobuf::libprotobuf)
+                      PRIVATE Qt5::Network
+                      PRIVATE protobuf::libprotobuf
+                      PRIVATE grpc::grpc)
 
 protobuf_generate(TARGET ${PROJECT_NAME})
 
