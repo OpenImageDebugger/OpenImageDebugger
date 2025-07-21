@@ -9,8 +9,6 @@ compiler.exception=seh
 arch=x86_64
 build_type=Release
 tools.cmake.cmaketoolchain:generator=Ninja
-
-[conf]
 tools.env.virtualenv:powershell=pwsh
 
 [tool_requires]
