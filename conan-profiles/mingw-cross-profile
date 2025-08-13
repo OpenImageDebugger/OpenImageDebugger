@@ -1,0 +1,13 @@
+# https://docs.conan.io/2/examples/cross_build/linux_to_windows_mingw.html
+[settings]
+os=Windows
+compiler=gcc
+compiler.version=14
+compiler.cppstd=17
+compiler.libcxx=libstdc++11
+arch=x86_64
+build_type=Release
+
+[buildenv]
+CXX=x86_64-w64-mingw32-g++-posix
+CC=x86_64-w64-mingw32-gcc-posix
