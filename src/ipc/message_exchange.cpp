@@ -25,6 +25,9 @@
 
 #include "message_exchange.h"
 
+#include "buffer.pb.h"
+
+#include <iostream>
 #include <utility>
 
 namespace oid
@@ -35,6 +38,9 @@ MessageBlock::~MessageBlock() = default;
 StringBlock::StringBlock(std::string value)
     : data_{std::move(value)}
 {
+    // Verify that the version of the library that we linked against is
+    // compatible with the version of the headers we compiled against.
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
 }
 
 size_t StringBlock::size() const
