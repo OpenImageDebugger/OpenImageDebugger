@@ -25,6 +25,9 @@
 
 #include "message_exchange.h"
 
+#include "buffer.pb.h"
+
+#include <iostream>
 #include <utility>
 
 namespace oid
