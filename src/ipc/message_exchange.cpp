@@ -27,7 +27,6 @@
 
 #include "buffer.pb.h"
 
-#include <iostream>
 #include <utility>
 
 namespace oid
@@ -40,6 +39,8 @@ StringBlock::StringBlock(std::string value)
 {
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
+    proto::Buffer buffer;
+    buffer.variable_name();
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 }
 

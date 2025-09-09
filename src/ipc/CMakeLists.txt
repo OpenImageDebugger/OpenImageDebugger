@@ -49,15 +49,13 @@ add_library(${PROJECT_NAME} SHARED
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-target_include_directories(${PROJECT_NAME}
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
 target_link_libraries(${PROJECT_NAME}
                       PUBLIC Qt5::Network
                       PRIVATE protobuf::libprotobuf
                       PRIVATE grpc::grpc)
 
-protobuf_generate(TARGET ${PROJECT_NAME})
+protobuf_generate(TARGET ${PROJECT_NAME}
+                  PROTOC_OUT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)
