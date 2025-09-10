@@ -1,0 +1,13 @@
+[requires]
+grpc/1.72.0
+
+[tool_requires]
+cmake/4.0.3
+ninja/1.13.0
+
+[generators]
+CMakeDeps
+CMakeToolchain
+
+[layout]
+cmake_layout

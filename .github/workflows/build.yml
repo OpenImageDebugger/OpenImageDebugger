@@ -28,6 +28,154 @@ on:
   workflow_call:
 
 jobs:
+  cross-build-win-deps:
+    name: Build Conan Dependencies
+    runs-on: [ubuntu-24.04]
+    env:
+      CONAN_CACHE: conan_cache
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
+      - name: Setup Conan
+        id: setup_conan
+        uses: conan-io/setup-conan@434f093a557d1ee6972c4ed78693c3191653537b # 1.1.0
+
+      - name: Copy Conan profiles
+        run: |
+          cp conan-profiles/* '${{ steps.setup_conan.outputs.conan-home }}/profiles'
+
+      - name: Restore Conan cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        id: restore-conan-cache
+        with:
+          enableCrossOsArchive: true
+          path: ${{ steps.setup_conan.outputs.conan-home }}
+          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+          restore-keys: |
+            conan-mingw-
+
+      - name: Install mingw-cross-compiler
+        run: |
+          sudo apt update && sudo apt install gcc-mingw-w64-x86-64-posix g++-mingw-w64-x86-64-posix
+          sudo ln -s /usr/lib/llvm-18/bin/llvm-windres /usr/bin/windres
+
+      - name: Conan install
+        run: |
+          conan install conan-mingw-recipe -pr=mingw-cross-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          # conan install . -pr=mingw-cross-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja -o openssl/*:shared=True conanfile-mingw-cross.txt
+
+      - if: ${{ !steps.restore-conan-cache.outputs.cache-hit }}
+        name: Save Conan cache
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          enableCrossOsArchive: true
+          path: ${{ steps.setup_conan.outputs.conan-home }}
+          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+
+      - env:
+          conan_home: ${{ steps.setup_conan.outputs.conan-home }}
+        run: |
+          cp -r $conan_home $CONAN_CACHE
+
+      - name: Save Conan cache (new path)
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          enableCrossOsArchive: true
+          path: ${{ env.CONAN_CACHE }}
+          key: conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+
+  build-win:
+    name: Build (Windows)
+    runs-on: [windows-2025]
+    needs: [cross-build-win-deps]
+    env:
+      CONAN_CACHE: conan_cache
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
+        with:
+          fetch-depth: 1
+          fetch-tags: true
+          submodules: "recursive"
+          # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
+          persist-credentials: false
+
+      - name: Setup Conan
+        id: setup_conan
+        uses: conan-io/setup-conan@434f093a557d1ee6972c4ed78693c3191653537b # 1.1.0
+
+      - name: Restore Conan cache
+        id: restore-conan-cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          enableCrossOsArchive: true
+          path: ${{ env.CONAN_CACHE }}
+          # key: conan-mingw-278a17183bfd70b3986de181521dab5cacee259a441343b439082c5b7efc7f1c
+          key: conan-mingw-full-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+          restore-keys: |
+            conan-mingw-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+            conan-mingw-
+
+      - shell: bash
+        run: |
+          echo "CONAN_HOME=$(readlink -f $CONAN_CACHE)" >> $GITHUB_ENV
+          conan config home
+
+      - name: Conan detect
+        run: |
+          conan profile detect --force
+
+      - name: Copy Conan profiles
+        shell: bash
+        run: |
+          cp conan-profiles/* $CONAN_HOME/profiles
+          ls -lah $CONAN_HOME/profiles
+
+      - name: Conan install
+        run: |
+          conan install . -pr=conan-profiles/mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          # conan install . -pr=mingw-profile --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja -o openssl/*:shared=True
+
+      - name: Save Conan cache
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          enableCrossOsArchive: true
+          path: ${{ env.CONAN_CACHE }}
+          key: conan-mingw-full-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+
+      - name: Setup Ccache
+        uses: hendrikmuhs/ccache-action@63069e3931dedbf3b63792097479563182fe70d1 # 1.2.18
+        with:
+          verbose: 1
+          key: mingw-${{github.ref_name}}
+          restore-keys: |
+            mingw-main
+          append-timestamp: true
+          variant: sccache
+
+      # Needed for ninja to work with msvc
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
+
+      - name: Install Qt (Windows)
+        uses: jurplel/install-qt-action@d325aaf2a8baeeda41ad0b5d39f84a6af9bcf005 # 4.3.0
+        with:
+          version: "5.15.2"
+          aqtversion: "==3.1.*"
+          arch: 'win64_mingw81'
+          setup-python: false
+          cache: true
+
+      - name: Build (Windows)
+        shell: powershell
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: sccache
+          CMAKE_CXX_COMPILER_LAUNCHER: sccache
+        run: |
+          build/Release/generators/conanbuild.ps1
+          cmake --version
+          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
+          # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
+          cmake --build build/Release --target install
+
   build:
     name: Build
     strategy:
@@ -40,16 +188,15 @@ jobs:
             macos-14,
             macos-15,
           ]
-        ccache-variant: [ccache]
+        # ccache-variant: [ccache]
+        profile: [default]
         include:
           - os: ubuntu-22.04
             container: ghcr.io/openimagedebugger/oid:22.04
           - os: ubuntu-24.04
             container: ghcr.io/openimagedebugger/oid:24.04
-          - os: windows-2022
-            ccache-variant: "sccache"
-          - os: windows-2025
-            ccache-variant: "sccache"
+          - os: ubuntu-24.04
+            profile: mingw-cross-profile
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
@@ -61,29 +208,15 @@ jobs:
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
 
-      - name: Setup ccache
+      - name: Setup Ccache
         uses: hendrikmuhs/ccache-action@63069e3931dedbf3b63792097479563182fe70d1 # 1.2.18
         with:
           verbose: 1
           key: ${{matrix.os}}-${{github.ref_name}}
           restore-keys: |
             ${{matrix.os}}-main
-          append-timestamp: false
-          variant: ${{ matrix.ccache-variant }}
-
-      # Needed for ninja to work with msvc
-      - if: contains(matrix.os, 'windows')
-        name: Setup MSVC
-        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
-
-      - if: contains(matrix.os, 'windows')
-        name: Install Qt (Windows)
-        uses: jurplel/install-qt-action@d325aaf2a8baeeda41ad0b5d39f84a6af9bcf005 # 4.3.0
-        with:
-          version: "5.15.2"
-          aqtversion: "==3.1.*"
-          setup-python: false
-          cache: true
+          append-timestamp: true
+          # variant: ${{ matrix.ccache-variant }}
 
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
@@ -91,16 +224,99 @@ jobs:
           brew install qt@5
           echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
-      - name: Build
+      # Needed for ninja to work with msvc
+      - if: contains(matrix.os, 'windows')
+        name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # 5.6.0
+        with:
+          python-version: 3.x
+
+      - name: Setup Conan
+        id: setup_conan
+        uses: conan-io/setup-conan@434f093a557d1ee6972c4ed78693c3191653537b # 1.1.0
+
+      - if: contains(matrix.profile, 'mingw-cross-profile')
+        name: Install mingw-cross-compiler
+        run: |
+          sudo apt update && sudo apt install gcc-mingw-w64-x86-64-posix g++-mingw-w64-x86-64-posix
+          sudo ln -s /usr/lib/llvm-18/bin/llvm-windres /usr/bin/windres
+          # sudo ln -s /usr/bin/x86_64-w64-mingw32-windres /usr/bin/windres
+
+      # - if: contains(matrix.os, 'ubuntu')
+      #   name: Install pipx (ubuntu)
+      #   run: |
+      #     apt update && apt install -y pipx
+      #     pipx ensurepath
+      #     echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
+
+      # - name: Setup conan
+      #   run: |
+      #     pipx install conan
+      #     conan profile detect --force
+
+      # - if: true
+      #   shell: bash
+      #   name: Get Conan home
+      #   id: get_conan_home
+      #   run: echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
+
+      - name: Copy Conan profiles
+        run: |
+          cp conan-profiles/* '${{ steps.setup_conan.outputs.conan-home }}/profiles'
+
+      - name: Restore Conan cache
+        id: restore-conan-cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          path: ${{ steps.setup_conan.outputs.conan-home }}
+          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profile/**') }}
+          restore-keys: |
+            conan-${{ matrix.os }}-
+
+      - name: Conan install
+        env:
+          profile: ${{ matrix.profile }}
+        run: |
+          conan install . -pr="$profile" --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+          # conan install . -pr="$profile" --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja -o openssl/*:shared=True
+
+      - if: ${{ !steps.restore-conan-cache.outputs.cache-hit }}
+        name: Save Conan cache
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          path: ${{ steps.setup_conan.outputs.conan-home }}
+          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+
+      - if: contains(matrix.os, 'windows')
+        name: Build (Windows)
+        shell: powershell
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: sccache
+          CMAKE_CXX_COMPILER_LAUNCHER: sccache
+        run: |
+          # build\Release\generators\conanbuild.ps1
+          build\generators\conanbuild.ps1
+          cmake --version
+          # cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
+          cmake --preset conan-default -DCMAKE_INSTALL_PREFIX=out # -G "Ninja"
+          # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
+          # cmake --build build\Release --target install
+          cmake --build build --target install
+      - if: ${{ !contains(matrix.os, 'windows') }}
+        name: Build (Unix)
         shell: bash
         env:
-          CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
-          CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
-        # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
         run: |
-          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release --target install
-
+          source build/Release/generators/conanbuild.sh
+          cmake --version
+          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
+          # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
+          cmake --build build/Release --target install
       - name: Tar files
         shell: bash
         run: tar --strip-components 1 -cvf build-${{ matrix.os }}.tar out
