@@ -37,8 +37,8 @@ jobs:
           [
             ubuntu-22.04,
             ubuntu-24.04,
-            macos-14,
             macos-15,
+            macos-26,
           ]
         ccache-variant: [ccache]
         profile: [default]
