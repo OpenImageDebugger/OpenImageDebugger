@@ -85,6 +85,35 @@ jobs:
           setup-python: false
           cache: true
 
+      - if: contains(matrix.os, 'ubuntu')
+        name: Install pipx (ubuntu)
+        run: |
+          apt update && apt install -y pipx
+          pipx ensurepath
+          echo "PATH=/github/home/.local/bin:$PATH" >> "$GITHUB_ENV"
+
+      - name: Setup Conan
+        shell: bash
+        id: setup_conan
+        run: |
+          pipx install conan
+          conan profile detect --force
+          echo "conan_home=$(conan config home)" >> $GITHUB_OUTPUT
+
+      # - uses: conan-io/setup-conan@v1
+      #   with:
+      #     cache_packages: 'true'
+      #     python_version: '3.12.3'
+
+      - name: Setup Conan cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          path: ${{ steps.setup_conan.outputs.conan_home }}
+          key: conan-${{ matrix.os }}-${{ github.ref_name }}
+          restore-keys: |
+            conan-${{ matrix.os }}-main
+            conan-${{ matrix.os }}-
+
       - if: contains(matrix.os, 'macos')
         name: Install Qt (macOS)
         run: |
@@ -98,8 +127,12 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release --target install
+          conan install . --build=missing --update --settings=compiler.cppstd=17
+          # cmake version >= 3.25 is required for conan presets
+          # cmake --preset conan-release -G "Ninja" -DCMAKE_INSTALL_PREFIX=out
+          # cmake --build build --preset conan-release --target install -j
+          cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=build/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=out
+          cmake --build build --target install
 
       - name: Tar files
         shell: bash
