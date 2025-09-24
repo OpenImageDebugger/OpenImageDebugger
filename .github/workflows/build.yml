@@ -38,6 +38,7 @@ jobs:
             ubuntu-22.04,
             ubuntu-24.04,
             macos-15,
+            macos-15-intel,
             macos-26,
           ]
         ccache-variant: [ccache]
@@ -117,11 +118,17 @@ jobs:
           setup-python: false
           cache: true
 
-      - name: Install Qt (macOS)
-        if: contains(matrix.os, 'macos')
+      - if: matrix.os == 'macos-15' || matrix.os == 'macos-26'
+        name: Install Qt (macOS - arm64)
         run: |
           brew install qt@5
           echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
+
+      - if: matrix.os == 'macos-15-intel'
+        name: Install Qt (macOS - intel)
+        run: |
+          brew install qt@5
+          echo "PATH=/usr/local/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
       # Use YAML's folded style (>) to keep the command readable across multiple lines,
       # but have it executed as a single line in the shell. This is necessary for Windows 'cmd' steps
