@@ -63,13 +63,16 @@ void MainWindow::reset_ac_min_labels() const
     ui_components_.ui->ac_c1_min->setText(QString::number(ac_min[0]));
 
     if (buffer->channels == 4) {
-        enable_inputs({ui_components_.ui->ac_c2_min, ui_components_.ui->ac_c3_min, ui_components_.ui->ac_c4_min});
+        enable_inputs({ui_components_.ui->ac_c2_min,
+                       ui_components_.ui->ac_c3_min,
+                       ui_components_.ui->ac_c4_min});
 
         ui_components_.ui->ac_c2_min->setText(QString::number(ac_min[1]));
         ui_components_.ui->ac_c3_min->setText(QString::number(ac_min[2]));
         ui_components_.ui->ac_c4_min->setText(QString::number(ac_min[3]));
     } else if (buffer->channels == 3) {
-        enable_inputs({ui_components_.ui->ac_c2_min, ui_components_.ui->ac_c3_min});
+        enable_inputs(
+            {ui_components_.ui->ac_c2_min, ui_components_.ui->ac_c3_min});
 
         ui_components_.ui->ac_c4_min->setEnabled(false);
 
@@ -78,11 +81,14 @@ void MainWindow::reset_ac_min_labels() const
     } else if (buffer->channels == 2) {
         ui_components_.ui->ac_c2_min->setEnabled(true);
 
-        disable_inputs({ui_components_.ui->ac_c3_min, ui_components_.ui->ac_c4_min});
+        disable_inputs(
+            {ui_components_.ui->ac_c3_min, ui_components_.ui->ac_c4_min});
 
         ui_components_.ui->ac_c2_min->setText(QString::number(ac_min[1]));
     } else {
-        disable_inputs({ui_components_.ui->ac_c2_min, ui_components_.ui->ac_c3_min, ui_components_.ui->ac_c4_min});
+        disable_inputs({ui_components_.ui->ac_c2_min,
+                        ui_components_.ui->ac_c3_min,
+                        ui_components_.ui->ac_c4_min});
     }
 }
 
@@ -96,13 +102,16 @@ void MainWindow::reset_ac_max_labels() const
 
     ui_components_.ui->ac_c1_max->setText(QString::number(ac_max[0]));
     if (buffer->channels == 4) {
-        enable_inputs({ui_components_.ui->ac_c2_max, ui_components_.ui->ac_c3_max, ui_components_.ui->ac_c4_max});
+        enable_inputs({ui_components_.ui->ac_c2_max,
+                       ui_components_.ui->ac_c3_max,
+                       ui_components_.ui->ac_c4_max});
 
         ui_components_.ui->ac_c2_max->setText(QString::number(ac_max[1]));
         ui_components_.ui->ac_c3_max->setText(QString::number(ac_max[2]));
         ui_components_.ui->ac_c4_max->setText(QString::number(ac_max[3]));
     } else if (buffer->channels == 3) {
-        enable_inputs({ui_components_.ui->ac_c2_max, ui_components_.ui->ac_c3_max});
+        enable_inputs(
+            {ui_components_.ui->ac_c2_max, ui_components_.ui->ac_c3_max});
 
         ui_components_.ui->ac_c4_max->setEnabled(false);
 
@@ -111,11 +120,14 @@ void MainWindow::reset_ac_max_labels() const
     } else if (buffer->channels == 2) {
         ui_components_.ui->ac_c2_max->setEnabled(true);
 
-        disable_inputs({ui_components_.ui->ac_c3_max, ui_components_.ui->ac_c4_max});
+        disable_inputs(
+            {ui_components_.ui->ac_c3_max, ui_components_.ui->ac_c4_max});
 
         ui_components_.ui->ac_c2_max->setText(QString::number(ac_max[1]));
     } else {
-        disable_inputs({ui_components_.ui->ac_c2_max, ui_components_.ui->ac_c3_max, ui_components_.ui->ac_c4_max});
+        disable_inputs({ui_components_.ui->ac_c2_max,
+                        ui_components_.ui->ac_c3_max,
+                        ui_components_.ui->ac_c4_max});
     }
 }
 
