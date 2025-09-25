@@ -226,8 +226,8 @@ void MainWindow::initialize_settings()
 {
     using BufferExpiration = QPair<QString, QDateTime>;
 
-    qRegisterMetaTypeStreamOperators<QList<BufferExpiration>>(
-        "QList<QPair<QString, QDateTime>>");
+    // Register the custom type for QSettings serialization in Qt6
+    qRegisterMetaType<QList<BufferExpiration>>("QList<QPair<QString, QDateTime>>");
 
     auto settings = QSettings{QSettings::Format::IniFormat,
                               QSettings::Scope::UserScope,
