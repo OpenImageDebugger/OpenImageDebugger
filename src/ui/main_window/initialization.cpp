@@ -54,14 +54,15 @@ void MainWindow::initialize_settings_ui_list_position(
     const auto position_str = variant.toString();
 
     if (position_str == "top" || position_str == "bottom") {
-        ui_->splitter->setOrientation(Qt::Vertical);
+        ui_components_.ui->splitter->setOrientation(Qt::Vertical);
     }
 
     if (position_str == "right" || position_str == "bottom") {
-        ui_->splitter->insertWidget(-1, ui_->frame_list);
+        ui_components_.ui->splitter->insertWidget(
+            -1, ui_components_.ui->frame_list);
     }
 
-    ui_->splitter->repaint();
+    ui_components_.ui->splitter->repaint();
 }
 
 void MainWindow::initialize_settings_ui_splitter(
@@ -79,7 +80,7 @@ void MainWindow::initialize_settings_ui_splitter(
         listSizes.append(size.toInt());
     }
 
-    ui_->splitter->setSizes(listSizes);
+    ui_components_.ui->splitter->setSizes(listSizes);
 }
 
 void MainWindow::initialize_settings_ui_minmax_compact(
@@ -108,23 +109,32 @@ void MainWindow::initialize_settings_ui_minmax_compact(
     }();
 
     if (is_minmax_visible) {
-        ui_->gridLayout_toolbar->addWidget(ui_->linkViewsToggle, 0, 0);
-        ui_->gridLayout_toolbar->addWidget(ui_->reposition_buffer, 0, 1);
-        ui_->gridLayout_toolbar->addWidget(ui_->go_to_pixel, 0, 2);
+        ui_components_.ui->gridLayout_toolbar->addWidget(
+            ui_components_.ui->linkViewsToggle, 0, 0);
+        ui_components_.ui->gridLayout_toolbar->addWidget(
+            ui_components_.ui->reposition_buffer, 0, 1);
+        ui_components_.ui->gridLayout_toolbar->addWidget(
+            ui_components_.ui->go_to_pixel, 0, 2);
 
-        ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_ccw, 1, 0);
-        ui_->gridLayout_toolbar->addWidget(ui_->rotate_90_cw, 1, 1);
-        ui_->gridLayout_toolbar->addWidget(ui_->acToggle, 1, 2);
-        ui_->gridLayout_toolbar->addWidget(ui_->decrease_float_precision, 1, 3);
-        ui_->gridLayout_toolbar->addWidget(ui_->increase_float_precision, 1, 4);
+        ui_components_.ui->gridLayout_toolbar->addWidget(
+            ui_components_.ui->rotate_90_ccw, 1, 0);
+        ui_components_.ui->gridLayout_toolbar->addWidget(
+            ui_components_.ui->rotate_90_cw, 1, 1);
+        ui_components_.ui->gridLayout_toolbar->addWidget(
+            ui_components_.ui->acToggle, 1, 2);
+        ui_components_.ui->gridLayout_toolbar->addWidget(
+            ui_components_.ui->decrease_float_precision, 1, 3);
+        ui_components_.ui->gridLayout_toolbar->addWidget(
+            ui_components_.ui->increase_float_precision, 1, 4);
     }
 
-    ui_->horizontalLayout_container_toolbar->addWidget(ui_->minMaxEditor, 2);
-    ui_->horizontalLayout_container_toolbar->setStretch(0, 0);
-    ui_->horizontalLayout_container_toolbar->setStretch(1, 1);
-    ui_->horizontalLayout_container_toolbar->setStretch(2, 0);
+    ui_components_.ui->horizontalLayout_container_toolbar->addWidget(
+        ui_components_.ui->minMaxEditor, 2);
+    ui_components_.ui->horizontalLayout_container_toolbar->setStretch(0, 0);
+    ui_components_.ui->horizontalLayout_container_toolbar->setStretch(1, 1);
+    ui_components_.ui->horizontalLayout_container_toolbar->setStretch(2, 0);
 
-    ui_->acEdit->hide();
+    ui_components_.ui->acEdit->hide();
 }
 
 QString
@@ -154,19 +164,19 @@ void MainWindow::initialize_settings_ui_colorspace(const QSettings& settings)
     const auto colorspace_str = variant.toString();
 
     if (!colorspace_str.isEmpty()) {
-        name_channel_1_ =
+        channel_names_.name_channel_1 =
             initialize_settings_ui_colorspace_channel(colorspace_str.at(0));
     }
     if (colorspace_str.size() > 1) {
-        name_channel_2_ =
+        channel_names_.name_channel_2 =
             initialize_settings_ui_colorspace_channel(colorspace_str.at(1));
     }
     if (colorspace_str.size() > 2) {
-        name_channel_3_ =
+        channel_names_.name_channel_3 =
             initialize_settings_ui_colorspace_channel(colorspace_str.at(2));
     }
     if (colorspace_str.size() > 3) {
-        name_channel_4_ =
+        channel_names_.name_channel_4 =
             initialize_settings_ui_colorspace_channel(colorspace_str.at(3));
     }
 }
@@ -180,8 +190,8 @@ void MainWindow::initialize_settings_ui_minmax_visible(
     }
 
     const auto is_minmax_visible = variant.toBool();
-    ui_->acEdit->setChecked(is_minmax_visible);
-    ui_->minMaxEditor->setVisible(is_minmax_visible);
+    ui_components_.ui->acEdit->setChecked(is_minmax_visible);
+    ui_components_.ui->minMaxEditor->setVisible(is_minmax_visible);
 }
 
 void MainWindow::initialize_settings_ui_contrast_enabled(
@@ -192,9 +202,9 @@ void MainWindow::initialize_settings_ui_contrast_enabled(
         return;
     }
 
-    ac_enabled_ = variant.toBool();
-    ui_->acToggle->setChecked(ac_enabled_);
-    ui_->minMaxEditor->setEnabled(ac_enabled_);
+    state_.ac_enabled = variant.toBool();
+    ui_components_.ui->acToggle->setChecked(state_.ac_enabled);
+    ui_components_.ui->minMaxEditor->setEnabled(state_.ac_enabled);
 }
 
 void MainWindow::initialize_settings_ui_link_views_enabled(
@@ -205,8 +215,8 @@ void MainWindow::initialize_settings_ui_link_views_enabled(
         return;
     }
 
-    link_views_enabled_ = variant.toBool();
-    ui_->linkViewsToggle->setChecked(link_views_enabled_);
+    state_.link_views_enabled = variant.toBool();
+    ui_components_.ui->linkViewsToggle->setChecked(state_.link_views_enabled);
 }
 
 void MainWindow::initialize_settings_ui(QSettings& settings)
@@ -262,7 +272,7 @@ void MainWindow::initialize_settings()
 
     for (const auto& [name, time] : previous_buffers) {
         if (time >= now) {
-            previous_session_buffers_.insert(name.toStdString());
+            buffer_data_.previous_session_buffers.insert(name.toStdString());
         }
     }
 
@@ -331,86 +341,96 @@ void MainWindow::initialize_ui_icons() const
         qWarning() << "Could not load ionicons font file!";
     }
 
-    setFontIcon(ui_->acEdit, L"\ue803");
-    setFontIcon(ui_->acToggle, L"\ue804");
-    setFontIcon(ui_->reposition_buffer, L"\ue800");
-    setFontIcon(ui_->linkViewsToggle, L"\ue805");
-    setFontIcon(ui_->rotate_90_ccw, L"\ue801");
-    setFontIcon(ui_->rotate_90_cw, L"\ue802");
-    setFontIcon(ui_->decrease_float_precision, L"\ue806");
-    setFontIcon(ui_->increase_float_precision, L"\ue807");
-    setFontIcon(ui_->go_to_pixel, L"\uf031");
+    setFontIcon(ui_components_.ui->acEdit, L"\ue803");
+    setFontIcon(ui_components_.ui->acToggle, L"\ue804");
+    setFontIcon(ui_components_.ui->reposition_buffer, L"\ue800");
+    setFontIcon(ui_components_.ui->linkViewsToggle, L"\ue805");
+    setFontIcon(ui_components_.ui->rotate_90_ccw, L"\ue801");
+    setFontIcon(ui_components_.ui->rotate_90_cw, L"\ue802");
+    setFontIcon(ui_components_.ui->decrease_float_precision, L"\ue806");
+    setFontIcon(ui_components_.ui->increase_float_precision, L"\ue807");
+    setFontIcon(ui_components_.ui->go_to_pixel, L"\uf031");
 
-    setFontIcon(ui_->ac_reset_min, L"\ue808");
-    setFontIcon(ui_->ac_reset_max, L"\ue808");
+    setFontIcon(ui_components_.ui->ac_reset_min, L"\ue808");
+    setFontIcon(ui_components_.ui->ac_reset_max, L"\ue808");
 
-    setVectorIcon(ui_->label_c1_min,
-                  QString("label_%1_channel.svg").arg(name_channel_1_),
-                  10,
-                  10);
-    setVectorIcon(ui_->label_c1_max,
-                  QString("label_%1_channel.svg").arg(name_channel_1_),
-                  10,
-                  10);
-    setVectorIcon(ui_->label_c2_min,
-                  QString("label_%1_channel.svg").arg(name_channel_2_),
-                  10,
-                  10);
-    setVectorIcon(ui_->label_c2_max,
-                  QString("label_%1_channel.svg").arg(name_channel_2_),
-                  10,
-                  10);
-    setVectorIcon(ui_->label_c3_min,
-                  QString("label_%1_channel.svg").arg(name_channel_3_),
-                  10,
-                  10);
-    setVectorIcon(ui_->label_c3_max,
-                  QString("label_%1_channel.svg").arg(name_channel_3_),
-                  10,
-                  10);
-    setVectorIcon(ui_->label_c4_min,
-                  QString("label_%1_channel.svg").arg(name_channel_4_),
-                  10,
-                  10);
-    setVectorIcon(ui_->label_c4_max,
-                  QString("label_%1_channel.svg").arg(name_channel_4_),
-                  10,
-                  10);
+    setVectorIcon(
+        ui_components_.ui->label_c1_min,
+        QString("label_%1_channel.svg").arg(channel_names_.name_channel_1),
+        10,
+        10);
+    setVectorIcon(
+        ui_components_.ui->label_c1_max,
+        QString("label_%1_channel.svg").arg(channel_names_.name_channel_1),
+        10,
+        10);
+    setVectorIcon(
+        ui_components_.ui->label_c2_min,
+        QString("label_%1_channel.svg").arg(channel_names_.name_channel_2),
+        10,
+        10);
+    setVectorIcon(
+        ui_components_.ui->label_c2_max,
+        QString("label_%1_channel.svg").arg(channel_names_.name_channel_2),
+        10,
+        10);
+    setVectorIcon(
+        ui_components_.ui->label_c3_min,
+        QString("label_%1_channel.svg").arg(channel_names_.name_channel_3),
+        10,
+        10);
+    setVectorIcon(
+        ui_components_.ui->label_c3_max,
+        QString("label_%1_channel.svg").arg(channel_names_.name_channel_3),
+        10,
+        10);
+    setVectorIcon(
+        ui_components_.ui->label_c4_min,
+        QString("label_%1_channel.svg").arg(channel_names_.name_channel_4),
+        10,
+        10);
+    setVectorIcon(
+        ui_components_.ui->label_c4_max,
+        QString("label_%1_channel.svg").arg(channel_names_.name_channel_4),
+        10,
+        10);
 
-    setVectorIcon(ui_->label_minmax, "lower_upper_bound.svg", 8, 35);
+    setVectorIcon(
+        ui_components_.ui->label_minmax, "lower_upper_bound.svg", 8, 35);
 }
 
 
 void MainWindow::initialize_timers()
 {
-    connect(&settings_persist_timer_,
+    connect(&ui_components_.settings_persist_timer,
             SIGNAL(timeout()),
             this,
             SLOT(persist_settings()));
-    settings_persist_timer_.setSingleShot(true);
+    ui_components_.settings_persist_timer.setSingleShot(true);
 
-    connect(&update_timer_, SIGNAL(timeout()), this, SLOT(loop()));
+    connect(
+        &ui_components_.update_timer, SIGNAL(timeout()), this, SLOT(loop()));
 }
 
 
 void MainWindow::initialize_ui_signals() const
 {
-    connect(ui_->splitter,
+    connect(ui_components_.ui->splitter,
             &QSplitter::splitterMoved,
             this,
             &MainWindow::persist_settings_deferred);
 
-    connect(ui_->acEdit,
+    connect(ui_components_.ui->acEdit,
             &QAbstractButton::clicked,
             this,
             &MainWindow::persist_settings_deferred);
 
-    connect(ui_->acToggle,
+    connect(ui_components_.ui->acToggle,
             &QAbstractButton::clicked,
             this,
             &MainWindow::persist_settings_deferred);
 
-    connect(ui_->linkViewsToggle,
+    connect(ui_components_.ui->linkViewsToggle,
             &QAbstractButton::clicked,
             this,
             &MainWindow::persist_settings_deferred);
@@ -422,11 +442,11 @@ void MainWindow::initialize_shortcuts()
         std::make_unique<QShortcut>(QKeySequence::fromString("Ctrl+K"), this);
     connect(symbol_list_focus_shortcut.release(),
             SIGNAL(activated()),
-            ui_->symbolList,
+            ui_components_.ui->symbolList,
             SLOT(setFocus()));
 
     auto buffer_removal_shortcut = std::make_unique<QShortcut>(
-        QKeySequence{Qt::Key_Delete}, ui_->imageList);
+        QKeySequence{Qt::Key_Delete}, ui_components_.ui->imageList);
     connect(buffer_removal_shortcut.release(),
             SIGNAL(activated()),
             this,
@@ -438,7 +458,7 @@ void MainWindow::initialize_shortcuts()
             SIGNAL(activated()),
             this,
             SLOT(toggle_go_to_dialog()));
-    connect(go_to_widget_.get(),
+    connect(ui_components_.go_to_widget.get(),
             SIGNAL(go_to_requested(float, float)),
             this,
             SLOT(go_to_pixel(float, float)));
@@ -455,15 +475,18 @@ void MainWindow::initialize_networking()
 
 void MainWindow::initialize_symbol_completer()
 {
-    symbol_completer_ = std::make_unique<SymbolCompleter>(this);
+    ui_components_.symbol_completer = std::make_unique<SymbolCompleter>(this);
 
-    symbol_completer_->setCaseSensitivity(Qt::CaseSensitivity::CaseInsensitive);
-    symbol_completer_->setCompletionMode(QCompleter::PopupCompletion);
-    symbol_completer_->setModelSorting(
+    ui_components_.symbol_completer->setCaseSensitivity(
+        Qt::CaseSensitivity::CaseInsensitive);
+    ui_components_.symbol_completer->setCompletionMode(
+        QCompleter::PopupCompletion);
+    ui_components_.symbol_completer->setModelSorting(
         QCompleter::CaseInsensitivelySortedModel);
 
-    ui_->symbolList->set_completer(symbol_completer_.get());
-    connect(ui_->symbolList->symbolCompleter(),
+    ui_components_.ui->symbolList->set_completer(
+        ui_components_.symbol_completer.get());
+    connect(ui_components_.ui->symbolList->symbolCompleter(),
             SIGNAL(activated(QString)),
             this,
             SLOT(symbol_completed(QString)));
@@ -472,18 +495,18 @@ void MainWindow::initialize_symbol_completer()
 
 void MainWindow::initialize_left_pane() const
 {
-    connect(ui_->imageList,
+    connect(ui_components_.ui->imageList,
             SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
             this,
             SLOT(buffer_selected(QListWidgetItem*)));
 
-    connect(ui_->symbolList,
+    connect(ui_components_.ui->symbolList,
             SIGNAL(editingFinished()),
             this,
             SLOT(symbol_selected()));
 
-    ui_->imageList->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui_->imageList,
+    ui_components_.ui->imageList->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui_components_.ui->imageList,
             SIGNAL(customContextMenuRequested(const QPoint&)),
             this,
             SLOT(show_context_menu(const QPoint&)));
@@ -493,102 +516,126 @@ void MainWindow::initialize_left_pane() const
 void MainWindow::initialize_auto_contrast_form() const
 {
     // Configure auto contrast inputs
-    ui_->ac_c1_min->setValidator(new QDoubleValidator(ui_->ac_c1_min));
-    ui_->ac_c2_min->setValidator(new QDoubleValidator(ui_->ac_c2_min));
-    ui_->ac_c3_min->setValidator(new QDoubleValidator(ui_->ac_c3_min));
+    ui_components_.ui->ac_c1_min->setValidator(
+        new QDoubleValidator(ui_components_.ui->ac_c1_min));
+    ui_components_.ui->ac_c2_min->setValidator(
+        new QDoubleValidator(ui_components_.ui->ac_c2_min));
+    ui_components_.ui->ac_c3_min->setValidator(
+        new QDoubleValidator(ui_components_.ui->ac_c3_min));
 
-    ui_->ac_c1_max->setValidator(new QDoubleValidator(ui_->ac_c1_max));
-    ui_->ac_c2_max->setValidator(new QDoubleValidator(ui_->ac_c2_max));
-    ui_->ac_c3_max->setValidator(new QDoubleValidator(ui_->ac_c3_max));
+    ui_components_.ui->ac_c1_max->setValidator(
+        new QDoubleValidator(ui_components_.ui->ac_c1_max));
+    ui_components_.ui->ac_c2_max->setValidator(
+        new QDoubleValidator(ui_components_.ui->ac_c2_max));
+    ui_components_.ui->ac_c3_max->setValidator(
+        new QDoubleValidator(ui_components_.ui->ac_c3_max));
 
-    connect(ui_->ac_c1_min,
+    connect(ui_components_.ui->ac_c1_min,
             SIGNAL(editingFinished()),
             this,
             SLOT(ac_c1_min_update()));
-    connect(ui_->ac_c1_max,
+    connect(ui_components_.ui->ac_c1_max,
             SIGNAL(editingFinished()),
             this,
             SLOT(ac_c1_max_update()));
-    connect(ui_->ac_c2_min,
+    connect(ui_components_.ui->ac_c2_min,
             SIGNAL(editingFinished()),
             this,
             SLOT(ac_c2_min_update()));
-    connect(ui_->ac_c2_max,
+    connect(ui_components_.ui->ac_c2_max,
             SIGNAL(editingFinished()),
             this,
             SLOT(ac_c2_max_update()));
-    connect(ui_->ac_c3_min,
+    connect(ui_components_.ui->ac_c3_min,
             SIGNAL(editingFinished()),
             this,
             SLOT(ac_c3_min_update()));
-    connect(ui_->ac_c3_max,
+    connect(ui_components_.ui->ac_c3_max,
             SIGNAL(editingFinished()),
             this,
             SLOT(ac_c3_max_update()));
-    connect(ui_->ac_c4_min,
+    connect(ui_components_.ui->ac_c4_min,
             SIGNAL(editingFinished()),
             this,
             SLOT(ac_c4_min_update()));
-    connect(ui_->ac_c4_max,
+    connect(ui_components_.ui->ac_c4_max,
             SIGNAL(editingFinished()),
             this,
             SLOT(ac_c4_max_update()));
 
-    connect(ui_->ac_reset_min, SIGNAL(clicked()), this, SLOT(ac_min_reset()));
-    connect(ui_->ac_reset_max, SIGNAL(clicked()), this, SLOT(ac_max_reset()));
+    connect(ui_components_.ui->ac_reset_min,
+            SIGNAL(clicked()),
+            this,
+            SLOT(ac_min_reset()));
+    connect(ui_components_.ui->ac_reset_max,
+            SIGNAL(clicked()),
+            this,
+            SLOT(ac_max_reset()));
 }
 
 
 void MainWindow::initialize_toolbar() const
 {
-    connect(ui_->acToggle, &QToolButton::toggled, this, &MainWindow::ac_toggle);
+    connect(ui_components_.ui->acToggle,
+            &QToolButton::toggled,
+            this,
+            &MainWindow::ac_toggle);
 
-    connect(ui_->reposition_buffer,
+    connect(ui_components_.ui->reposition_buffer,
             SIGNAL(clicked()),
             this,
             SLOT(recenter_buffer()));
 
-    connect(ui_->linkViewsToggle,
+    connect(ui_components_.ui->linkViewsToggle,
             SIGNAL(clicked()),
             this,
             SLOT(link_views_toggle()));
 
-    connect(ui_->rotate_90_cw, SIGNAL(clicked()), this, SLOT(rotate_90_cw()));
-    connect(ui_->rotate_90_ccw, SIGNAL(clicked()), this, SLOT(rotate_90_ccw()));
-    connect(ui_->increase_float_precision,
+    connect(ui_components_.ui->rotate_90_cw,
+            SIGNAL(clicked()),
+            this,
+            SLOT(rotate_90_cw()));
+    connect(ui_components_.ui->rotate_90_ccw,
+            SIGNAL(clicked()),
+            this,
+            SLOT(rotate_90_ccw()));
+    connect(ui_components_.ui->increase_float_precision,
             SIGNAL(clicked()),
             this,
             SLOT(increase_float_precision()));
-    connect(ui_->decrease_float_precision,
+    connect(ui_components_.ui->decrease_float_precision,
             SIGNAL(clicked()),
             this,
             SLOT(decrease_float_precision()));
-    connect(
-        ui_->go_to_pixel, SIGNAL(clicked()), this, SLOT(toggle_go_to_dialog()));
+    connect(ui_components_.ui->go_to_pixel,
+            SIGNAL(clicked()),
+            this,
+            SLOT(toggle_go_to_dialog()));
 
-    ui_->increase_float_precision->setEnabled(false);
-    ui_->decrease_float_precision->setEnabled(false);
+    ui_components_.ui->increase_float_precision->setEnabled(false);
+    ui_components_.ui->decrease_float_precision->setEnabled(false);
 }
 
 
 void MainWindow::initialize_visualization_pane()
 {
-    ui_->bufferPreview->set_main_window(this);
+    ui_components_.ui->bufferPreview->set_main_window(this);
 }
 
 
 void MainWindow::initialize_status_bar()
 {
-    status_bar_ = std::make_unique<QLabel>(this);
-    status_bar_->setAlignment(Qt::AlignRight);
+    ui_components_.status_bar = std::make_unique<QLabel>(this);
+    ui_components_.status_bar->setAlignment(Qt::AlignRight);
 
-    statusBar()->addWidget(status_bar_.get(), 1);
+    statusBar()->addWidget(ui_components_.status_bar.get(), 1);
 }
 
 
 void MainWindow::initialize_go_to_widget()
 {
-    go_to_widget_ = std::make_unique<GoToWidget>(ui_->bufferPreview);
+    ui_components_.go_to_widget =
+        std::make_unique<GoToWidget>(ui_components_.ui->bufferPreview);
 }
 
 } // namespace oid
