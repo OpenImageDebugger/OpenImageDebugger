@@ -108,27 +108,27 @@ jobs:
           append-timestamp: true
           variant: ${{ matrix.ccache-variant }}
 
-      - name: Install Qt (Windows)
-        if: contains(matrix.os, 'windows')
-        uses: jurplel/install-qt-action@d325aaf2a8baeeda41ad0b5d39f84a6af9bcf005 # 4.3.0
-        with:
-          version: "5.15.2"
-          aqtversion: "==3.1.*"
-          arch: 'win64_mingw81'
-          setup-python: false
-          cache: true
+      # - name: Install Qt (Windows)
+      #   if: contains(matrix.os, 'windows')
+      #   uses: jurplel/install-qt-action@d325aaf2a8baeeda41ad0b5d39f84a6af9bcf005 # 4.3.0
+      #   with:
+      #     version: "5.15.2"
+      #     aqtversion: "==3.1.*"
+      #     arch: 'win64_mingw81'
+      #     setup-python: false
+      #     cache: true
 
-      - if: matrix.os == 'macos-15' || matrix.os == 'macos-26'
-        name: Install Qt (macOS - arm64)
-        run: |
-          brew install qt@5
-          echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
+      # - if: matrix.os == 'macos-15' || matrix.os == 'macos-26'
+      #   name: Install Qt (macOS - arm64)
+      #   run: |
+      #     brew install qt@5
+      #     echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
-      - if: matrix.os == 'macos-15-intel'
-        name: Install Qt (macOS - intel)
-        run: |
-          brew install qt@5
-          echo "PATH=/usr/local/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
+      # - if: matrix.os == 'macos-15-intel'
+      #   name: Install Qt (macOS - intel)
+      #   run: |
+      #     brew install qt@5
+      #     echo "PATH=/usr/local/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
 
       # Use YAML's folded style (>) to keep the command readable across multiple lines,
       # but have it executed as a single line in the shell. This is necessary for Windows 'cmd' steps
