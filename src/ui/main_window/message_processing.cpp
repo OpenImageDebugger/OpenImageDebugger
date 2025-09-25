@@ -44,7 +44,8 @@ void MainWindow::decode_set_available_symbols()
 
     for (const auto& symbol_value : buffer_data_.available_vars) {
         // Plot buffer if it was available in the previous session
-        if (buffer_data_.previous_session_buffers.contains(symbol_value.toStdString())) {
+        if (buffer_data_.previous_session_buffers.contains(
+                symbol_value.toStdString())) {
             request_plot_buffer(symbol_value.toStdString().data());
         }
     }
@@ -199,7 +200,8 @@ void MainWindow::decode_plot_buffer_contents()
                       << std::endl;
         }
         stage->contrast_enabled = state_.ac_enabled;
-        buffer_stage = buffer_data_.stages.try_emplace(variable_name_str, stage).first;
+        buffer_stage =
+            buffer_data_.stages.try_emplace(variable_name_str, stage).first;
     } else {
 
         // Update buffer data
@@ -215,9 +217,9 @@ void MainWindow::decode_plot_buffer_contents()
 
     // Construct a new list widget if needed
     if (auto item = find_image_list_item(variable_name_str); item == nullptr) {
-        item =
-            std::make_unique<QListWidgetItem>(label_str.c_str(), ui_components_.ui->imageList)
-                .release();
+        item = std::make_unique<QListWidgetItem>(label_str.c_str(),
+                                                 ui_components_.ui->imageList)
+                   .release();
         item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
         item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
                        Qt::ItemIsDragEnabled);
