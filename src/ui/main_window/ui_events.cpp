@@ -47,8 +47,11 @@ void MainWindow::resize_callback(const int w, const int h) const
         stage->resize_callback(w, h);
     }
 
-    ui_components_.go_to_widget->move(ui_components_.ui->bufferPreview->width() - ui_components_.go_to_widget->width(),
-                        ui_components_.ui->bufferPreview->height() - ui_components_.go_to_widget->height());
+    ui_components_.go_to_widget->move(
+        ui_components_.ui->bufferPreview->width() -
+            ui_components_.go_to_widget->width(),
+        ui_components_.ui->bufferPreview->height() -
+            ui_components_.go_to_widget->height());
 }
 
 
@@ -80,8 +83,8 @@ void MainWindow::mouse_drag_event(const int mouse_x, const int mouse_y)
             stage->mouse_drag_event(virtual_motion.x(), virtual_motion.y());
         }
     } else if (buffer_data_.currently_selected_stage != nullptr) {
-        buffer_data_.currently_selected_stage->mouse_drag_event(virtual_motion.x(),
-                                                    virtual_motion.y());
+        buffer_data_.currently_selected_stage->mouse_drag_event(
+            virtual_motion.x(), virtual_motion.y());
     }
 
     state_.request_render_update = true;
@@ -139,7 +142,8 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
             propagate_key_press_event(key_event, event_intercepted);
         } else if (buffer_data_.currently_selected_stage != nullptr) {
             event_intercepted =
-                buffer_data_.currently_selected_stage->key_press_event(key_event->key());
+                buffer_data_.currently_selected_stage->key_press_event(
+                    key_event->key());
         }
 
         if (event_intercepted == EventProcessCode::INTERCEPTED) {
@@ -168,7 +172,8 @@ void MainWindow::recenter_buffer()
     } else {
         if (buffer_data_.currently_selected_stage != nullptr) {
             const auto cam_obj =
-                buffer_data_.currently_selected_stage->get_game_object("camera");
+                buffer_data_.currently_selected_stage->get_game_object(
+                    "camera");
             const auto cam = cam_obj->get_component<Camera>("camera_component");
             cam->recenter_camera();
         }
@@ -305,8 +310,8 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
         return;
     }
 
-    const auto stage =
-        buffer_data_.stages.find(item->data(Qt::UserRole).toString().toStdString());
+    const auto stage = buffer_data_.stages.find(
+        item->data(Qt::UserRole).toString().toStdString());
     if (stage != buffer_data_.stages.end()) {
         set_currently_selected_stage(stage->second.get());
         reset_ac_min_labels();
@@ -319,9 +324,11 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
 
 void MainWindow::remove_selected_buffer()
 {
-    if (ui_components_.ui->imageList->count() > 0 && buffer_data_.currently_selected_stage != nullptr) {
+    if (ui_components_.ui->imageList->count() > 0 &&
+        buffer_data_.currently_selected_stage != nullptr) {
         auto removed_item = std::unique_ptr<QListWidgetItem>{
-            ui_components_.ui->imageList->takeItem(ui_components_.ui->imageList->currentRow())};
+            ui_components_.ui->imageList->takeItem(
+                ui_components_.ui->imageList->currentRow())};
         const auto buffer_name =
             removed_item->data(Qt::UserRole).toString().toStdString();
         buffer_data_.stages.erase(buffer_name);
@@ -346,7 +353,8 @@ void MainWindow::symbol_selected()
         return;
     }
 
-    const auto symbol_name_qba = ui_components_.ui->symbolList->text().toLocal8Bit();
+    const auto symbol_name_qba =
+        ui_components_.ui->symbolList->text().toLocal8Bit();
     const auto symbol_name     = symbol_name_qba.constData();
     request_plot_buffer(symbol_name);
     // Clear symbol input
@@ -372,8 +380,9 @@ void MainWindow::export_buffer()
 {
     const auto sender_action(dynamic_cast<QAction*>(sender()));
 
-    const auto stage =
-        buffer_data_.stages.find(sender_action->data().toString().toStdString())->second;
+    const auto stage = buffer_data_.stages
+                           .find(sender_action->data().toString().toStdString())
+                           ->second;
 
     const auto buffer_obj = stage->get_game_object("buffer");
     const auto component =
@@ -435,7 +444,8 @@ void MainWindow::show_context_menu(const QPoint& pos)
             menu.addAction("Export buffer", this, SLOT(export_buffer()));
 
         // Add parameter to action: buffer name
-        exportAction->setData(ui_components_.ui->imageList->itemAt(pos)->data(Qt::UserRole));
+        exportAction->setData(
+            ui_components_.ui->imageList->itemAt(pos)->data(Qt::UserRole));
 
         // Show context menu at handling position
         menu.exec(globalPos);
@@ -450,13 +460,15 @@ void MainWindow::toggle_go_to_dialog() const
 
         if (buffer_data_.currently_selected_stage != nullptr) {
             const auto cam_obj =
-                buffer_data_.currently_selected_stage->get_game_object("camera");
+                buffer_data_.currently_selected_stage->get_game_object(
+                    "camera");
             const auto cam = cam_obj->get_component<Camera>("camera_component");
 
             default_goal = cam->get_position();
         }
 
-        ui_components_.go_to_widget->set_defaults(default_goal.x(), default_goal.y());
+        ui_components_.go_to_widget->set_defaults(default_goal.x(),
+                                                  default_goal.y());
     }
 
     ui_components_.go_to_widget->toggle_visible();

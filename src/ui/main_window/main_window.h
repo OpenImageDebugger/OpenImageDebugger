@@ -217,7 +217,7 @@ class MainWindow final : public QMainWindow
     UIComponents ui_components_{};
     BufferData buffer_data_{};
     ChannelNames channel_names_{};
-    
+
     const int icon_width_base_{100};
     const int icon_height_base_{75};
     double render_framerate_{};

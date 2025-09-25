@@ -78,7 +78,8 @@ MainWindow::~MainWindow()
 
 void MainWindow::showWindow()
 {
-    ui_components_.update_timer.start(static_cast<int>(1000.0 / render_framerate_));
+    ui_components_.update_timer.start(
+        static_cast<int>(1000.0 / render_framerate_));
     show();
 }
 
@@ -107,7 +108,8 @@ QSizeF MainWindow::get_icon_size() const
 
 bool MainWindow::is_window_ready() const
 {
-    return ui_components_.ui->bufferPreview->is_ready() && state_.is_window_ready;
+    return ui_components_.ui->bufferPreview->is_ready() &&
+           state_.is_window_ready;
 }
 
 
@@ -117,7 +119,8 @@ void MainWindow::loop()
 
     if (state_.completer_updated) {
         // Update auto-complete suggestion list
-        ui_components_.symbol_completer->update_symbol_list(buffer_data_.available_vars);
+        ui_components_.symbol_completer->update_symbol_list(
+            buffer_data_.available_vars);
         state_.completer_updated = false;
     }
 
@@ -180,7 +183,8 @@ void MainWindow::persist_settings()
     for (const auto& prev_buff : previous_session_buffers_qlist) {
         const auto buff_name_std_str = prev_buff.first.toStdString();
 
-        const auto being_viewed = buffer_data_.held_buffers.contains(buff_name_std_str);
+        const auto being_viewed =
+            buffer_data_.held_buffers.contains(buff_name_std_str);
         const auto was_removed =
             buffer_data_.removed_buffer_names.contains(buff_name_std_str);
 
@@ -219,8 +223,10 @@ void MainWindow::persist_settings()
         settings.setValue("splitter", listSizesVariant);
     }
     settings.setValue("minmax_visible", ui_components_.ui->acEdit->isChecked());
-    settings.setValue("contrast_enabled", ui_components_.ui->acToggle->isChecked());
-    settings.setValue("link_views_enabled", ui_components_.ui->linkViewsToggle->isChecked());
+    settings.setValue("contrast_enabled",
+                      ui_components_.ui->acToggle->isChecked());
+    settings.setValue("link_views_enabled",
+                      ui_components_.ui->linkViewsToggle->isChecked());
     settings.endGroup();
 
     // Write window position/size
@@ -238,15 +244,18 @@ void MainWindow::persist_settings()
 vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
                                        const float pos_window_y) const
 {
-    const auto cam_obj = buffer_data_.currently_selected_stage->get_game_object("camera");
+    const auto cam_obj =
+        buffer_data_.currently_selected_stage->get_game_object("camera");
     const auto cam     = cam_obj->get_component<Camera>("camera_component");
 
     const auto buffer_obj =
         buffer_data_.currently_selected_stage->get_game_object("buffer");
     const auto buffer = buffer_obj->get_component<Buffer>("buffer_component");
 
-    const auto win_w         = static_cast<float>(ui_components_.ui->bufferPreview->width());
-    const auto win_h         = static_cast<float>(ui_components_.ui->bufferPreview->height());
+    const auto win_w =
+        static_cast<float>(ui_components_.ui->bufferPreview->width());
+    const auto win_h =
+        static_cast<float>(ui_components_.ui->bufferPreview->height());
     const auto mouse_pos_ndc = vec4{2.0f * (pos_window_x - win_w / 2) / win_w,
                                     -2.0f * (pos_window_y - win_h / 2) / win_h,
                                     0.0f,
@@ -282,8 +291,10 @@ void MainWindow::update_status_bar() const
         const auto text_comp =
             buffer_obj->get_component<BufferValues>("text_component");
 
-        const auto mouse_x = static_cast<float>(ui_components_.ui->bufferPreview->mouse_x());
-        const auto mouse_y = static_cast<float>(ui_components_.ui->bufferPreview->mouse_y());
+        const auto mouse_x =
+            static_cast<float>(ui_components_.ui->bufferPreview->mouse_x());
+        const auto mouse_y =
+            static_cast<float>(ui_components_.ui->bufferPreview->mouse_y());
 
         // Position
         const auto mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
@@ -351,7 +362,7 @@ void MainWindow::persist_settings_deferred()
 void MainWindow::set_currently_selected_stage(Stage* stage)
 {
     buffer_data_.currently_selected_stage = stage;
-    state_.request_render_update = true;
+    state_.request_render_update          = true;
 }
 
 } // namespace oid
