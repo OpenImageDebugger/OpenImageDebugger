@@ -1,6 +1,5 @@
 [requires]
 grpc/1.72.0
-qt/5.15.16
 
 [tool_requires]
 cmake/4.0.3
