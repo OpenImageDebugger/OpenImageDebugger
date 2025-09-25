@@ -53,6 +53,44 @@ struct ConnectionSettings
     uint16_t port{};
 };
 
+struct WindowState
+{
+    bool is_window_ready{true};
+    bool request_render_update{true};
+    bool request_icons_update{true};
+    bool completer_updated{false};
+    bool ac_enabled{false};
+    bool link_views_enabled{false};
+};
+
+struct UIComponents
+{
+    std::unique_ptr<SymbolCompleter> symbol_completer{};
+    std::unique_ptr<Ui::MainWindowUi> ui{std::make_unique<Ui::MainWindowUi>()};
+    std::unique_ptr<QLabel> status_bar{};
+    std::unique_ptr<GoToWidget> go_to_widget{};
+    QTimer settings_persist_timer{};
+    QTimer update_timer{};
+};
+
+struct BufferData
+{
+    std::map<std::string, std::vector<uint8_t>, std::less<>> held_buffers{};
+    std::map<std::string, std::shared_ptr<Stage>, std::less<>> stages{};
+    std::set<std::string, std::less<>> previous_session_buffers{};
+    std::set<std::string, std::less<>> removed_buffer_names{};
+    QStringList available_vars{};
+    Stage* currently_selected_stage{nullptr};
+};
+
+struct ChannelNames
+{
+    QString name_channel_1{"red"};
+    QString name_channel_2{"green"};
+    QString name_channel_3{"blue"};
+    QString name_channel_4{"alpha"};
+};
+
 
 class MainWindow final : public QMainWindow
 {
@@ -175,49 +213,18 @@ class MainWindow final : public QMainWindow
     void persist_settings();
 
   private:
-    bool is_window_ready_{true};
-    bool request_render_update_{true};
-    bool request_icons_update_{true};
-    bool completer_updated_{false};
-    bool ac_enabled_{false};
-    bool link_views_enabled_{false};
+    WindowState state_{};
+    UIComponents ui_components_{};
+    BufferData buffer_data_{};
+    ChannelNames channel_names_{};
 
     const int icon_width_base_{100};
     const int icon_height_base_{75};
-
     double render_framerate_{};
-
-    QTimer settings_persist_timer_{};
-    QTimer update_timer_{};
-
     QString default_export_suffix_{};
-
-    Stage* currently_selected_stage_{nullptr};
-
-    std::map<std::string, std::vector<uint8_t>, std::less<>> held_buffers_{};
-    std::map<std::string, std::shared_ptr<Stage>, std::less<>> stages_{};
-
-    std::set<std::string, std::less<>> previous_session_buffers_{};
-    std::set<std::string, std::less<>> removed_buffer_names_{};
-
-    QStringList available_vars_{};
-
     std::mutex ui_mutex_{};
-
-    std::unique_ptr<SymbolCompleter> symbol_completer_{};
-
-    std::unique_ptr<Ui::MainWindowUi> ui_{std::make_unique<Ui::MainWindowUi>()};
-
-    std::unique_ptr<QLabel> status_bar_{};
-    std::unique_ptr<GoToWidget> go_to_widget_{};
-
     ConnectionSettings host_settings_{};
     QTcpSocket socket_{};
-
-    QString name_channel_1_{"red"};
-    QString name_channel_2_{"green"};
-    QString name_channel_3_{"blue"};
-    QString name_channel_4_{"alpha"};
 
     ///
     // Assorted methods - private - implemented in main_window.cpp
