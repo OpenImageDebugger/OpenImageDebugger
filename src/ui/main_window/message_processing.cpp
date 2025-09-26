@@ -40,16 +40,17 @@ void MainWindow::decode_set_available_symbols()
 {
     const auto lock      = std::unique_lock{ui_mutex_};
     auto message_decoder = MessageDecoder{&socket_};
-    message_decoder.read<QStringList, QString>(available_vars_);
+    message_decoder.read<QStringList, QString>(buffer_data_.available_vars);
 
-    for (const auto& symbol_value : available_vars_) {
+    for (const auto& symbol_value : buffer_data_.available_vars) {
         // Plot buffer if it was available in the previous session
-        if (previous_session_buffers_.contains(symbol_value.toStdString())) {
+        if (buffer_data_.previous_session_buffers.contains(
+                symbol_value.toStdString())) {
             request_plot_buffer(symbol_value.toStdString().data());
         }
     }
 
-    completer_updated_ = true;
+    state_.completer_updated = true;
 }
 
 
@@ -57,8 +58,8 @@ void MainWindow::respond_get_observed_symbols()
 {
     auto message_composer = MessageComposer{};
     message_composer.push(MessageType::GetObservedSymbolsResponse)
-        .push(held_buffers_.size());
-    for (const auto& name : held_buffers_ | std::views::keys) {
+        .push(buffer_data_.held_buffers.size());
+    for (const auto& name : buffer_data_.held_buffers | std::views::keys) {
         message_composer.push(name);
     }
     message_composer.send(&socket_);
@@ -69,8 +70,8 @@ QListWidgetItem*
 MainWindow::find_image_list_item(const std::string& variable_name_str) const
 {
     // Looking for corresponding item...
-    for (int i = 0; i < ui_->imageList->count(); ++i) {
-        const auto item = ui_->imageList->item(i);
+    for (int i = 0; i < ui_components_.ui->imageList->count(); ++i) {
+        const auto item = ui_components_.ui->imageList->item(i);
         if (item->data(Qt::UserRole) != variable_name_str.c_str()) {
             continue;
         }
@@ -83,8 +84,8 @@ MainWindow::find_image_list_item(const std::string& variable_name_str) const
 
 void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
 {
-    const auto itStage = stages_.find(variable_name_str);
-    if (itStage == stages_.end()) {
+    const auto itStage = buffer_data_.stages.find(variable_name_str);
+    if (itStage == buffer_data_.stages.end()) {
         return;
     }
 
@@ -97,7 +98,7 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
     const auto bytes_per_line = icon_width * 3;
 
     // Update buffer icon
-    ui_->bufferPreview->render_buffer_icon(
+    ui_components_.ui->bufferPreview->render_buffer_icon(
         stage.get(), icon_width, icon_height);
 
     // Construct icon widget
@@ -154,12 +155,12 @@ void MainWindow::decode_plot_buffer_contents()
 
     // Put the data buffer into the container
     if (buff_type == BufferType::Float64) {
-        held_buffers_[variable_name_str] =
+        buffer_data_.held_buffers[variable_name_str] =
             make_float_buffer_from_double(buff_contents);
     } else {
-        held_buffers_[variable_name_str] = std::move(buff_contents);
+        buffer_data_.held_buffers[variable_name_str] = std::move(buff_contents);
     }
-    const auto buff_ptr = held_buffers_[variable_name_str].data();
+    const auto buff_ptr = buffer_data_.held_buffers[variable_name_str].data();
 
     // Human readable dimensions
     auto visualized_width  = int{};
@@ -182,8 +183,8 @@ void MainWindow::decode_plot_buffer_contents()
     }();
 
     // Find corresponding stage buffer
-    if (auto buffer_stage = stages_.find(variable_name_str);
-        buffer_stage == stages_.end()) {
+    if (auto buffer_stage = buffer_data_.stages.find(variable_name_str);
+        buffer_stage == buffer_data_.stages.end()) {
 
         // Construct a new stage buffer if needed
         auto stage = std::make_shared<Stage>(this);
@@ -198,8 +199,9 @@ void MainWindow::decode_plot_buffer_contents()
             std::cerr << "[error] Could not initialize opengl canvas!"
                       << std::endl;
         }
-        stage->contrast_enabled = ac_enabled_;
-        buffer_stage = stages_.try_emplace(variable_name_str, stage).first;
+        stage->contrast_enabled = state_.ac_enabled;
+        buffer_stage =
+            buffer_data_.stages.try_emplace(variable_name_str, stage).first;
     } else {
 
         // Update buffer data
@@ -215,13 +217,13 @@ void MainWindow::decode_plot_buffer_contents()
 
     // Construct a new list widget if needed
     if (auto item = find_image_list_item(variable_name_str); item == nullptr) {
-        item =
-            std::make_unique<QListWidgetItem>(label_str.c_str(), ui_->imageList)
-                .release();
+        item = std::make_unique<QListWidgetItem>(label_str.c_str(),
+                                                 ui_components_.ui->imageList)
+                   .release();
         item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
         item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
                        Qt::ItemIsDragEnabled);
-        ui_->imageList->addItem(item);
+        ui_components_.ui->imageList->addItem(item);
     }
 
     // Update icon and text of corresponding item in image list
@@ -229,7 +231,7 @@ void MainWindow::decode_plot_buffer_contents()
     update_image_list_label(variable_name_str, label_str);
 
     // Update AC values
-    if (currently_selected_stage_ != nullptr) {
+    if (buffer_data_.currently_selected_stage != nullptr) {
         reset_ac_min_labels();
         reset_ac_max_labels();
     }
@@ -237,7 +239,7 @@ void MainWindow::decode_plot_buffer_contents()
     // Update list of observed symbols in settings
     persist_settings_deferred();
 
-    request_render_update_ = true;
+    state_.request_render_update = true;
 }
 
 
@@ -248,7 +250,7 @@ void MainWindow::decode_incoming_messages()
         QApplication::quit();
     }
 
-    available_vars_.clear();
+    buffer_data_.available_vars.clear();
 
     if (socket_.bytesAvailable() == 0) {
         return;
