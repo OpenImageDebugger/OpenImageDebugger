@@ -34,5 +34,5 @@ set(CMAKE_CXX_EXTENSIONS False)
 find_package(Threads REQUIRED)
 find_package(Qt6 6.2.4 REQUIRED COMPONENTS Network)
 
-add_compile_options("$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic;>")
-add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/W4>")
+add_compile_options("$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic;-Werror>")
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/W4;/WX>")
