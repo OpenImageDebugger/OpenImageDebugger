@@ -32,7 +32,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5 "5.15.1...<6" REQUIRED COMPONENTS Core Gui OpenGL Widgets)
+find_package(Qt6 "6.2.4" REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets)
 
 set(SOURCES
     oid_window.cpp
@@ -93,9 +93,10 @@ target_link_options(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
                       oidipc
-                      Qt5::Gui
-                      Qt5::OpenGL
-                      Qt5::Widgets
+                      Qt6::Gui
+                      Qt6::OpenGL
+                      Qt6::OpenGLWidgets
+                      Qt6::Widgets
                       Threads::Threads
                       ${OPENGL_gl_LIBRARY})
 
