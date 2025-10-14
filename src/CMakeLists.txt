@@ -83,7 +83,7 @@ target_include_directories(${PROJECT_NAME}
 
 # Include external dependencies as "system dependencies" so compilation errors from them are ignored
 target_include_directories(${PROJECT_NAME} SYSTEM
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen/Eigen
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Khronos)
 
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-fvisibility=hidden>")

@@ -26,7 +26,7 @@
 #ifndef LINEAR_ALGEBRA_H_
 #define LINEAR_ALGEBRA_H_
 
-#include <Eigen>
+#include <Eigen/Dense>
 
 namespace oid
 {
