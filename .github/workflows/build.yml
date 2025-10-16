@@ -67,9 +67,10 @@ jobs:
         with:
           verbose: 1
           key: ${{matrix.os}}-${{github.ref_name}}
-          restore-keys: |
+          restore-keys: >
+            ${{matrix.os}}-${{github.ref_name}}
             ${{matrix.os}}-main
-          append-timestamp: false
+          append-timestamp: true
           variant: ${{ matrix.ccache-variant }}
 
       # Needed for ninja to work with msvc
