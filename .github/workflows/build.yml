@@ -78,9 +78,9 @@ jobs:
         with:
           enableCrossOsArchive: false
           path: ${{ steps.setup-conan.outputs.conan-home }}
-          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+          key: conan-${{ matrix.os }}-build-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
           restore-keys: |
-            conan-${{ matrix.os }}-
+            conan-${{ matrix.os }}-build-
 
       - name: Copy Conan profiles
         run: |
@@ -96,7 +96,7 @@ jobs:
         with:
           enableCrossOsArchive: true
           path: ${{ steps.setup-conan.outputs.conan-home }}
-          key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+          key: conan-${{ matrix.os }}-build-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
 
       - name: Setup ${{ matrix.ccache-variant }}
         uses: hendrikmuhs/ccache-action@bfa03e1de4d7f7c3e80ad9109feedd05c4f5a716 # 1.2.19
