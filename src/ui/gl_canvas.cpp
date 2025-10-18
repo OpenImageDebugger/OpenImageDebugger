@@ -52,8 +52,8 @@ void GLCanvas::mouseMoveEvent(QMouseEvent* ev)
     const auto last_mouse_x = mouse_x_;
     const auto last_mouse_y = mouse_y_;
 
-    mouse_x_ = static_cast<int>(ev->localPos().x());
-    mouse_y_ = static_cast<int>(ev->localPos().y());
+    mouse_x_ = static_cast<int>(ev->position().x());
+    mouse_y_ = static_cast<int>(ev->position().y());
 
     if (mouse_down_[0]) {
         main_window_->mouse_drag_event(mouse_x_ - last_mouse_x,

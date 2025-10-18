@@ -32,7 +32,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5 "5.15.1...<6" REQUIRED COMPONENTS Core Gui OpenGL Widgets)
+find_package(Qt6 "6.2.4" REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets)
 
 set(SOURCES
     oid_window.cpp
@@ -83,7 +83,7 @@ target_include_directories(${PROJECT_NAME}
 
 # Include external dependencies as "system dependencies" so compilation errors from them are ignored
 target_include_directories(${PROJECT_NAME} SYSTEM
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen/Eigen
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Khronos)
 
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-fvisibility=hidden>")
@@ -93,9 +93,10 @@ target_link_options(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
                       oidipc
-                      Qt5::Gui
-                      Qt5::OpenGL
-                      Qt5::Widgets
+                      Qt6::Gui
+                      Qt6::OpenGL
+                      Qt6::OpenGLWidgets
+                      Qt6::Widgets
                       Threads::Threads
                       ${OPENGL_gl_LIBRARY})
 

@@ -76,7 +76,7 @@ jobs:
         id: restore-conan-cache
         uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
-          enableCrossOsArchive: true
+          enableCrossOsArchive: false
           path: ${{ steps.setup-conan.outputs.conan-home }}
           key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
           restore-keys: |
@@ -98,12 +98,13 @@ jobs:
           path: ${{ steps.setup-conan.outputs.conan-home }}
           key: conan-${{ matrix.os }}-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
 
-      - name: Setup Ccache
+      - name: Setup ${{ matrix.ccache-variant }}
         uses: hendrikmuhs/ccache-action@bfa03e1de4d7f7c3e80ad9109feedd05c4f5a716 # 1.2.19
         with:
           verbose: 1
           key: ${{matrix.os}}-${{github.ref_name}}
-          restore-keys: |
+          restore-keys: >
+            ${{matrix.os}}-${{github.ref_name}}
             ${{matrix.os}}-main
           append-timestamp: true
           variant: ${{ matrix.ccache-variant }}
@@ -112,23 +113,23 @@ jobs:
         if: contains(matrix.os, 'windows')
         uses: jurplel/install-qt-action@d325aaf2a8baeeda41ad0b5d39f84a6af9bcf005 # 4.3.0
         with:
-          version: "5.15.2"
-          aqtversion: "==3.1.*"
-          arch: 'win64_mingw81'
+          version: "6.2.4"
+          aqtversion: "==3.3.*"
+          arch: 'win64_mingw'
           setup-python: false
           cache: true
 
       - if: matrix.os == 'macos-15' || matrix.os == 'macos-26'
         name: Install Qt (macOS - arm64)
         run: |
-          brew install qt@5
-          echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
+          brew install qtbase
+          echo "PATH=/opt/homebrew/opt/qt@6/bin:$PATH" >> "$GITHUB_ENV"
 
       - if: matrix.os == 'macos-15-intel'
         name: Install Qt (macOS - intel)
         run: |
-          brew install qt@5
-          echo "PATH=/usr/local/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
+          brew install qtbase
+          echo "PATH=/usr/local/opt/qt@6/bin:$PATH" >> "$GITHUB_ENV"
 
       # Use YAML's folded style (>) to keep the command readable across multiple lines,
       # but have it executed as a single line in the shell. This is necessary for Windows 'cmd' steps

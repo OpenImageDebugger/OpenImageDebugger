@@ -29,10 +29,12 @@
 
 #include <memory>
 
+#include <QDataStream>
 #include <QDateTime>
 #include <QDebug>
 #include <QFontDatabase>
 #include <QHostAddress>
+#include <QMetaType>
 #include <QSettings>
 #include <QShortcut>
 
@@ -226,8 +228,9 @@ void MainWindow::initialize_settings()
 {
     using BufferExpiration = QPair<QString, QDateTime>;
 
-    qRegisterMetaTypeStreamOperators<QList<BufferExpiration>>(
-        "QList<QPair<QString, QDateTime>>");
+    // Qt 6: Register the metatype for QSettings serialization
+    // Including QDataStream provides the stream operators for Qt types
+    qRegisterMetaType<QList<BufferExpiration>>();
 
     auto settings = QSettings{QSettings::Format::IniFormat,
                               QSettings::Scope::UserScope,

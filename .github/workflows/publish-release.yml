@@ -66,7 +66,7 @@ jobs:
           path: artifacts
 
       - name: Upload artifacts to release
-        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # 2.3.3
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # 2.4.1
         with:
           tag_name: ${{ needs.bump.outputs.next-version }}
           files: artifacts/build-${{ matrix.os }}.tar

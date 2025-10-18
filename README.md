@@ -47,7 +47,7 @@ customized to work with any arbitrary data structure.
 
 * A C++20 compliant compiler
 * GDB **12.1+** or LLDB **14.0.0+**
-* Qt **5.15.2+**
+* Qt **6.2.4+**
 * CMake **3.22.1+**
 * Python **3.10.12+** development packages
 * OpenGL **2.1+** support
@@ -61,7 +61,7 @@ Note: this list might get out-of-date by accident. For a more accurate list of r
 On Ubuntu, you can install most of the dependencies with the following command:
 
 ```bash
-sudo apt install build-essential libpython3-dev python3-dev cmake
+sudo apt install build-essential libgl1-mesa-dev libpython3-dev python3-dev cmake qt6-base-dev
 ```
 
 ### Building the Open Image Debugger
@@ -70,10 +70,7 @@ Clone the source code to any folder you prefer and initialize the
 submodules:
 
 ```bash
-git clone https://github.com/OpenImageDebugger/OpenImageDebugger.git
-cd OpenImageDebugger
-git submodule init
-git submodule update
+git clone https://github.com/OpenImageDebugger/OpenImageDebugger.git --recurse-submodules
 ```
 
 Now run the following commands to build it:
