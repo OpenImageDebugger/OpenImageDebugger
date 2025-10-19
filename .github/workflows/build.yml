@@ -94,7 +94,7 @@ jobs:
         if: ${{ steps.restore-conan-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
         with:
-          enableCrossOsArchive: true
+          enableCrossOsArchive: false
           path: ${{ steps.setup-conan.outputs.conan-home }}
           key: conan-${{ matrix.os }}-build-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
 
