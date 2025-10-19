@@ -29,7 +29,7 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: Build (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
