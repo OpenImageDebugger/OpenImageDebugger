@@ -51,7 +51,7 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
 {
     QCoreApplication::instance()->installEventFilter(this);
 
-    ui_->setupUi(this);
+    ui_components_.ui->setupUi(this);
 
     initialize_settings();
     initialize_ui_icons();
@@ -71,29 +71,30 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
 
 MainWindow::~MainWindow()
 {
-    held_buffers_.clear();
-    is_window_ready_ = false;
+    buffer_data_.held_buffers.clear();
+    state_.is_window_ready = false;
 }
 
 
 void MainWindow::showWindow()
 {
-    update_timer_.start(static_cast<int>(1000.0 / render_framerate_));
+    ui_components_.update_timer.start(
+        static_cast<int>(1000.0 / render_framerate_));
     show();
 }
 
 
 void MainWindow::draw() const
 {
-    if (currently_selected_stage_ != nullptr) {
-        currently_selected_stage_->draw();
+    if (buffer_data_.currently_selected_stage != nullptr) {
+        buffer_data_.currently_selected_stage->draw();
     }
 }
 
 
 GLCanvas* MainWindow::gl_canvas() const
 {
-    return ui_->bufferPreview;
+    return ui_components_.ui->bufferPreview;
 }
 
 
@@ -107,7 +108,8 @@ QSizeF MainWindow::get_icon_size() const
 
 bool MainWindow::is_window_ready() const
 {
-    return ui_->bufferPreview->is_ready() && is_window_ready_;
+    return ui_components_.ui->bufferPreview->is_ready() &&
+           state_.is_window_ready;
 }
 
 
@@ -115,45 +117,46 @@ void MainWindow::loop()
 {
     decode_incoming_messages();
 
-    if (completer_updated_) {
+    if (state_.completer_updated) {
         // Update auto-complete suggestion list
-        symbol_completer_->update_symbol_list(available_vars_);
-        completer_updated_ = false;
+        ui_components_.symbol_completer->update_symbol_list(
+            buffer_data_.available_vars);
+        state_.completer_updated = false;
     }
 
     // Run update for current stage
-    if (currently_selected_stage_ != nullptr) {
-        currently_selected_stage_->update();
+    if (buffer_data_.currently_selected_stage != nullptr) {
+        buffer_data_.currently_selected_stage->update();
     }
 
     // Update visualization pane
-    if (request_render_update_) {
-        ui_->bufferPreview->update();
+    if (state_.request_render_update) {
+        ui_components_.ui->bufferPreview->update();
         update_status_bar();
-        request_render_update_ = false;
+        state_.request_render_update = false;
     }
 
     // Update an icon of every entry in image list
-    if (request_icons_update_) {
+    if (state_.request_icons_update) {
 
-        for (const auto& name : stages_ | std::views::keys) {
+        for (const auto& name : buffer_data_.stages | std::views::keys) {
             repaint_image_list_icon(name);
         }
 
-        request_icons_update_ = false;
+        state_.request_icons_update = false;
     }
 }
 
 
 void MainWindow::request_render_update()
 {
-    request_render_update_ = true;
+    state_.request_render_update = true;
 }
 
 
 void MainWindow::request_icons_update()
 {
-    request_icons_update_ = true;
+    state_.request_icons_update = true;
 }
 
 
@@ -180,18 +183,19 @@ void MainWindow::persist_settings()
     for (const auto& prev_buff : previous_session_buffers_qlist) {
         const auto buff_name_std_str = prev_buff.first.toStdString();
 
-        const auto being_viewed = held_buffers_.contains(buff_name_std_str);
+        const auto being_viewed =
+            buffer_data_.held_buffers.contains(buff_name_std_str);
         const auto was_removed =
-            removed_buffer_names_.contains(buff_name_std_str);
+            buffer_data_.removed_buffer_names.contains(buff_name_std_str);
 
         if (was_removed) {
-            previous_session_buffers_.erase(buff_name_std_str);
+            buffer_data_.previous_session_buffers.erase(buff_name_std_str);
         } else if (!being_viewed && prev_buff.second >= now) {
             persisted_session_buffers.append(prev_buff);
         }
     }
 
-    for (const auto& buffer : held_buffers_ | std::views::keys) {
+    for (const auto& buffer : buffer_data_.held_buffers | std::views::keys) {
         persisted_session_buffers.append(
             BufferExpiration(buffer.c_str(), next_expiration));
     }
@@ -209,7 +213,7 @@ void MainWindow::persist_settings()
     // Write UI geometry.
     settings.beginGroup("UI");
     {
-        const auto listSizesInt = ui_->splitter->sizes();
+        const auto listSizesInt = ui_components_.ui->splitter->sizes();
 
         auto listSizesVariant = QList<QVariant>{};
         for (const int size : listSizesInt) {
@@ -218,9 +222,11 @@ void MainWindow::persist_settings()
 
         settings.setValue("splitter", listSizesVariant);
     }
-    settings.setValue("minmax_visible", ui_->acEdit->isChecked());
-    settings.setValue("contrast_enabled", ui_->acToggle->isChecked());
-    settings.setValue("link_views_enabled", ui_->linkViewsToggle->isChecked());
+    settings.setValue("minmax_visible", ui_components_.ui->acEdit->isChecked());
+    settings.setValue("contrast_enabled",
+                      ui_components_.ui->acToggle->isChecked());
+    settings.setValue("link_views_enabled",
+                      ui_components_.ui->linkViewsToggle->isChecked());
     settings.endGroup();
 
     // Write window position/size
@@ -231,22 +237,25 @@ void MainWindow::persist_settings()
 
     settings.sync();
 
-    removed_buffer_names_.clear();
+    buffer_data_.removed_buffer_names.clear();
 }
 
 
 vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
                                        const float pos_window_y) const
 {
-    const auto cam_obj = currently_selected_stage_->get_game_object("camera");
+    const auto cam_obj =
+        buffer_data_.currently_selected_stage->get_game_object("camera");
     const auto cam     = cam_obj->get_component<Camera>("camera_component");
 
     const auto buffer_obj =
-        currently_selected_stage_->get_game_object("buffer");
+        buffer_data_.currently_selected_stage->get_game_object("buffer");
     const auto buffer = buffer_obj->get_component<Buffer>("buffer_component");
 
-    const auto win_w         = static_cast<float>(ui_->bufferPreview->width());
-    const auto win_h         = static_cast<float>(ui_->bufferPreview->height());
+    const auto win_w =
+        static_cast<float>(ui_components_.ui->bufferPreview->width());
+    const auto win_h =
+        static_cast<float>(ui_components_.ui->bufferPreview->height());
     const auto mouse_pos_ndc = vec4{2.0f * (pos_window_x - win_w / 2) / win_w,
                                     -2.0f * (pos_window_y - win_h / 2) / win_h,
                                     0.0f,
@@ -267,23 +276,25 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
 
 void MainWindow::update_status_bar() const
 {
-    if (currently_selected_stage_ != nullptr) {
+    if (buffer_data_.currently_selected_stage != nullptr) {
         auto message = std::stringstream{};
 
         const auto cam_obj =
-            currently_selected_stage_->get_game_object("camera");
+            buffer_data_.currently_selected_stage->get_game_object("camera");
         const auto cam = cam_obj->get_component<Camera>("camera_component");
 
         const auto buffer_obj =
-            currently_selected_stage_->get_game_object("buffer");
+            buffer_data_.currently_selected_stage->get_game_object("buffer");
         const auto buffer =
             buffer_obj->get_component<Buffer>("buffer_component");
 
         const auto text_comp =
             buffer_obj->get_component<BufferValues>("text_component");
 
-        const auto mouse_x = static_cast<float>(ui_->bufferPreview->mouse_x());
-        const auto mouse_y = static_cast<float>(ui_->bufferPreview->mouse_y());
+        const auto mouse_x =
+            static_cast<float>(ui_components_.ui->bufferPreview->mouse_x());
+        const auto mouse_y =
+            static_cast<float>(ui_components_.ui->bufferPreview->mouse_y());
 
         // Position
         const auto mouse_pos = get_stage_coordinates(mouse_x, mouse_y);
@@ -308,7 +319,7 @@ void MainWindow::update_status_bar() const
                     << "]";
         }
 
-        status_bar_->setText(message.str().c_str());
+        ui_components_.status_bar->setText(message.str().c_str());
     }
 }
 
@@ -344,14 +355,14 @@ std::string MainWindow::get_type_label(const BufferType type,
 
 void MainWindow::persist_settings_deferred()
 {
-    settings_persist_timer_.start(100);
+    ui_components_.settings_persist_timer.start(100);
 }
 
 
 void MainWindow::set_currently_selected_stage(Stage* stage)
 {
-    currently_selected_stage_ = stage;
-    request_render_update_    = true;
+    buffer_data_.currently_selected_stage = stage;
+    state_.request_render_update          = true;
 }
 
 } // namespace oid
