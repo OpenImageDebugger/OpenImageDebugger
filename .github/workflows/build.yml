@@ -106,8 +106,15 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+          cmake --build build --config Release
           cmake --build build --config Release --target install
+
+      - name: Run Tests
+        shell: bash
+        working-directory: build
+        run: |
+          ctest --build-config Release --output-on-failure
 
       - name: Tar files
         shell: bash
