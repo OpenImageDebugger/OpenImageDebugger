@@ -93,12 +93,31 @@ target_include_directories(test_message_exchange
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc
 )
 
+find_package(protobuf "5.27.0" CONFIG)
+if(NOT Protobuf_FOUND)
+  find_package(Protobuf "5.27.0" REQUIRED)
+endif()
+
+find_package(Qt6 "6.2.4" REQUIRED COMPONENTS Network Core)
+
+target_sources(test_message_exchange PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/message_exchange.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/buffer.proto
+)
+
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+protobuf_generate(TARGET test_message_exchange
+                  PROTOC_OUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc)
+
 target_link_libraries(test_message_exchange
     PRIVATE
-    oidipc
+    Qt6::Network
+    Qt6::Core
+    protobuf::libprotobuf
     GTest::gtest_main
     GTest::gtest
 )
 
 add_test(NAME MessageExchangeTests COMMAND test_message_exchange)
+set_tests_properties(MessageExchangeTests PROPERTIES TIMEOUT 5)
 

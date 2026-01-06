@@ -160,10 +160,19 @@ jobs:
           cmake --build build/Release --target install
 
       - name: Run Tests
+        if: ${{ !contains(matrix.os, 'windows') }}
         shell: bash
         working-directory: build/Release
         run: |
           ctest --output-on-failure
+
+      - name: Run Tests (Windows)
+        if: contains(matrix.os, 'windows')
+        shell: cmd
+        working-directory: build\Release
+        run: >
+          generators\conanbuild.bat &&
+          ctest --output-on-failure --timeout 5
 
       - name: Tar files
         shell: bash

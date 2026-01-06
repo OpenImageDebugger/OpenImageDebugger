@@ -29,6 +29,7 @@
 #include <bit>
 #include <deque>
 #include <memory>
+#include <stdexcept>
 
 #include <QTcpSocket>
 
@@ -153,12 +154,18 @@ class MessageComposer
                                   static_cast<qint64>(block->size()));
 
                 if (offset < static_cast<qint64>(block->size())) {
-                    socket->waitForBytesWritten();
+                    if (!socket->waitForBytesWritten(5000)) {
+                        throw std::runtime_error(
+                            "Timeout waiting for bytes to be written");
+                    }
                 }
             } while (offset < static_cast<qint64>(block->size()));
         }
 
-        socket->waitForBytesWritten();
+        if (!socket->waitForBytesWritten(5000)) {
+            throw std::runtime_error(
+                "Timeout waiting for final bytes to be written");
+        }
     }
 
     void clear()
@@ -221,7 +228,10 @@ class MessageDecoder
                                     static_cast<qint64>(read_length - offset));
 
             if (offset < read_length) {
-                socket_->waitForReadyRead();
+                if (!socket_->waitForReadyRead(5000)) {
+                    throw std::runtime_error(
+                        "Timeout waiting for data to be ready");
+                }
             }
         } while (offset < read_length);
     }
