@@ -1,4 +1,5 @@
 [requires]
+protobuf/5.27.0
 grpc/1.72.0
 
 [tool_requires]

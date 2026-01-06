@@ -30,3 +30,10 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
 add_subdirectory(src)
 add_subdirectory(src/ipc)
 add_subdirectory(src/oidbridge)
+
+# Add tests if enabled
+option(BUILD_TESTS "Build unit tests" ON)
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

@@ -143,7 +143,7 @@ jobs:
         run: >
           build\Release\generators\conanbuild.bat &&
           cmake --version &&
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja" &&
+          cmake -S . -B build\Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build\Release\generators\conan_toolchain.cmake &&
           cmake --build build\Release --target install
 
       - name: Build (Unix)
@@ -155,9 +155,15 @@ jobs:
         run: |
           source build/Release/generators/conanbuild.sh
           cmake --version
-          cmake --preset conan-release -DCMAKE_INSTALL_PREFIX=out -G "Ninja"
+          cmake -S . -B build/Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake
           # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
           cmake --build build/Release --target install
+
+      - name: Run Tests
+        shell: bash
+        working-directory: build/Release
+        run: |
+          ctest --output-on-failure
 
       - name: Tar files
         shell: bash
