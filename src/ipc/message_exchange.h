@@ -155,16 +155,14 @@ class MessageComposer
 
                 if (offset < static_cast<qint64>(block->size())) {
                     if (!socket->waitForBytesWritten(5000)) {
-                        throw std::runtime_error(
-                            "Timeout waiting for bytes to be written");
+                        throw std::runtime_error("Socket write timeout");
                     }
                 }
             } while (offset < static_cast<qint64>(block->size()));
         }
 
         if (!socket->waitForBytesWritten(5000)) {
-            throw std::runtime_error(
-                "Timeout waiting for final bytes to be written");
+            throw std::runtime_error("Socket write timeout");
         }
     }
 
@@ -229,8 +227,7 @@ class MessageDecoder
 
             if (offset < read_length) {
                 if (!socket_->waitForReadyRead(5000)) {
-                    throw std::runtime_error(
-                        "Timeout waiting for data to be ready");
+                    throw std::runtime_error("Socket read timeout");
                 }
             }
         } while (offset < read_length);

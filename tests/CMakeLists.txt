@@ -102,7 +102,6 @@ add_executable(test_message_exchange
 target_include_directories(test_message_exchange
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc
-    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 protobuf_generate(TARGET test_message_exchange
