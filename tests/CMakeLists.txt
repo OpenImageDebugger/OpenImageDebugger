@@ -84,15 +84,6 @@ target_sources(test_raw_data_decode PRIVATE
 add_test(NAME RawDataDecodeTests COMMAND test_raw_data_decode)
 
 # Test for IPC message exchange
-add_executable(test_message_exchange
-    test_message_exchange.cpp
-)
-
-target_include_directories(test_message_exchange
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc
-)
-
 find_package(protobuf "5.27.0" CONFIG)
 if(NOT Protobuf_FOUND)
   find_package(Protobuf "5.27.0" REQUIRED)
@@ -100,14 +91,23 @@ endif()
 
 find_package(Qt6 "6.2.4" REQUIRED COMPONENTS Network Core)
 
-target_sources(test_message_exchange PRIVATE
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+
+add_executable(test_message_exchange
+    test_message_exchange.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/message_exchange.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/buffer.proto
 )
 
-set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+target_include_directories(test_message_exchange
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc
+    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+)
+
 protobuf_generate(TARGET test_message_exchange
-                  PROTOC_OUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc)
+                  PROTOC_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR}
+                  IMPORT_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc)
 
 target_link_libraries(test_message_exchange
     PRIVATE
