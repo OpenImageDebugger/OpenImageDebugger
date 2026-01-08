@@ -572,10 +572,11 @@ void Buffer::setup_gl_buffer()
     reset_contrast_brightness_parameters();
 
     // Buffer texture
-    num_textures_x         = std::ceil(static_cast<float>(buffer_width_i) /
-                               static_cast<float>(max_texture_size));
-    num_textures_y         = std::ceil(static_cast<float>(buffer_height_i) /
-                               static_cast<float>(max_texture_size));
+    const auto max_texture_size_f = static_cast<float>(max_texture_size);
+    num_textures_x                = static_cast<int>(
+        std::ceil(static_cast<float>(buffer_width_i) / max_texture_size_f));
+    num_textures_y = static_cast<int>(
+        std::ceil(static_cast<float>(buffer_height_i) / max_texture_size_f));
     const int num_textures = num_textures_x * num_textures_y;
 
     buff_tex.resize(num_textures);
