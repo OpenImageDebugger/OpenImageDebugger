@@ -42,6 +42,7 @@
 #include "system/process/process.h"
 
 #include <QDataStream>
+#include <QPointer>
 #include <QTcpServer>
 #include <QTcpSocket>
 
@@ -145,7 +146,7 @@ class OidBridge
 
     std::deque<std::string> get_observed_symbols()
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         auto message_composer = MessageComposer{};
         message_composer.push(MessageType::GetObservedSymbols).send(client_);
@@ -165,7 +166,7 @@ class OidBridge
     void
     set_available_symbols(const std::deque<std::string>& available_vars) const
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         auto message_composer = MessageComposer{};
         message_composer.push(MessageType::SetAvailableSymbols)
@@ -226,7 +227,7 @@ class OidBridge
   private:
     Process ui_proc_{};
     QTcpServer server_{};
-    QTcpSocket* client_{nullptr};
+    QPointer<QTcpSocket> client_{}; // Qt-managed non-owning pointer
     std::string oid_path_{};
 
     std::function<int(const char*)> plot_callback_{};
@@ -249,12 +250,12 @@ class OidBridge
 
     void try_read_incoming_messages(const int msecs = 3000)
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         do {
             client_->waitForReadyRead(msecs);
 
-            if (client_->bytesAvailable() == 0) {
+            if (client_.isNull() || client_->bytesAvailable() == 0) {
                 break;
             }
 
@@ -277,13 +278,13 @@ class OidBridge
                     << std::endl;
                 break;
             }
-        } while (client_->bytesAvailable() > 0);
+        } while (!client_.isNull() && client_->bytesAvailable() > 0);
     }
 
 
     [[nodiscard]] std::unique_ptr<UiMessage> decode_plot_buffer_request() const
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         auto response        = std::make_unique<PlotBufferRequestMessage>();
         auto message_decoder = MessageDecoder{client_};
@@ -294,7 +295,7 @@ class OidBridge
     [[nodiscard]] std::unique_ptr<UiMessage>
     decode_get_observed_symbols_response() const
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         auto response = std::make_unique<GetObservedSymbolsResponseMessage>();
 
@@ -321,13 +322,13 @@ class OidBridge
 
     void wait_for_client()
     {
-        if (client_ == nullptr) {
+        if (client_.isNull()) {
             if (!server_.waitForNewConnection(10000)) {
                 std::cerr << "[OpenImageDebugger] No clients connected to "
                              "OpenImageDebugger server"
                           << std::endl;
             }
-            client_ = server_.nextPendingConnection();
+            client_ = QPointer<QTcpSocket>(server_.nextPendingConnection());
         }
     }
 };

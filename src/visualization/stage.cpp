@@ -77,7 +77,7 @@ struct CompareRenderOrder
 };
 
 
-Stage::Stage(MainWindow* main_window)
+Stage::Stage(MainWindow& main_window)
     : main_window_{main_window}
 {
 }
@@ -107,7 +107,7 @@ const std::vector<uint8_t>& Stage::get_buffer_icon() const
 }
 
 
-MainWindow* Stage::get_main_window() const
+MainWindow& Stage::get_main_window() const
 {
     return main_window_;
 }
@@ -117,27 +117,27 @@ bool Stage::initialize(const BufferParams& params)
 {
     const auto camera_obj = std::make_shared<GameObject>();
 
-    camera_obj->set_stage(this);
+    camera_obj->set_stage(*this);
 
     camera_obj->add_component(
         "camera_component",
-        std::make_shared<Camera>(*camera_obj, *main_window_->gl_canvas()));
+        std::make_shared<Camera>(*camera_obj, *main_window_.gl_canvas()));
     camera_obj->add_component(
         "background_component",
-        std::make_shared<Background>(*camera_obj, *main_window_->gl_canvas()));
+        std::make_shared<Background>(*camera_obj, *main_window_.gl_canvas()));
 
     all_game_objects["camera"] = camera_obj;
 
     const auto buffer_obj = std::make_shared<GameObject>();
 
-    buffer_obj->set_stage(this);
+    buffer_obj->set_stage(*this);
 
-    buffer_obj->add_component("text_component",
-                              std::make_shared<BufferValues>(
-                                  *buffer_obj, *main_window_->gl_canvas()));
+    buffer_obj->add_component(
+        "text_component",
+        std::make_shared<BufferValues>(*buffer_obj, *main_window_.gl_canvas()));
 
     const auto buffer_component =
-        std::make_shared<Buffer>(*buffer_obj, *main_window_->gl_canvas());
+        std::make_shared<Buffer>(*buffer_obj, *main_window_.gl_canvas());
 
     buffer_component->configure(params);
     buffer_obj->add_component("buffer_component", buffer_component);
@@ -177,7 +177,7 @@ bool Stage::buffer_update(const BufferParams& params)
 
     for (const auto& game_obj_it : all_game_objects | std::views::values) {
         const auto game_obj = game_obj_it.get();
-        game_obj->set_stage(this);
+        game_obj->set_stage(*this);
         for (const auto& comp :
              game_obj->get_components() | std::views::values) {
             if (!comp->buffer_update()) {
@@ -199,13 +199,14 @@ bool Stage::buffer_update(const BufferParams& params)
 }
 
 
-GameObject* Stage::get_game_object(const std::string& tag)
+std::optional<std::reference_wrapper<GameObject>>
+Stage::get_game_object(const std::string& tag)
 {
     if (!all_game_objects.contains(tag)) {
-        return nullptr;
+        return std::nullopt;
     }
 
-    return all_game_objects[tag].get();
+    return std::ref(*all_game_objects[tag]);
 }
 
 
@@ -311,9 +312,7 @@ EventProcessCode Stage::key_press_event(const int key_code) const
 
 void Stage::request_render_update() const
 {
-    if (main_window_ != nullptr) {
-        main_window_->request_render_update();
-    }
+    main_window_.request_render_update();
 }
 
 

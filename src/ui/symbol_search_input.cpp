@@ -45,20 +45,16 @@ SymbolSearchInput::SymbolSearchInput(QWidget* parent)
 SymbolSearchInput::~SymbolSearchInput() = default;
 
 
-void SymbolSearchInput::set_completer(SymbolCompleter* completer)
+void SymbolSearchInput::set_completer(SymbolCompleter& completer)
 {
-    if (completer_) {
-        disconnect(completer_, nullptr, this, nullptr);
+    if (completer_.has_value()) {
+        disconnect(&completer_->get(), nullptr, this, nullptr);
     }
 
-    completer_ = completer;
+    completer_ = std::ref(completer);
 
-    if (!completer_) {
-        return;
-    }
-
-    completer_->setWidget(this);
-    connect(completer,
+    this->completer().setWidget(this);
+    connect(&completer,
             SIGNAL(activated(const QString&)),
             this,
             SLOT(insert_completion(const QString&)));
@@ -67,7 +63,10 @@ void SymbolSearchInput::set_completer(SymbolCompleter* completer)
 
 SymbolCompleter* SymbolSearchInput::symbolCompleter() const
 {
-    return completer_;
+    if (!completer_.has_value()) {
+        return nullptr;
+    }
+    return &completer_->get();
 }
 
 
@@ -107,20 +106,18 @@ void SymbolSearchInput::keyPressEvent(QKeyEvent* e)
             e); // Don't send the shortcut (CTRL-E) to the text edit.
     }
 
-    if (!completer_) {
-        return;
-    }
+    // completer_ is guaranteed to be set via set_completer() before use
 
     if (const auto ctrl_or_shift =
             e->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier);
         !is_shortcut && !ctrl_or_shift && e->modifiers() != Qt::NoModifier) {
-        completer_->popup()->hide();
+        completer().popup()->hide();
         return;
     }
 
-    completer_->update(text());
-    completer_->popup()->setCurrentIndex(
-        completer_->completionModel()->index(0, 0));
+    completer().update(text());
+    completer().popup()->setCurrentIndex(
+        completer().completionModel()->index(0, 0));
 }
 
 } // namespace oid

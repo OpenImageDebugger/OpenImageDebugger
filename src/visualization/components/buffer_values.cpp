@@ -143,15 +143,26 @@ void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params)
 
 void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 {
-    const auto cam_obj = game_object_->get_stage()->get_game_object("camera");
-    const auto camera  = cam_obj->get_component<Camera>("camera_component");
-    const auto zoom    = camera->compute_zoom();
+    const auto stage = game_object_.get_stage();
+    if (!stage.has_value()) {
+        return;
+    }
+    const auto cam_obj = stage->get().get_game_object("camera");
+    if (!cam_obj.has_value()) {
+        return;
+    }
+    const auto camera =
+        cam_obj->get().get_component<Camera>("camera_component");
+    if (camera == nullptr) {
+        return;
+    }
+    const auto zoom = camera->compute_zoom();
 
     if (zoom > BufferConstants::ZOOM_BORDER_THRESHOLD) {
-        const auto buffer_pose = game_object_->get_pose();
+        const auto buffer_pose = game_object_.get_pose();
 
         const auto buffer_component =
-            game_object_->get_component<Buffer>("buffer_component");
+            game_object_.get_component<Buffer>("buffer_component");
         const auto buffer_width_f  = buffer_component->buffer_width_f;
         const auto buffer_height_f = buffer_component->buffer_height_f;
         const auto channels        = buffer_component->channels;
@@ -243,14 +254,15 @@ void BufferValues::draw_text(const DrawTextParams& params)
     const auto channels     = params.channels;
     const auto y_offset     = params.y_offset;
 
-    const auto text_renderer = gl_canvas_->get_text_renderer();
+    const auto text_renderer = gl_canvas_.get_text_renderer();
 
     const auto buffer_component =
-        game_object_->get_component<Buffer>("buffer_component");
+        game_object_.get_component<Buffer>("buffer_component");
 
     const float* auto_buffer_contrast_brightness{};
 
-    if (game_object_->get_stage()->get_contrast_enabled()) {
+    if (const auto stage = game_object_.get_stage();
+        stage.has_value() && stage->get().get_contrast_enabled()) {
         auto_buffer_contrast_brightness =
             buffer_component->auto_buffer_contrast_brightness();
     } else {
@@ -258,11 +270,11 @@ void BufferValues::draw_text(const DrawTextParams& params)
     }
 
     text_renderer->text_prog.use();
-    gl_canvas_->glEnableVertexAttribArray(0);
-    gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, text_renderer->text_vbo);
-    gl_canvas_->glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, nullptr);
+    gl_canvas_.glEnableVertexAttribArray(0);
+    gl_canvas_.glBindBuffer(GL_ARRAY_BUFFER, text_renderer->text_vbo);
+    gl_canvas_.glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-    gl_canvas_->glActiveTexture(GL_TEXTURE0);
+    gl_canvas_.glActiveTexture(GL_TEXTURE0);
     const auto x_plus_half_buffer_width =
         static_cast<int>(x + buffer_component->buffer_width_f / 2.0f);
     const auto y_plus_half_buffer_height =
@@ -270,11 +282,11 @@ void BufferValues::draw_text(const DrawTextParams& params)
 
     const GLuint buff_tex = buffer_component->sub_texture_id_at_coord(
         x_plus_half_buffer_width, y_plus_half_buffer_height);
-    gl_canvas_->glBindTexture(GL_TEXTURE_2D, buff_tex);
+    gl_canvas_.glBindTexture(GL_TEXTURE_2D, buff_tex);
     text_renderer->text_prog.uniform1i("buff_sampler", 0);
 
-    gl_canvas_->glActiveTexture(GL_TEXTURE1);
-    gl_canvas_->glBindTexture(GL_TEXTURE_2D, text_renderer->text_tex);
+    gl_canvas_.glActiveTexture(GL_TEXTURE1);
+    gl_canvas_.glBindTexture(GL_TEXTURE_2D, text_renderer->text_tex);
     text_renderer->text_prog.uniform1i("text_sampler", 1);
 
     text_renderer->text_prog.uniform_matrix4fv(
@@ -361,9 +373,9 @@ void BufferValues::draw_text(const DrawTextParams& params)
             {x2 + w, y2 + h, tex_upper_x, tex_upper_y},
         }};
 
-        gl_canvas_->glBufferData(
+        gl_canvas_.glBufferData(
             GL_ARRAY_BUFFER, sizeof box, box.data(), GL_DYNAMIC_DRAW);
-        gl_canvas_->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        gl_canvas_.glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         const auto tex_adv_x =
             static_cast<float>(text_renderer->text_texture_advances[uchar][0]);

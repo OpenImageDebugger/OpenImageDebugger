@@ -83,7 +83,7 @@ class ShaderProgram
   private:
     GLuint program_{0};
 
-    GLCanvas* gl_canvas_{};
+    GLCanvas& gl_canvas_;
 
     TexelChannels texel_format_{};
 

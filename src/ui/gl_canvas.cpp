@@ -56,10 +56,10 @@ void GLCanvas::mouseMoveEvent(QMouseEvent* ev)
     mouse_y_ = static_cast<int>(ev->position().y());
 
     if (mouse_down_[0]) {
-        main_window_->mouse_drag_event(mouse_x_ - last_mouse_x,
+        main_window().mouse_drag_event(mouse_x_ - last_mouse_x,
                                        mouse_y_ - last_mouse_y);
     } else {
-        main_window_->mouse_move_event(mouse_x_ - last_mouse_x,
+        main_window().mouse_move_event(mouse_x_ - last_mouse_x,
                                        mouse_y_ - last_mouse_y);
     }
 }
@@ -108,8 +108,7 @@ void GLCanvas::initializeGL()
 
     ///
     // Texture for generating icons
-    assert(main_window_ != nullptr);
-    const auto icon_size   = main_window_->get_icon_size();
+    const auto icon_size   = main_window().get_icon_size();
     const auto icon_width  = static_cast<int>(icon_size.width());
     const auto icon_height = static_cast<int>(icon_size.height());
     glGenTextures(1, &icon_texture_);
@@ -157,13 +156,13 @@ void GLCanvas::initializeGL()
 void GLCanvas::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    main_window_->draw();
+    main_window().draw();
 }
 
 
 void GLCanvas::wheelEvent(QWheelEvent* ev)
 {
-    main_window_->scroll_callback(static_cast<float>(ev->angleDelta().y()) /
+    main_window().scroll_callback(static_cast<float>(ev->angleDelta().y()) /
                                   120.0f);
 }
 
@@ -183,7 +182,13 @@ void GLCanvas::render_buffer_icon(Stage* stage,
     glViewport(0, 0, icon_width, icon_height);
 
     const auto camera = stage->get_game_object("camera");
-    const auto cam    = camera->get_component<Camera>("camera_component");
+    if (!camera.has_value()) {
+        return;
+    }
+    const auto cam = camera->get().get_component<Camera>("camera_component");
+    if (cam == nullptr) {
+        return;
+    }
 
     // Save original camera pose
     const auto original_pose = Camera{*cam};
@@ -226,13 +231,13 @@ void GLCanvas::render_buffer_icon(Stage* stage,
 void GLCanvas::resizeGL(const int w, const int h)
 {
     glViewport(0, 0, w, h);
-    main_window_->resize_callback(w, h);
+    main_window().resize_callback(w, h);
 }
 
 
-void GLCanvas::set_main_window(MainWindow* mw)
+void GLCanvas::set_main_window(MainWindow& mw)
 {
-    main_window_ = mw;
+    main_window_ = std::ref(mw);
 }
 
 

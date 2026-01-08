@@ -64,7 +64,7 @@ class GLTextRenderer
     float text_texture_height{0};
 
   private:
-    GLCanvas* gl_canvas_{};
+    GLCanvas& gl_canvas_;
 };
 
 } // namespace oid

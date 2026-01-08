@@ -34,15 +34,15 @@ namespace oid
 
 GLTextRenderer::GLTextRenderer(GLCanvas& gl_canvas)
     : text_prog{gl_canvas}
-    , gl_canvas_{&gl_canvas}
+    , gl_canvas_{gl_canvas}
 {
 }
 
 
 GLTextRenderer::~GLTextRenderer()
 {
-    gl_canvas_->glDeleteTextures(1, &text_tex);
-    gl_canvas_->glDeleteBuffers(1, &text_vbo);
+    gl_canvas_.glDeleteTextures(1, &text_tex);
+    gl_canvas_.glDeleteBuffers(1, &text_vbo);
 }
 
 
@@ -58,11 +58,11 @@ bool GLTextRenderer::initialize()
                       "pix_coord",
                       "brightness_contrast"});
 
-    gl_canvas_->glGenTextures(1, &text_tex);
-    gl_canvas_->glActiveTexture(GL_TEXTURE0);
-    gl_canvas_->glBindTexture(GL_TEXTURE_2D, text_tex);
-    gl_canvas_->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    gl_canvas_->glGenBuffers(1, &text_vbo);
+    gl_canvas_.glGenTextures(1, &text_tex);
+    gl_canvas_.glActiveTexture(GL_TEXTURE0);
+    gl_canvas_.glBindTexture(GL_TEXTURE_2D, text_tex);
+    gl_canvas_.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    gl_canvas_.glGenBuffers(1, &text_vbo);
     generate_glyphs_texture();
 
     return true;
@@ -78,8 +78,8 @@ void GLTextRenderer::generate_glyphs_texture()
 
     const auto g = QFontMetrics{font};
 
-    gl_canvas_->glActiveTexture(GL_TEXTURE0);
-    gl_canvas_->glBindTexture(GL_TEXTURE_2D, text_tex);
+    gl_canvas_.glActiveTexture(GL_TEXTURE0);
+    gl_canvas_.glBindTexture(GL_TEXTURE_2D, text_tex);
 
     // Generate text bitmap
     const auto texture_size = g.size(Qt::TextSingleLine, text);
@@ -98,15 +98,15 @@ void GLTextRenderer::generate_glyphs_texture()
         auto tex_level_height        = static_cast<int>(text_texture_height);
 
         for (int i = 0; i < mipmap_levels; ++i) {
-            gl_canvas_->glTexImage2D(GL_TEXTURE_2D,
-                                     i,
-                                     GL_R8,
-                                     tex_level_width,
-                                     tex_level_height,
-                                     0,
-                                     GL_RED,
-                                     GL_UNSIGNED_BYTE,
-                                     nullptr);
+            gl_canvas_.glTexImage2D(GL_TEXTURE_2D,
+                                    i,
+                                    GL_R8,
+                                    tex_level_width,
+                                    tex_level_height,
+                                    0,
+                                    GL_RED,
+                                    GL_UNSIGNED_BYTE,
+                                    nullptr);
 
             tex_level_width  = (std::max)(1, tex_level_width / 2);
             tex_level_height = (std::max)(1, tex_level_height / 2);
@@ -184,15 +184,15 @@ void GLTextRenderer::generate_glyphs_texture()
 
     // Clears generated buffer
     {
-        gl_canvas_->glTexSubImage2D(GL_TEXTURE_2D,
-                                    0,
-                                    0,
-                                    0,
-                                    static_cast<GLsizei>(text_texture_width),
-                                    static_cast<GLsizei>(text_texture_height),
-                                    GL_RED,
-                                    GL_UNSIGNED_BYTE,
-                                    packed_texture.data());
+        gl_canvas_.glTexSubImage2D(GL_TEXTURE_2D,
+                                   0,
+                                   0,
+                                   0,
+                                   static_cast<GLsizei>(text_texture_width),
+                                   static_cast<GLsizei>(text_texture_height),
+                                   GL_RED,
+                                   GL_UNSIGNED_BYTE,
+                                   packed_texture.data());
     }
 
     auto x = 0;
@@ -205,16 +205,15 @@ void GLTextRenderer::generate_glyphs_texture()
         x += advance_x + border_size * 2;
     }
 
-    gl_canvas_->glGenerateMipmap(GL_TEXTURE_2D);
-    gl_canvas_->glTexParameteri(
-        GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    gl_canvas_->glTexParameteri(
+    gl_canvas_.glGenerateMipmap(GL_TEXTURE_2D);
+    gl_canvas_.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    gl_canvas_.glTexParameteri(
         GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    gl_canvas_->glTexParameteri(
+    gl_canvas_.glTexParameteri(
         GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    gl_canvas_->glTexParameteri(
+    gl_canvas_.glTexParameteri(
         GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    gl_canvas_->glTexParameteri(
+    gl_canvas_.glTexParameteri(
         GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
 }
 

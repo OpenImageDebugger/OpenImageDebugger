@@ -55,6 +55,19 @@ Camera::Camera(const Camera& cam)
 }
 
 
+Camera::Camera(Camera&& cam) noexcept
+    : Component{cam} // Copy Component base (references can't be moved)
+    , zoom_power_{cam.zoom_power_}
+    , camera_pos_x_{cam.camera_pos_x_}
+    , camera_pos_y_{cam.camera_pos_y_}
+    , canvas_width_{cam.canvas_width_}
+    , canvas_height_{cam.canvas_height_}
+    , scale_{cam.scale_}
+{
+    update_object_pose();
+}
+
+
 Camera& Camera::operator=(const Camera& cam)
 {
     zoom_power_    = cam.zoom_power_;
@@ -66,6 +79,15 @@ Camera& Camera::operator=(const Camera& cam)
 
     update_object_pose();
 
+    return *this;
+}
+
+
+Camera& Camera::operator=(Camera&& cam) noexcept
+{
+    // Move assignment implemented as copy assignment because Component base
+    // class has reference members that cannot be moved
+    operator=(cam);
     return *this;
 }
 
@@ -83,10 +105,10 @@ void Camera::window_resized(const int w, const int h)
 
 void Camera::scroll_callback(const float delta)
 {
-    const auto mouse_x = static_cast<float>(gl_canvas_->mouse_x());
-    const auto mouse_y = static_cast<float>(gl_canvas_->mouse_y());
-    const auto win_w   = static_cast<float>(gl_canvas_->width());
-    const auto win_h   = static_cast<float>(gl_canvas_->height());
+    const auto mouse_x = static_cast<float>(gl_canvas_.mouse_x());
+    const auto mouse_y = static_cast<float>(gl_canvas_.mouse_y());
+    const auto win_w   = static_cast<float>(gl_canvas_.width());
+    const auto win_h   = static_cast<float>(gl_canvas_.height());
 
     const auto mouse_pos_ndc = vec4{2.0f * (mouse_x - win_w / 2.0f) / win_w,
                                     -2.0f * (mouse_y - win_h / 2.0f) / win_h,
@@ -104,12 +126,19 @@ void Camera::update()
 
 std::pair<float, float> Camera::get_buffer_initial_dimensions() const
 {
-    const auto buffer_obj =
-        game_object_->get_stage()->get_game_object("buffer");
-    const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto stage = game_object_.get_stage();
+    if (!stage.has_value()) {
+        return {0.0f, 0.0f};
+    }
+    const auto buffer_obj = stage->get().get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return {0.0f, 0.0f};
+    }
+    const auto buff =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
 
     const auto buf_dim =
-        buffer_obj->get_pose() *
+        buffer_obj->get().get_pose() *
         vec4(buff->buffer_width_f, buff->buffer_height_f, 0, 1);
 
     const auto x = std::abs(buf_dim.x());
@@ -120,22 +149,20 @@ std::pair<float, float> Camera::get_buffer_initial_dimensions() const
 
 void Camera::update_object_pose() const
 {
-    if (game_object_ != nullptr) {
-        const vec4 position{-camera_pos_x_, -camera_pos_y_, 0.0f, 1.0f};
+    const vec4 position{-camera_pos_x_, -camera_pos_y_, 0.0f, 1.0f};
 
-        // Since the view matrix of the camera is inverted before being applied
-        // to the world coordinates, the order in which the operations below are
-        // applied to world coordinates during rendering will also be reversed
-        const auto pose = scale_ * mat4::translation(position);
+    // Since the view matrix of the camera is inverted before being applied
+    // to the world coordinates, the order in which the operations below are
+    // applied to world coordinates during rendering will also be reversed
+    const auto pose = scale_ * mat4::translation(position);
 
-        game_object_->set_pose(pose);
-    }
+    game_object_.set_pose(pose);
 }
 
 
 bool Camera::post_initialize()
 {
-    window_resized(gl_canvas_->width(), gl_canvas_->height());
+    window_resized(gl_canvas_.width(), gl_canvas_.height());
     set_initial_zoom();
     update_object_pose();
 
@@ -180,7 +207,7 @@ void Camera::handle_key_events()
 
             update_object_pose();
 
-            game_object_->request_render_update();
+            game_object_.request_render_update();
         }
     }
 }
@@ -270,7 +297,7 @@ void Camera::scale_at(const vec4& center_ndc, const float delta)
         new_delta = (std::min)(new_delta, delta_greatest);
     }
 
-    const auto vp_inv = game_object_->get_pose() * projection.inv();
+    const auto vp_inv = game_object_.get_pose() * projection.inv();
 
     const auto delta_zoom = std::pow(zoom_factor, -new_delta);
 
@@ -357,10 +384,20 @@ float Camera::compute_zoom() const
 
 void Camera::move_to(const float x, const float y)
 {
-    const auto buffer_obj =
-        game_object_->get_stage()->get_game_object("buffer");
+    const auto stage = game_object_.get_stage();
+    if (!stage.has_value()) {
+        return;
+    }
+    const auto buffer_obj = stage->get().get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
 
-    const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto buff =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (buff == nullptr) {
+        return;
+    }
     const auto buf_dim =
         vec4(buff->buffer_width_f, buff->buffer_height_f, 0.0f, 1.0f);
     const auto centered_coord = buf_dim * 0.5f - vec4(x, y, 0.0f, 0.0f);
@@ -370,7 +407,7 @@ void Camera::move_to(const float x, const float y)
     scale_ = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
 
     const auto transformed_goal =
-        scale_.inv() * buffer_obj->get_pose() * centered_coord;
+        scale_.inv() * buffer_obj->get().get_pose() * centered_coord;
 
     camera_pos_x_ = transformed_goal.x();
     camera_pos_y_ = transformed_goal.y();
@@ -381,15 +418,23 @@ void Camera::move_to(const float x, const float y)
 
 vec4 Camera::get_position() const
 {
-    const auto buffer_obj =
-        game_object_->get_stage()->get_game_object("buffer");
+    const auto stage = game_object_.get_stage();
+    if (!stage.has_value()) {
+        return vec4{0.0f, 0.0f, 0.0f, 1.0f};
+    }
+    const auto buffer_obj = stage->get().get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return vec4{0.0f, 0.0f, 0.0f, 1.0f};
+    }
 
-    const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto buff =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
     const auto buf_dim =
         vec4(buff->buffer_width_f, buff->buffer_height_f, 0.0f, 1.0f);
     const auto pos_vec = vec4{camera_pos_x_, camera_pos_y_, 0.0f, 1.0f};
 
-    return buf_dim * 0.5f - buffer_obj->get_pose().inv() * scale_ * pos_vec;
+    return buf_dim * 0.5f -
+           buffer_obj->get().get_pose().inv() * scale_ * pos_vec;
 }
 
 

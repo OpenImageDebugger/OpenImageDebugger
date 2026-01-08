@@ -485,7 +485,7 @@ void MainWindow::initialize_symbol_completer()
         QCompleter::CaseInsensitivelySortedModel);
 
     ui_components_.ui->symbolList->set_completer(
-        ui_components_.symbol_completer.get());
+        *ui_components_.symbol_completer);
     connect(ui_components_.ui->symbolList->symbolCompleter(),
             SIGNAL(activated(QString)),
             this,
@@ -516,19 +516,27 @@ void MainWindow::initialize_left_pane() const
 void MainWindow::initialize_auto_contrast_form() const
 {
     // Configure auto contrast inputs
+    // Note: Qt's setValidator takes ownership, so we use make_unique and
+    // release
     ui_components_.ui->ac_c1_min->setValidator(
-        new QDoubleValidator(ui_components_.ui->ac_c1_min));
+        std::make_unique<QDoubleValidator>(ui_components_.ui->ac_c1_min)
+            .release());
     ui_components_.ui->ac_c2_min->setValidator(
-        new QDoubleValidator(ui_components_.ui->ac_c2_min));
+        std::make_unique<QDoubleValidator>(ui_components_.ui->ac_c2_min)
+            .release());
     ui_components_.ui->ac_c3_min->setValidator(
-        new QDoubleValidator(ui_components_.ui->ac_c3_min));
+        std::make_unique<QDoubleValidator>(ui_components_.ui->ac_c3_min)
+            .release());
 
     ui_components_.ui->ac_c1_max->setValidator(
-        new QDoubleValidator(ui_components_.ui->ac_c1_max));
+        std::make_unique<QDoubleValidator>(ui_components_.ui->ac_c1_max)
+            .release());
     ui_components_.ui->ac_c2_max->setValidator(
-        new QDoubleValidator(ui_components_.ui->ac_c2_max));
+        std::make_unique<QDoubleValidator>(ui_components_.ui->ac_c2_max)
+            .release());
     ui_components_.ui->ac_c3_max->setValidator(
-        new QDoubleValidator(ui_components_.ui->ac_c3_max));
+        std::make_unique<QDoubleValidator>(ui_components_.ui->ac_c3_max)
+            .release());
 
     connect(ui_components_.ui->ac_c1_min,
             SIGNAL(editingFinished()),
@@ -619,7 +627,7 @@ void MainWindow::initialize_toolbar() const
 
 void MainWindow::initialize_visualization_pane()
 {
-    ui_components_.ui->bufferPreview->set_main_window(this);
+    ui_components_.ui->bufferPreview->set_main_window(*this);
 }
 
 

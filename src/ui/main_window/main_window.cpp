@@ -87,8 +87,8 @@ void MainWindow::showWindow()
 void MainWindow::draw() const
 {
     const auto lock = std::unique_lock{ui_mutex_};
-    if (buffer_data_.currently_selected_stage != nullptr) {
-        buffer_data_.currently_selected_stage->draw();
+    if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
+        stage->draw();
     }
 }
 
@@ -128,8 +128,8 @@ void MainWindow::loop()
     }
 
     // Run update for current stage
-    if (buffer_data_.currently_selected_stage != nullptr) {
-        buffer_data_.currently_selected_stage->update();
+    if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
+        stage->update();
     }
 
     // Update visualization pane
@@ -250,13 +250,28 @@ void MainWindow::persist_settings()
 vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
                                        const float pos_window_y) const
 {
-    const auto cam_obj =
-        buffer_data_.currently_selected_stage->get_game_object("camera");
-    const auto cam = cam_obj->get_component<Camera>("camera_component");
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (!stage) {
+        return {};
+    }
+    const auto cam_obj = stage->get_game_object("camera");
+    if (!cam_obj.has_value()) {
+        return {};
+    }
+    const auto cam = cam_obj->get().get_component<Camera>("camera_component");
+    if (cam == nullptr) {
+        return {};
+    }
 
-    const auto buffer_obj =
-        buffer_data_.currently_selected_stage->get_game_object("buffer");
-    const auto buffer = buffer_obj->get_component<Buffer>("buffer_component");
+    const auto buffer_obj = stage->get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return {};
+    }
+    const auto buffer =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (buffer == nullptr) {
+        return {};
+    }
 
     const auto win_w =
         static_cast<float>(ui_components_.ui->bufferPreview->width());
@@ -266,8 +281,8 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
                                     -2.0f * (pos_window_y - win_h / 2) / win_h,
                                     0.0f,
                                     1.0f};
-    const auto view          = cam_obj->get_pose().inv();
-    const auto buff_pose     = buffer_obj->get_pose();
+    const auto view          = cam_obj->get().get_pose().inv();
+    const auto buff_pose     = buffer_obj->get().get_pose();
     const auto vp_inv        = (cam->projection * view * buff_pose).inv();
 
     auto mouse_pos = vp_inv * mouse_pos_ndc;
@@ -282,20 +297,31 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
 
 void MainWindow::update_status_bar() const
 {
-    if (buffer_data_.currently_selected_stage != nullptr) {
+    if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
         auto message = std::stringstream{};
 
-        const auto cam_obj =
-            buffer_data_.currently_selected_stage->get_game_object("camera");
-        const auto cam = cam_obj->get_component<Camera>("camera_component");
+        const auto cam_obj = stage->get_game_object("camera");
+        if (!cam_obj.has_value()) {
+            return;
+        }
+        const auto cam =
+            cam_obj->get().get_component<Camera>("camera_component");
+        if (cam == nullptr) {
+            return;
+        }
 
-        const auto buffer_obj =
-            buffer_data_.currently_selected_stage->get_game_object("buffer");
+        const auto buffer_obj = stage->get_game_object("buffer");
+        if (!buffer_obj.has_value()) {
+            return;
+        }
         const auto buffer =
-            buffer_obj->get_component<Buffer>("buffer_component");
+            buffer_obj->get().get_component<Buffer>("buffer_component");
+        if (buffer == nullptr) {
+            return;
+        }
 
         const auto text_comp =
-            buffer_obj->get_component<BufferValues>("text_component");
+            buffer_obj->get().get_component<BufferValues>("text_component");
 
         const auto mouse_x =
             static_cast<float>(ui_components_.ui->bufferPreview->mouse_x());
@@ -366,11 +392,19 @@ void MainWindow::persist_settings_deferred()
 }
 
 
-void MainWindow::set_currently_selected_stage(Stage* stage)
+void MainWindow::set_currently_selected_stage(
+    const std::shared_ptr<Stage>& stage)
 {
     const auto lock                       = std::unique_lock{ui_mutex_};
     buffer_data_.currently_selected_stage = stage;
     state_.request_render_update          = true;
+}
+
+void MainWindow::set_currently_selected_stage(std::nullptr_t)
+{
+    const auto lock = std::unique_lock{ui_mutex_};
+    buffer_data_.currently_selected_stage.reset();
+    state_.request_render_update = true;
 }
 
 } // namespace oid

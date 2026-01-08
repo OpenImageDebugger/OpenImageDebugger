@@ -86,7 +86,8 @@ struct BufferData
     std::set<std::string, std::less<>> previous_session_buffers{};
     std::set<std::string, std::less<>> removed_buffer_names{};
     QStringList available_vars{};
-    Stage* currently_selected_stage{nullptr};
+    std::weak_ptr<Stage>
+        currently_selected_stage{}; // Non-owning reference to selected stage
 };
 
 struct ChannelNames
@@ -197,7 +198,11 @@ class MainWindow final : public QMainWindow
 
     void update_shift_precision() const;
 
-    void buffer_selected(QListWidgetItem* item);
+    // NOSONAR: Parameter must be non-const to match Qt signal signature
+    // currentItemChanged(QListWidgetItem*, QListWidgetItem*) which emits
+    // non-const pointers. Qt's old-style SIGNAL/SLOT macros require exact type
+    // matching.
+    void buffer_selected(QListWidgetItem* item); // NOSONAR
 
     void remove_selected_buffer();
 
@@ -248,7 +253,8 @@ class MainWindow final : public QMainWindow
 
     void persist_settings_deferred();
 
-    void set_currently_selected_stage(Stage* stage);
+    void set_currently_selected_stage(const std::shared_ptr<Stage>& stage);
+    void set_currently_selected_stage(std::nullptr_t); // Overload for clearing
 
     [[nodiscard]] vec4 get_stage_coordinates(float pos_window_x,
                                              float pos_window_y) const;
