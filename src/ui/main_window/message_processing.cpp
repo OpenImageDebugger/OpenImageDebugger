@@ -270,6 +270,23 @@ void MainWindow::decode_incoming_messages()
     auto header = MessageType{};
     if (!socket_.read(std::bit_cast<char*>(&header),
                       static_cast<qint64>(sizeof(header)))) {
+        const auto error = socket_.error();
+        std::cerr << "[Error] Failed to read message header: "
+                  << socket_.errorString().toStdString() << std::endl;
+
+        // Handle critical errors that indicate connection is broken
+        if (error == QAbstractSocket::RemoteHostClosedError ||
+            error == QAbstractSocket::NetworkError ||
+            error == QAbstractSocket::ConnectionRefusedError ||
+            error == QAbstractSocket::SocketTimeoutError) {
+            std::cerr
+                << "[Error] Critical socket error detected. Closing connection."
+                << std::endl;
+            socket_.close();
+            // Next call will detect UnconnectedState and quit
+        }
+        // For other errors (e.g., temporary read errors), just return and retry
+        // next time
         return;
     }
 
