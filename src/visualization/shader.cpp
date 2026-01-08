@@ -106,6 +106,21 @@ bool ShaderProgram::create(const char* v_source,
     gl_canvas_->glDeleteShader(vertex_shader);
     gl_canvas_->glDeleteShader(fragment_shader);
 
+    // Check for link errors
+    auto linked = GLint{};
+    gl_canvas_->glGetProgramiv(program_, GL_LINK_STATUS, &linked);
+    if (!linked) {
+        GLint length;
+        gl_canvas_->glGetProgramiv(program_, GL_INFO_LOG_LENGTH, &length);
+        auto log = std::string(length, ' ');
+        gl_canvas_->glGetProgramInfoLog(program_, length, &length, &log[0]);
+        std::cerr << "[Error] Failed to link shader program:" << std::endl
+                  << log << std::endl;
+        gl_canvas_->glDeleteProgram(program_);
+        program_ = 0;
+        return false;
+    }
+
     // Get uniform locations
     for (const auto& name : uniforms) {
         const auto loc =

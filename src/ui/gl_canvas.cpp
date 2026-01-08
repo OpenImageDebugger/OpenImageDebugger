@@ -92,6 +92,14 @@ void GLCanvas::mouseReleaseEvent(QMouseEvent* ev)
 void GLCanvas::initializeGL()
 {
     this->makeCurrent();
+    if (const auto context = this->context();
+        context == nullptr || !context->isValid()) {
+        std::cerr << "[Error] OpenGL context is not valid. OpenGL "
+                     "initialization cannot proceed."
+                  << std::endl;
+        initialized_ = false;
+        return;
+    }
     initializeOpenGLFunctions();
 
     glEnable(GL_BLEND);
@@ -130,8 +138,10 @@ void GLCanvas::initializeGL()
 
     // Check if the GPU won't freak out about our FBO
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        std::cerr << "Error: FBO configuration is not supported -- sorry mate!"
+        std::cerr << "[Error] FBO configuration is not supported. Framebuffer "
+                     "initialization failed."
                   << std::endl;
+        initialized_ = false;
         return;
     }
 
