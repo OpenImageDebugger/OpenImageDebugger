@@ -102,7 +102,7 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
         stage.get(), icon_width, icon_height);
 
     // Construct icon widget
-    const auto bufferIcon = QImage{stage->buffer_icon.data(),
+    const auto bufferIcon = QImage{stage->get_buffer_icon().data(),
                                    icon_width,
                                    icon_height,
                                    bytes_per_line,
@@ -200,7 +200,7 @@ void MainWindow::decode_plot_buffer_contents()
             std::cerr << "[error] Could not initialize opengl canvas!"
                       << std::endl;
         }
-        stage->contrast_enabled = state_.ac_enabled;
+        stage->set_contrast_enabled(state_.ac_enabled);
         buffer_stage =
             buffer_data_.stages.try_emplace(variable_name_str, stage).first;
     } else {

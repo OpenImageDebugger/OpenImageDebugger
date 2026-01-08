@@ -50,8 +50,38 @@ struct CompareRenderOrder
 
 
 Stage::Stage(MainWindow* main_window)
-    : main_window{main_window}
+    : main_window_{main_window}
 {
+}
+
+
+bool Stage::get_contrast_enabled() const
+{
+    return contrast_enabled_;
+}
+
+
+void Stage::set_contrast_enabled(const bool enabled)
+{
+    contrast_enabled_ = enabled;
+}
+
+
+std::vector<uint8_t>& Stage::get_buffer_icon()
+{
+    return buffer_icon_;
+}
+
+
+const std::vector<uint8_t>& Stage::get_buffer_icon() const
+{
+    return buffer_icon_;
+}
+
+
+MainWindow* Stage::get_main_window() const
+{
+    return main_window_;
 }
 
 
@@ -63,10 +93,10 @@ bool Stage::initialize(const BufferParams& params)
 
     camera_obj->add_component(
         "camera_component",
-        std::make_shared<Camera>(camera_obj.get(), main_window->gl_canvas()));
+        std::make_shared<Camera>(camera_obj.get(), main_window_->gl_canvas()));
     camera_obj->add_component("background_component",
                               std::make_shared<Background>(
-                                  camera_obj.get(), main_window->gl_canvas()));
+                                  camera_obj.get(), main_window_->gl_canvas()));
 
     all_game_objects["camera"] = camera_obj;
 
@@ -76,10 +106,10 @@ bool Stage::initialize(const BufferParams& params)
 
     buffer_obj->add_component("text_component",
                               std::make_shared<BufferValues>(
-                                  buffer_obj.get(), main_window->gl_canvas()));
+                                  buffer_obj.get(), main_window_->gl_canvas()));
 
     const auto buffer_component =
-        std::make_shared<Buffer>(buffer_obj.get(), main_window->gl_canvas());
+        std::make_shared<Buffer>(buffer_obj.get(), main_window_->gl_canvas());
 
     buffer_component->buffer   = params.buffer;
     buffer_component->channels = params.channels;

@@ -461,7 +461,7 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
     gl_canvas_->glActiveTexture(GL_TEXTURE0);
 
     buff_prog_.uniform1i("sampler", 0);
-    if (game_object_->get_stage()->contrast_enabled) {
+    if (game_object_->get_stage()->get_contrast_enabled()) {
         buff_prog_.uniform4fv(
             "brightness_contrast", 2, auto_buffer_contrast_brightness_.data());
     } else {
