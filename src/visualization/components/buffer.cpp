@@ -27,6 +27,7 @@
 
 #include <array>
 #include <bit>
+#include <iostream>
 #include <limits>
 #include <string>
 
@@ -40,6 +41,26 @@
 
 namespace oid
 {
+
+namespace
+{
+
+// Helper function to validate buffer dimension
+bool validate_dimension(const int dimension,
+                        const char* dimension_name,
+                        const int min_value,
+                        const int max_value)
+{
+    if (dimension < min_value || dimension > max_value) {
+        std::cerr << "[Error] Invalid buffer " << dimension_name << ": "
+                  << dimension << " (must be between " << min_value << " and "
+                  << max_value << ")" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+} // namespace
 
 constexpr std::array<float, 8>
     Buffer::no_ac_params{1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -297,6 +318,67 @@ int Buffer::sub_texture_id_at_coord(const int x, const int y) const
 
 void Buffer::configure(const BufferParams& params)
 {
+    // Validate buffer pointer
+    if (params.buffer == nullptr) {
+        std::cerr << "[Error] Buffer pointer is null" << std::endl;
+        return;
+    }
+
+    // Validate dimensions
+    if (!validate_dimension(params.buffer_width_i,
+                            "width",
+                            BufferConstants::MIN_BUFFER_DIMENSION,
+                            BufferConstants::MAX_BUFFER_DIMENSION)) {
+        return;
+    }
+
+    if (!validate_dimension(params.buffer_height_i,
+                            "height",
+                            BufferConstants::MIN_BUFFER_DIMENSION,
+                            BufferConstants::MAX_BUFFER_DIMENSION)) {
+        return;
+    }
+
+    // Validate channel count
+    if (params.channels < BufferConstants::MIN_CHANNELS ||
+        params.channels > BufferConstants::MAX_CHANNELS) {
+        std::cerr << "[Error] Invalid channel count: " << params.channels
+                  << " (must be between " << BufferConstants::MIN_CHANNELS
+                  << " and " << BufferConstants::MAX_CHANNELS << ")"
+                  << std::endl;
+        return;
+    }
+
+    // Validate step (must be positive and at least as large as channels)
+    if (params.step < params.channels) {
+        std::cerr << "[Error] Invalid step: " << params.step
+                  << " (must be >= channels: " << params.channels << ")"
+                  << std::endl;
+        return;
+    }
+
+    // Validate buffer size (prevent potential DoS)
+    // Calculate: width * height * step (step is stride in bytes per row)
+    // Use checked multiplication to prevent overflow
+    const auto width_u  = static_cast<std::size_t>(params.buffer_width_i);
+    const auto height_u = static_cast<std::size_t>(params.buffer_height_i);
+    const auto step_u   = static_cast<std::size_t>(params.step);
+
+    // Check for potential overflow before multiplication
+    if (width_u > 0 && height_u > BufferConstants::MAX_BUFFER_SIZE / width_u) {
+        std::cerr << "[Error] Buffer dimensions too large (would overflow)"
+                  << std::endl;
+        return;
+    }
+
+    if (const auto buffer_size = width_u * height_u * step_u;
+        buffer_size > BufferConstants::MAX_BUFFER_SIZE) {
+        std::cerr << "[Error] Buffer size too large: " << buffer_size
+                  << " bytes (maximum: " << BufferConstants::MAX_BUFFER_SIZE
+                  << " bytes)" << std::endl;
+        return;
+    }
+
     buffer          = params.buffer;
     channels        = params.channels;
     type            = params.type;
