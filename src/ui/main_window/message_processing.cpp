@@ -219,13 +219,15 @@ void MainWindow::decode_plot_buffer_contents()
 
     // Construct a new list widget if needed
     if (auto item = find_image_list_item(variable_name_str); item == nullptr) {
-        item = std::make_unique<QListWidgetItem>(label_str.c_str(),
-                                                 ui_components_.ui->imageList)
-                   .release();
-        item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
-        item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
-                       Qt::ItemIsDragEnabled);
-        ui_components_.ui->imageList->addItem(item);
+        // Create item with unique_ptr to manage ownership until addItem takes
+        // it
+        auto new_item = std::make_unique<QListWidgetItem>(
+            label_str.c_str(), ui_components_.ui->imageList);
+        new_item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
+        new_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
+                           Qt::ItemIsDragEnabled);
+        // addItem() takes ownership, so release() is safe here
+        ui_components_.ui->imageList->addItem(new_item.release());
     }
 
     // Update icon and text of corresponding item in image list
