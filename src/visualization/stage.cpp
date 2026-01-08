@@ -309,6 +309,14 @@ EventProcessCode Stage::key_press_event(const int key_code) const
 }
 
 
+void Stage::request_render_update() const
+{
+    if (main_window_ != nullptr) {
+        main_window_->request_render_update();
+    }
+}
+
+
 void Stage::go_to_pixel(const float x, const float y) const
 {
     const auto camera_component = get_camera_component(all_game_objects);
