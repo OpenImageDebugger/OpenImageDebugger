@@ -68,7 +68,7 @@ constexpr std::array<float, 8>
 
 Buffer::Buffer(GameObject& game_object, GLCanvas& gl_canvas)
     : Component{game_object, gl_canvas}
-    , buff_prog_{&gl_canvas}
+    , buff_prog_{gl_canvas}
 {
 }
 
