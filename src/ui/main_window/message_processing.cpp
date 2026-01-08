@@ -191,7 +191,7 @@ void MainWindow::decode_plot_buffer_contents()
         buffer_stage == buffer_data_.stages.end()) {
 
         // Construct a new stage buffer if needed
-        auto stage = std::make_shared<Stage>(this);
+        auto stage = std::make_shared<Stage>(*this);
         if (const BufferParams params{buff_ptr,
                                       buff_width,
                                       buff_height,
@@ -242,7 +242,7 @@ void MainWindow::decode_plot_buffer_contents()
     update_image_list_label(variable_name_str, label_str);
 
     // Update AC values
-    if (buffer_data_.currently_selected_stage != nullptr) {
+    if (!buffer_data_.currently_selected_stage.expired()) {
         reset_ac_min_labels();
         reset_ac_max_labels();
     }

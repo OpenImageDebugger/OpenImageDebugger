@@ -31,6 +31,7 @@
 #include <memory>
 #include <span>
 
+#include <QPointer>
 #include <QTcpSocket>
 
 #include "raw_data_decode.h"
@@ -149,7 +150,8 @@ class MessageComposer
     {
         assert_primitive_type<PrimitiveType>();
 
-        message_blocks_.emplace_back(new PrimitiveBlock<PrimitiveType>(value));
+        message_blocks_.emplace_back(
+            std::make_unique<PrimitiveBlock<PrimitiveType>>(value));
 
         return *this;
     }
@@ -157,8 +159,8 @@ class MessageComposer
     MessageComposer& push(const uint8_t* buffer, const std::size_t size)
     {
         push(size);
-        message_blocks_.emplace_back(
-            new BufferBlock(std::span<const uint8_t>{buffer, size}));
+        message_blocks_.emplace_back(std::make_unique<BufferBlock>(
+            std::span<const uint8_t>{buffer, size}));
 
         return *this;
     }
@@ -231,10 +233,11 @@ class MessageDecoder
     }
 
   private:
-    QTcpSocket* socket_{};
+    QPointer<QTcpSocket> socket_{};
 
     void read_impl(char* dst, const std::size_t read_length) const
     {
+        assert(!socket_.isNull() && "socket_ must be valid");
         auto offset = std::size_t{0};
         do {
             offset += socket_->read(dst + offset,
@@ -252,7 +255,7 @@ inline MessageComposer&
 MessageComposer::push<std::string>(const std::string& value)
 {
     push(value.size());
-    message_blocks_.emplace_back(new StringBlock(value));
+    message_blocks_.emplace_back(std::make_unique<StringBlock>(value));
     return *this;
 }
 

@@ -41,11 +41,11 @@ class Camera final : public Component
 
     Camera(const Camera& cam);
 
-    Camera(Camera&& cam) = default;
+    Camera(Camera&& cam) noexcept;
 
     Camera& operator=(const Camera& cam);
 
-    Camera& operator=(Camera&& cam) = default;
+    Camera& operator=(Camera&& cam) noexcept;
 
     static constexpr float zoom_factor{1.1f};
 

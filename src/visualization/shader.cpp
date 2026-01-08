@@ -33,14 +33,14 @@ namespace oid
 {
 
 ShaderProgram::ShaderProgram(GLCanvas& gl_canvas)
-    : gl_canvas_{&gl_canvas}
+    : gl_canvas_{gl_canvas}
 {
 }
 
 
 ShaderProgram::~ShaderProgram()
 {
-    gl_canvas_->glDeleteProgram(program_);
+    gl_canvas_.glDeleteProgram(program_);
 }
 
 
@@ -84,7 +84,7 @@ bool ShaderProgram::create(const char* v_source,
             return true;
         }
         // Delete old program
-        gl_canvas_->glDeleteProgram(program_);
+        gl_canvas_.glDeleteProgram(program_);
     }
 
     texel_format_ = texel_format;
@@ -97,26 +97,26 @@ bool ShaderProgram::create(const char* v_source,
         return false;
     }
 
-    program_ = gl_canvas_->glCreateProgram();
-    gl_canvas_->glAttachShader(program_, vertex_shader);
-    gl_canvas_->glAttachShader(program_, fragment_shader);
-    gl_canvas_->glLinkProgram(program_);
+    program_ = gl_canvas_.glCreateProgram();
+    gl_canvas_.glAttachShader(program_, vertex_shader);
+    gl_canvas_.glAttachShader(program_, fragment_shader);
+    gl_canvas_.glLinkProgram(program_);
 
     // Delete shaders. We don't need them anymore.
-    gl_canvas_->glDeleteShader(vertex_shader);
-    gl_canvas_->glDeleteShader(fragment_shader);
+    gl_canvas_.glDeleteShader(vertex_shader);
+    gl_canvas_.glDeleteShader(fragment_shader);
 
     // Check for link errors
     auto linked = GLint{};
-    gl_canvas_->glGetProgramiv(program_, GL_LINK_STATUS, &linked);
+    gl_canvas_.glGetProgramiv(program_, GL_LINK_STATUS, &linked);
     if (!linked) {
         GLint length;
-        gl_canvas_->glGetProgramiv(program_, GL_INFO_LOG_LENGTH, &length);
+        gl_canvas_.glGetProgramiv(program_, GL_INFO_LOG_LENGTH, &length);
         auto log = std::string(length, ' ');
-        gl_canvas_->glGetProgramInfoLog(program_, length, &length, &log[0]);
+        gl_canvas_.glGetProgramInfoLog(program_, length, &length, &log[0]);
         std::cerr << "[Error] Failed to link shader program:" << std::endl
                   << log << std::endl;
-        gl_canvas_->glDeleteProgram(program_);
+        gl_canvas_.glDeleteProgram(program_);
         program_ = 0;
         return false;
     }
@@ -124,7 +124,7 @@ bool ShaderProgram::create(const char* v_source,
     // Get uniform locations
     for (const auto& name : uniforms) {
         const auto loc =
-            gl_canvas_->glGetUniformLocation(program_, name.c_str());
+            gl_canvas_.glGetUniformLocation(program_, name.c_str());
         uniforms_[name] = loc;
     }
 
@@ -134,7 +134,7 @@ bool ShaderProgram::create(const char* v_source,
 
 void ShaderProgram::uniform1i(const std::string& name, const int value) const
 {
-    gl_canvas_->glUniform1i(static_cast<GLint>(uniforms_.at(name)), value);
+    gl_canvas_.glUniform1i(static_cast<GLint>(uniforms_.at(name)), value);
 }
 
 
@@ -142,7 +142,7 @@ void ShaderProgram::uniform2f(const std::string& name,
                               const float x,
                               const float y) const
 {
-    gl_canvas_->glUniform2f(static_cast<GLint>(uniforms_.at(name)), x, y);
+    gl_canvas_.glUniform2f(static_cast<GLint>(uniforms_.at(name)), x, y);
 }
 
 
@@ -150,7 +150,7 @@ void ShaderProgram::uniform3fv(const std::string& name,
                                const int count,
                                const float* data) const
 {
-    gl_canvas_->glUniform3fv(
+    gl_canvas_.glUniform3fv(
         static_cast<GLint>(uniforms_.at(name)), count, data);
 }
 
@@ -159,7 +159,7 @@ void ShaderProgram::uniform4fv(const std::string& name,
                                const int count,
                                const float* data) const
 {
-    gl_canvas_->glUniform4fv(
+    gl_canvas_.glUniform4fv(
         static_cast<GLint>(uniforms_.at(name)), count, data);
 }
 
@@ -169,14 +169,14 @@ void ShaderProgram::uniform_matrix4fv(const std::string& name,
                                       const GLboolean transpose,
                                       const float* value) const
 {
-    gl_canvas_->glUniformMatrix4fv(
+    gl_canvas_.glUniformMatrix4fv(
         static_cast<GLint>(uniforms_.at(name)), count, transpose, value);
 }
 
 
 void ShaderProgram::use() const
 {
-    gl_canvas_->glUseProgram(program_);
+    gl_canvas_.glUseProgram(program_);
 }
 
 
@@ -199,7 +199,7 @@ const char* ShaderProgram::get_texel_format_define() const
 
 GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const
 {
-    const auto shader = gl_canvas_->glCreateShader(type);
+    const auto shader = gl_canvas_.glCreateShader(type);
 
     auto src = std::array{"#version 120\n",
                           get_texel_format_define(),
@@ -207,17 +207,17 @@ GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const
                           pixel_layout_.data(),
                           source};
 
-    gl_canvas_->glShaderSource(shader, 5, src.data(), nullptr);
-    gl_canvas_->glCompileShader(shader);
+    gl_canvas_.glShaderSource(shader, 5, src.data(), nullptr);
+    gl_canvas_.glCompileShader(shader);
 
     auto compiled = GLint{};
-    gl_canvas_->glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+    gl_canvas_.glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 
     if (!compiled) {
         GLint length;
-        gl_canvas_->glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+        gl_canvas_.glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
         auto log = std::string(length, ' ');
-        gl_canvas_->glGetShaderInfoLog(shader, length, &length, &log[0]);
+        gl_canvas_.glGetShaderInfoLog(shader, length, &length, &log[0]);
         std::cerr << "Failed to compile shader_type: " + get_shader_type(type)
                   << std::endl
                   << log << std::endl;

@@ -30,6 +30,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "visualization/components/buffer.h"
@@ -45,13 +46,14 @@ class GameObject;
 class Stage
 {
   public:
-    explicit Stage(MainWindow* main_window);
+    explicit Stage(MainWindow& main_window);
 
     bool initialize(const BufferParams& params);
 
     bool buffer_update(const BufferParams& params);
 
-    GameObject* get_game_object(const std::string& tag);
+    std::optional<std::reference_wrapper<GameObject>>
+    get_game_object(const std::string& tag);
 
     void update() const;
 
@@ -81,12 +83,12 @@ class Stage
 
     [[nodiscard]] const std::vector<uint8_t>& get_buffer_icon() const;
 
-    [[nodiscard]] MainWindow* get_main_window() const;
+    [[nodiscard]] MainWindow& get_main_window() const;
 
   private:
     bool contrast_enabled_{};
     std::vector<uint8_t> buffer_icon_{};
-    MainWindow* main_window_{nullptr};
+    MainWindow& main_window_; // Non-owning reference
     std::map<std::string, std::shared_ptr<GameObject>, std::less<>>
         all_game_objects{};
 };

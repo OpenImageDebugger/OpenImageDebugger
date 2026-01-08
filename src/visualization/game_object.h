@@ -26,8 +26,10 @@
 #ifndef GAME_OBJECT_H_
 #define GAME_OBJECT_H_
 
+#include <cassert>
 #include <functional>
 #include <memory>
+#include <optional>
 
 #include "events.h"
 #include "math/linear_algebra.h"
@@ -44,9 +46,10 @@ class GameObject
   public:
     GameObject();
 
-    void set_stage(Stage* stage);
+    void set_stage(Stage& stage);
 
-    [[nodiscard]] Stage* get_stage() const;
+    [[nodiscard]] std::optional<std::reference_wrapper<Stage>>
+    get_stage() const;
 
     template <typename T>
     T* get_component(const std::string& tag)
@@ -82,7 +85,16 @@ class GameObject
     get_components() const;
 
   private:
-    Stage* stage_{nullptr};
+    std::optional<std::reference_wrapper<Stage>>
+        stage_{}; // Set via set_stage() before use
+
+    [[nodiscard]] Stage& stage() const
+    {
+        assert(stage_.has_value() &&
+               "stage_ must be set via set_stage() before use");
+        return stage_->get();
+    }
+
     std::map<std::string, std::shared_ptr<Component>, std::less<>>
         all_components_{};
     mat4 pose_{};

@@ -42,14 +42,17 @@ GameObject::GameObject()
 }
 
 
-void GameObject::set_stage(Stage* stage)
+void GameObject::set_stage(Stage& stage)
 {
-    stage_ = stage;
+    stage_ = std::ref(stage);
 }
 
 
-Stage* GameObject::get_stage() const
+std::optional<std::reference_wrapper<Stage>> GameObject::get_stage() const
 {
+    if (!stage_.has_value()) {
+        return std::nullopt;
+    }
     return stage_;
 }
 
@@ -98,8 +101,8 @@ void GameObject::set_pose(const mat4& pose)
 
 void GameObject::request_render_update() const
 {
-    if (stage_ != nullptr) {
-        stage_->request_render_update();
+    if (stage_.has_value()) {
+        stage().request_render_update();
     }
 }
 

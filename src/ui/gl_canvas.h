@@ -27,7 +27,10 @@
 #define GL_CANVAS_H_
 
 #include <array>
+#include <cassert>
+#include <functional>
 #include <memory>
+#include <optional>
 
 #include <GL/gl.h>
 
@@ -87,7 +90,7 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions
 
     [[nodiscard]] const GLTextRenderer* get_text_renderer() const;
 
-    void set_main_window(MainWindow* mw);
+    void set_main_window(MainWindow& mw);
 
     void render_buffer_icon(Stage* stage, int icon_width, int icon_height);
 
@@ -97,7 +100,15 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions
     int mouse_x_{0};
     int mouse_y_{0};
 
-    MainWindow* main_window_{nullptr};
+    std::optional<std::reference_wrapper<MainWindow>>
+        main_window_{}; // Always set via set_main_window() before use
+
+    [[nodiscard]] MainWindow& main_window() const
+    {
+        assert(main_window_.has_value() &&
+               "main_window_ must be set via set_main_window() before use");
+        return main_window_->get();
+    }
 
     GLuint icon_texture_{0};
     GLuint icon_fbo_{0};

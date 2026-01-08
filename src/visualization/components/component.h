@@ -75,9 +75,9 @@ class Component
 
     virtual ~Component();
 
-    GameObject* game_object_{};
+    GameObject& game_object_;
 
-    GLCanvas* gl_canvas_{};
+    GLCanvas& gl_canvas_;
 };
 
 } // namespace oid
