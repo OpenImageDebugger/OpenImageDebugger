@@ -354,7 +354,7 @@ float Buffer::tile_coord_y(int y) const
 
 void Buffer::update()
 {
-    const auto cam_obj = game_object_->stage->get_game_object("camera");
+    const auto cam_obj = game_object_->get_stage()->get_game_object("camera");
     const auto camera  = cam_obj->get_component<Camera>("camera_component");
     const auto zoom    = camera->compute_zoom();
 
@@ -461,7 +461,7 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
     gl_canvas_->glActiveTexture(GL_TEXTURE0);
 
     buff_prog_.uniform1i("sampler", 0);
-    if (game_object_->stage->contrast_enabled) {
+    if (game_object_->get_stage()->contrast_enabled) {
         buff_prog_.uniform4fv(
             "brightness_contrast", 2, auto_buffer_contrast_brightness_.data());
     } else {

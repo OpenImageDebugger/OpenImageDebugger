@@ -47,6 +47,21 @@
 
 using namespace oid;
 
+struct PlotBufferParams
+{
+    std::string variable_name_str;
+    std::string display_name_str;
+    std::string pixel_layout_str;
+    bool transpose_buffer;
+    int buff_width;
+    int buff_height;
+    int buff_channels;
+    int buff_stride;
+    BufferType buff_type;
+    const uint8_t* buff_ptr;
+    size_t buff_size;
+};
+
 struct UiMessage
 {
     virtual ~UiMessage() = default;
@@ -172,30 +187,20 @@ class OidBridge
         }
     }
 
-    void plot_buffer(const std::string& variable_name_str,
-                     const std::string& display_name_str,
-                     const std::string& pixel_layout_str,
-                     const bool transpose_buffer,
-                     const int buff_width,
-                     const int buff_height,
-                     const int buff_channels,
-                     const int buff_stride,
-                     const BufferType buff_type,
-                     const uint8_t* buff_ptr,
-                     const size_t buff_length) const
+    void plot_buffer(const PlotBufferParams& params) const
     {
         auto message_composer = MessageComposer{};
         message_composer.push(MessageType::PlotBufferContents)
-            .push(variable_name_str)
-            .push(display_name_str)
-            .push(pixel_layout_str)
-            .push(transpose_buffer)
-            .push(buff_width)
-            .push(buff_height)
-            .push(buff_channels)
-            .push(buff_stride)
-            .push(buff_type)
-            .push(buff_ptr, buff_length)
+            .push(params.variable_name_str)
+            .push(params.display_name_str)
+            .push(params.pixel_layout_str)
+            .push(params.transpose_buffer)
+            .push(params.buff_width)
+            .push(params.buff_height)
+            .push(params.buff_channels)
+            .push(params.buff_stride)
+            .push(params.buff_type)
+            .push(params.buff_ptr, params.buff_size)
             .send(client_);
     }
 
@@ -595,15 +600,16 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
         return;
     }
 
-    app->plot_buffer(variable_name_str,
-                     display_name_str,
-                     pixel_layout_str,
-                     transpose_buffer,
-                     buff_width,
-                     buff_height,
-                     buff_channels,
-                     buff_stride,
-                     buff_type,
-                     buff_ptr,
-                     buff_size);
+    const PlotBufferParams params{variable_name_str,
+                                  display_name_str,
+                                  pixel_layout_str,
+                                  transpose_buffer,
+                                  buff_width,
+                                  buff_height,
+                                  buff_channels,
+                                  buff_stride,
+                                  buff_type,
+                                  buff_ptr,
+                                  buff_size};
+    app->plot_buffer(params);
 }

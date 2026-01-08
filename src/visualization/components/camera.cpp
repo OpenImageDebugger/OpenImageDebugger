@@ -28,6 +28,7 @@
 #include <cmath>
 
 #include "ui/gl_canvas.h"
+#include "visualization/components/buffer.h"
 #include "visualization/events.h"
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
@@ -103,7 +104,8 @@ void Camera::update()
 
 std::pair<float, float> Camera::get_buffer_initial_dimensions() const
 {
-    const auto buffer_obj = game_object_->stage->get_game_object("buffer");
+    const auto buffer_obj =
+        game_object_->get_stage()->get_game_object("buffer");
     const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
 
     const auto buf_dim =
@@ -355,7 +357,8 @@ float Camera::compute_zoom() const
 
 void Camera::move_to(const float x, const float y)
 {
-    const auto buffer_obj = game_object_->stage->get_game_object("buffer");
+    const auto buffer_obj =
+        game_object_->get_stage()->get_game_object("buffer");
 
     const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
     const auto buf_dim =
@@ -378,7 +381,8 @@ void Camera::move_to(const float x, const float y)
 
 vec4 Camera::get_position() const
 {
-    const auto buffer_obj = game_object_->stage->get_game_object("buffer");
+    const auto buffer_obj =
+        game_object_->get_stage()->get_game_object("buffer");
 
     const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
     const auto buf_dim =

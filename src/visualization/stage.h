@@ -26,16 +26,33 @@
 #ifndef STAGE_H_
 #define STAGE_H_
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
 #include <string>
 
-#include "visualization/components/buffer.h"
+#include "ipc/raw_data_decode.h"
+#include "visualization/events.h"
 
 
 namespace oid
 {
+
+class MainWindow;
+class GameObject;
+
+struct BufferParams
+{
+    const uint8_t* buffer;
+    int buffer_width_i;
+    int buffer_height_i;
+    int channels;
+    BufferType type;
+    int step;
+    std::string pixel_layout;
+    bool transpose_buffer;
+};
 
 class Stage
 {
@@ -46,23 +63,9 @@ class Stage
 
     explicit Stage(MainWindow* main_window);
 
-    bool initialize(const uint8_t* buffer,
-                    int buffer_width_i,
-                    int buffer_height_i,
-                    int channels,
-                    BufferType type,
-                    int step,
-                    const std::string& pixel_layout,
-                    bool transpose_buffer);
+    bool initialize(const BufferParams& params);
 
-    bool buffer_update(const uint8_t* buffer,
-                       int buffer_width_i,
-                       int buffer_height_i,
-                       int channels,
-                       BufferType type,
-                       int step,
-                       const std::string& pixel_layout,
-                       bool transpose_buffer);
+    bool buffer_update(const BufferParams& params);
 
     GameObject* get_game_object(const std::string& tag);
 

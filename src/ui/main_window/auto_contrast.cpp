@@ -30,6 +30,7 @@
 #include <QLineEdit>
 
 #include "ui_main_window.h"
+#include "visualization/components/buffer.h"
 #include "visualization/game_object.h"
 
 
