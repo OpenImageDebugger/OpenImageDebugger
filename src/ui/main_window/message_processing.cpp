@@ -44,9 +44,9 @@ void MainWindow::decode_set_available_symbols()
 
     for (const auto& symbol_value : buffer_data_.available_vars) {
         // Plot buffer if it was available in the previous session
-        if (buffer_data_.previous_session_buffers.contains(
-                symbol_value.toStdString())) {
-            request_plot_buffer(symbol_value.toStdString().data());
+        const auto symbol_std_str = symbol_value.toStdString();
+        if (buffer_data_.previous_session_buffers.contains(symbol_std_str)) {
+            request_plot_buffer(symbol_std_str.data());
         }
     }
 
@@ -201,8 +201,11 @@ void MainWindow::decode_plot_buffer_contents()
                                       pixel_layout_str,
                                       transpose_buffer};
             !stage->initialize(params)) {
-            std::cerr << "[error] Could not initialize opengl canvas!"
+            std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
+                         "initialization failed."
                       << std::endl;
+            // Continue execution but mark that initialization failed
+            // The stage will not be usable, but the application can continue
         }
         stage->set_contrast_enabled(state_.ac_enabled);
         buffer_stage =
