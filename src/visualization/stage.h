@@ -32,7 +32,7 @@
 #include <memory>
 #include <string>
 
-#include "ipc/raw_data_decode.h"
+#include "visualization/components/buffer.h"
 #include "visualization/events.h"
 
 
@@ -41,18 +41,6 @@ namespace oid
 
 class MainWindow;
 class GameObject;
-
-struct BufferParams
-{
-    const uint8_t* buffer;
-    int buffer_width_i;
-    int buffer_height_i;
-    int channels;
-    BufferType type;
-    int step;
-    std::string pixel_layout;
-    bool transpose_buffer;
-};
 
 class Stage
 {
