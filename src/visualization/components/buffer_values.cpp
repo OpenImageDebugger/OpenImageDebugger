@@ -46,7 +46,7 @@ template <typename T>
 using Array_4_4 = const std::array<const std::array<T, 4>, 4>;
 
 
-BufferValues::BufferValues(GameObject* game_object, GLCanvas* gl_canvas)
+BufferValues::BufferValues(GameObject& game_object, GLCanvas& gl_canvas)
     : Component{game_object, gl_canvas}
 {
 }

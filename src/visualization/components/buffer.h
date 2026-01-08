@@ -66,7 +66,7 @@ struct BufferParams
 class Buffer final : public Component
 {
   public:
-    Buffer(GameObject* game_object, GLCanvas* gl_canvas);
+    Buffer(GameObject& game_object, GLCanvas& gl_canvas);
 
     ~Buffer() override;
 
@@ -163,7 +163,7 @@ class Buffer final : public Component
                                                           0.0f};
     float angle_{0.0f};
 
-    ShaderProgram buff_prog_{nullptr};
+    ShaderProgram buff_prog_;
     GLuint vbo_{};
 };
 

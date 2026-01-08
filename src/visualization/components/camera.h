@@ -35,7 +35,7 @@ namespace oid
 class Camera final : public Component
 {
   public:
-    Camera(GameObject* game_object, GLCanvas* gl_canvas);
+    Camera(GameObject& game_object, GLCanvas& gl_canvas);
 
     ~Camera() override = default;
 

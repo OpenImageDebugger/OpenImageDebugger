@@ -66,9 +66,9 @@ constexpr std::array<float, 8>
     Buffer::no_ac_params{1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
 
-Buffer::Buffer(GameObject* game_object, GLCanvas* gl_canvas)
+Buffer::Buffer(GameObject& game_object, GLCanvas& gl_canvas)
     : Component{game_object, gl_canvas}
-    , buff_prog_{gl_canvas}
+    , buff_prog_{&gl_canvas}
 {
 }
 
