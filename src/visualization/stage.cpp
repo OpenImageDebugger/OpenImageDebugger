@@ -26,6 +26,7 @@
 #include "stage.h"
 
 #include <algorithm>
+#include <iostream>
 #include <ranges>
 #include <set>
 #include <string>
@@ -39,6 +40,33 @@
 
 namespace oid
 {
+
+namespace
+{
+
+// Helper function to safely get the camera component
+Camera* get_camera_component(
+    const std::map<std::string, std::shared_ptr<GameObject>, std::less<>>&
+        game_objects)
+{
+    const auto camera_it = game_objects.find("camera");
+    if (camera_it == game_objects.end() || !camera_it->second) {
+        std::cerr << "[Error] Camera game object not found" << std::endl;
+        return nullptr;
+    }
+
+    const auto camera_component =
+        camera_it->second->get_component<Camera>("camera_component");
+
+    if (camera_component == nullptr) {
+        std::cerr << "[Error] Camera component not found" << std::endl;
+        return nullptr;
+    }
+
+    return camera_component;
+}
+
+} // namespace
 
 struct CompareRenderOrder
 {
@@ -130,9 +158,20 @@ bool Stage::initialize(const BufferParams& params)
 
 bool Stage::buffer_update(const BufferParams& params)
 {
-    const auto buffer_obj = all_game_objects["buffer"].get();
+    const auto buffer_it = all_game_objects.find("buffer");
+    if (buffer_it == all_game_objects.end() || !buffer_it->second) {
+        std::cerr << "[Error] Buffer game object not found" << std::endl;
+        return false;
+    }
+
+    const auto buffer_obj = buffer_it->second.get();
     const auto buffer_component =
         buffer_obj->get_component<Buffer>("buffer_component");
+
+    if (buffer_component == nullptr) {
+        std::cerr << "[Error] Buffer component not found" << std::endl;
+        return false;
+    }
 
     buffer_component->configure(params);
 
@@ -185,11 +224,18 @@ void Stage::draw()
     // TODO: use camera tags so I can have multiple cameras (useful for drawing
     // GUI)
 
-    const auto camera_obj = all_game_objects["camera"].get();
+    const auto camera_it = all_game_objects.find("camera");
+    if (camera_it == all_game_objects.end() || !camera_it->second) {
+        std::cerr << "[Error] Camera game object not found" << std::endl;
+        return;
+    }
+
+    const auto camera_obj = camera_it->second.get();
     const auto camera_component =
         camera_obj->get_component<Camera>("camera_component");
 
     if (camera_component == nullptr) {
+        std::cerr << "[Error] Camera component not found" << std::endl;
         return;
     }
 
@@ -208,20 +254,24 @@ void Stage::draw()
 }
 
 
-void Stage::scroll_callback(const float delta)
+void Stage::scroll_callback(const float delta) const
 {
-    const auto cam_obj = all_game_objects["camera"].get();
-    const auto camera_component =
-        cam_obj->get_component<Camera>("camera_component");
+    const auto camera_component = get_camera_component(all_game_objects);
+    if (camera_component == nullptr) {
+        return;
+    }
+
     camera_component->scroll_callback(delta);
 }
 
 
-void Stage::resize_callback(const int w, const int h)
+void Stage::resize_callback(const int w, const int h) const
 {
-    const auto cam_obj = all_game_objects["camera"].get();
-    const auto camera_component =
-        cam_obj->get_component<Camera>("camera_component");
+    const auto camera_component = get_camera_component(all_game_objects);
+    if (camera_component == nullptr) {
+        return;
+    }
+
     camera_component->window_resized(w, h);
 }
 
@@ -259,11 +309,12 @@ EventProcessCode Stage::key_press_event(const int key_code) const
 }
 
 
-void Stage::go_to_pixel(const float x, const float y)
+void Stage::go_to_pixel(const float x, const float y) const
 {
-    const auto cam_obj = all_game_objects["camera"].get();
-    const auto camera_component =
-        cam_obj->get_component<Camera>("camera_component");
+    const auto camera_component = get_camera_component(all_game_objects);
+    if (camera_component == nullptr) {
+        return;
+    }
 
     camera_component->move_to(x, y);
 }
