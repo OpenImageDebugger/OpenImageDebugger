@@ -56,6 +56,7 @@ void disable_inputs(const std::initializer_list<QLineEdit*>& inputs)
 
 void MainWindow::reset_ac_min_labels() const
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     const auto buffer_obj =
         buffer_data_.currently_selected_stage->get_game_object("buffer");
     const auto buffer = buffer_obj->get_component<Buffer>("buffer_component");
@@ -96,6 +97,7 @@ void MainWindow::reset_ac_min_labels() const
 
 void MainWindow::reset_ac_max_labels() const
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     const auto buffer_obj =
         buffer_data_.currently_selected_stage->get_game_object("buffer");
     const auto buffer = buffer_obj->get_component<Buffer>("buffer_component");
@@ -183,6 +185,7 @@ void MainWindow::ac_c4_max_update()
 
 void MainWindow::ac_min_reset()
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     if (buffer_data_.currently_selected_stage != nullptr) {
         const auto buffer_obj =
             buffer_data_.currently_selected_stage->get_game_object("buffer");
@@ -201,6 +204,7 @@ void MainWindow::ac_min_reset()
 
 void MainWindow::ac_max_reset()
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     if (buffer_data_.currently_selected_stage != nullptr) {
         const auto buffer_obj =
             buffer_data_.currently_selected_stage->get_game_object("buffer");
@@ -219,6 +223,7 @@ void MainWindow::ac_max_reset()
 
 void MainWindow::ac_toggle(const bool is_checked)
 {
+    const auto lock   = std::unique_lock{ui_mutex_};
     state_.ac_enabled = is_checked;
     for (const auto& stage : buffer_data_.stages | std::views::values) {
         stage->set_contrast_enabled(state_.ac_enabled);
@@ -231,6 +236,7 @@ void MainWindow::ac_toggle(const bool is_checked)
 
 void MainWindow::set_ac_min_value(const int idx, const float value)
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     if (buffer_data_.currently_selected_stage != nullptr) {
         const auto buffer_obj =
             buffer_data_.currently_selected_stage->get_game_object("buffer");
@@ -246,6 +252,7 @@ void MainWindow::set_ac_min_value(const int idx, const float value)
 
 void MainWindow::set_ac_max_value(const int idx, const float value)
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     if (buffer_data_.currently_selected_stage != nullptr) {
         const auto buffer_obj =
             buffer_data_.currently_selected_stage->get_game_object("buffer");

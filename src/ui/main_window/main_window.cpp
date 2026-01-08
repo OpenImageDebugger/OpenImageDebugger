@@ -86,6 +86,7 @@ void MainWindow::showWindow()
 
 void MainWindow::draw() const
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     if (buffer_data_.currently_selected_stage != nullptr) {
         buffer_data_.currently_selected_stage->draw();
     }
@@ -108,6 +109,7 @@ QSizeF MainWindow::get_icon_size() const
 
 bool MainWindow::is_window_ready() const
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     return ui_components_.ui->bufferPreview->is_ready() &&
            state_.is_window_ready;
 }
@@ -117,6 +119,7 @@ void MainWindow::loop()
 {
     decode_incoming_messages();
 
+    const auto lock = std::unique_lock{ui_mutex_};
     if (state_.completer_updated) {
         // Update auto-complete suggestion list
         ui_components_.symbol_completer->update_symbol_list(
@@ -150,12 +153,14 @@ void MainWindow::loop()
 
 void MainWindow::request_render_update()
 {
+    const auto lock              = std::unique_lock{ui_mutex_};
     state_.request_render_update = true;
 }
 
 
 void MainWindow::request_icons_update()
 {
+    const auto lock             = std::unique_lock{ui_mutex_};
     state_.request_icons_update = true;
 }
 
@@ -178,6 +183,7 @@ void MainWindow::persist_settings()
     const auto now             = QDateTime::currentDateTime();
     const auto next_expiration = now.addDays(1);
 
+    const auto lock = std::unique_lock{ui_mutex_};
     // Of the buffers not currently being visualized, only keep those whose
     // timer hasn't expired yet and is not in the set of removed names
     for (const auto& prev_buff : previous_session_buffers_qlist) {
@@ -246,7 +252,7 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
 {
     const auto cam_obj =
         buffer_data_.currently_selected_stage->get_game_object("camera");
-    const auto cam     = cam_obj->get_component<Camera>("camera_component");
+    const auto cam = cam_obj->get_component<Camera>("camera_component");
 
     const auto buffer_obj =
         buffer_data_.currently_selected_stage->get_game_object("buffer");
@@ -361,6 +367,7 @@ void MainWindow::persist_settings_deferred()
 
 void MainWindow::set_currently_selected_stage(Stage* stage)
 {
+    const auto lock                       = std::unique_lock{ui_mutex_};
     buffer_data_.currently_selected_stage = stage;
     state_.request_render_update          = true;
 }

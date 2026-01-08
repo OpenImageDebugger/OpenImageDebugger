@@ -56,6 +56,7 @@ void MainWindow::decode_set_available_symbols()
 
 void MainWindow::respond_get_observed_symbols()
 {
+    const auto lock       = std::unique_lock{ui_mutex_};
     auto message_composer = MessageComposer{};
     message_composer.push(MessageType::GetObservedSymbolsResponse)
         .push(buffer_data_.held_buffers.size());
@@ -84,6 +85,7 @@ MainWindow::find_image_list_item(const std::string& variable_name_str) const
 
 void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
 {
+    const auto lock    = std::unique_lock{ui_mutex_};
     const auto itStage = buffer_data_.stages.find(variable_name_str);
     if (itStage == buffer_data_.stages.end()) {
         return;
@@ -152,6 +154,8 @@ void MainWindow::decode_plot_buffer_contents()
         .read(buff_stride)
         .read(buff_type)
         .read(buff_contents);
+
+    const auto lock = std::unique_lock{ui_mutex_};
 
     // Put the data buffer into the container
     if (buff_type == BufferType::Float64) {
@@ -254,7 +258,10 @@ void MainWindow::decode_incoming_messages()
         QApplication::quit();
     }
 
-    buffer_data_.available_vars.clear();
+    {
+        const auto lock = std::unique_lock{ui_mutex_};
+        buffer_data_.available_vars.clear();
+    }
 
     if (socket_.bytesAvailable() == 0) {
         return;
