@@ -57,9 +57,9 @@ class Stage
 
     void draw();
 
-    void scroll_callback(float delta);
+    void scroll_callback(float delta) const;
 
-    void resize_callback(int w, int h);
+    void resize_callback(int w, int h) const;
 
     void mouse_drag_event(int mouse_x, int mouse_y) const;
 
@@ -67,7 +67,7 @@ class Stage
 
     [[nodiscard]] EventProcessCode key_press_event(int key_code) const;
 
-    void go_to_pixel(float x, float y);
+    void go_to_pixel(float x, float y) const;
 
     void set_icon_drawing_mode(bool is_enabled);
 
