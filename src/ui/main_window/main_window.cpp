@@ -102,8 +102,8 @@ GLCanvas* MainWindow::gl_canvas() const
 QSizeF MainWindow::get_icon_size() const
 {
     const auto screen_dpi_scale = get_screen_dpi_scale();
-    return {icon_width_base_ * screen_dpi_scale,
-            icon_height_base_ * screen_dpi_scale};
+    return {UIConstants::ICON_WIDTH_BASE * screen_dpi_scale,
+            UIConstants::ICON_HEIGHT_BASE * screen_dpi_scale};
 }
 
 
