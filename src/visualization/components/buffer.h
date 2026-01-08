@@ -42,6 +42,13 @@ namespace BufferConstants
 {
 constexpr int MAX_TEXTURE_SIZE        = 2048;
 constexpr float ZOOM_BORDER_THRESHOLD = 40.0f;
+constexpr int MIN_BUFFER_DIMENSION    = 1;
+constexpr int MAX_BUFFER_DIMENSION =
+    131072; // 2^17 = 128K (closest power of 2 to 100k)
+constexpr int MIN_CHANNELS = 1;
+constexpr int MAX_CHANNELS = 4;
+constexpr std::size_t MAX_BUFFER_SIZE =
+    16ULL * 1024ULL * 1024ULL * 1024ULL; // 16GB
 } // namespace BufferConstants
 
 struct BufferParams
