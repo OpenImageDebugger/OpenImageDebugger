@@ -29,6 +29,7 @@
 
 #include <bit>
 #include <deque>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -103,8 +104,8 @@ class PyGILRAII
 class OidBridge
 {
   public:
-    explicit OidBridge(int (*plot_callback)(const char*))
-        : plot_callback_{plot_callback}
+    explicit OidBridge(std::function<int(const char*)> plot_callback)
+        : plot_callback_{std::move(plot_callback)}
     {
     }
 
@@ -112,7 +113,6 @@ class OidBridge
     {
         // Initialize server
         if (!server_.listen(QHostAddress::Any)) {
-            // TODO escalate error
             std::cerr << "[OpenImageDebugger] Could not start TCP server"
                       << std::endl;
             return false;
@@ -183,7 +183,9 @@ class OidBridge
             const PlotBufferRequestMessage* msg =
                 dynamic_cast<PlotBufferRequestMessage*>(
                     plot_request_message.get());
-            plot_callback_(msg->buffer_name.c_str());
+            if (plot_callback_) {
+                plot_callback_(msg->buffer_name.c_str());
+            }
         }
     }
 
@@ -215,7 +217,7 @@ class OidBridge
     QTcpSocket* client_{nullptr};
     std::string oid_path_{};
 
-    int (*plot_callback_)(const char*){};
+    std::function<int(const char*)> plot_callback_{};
 
     std::map<MessageType, std::unique_ptr<UiMessage>> received_messages_{};
 
@@ -338,7 +340,10 @@ AppHandler oid_initialize(int (*plot_callback)(const char*),
     const auto py_oid_path =
         PyDict_GetItemString(optional_parameters, "oid_path");
 
-    auto app = std::make_unique<OidBridge>(plot_callback);
+    std::function<int(const char*)> callback =
+        plot_callback ? std::function<int(const char*)>{plot_callback}
+                      : std::function<int(const char*)>{};
+    auto app = std::make_unique<OidBridge>(std::move(callback));
 
     if (py_oid_path) {
         auto oid_path_str = std::string{};
