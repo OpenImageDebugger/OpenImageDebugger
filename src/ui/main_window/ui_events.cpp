@@ -43,6 +43,7 @@ namespace oid
 
 void MainWindow::resize_callback(const int w, const int h) const
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     for (const auto& stage : buffer_data_.stages | std::views::values) {
         stage->resize_callback(w, h);
     }
@@ -57,6 +58,7 @@ void MainWindow::resize_callback(const int w, const int h) const
 
 void MainWindow::scroll_callback(const float delta)
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
             stage->scroll_callback(delta);
@@ -78,6 +80,7 @@ void MainWindow::mouse_drag_event(const int mouse_x, const int mouse_y)
 {
     const auto virtual_motion = QPoint{mouse_x, mouse_y};
 
+    const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
             stage->mouse_drag_event(virtual_motion.x(), virtual_motion.y());
@@ -111,6 +114,7 @@ void MainWindow::moveEvent(QMoveEvent*)
 
 void MainWindow::closeEvent(QCloseEvent*)
 {
+    const auto lock        = std::unique_lock{ui_mutex_};
     state_.is_window_ready = false;
     persist_settings_deferred();
 }
@@ -120,6 +124,7 @@ void MainWindow::propagate_key_press_event(
     const QKeyEvent* key_event,
     EventProcessCode& event_intercepted) const
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     for (const auto& stage : buffer_data_.stages | std::views::values) {
         if (stage->key_press_event(key_event->key()) ==
             EventProcessCode::INTERCEPTED) {
@@ -138,6 +143,7 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
 
         auto event_intercepted = EventProcessCode::IGNORED;
 
+        const auto lock = std::unique_lock{ui_mutex_};
         if (state_.link_views_enabled) {
             propagate_key_press_event(key_event, event_intercepted);
         } else if (buffer_data_.currently_selected_stage != nullptr) {
@@ -163,6 +169,7 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
 
 void MainWindow::recenter_buffer()
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
             const auto cam_obj = stage->get_game_object("camera");
@@ -185,6 +192,7 @@ void MainWindow::recenter_buffer()
 
 void MainWindow::link_views_toggle()
 {
+    const auto lock           = std::unique_lock{ui_mutex_};
     state_.link_views_enabled = !state_.link_views_enabled;
 }
 
@@ -198,6 +206,7 @@ void MainWindow::decrease_float_precision()
         buffer_comp->decrease_float_precision();
     };
 
+    const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
             shift_precision_left_impl(stage.get());
@@ -221,6 +230,7 @@ void MainWindow::increase_float_precision()
         buffer_comp->increase_float_precision();
     };
 
+    const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
             shift_precision_right_impl(stage.get());
@@ -236,6 +246,7 @@ void MainWindow::increase_float_precision()
 
 void MainWindow::update_shift_precision() const
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     if (buffer_data_.currently_selected_stage != nullptr) {
         const auto buffer_obj =
             buffer_data_.currently_selected_stage->get_game_object("buffer");
@@ -266,6 +277,7 @@ void MainWindow::rotate_90_cw()
         buffer_comp->rotate(90.0f * static_cast<float>(M_PI) / 180.0f);
     };
 
+    const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
             request_90_cw_rotation(stage.get());
@@ -290,6 +302,7 @@ void MainWindow::rotate_90_ccw()
         buffer_comp->rotate(-90.0f * static_cast<float>(M_PI) / 180.0f);
     };
 
+    const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
             request_90_ccw_rotation(stage.get());
@@ -310,6 +323,7 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
         return;
     }
 
+    const auto lock  = std::unique_lock{ui_mutex_};
     const auto stage = buffer_data_.stages.find(
         item->data(Qt::UserRole).toString().toStdString());
     if (stage != buffer_data_.stages.end()) {
@@ -324,6 +338,7 @@ void MainWindow::buffer_selected(QListWidgetItem* item)
 
 void MainWindow::remove_selected_buffer()
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     if (ui_components_.ui->imageList->count() > 0 &&
         buffer_data_.currently_selected_stage != nullptr) {
         auto removed_item = std::unique_ptr<QListWidgetItem>{
@@ -355,7 +370,7 @@ void MainWindow::symbol_selected()
 
     const auto symbol_name_qba =
         ui_components_.ui->symbolList->text().toLocal8Bit();
-    const auto symbol_name     = symbol_name_qba.constData();
+    const auto symbol_name = symbol_name_qba.constData();
     request_plot_buffer(symbol_name);
     // Clear symbol input
     ui_components_.ui->symbolList->setText("");
@@ -380,6 +395,7 @@ void MainWindow::export_buffer()
 {
     const auto sender_action(dynamic_cast<QAction*>(sender()));
 
+    const auto lock  = std::unique_lock{ui_mutex_};
     const auto stage = buffer_data_.stages
                            .find(sender_action->data().toString().toStdString())
                            ->second;
@@ -455,6 +471,7 @@ void MainWindow::show_context_menu(const QPoint& pos)
 
 void MainWindow::toggle_go_to_dialog() const
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     if (!ui_components_.go_to_widget->isVisible()) {
         auto default_goal = vec4{0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -477,6 +494,7 @@ void MainWindow::toggle_go_to_dialog() const
 
 void MainWindow::go_to_pixel(const float x, const float y)
 {
+    const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
             stage->go_to_pixel(x, y);

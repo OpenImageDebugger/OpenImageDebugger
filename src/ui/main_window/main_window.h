@@ -222,7 +222,15 @@ class MainWindow final : public QMainWindow
     const int icon_height_base_{75};
     double render_framerate_{};
     QString default_export_suffix_{};
-    std::mutex ui_mutex_{};
+    // Thread safety: All access to buffer_data_ and state_ must be protected by
+    // ui_mutex_. This mutex is recursive to allow nested locking when helper
+    // methods are called from already-locked contexts (e.g.,
+    // repaint_image_list_icon called from loop). All UI operations must run on
+    // the main thread (Qt requirement), and this mutex protects against
+    // concurrent access from message decoding, event handlers, and timer
+    // callbacks. Mutable to allow locking in const member functions - locking
+    // doesn't change logical state.
+    mutable std::recursive_mutex ui_mutex_{};
     ConnectionSettings host_settings_{};
     QTcpSocket socket_{};
 
