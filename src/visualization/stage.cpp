@@ -55,18 +55,11 @@ Stage::Stage(MainWindow* main_window)
 }
 
 
-bool Stage::initialize(const uint8_t* buffer,
-                       const int buffer_width_i,
-                       const int buffer_height_i,
-                       const int channels,
-                       const BufferType type,
-                       const int step,
-                       const std::string& pixel_layout,
-                       const bool transpose_buffer)
+bool Stage::initialize(const BufferParams& params)
 {
     const auto camera_obj = std::make_shared<GameObject>();
 
-    camera_obj->stage = this;
+    camera_obj->set_stage(this);
 
     camera_obj->add_component(
         "camera_component",
@@ -79,7 +72,7 @@ bool Stage::initialize(const uint8_t* buffer,
 
     const auto buffer_obj = std::make_shared<GameObject>();
 
-    buffer_obj->stage = this;
+    buffer_obj->set_stage(this);
 
     buffer_obj->add_component("text_component",
                               std::make_shared<BufferValues>(
@@ -88,14 +81,16 @@ bool Stage::initialize(const uint8_t* buffer,
     const auto buffer_component =
         std::make_shared<Buffer>(buffer_obj.get(), main_window->gl_canvas());
 
-    buffer_component->buffer          = buffer;
-    buffer_component->channels        = channels;
-    buffer_component->type            = type;
-    buffer_component->buffer_width_f  = static_cast<float>(buffer_width_i);
-    buffer_component->buffer_height_f = static_cast<float>(buffer_height_i);
-    buffer_component->step            = step;
-    buffer_component->transpose       = transpose_buffer;
-    buffer_component->set_pixel_layout(pixel_layout);
+    buffer_component->buffer   = params.buffer;
+    buffer_component->channels = params.channels;
+    buffer_component->type     = params.type;
+    buffer_component->buffer_width_f =
+        static_cast<float>(params.buffer_width_i);
+    buffer_component->buffer_height_f =
+        static_cast<float>(params.buffer_height_i);
+    buffer_component->step      = params.step;
+    buffer_component->transpose = params.transpose_buffer;
+    buffer_component->set_pixel_layout(params.pixel_layout);
     buffer_obj->add_component("buffer_component", buffer_component);
 
     all_game_objects["buffer"] = buffer_obj;
@@ -112,31 +107,26 @@ bool Stage::initialize(const uint8_t* buffer,
 }
 
 
-bool Stage::buffer_update(const uint8_t* buffer,
-                          const int buffer_width_i,
-                          const int buffer_height_i,
-                          const int channels,
-                          const BufferType type,
-                          const int step,
-                          const std::string& pixel_layout,
-                          const bool transpose_buffer)
+bool Stage::buffer_update(const BufferParams& params)
 {
     const auto buffer_obj = all_game_objects["buffer"].get();
     const auto buffer_component =
         buffer_obj->get_component<Buffer>("buffer_component");
 
-    buffer_component->buffer          = buffer;
-    buffer_component->channels        = channels;
-    buffer_component->type            = type;
-    buffer_component->buffer_width_f  = static_cast<float>(buffer_width_i);
-    buffer_component->buffer_height_f = static_cast<float>(buffer_height_i);
-    buffer_component->step            = step;
-    buffer_component->transpose       = transpose_buffer;
-    buffer_component->set_pixel_layout(pixel_layout);
+    buffer_component->buffer   = params.buffer;
+    buffer_component->channels = params.channels;
+    buffer_component->type     = params.type;
+    buffer_component->buffer_width_f =
+        static_cast<float>(params.buffer_width_i);
+    buffer_component->buffer_height_f =
+        static_cast<float>(params.buffer_height_i);
+    buffer_component->step      = params.step;
+    buffer_component->transpose = params.transpose_buffer;
+    buffer_component->set_pixel_layout(params.pixel_layout);
 
     for (const auto& game_obj_it : all_game_objects | std::views::values) {
         const auto game_obj = game_obj_it.get();
-        game_obj->stage     = this;
+        game_obj->set_stage(this);
         for (const auto& comp :
              game_obj->get_components() | std::views::values) {
             if (!comp->buffer_update()) {

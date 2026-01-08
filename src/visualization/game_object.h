@@ -31,7 +31,9 @@
 
 #include "events.h"
 #include "math/linear_algebra.h"
-#include "stage.h"
+#include "visualization/components/component.h"
+
+class Stage;
 
 
 namespace oid
@@ -40,9 +42,11 @@ namespace oid
 class GameObject
 {
   public:
-    Stage* stage{nullptr};
-
     GameObject();
+
+    void set_stage(Stage* stage);
+
+    [[nodiscard]] Stage* get_stage() const;
 
     template <typename T>
     T* get_component(const std::string& tag)
@@ -78,6 +82,7 @@ class GameObject
     get_components() const;
 
   private:
+    Stage* stage_{nullptr};
     std::map<std::string, std::shared_ptr<Component>, std::less<>>
         all_components_{};
     mat4 pose_{};

@@ -43,6 +43,18 @@ GameObject::GameObject()
 }
 
 
+void GameObject::set_stage(Stage* stage)
+{
+    stage_ = stage;
+}
+
+
+Stage* GameObject::get_stage() const
+{
+    return stage_;
+}
+
+
 bool GameObject::initialize() const
 {
     return std::ranges::all_of(all_components_, [](const auto& comp) {
@@ -87,7 +99,7 @@ void GameObject::set_pose(const mat4& pose)
 
 void GameObject::request_render_update() const
 {
-    stage->main_window->request_render_update();
+    stage_->main_window->request_render_update();
 }
 
 

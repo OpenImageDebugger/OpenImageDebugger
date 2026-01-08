@@ -188,14 +188,15 @@ void MainWindow::decode_plot_buffer_contents()
 
         // Construct a new stage buffer if needed
         auto stage = std::make_shared<Stage>(this);
-        if (!stage->initialize(buff_ptr,
-                               buff_width,
-                               buff_height,
-                               buff_channels,
-                               buff_type,
-                               buff_stride,
-                               pixel_layout_str,
-                               transpose_buffer)) {
+        if (const BufferParams params{buff_ptr,
+                                      buff_width,
+                                      buff_height,
+                                      buff_channels,
+                                      buff_type,
+                                      buff_stride,
+                                      pixel_layout_str,
+                                      transpose_buffer};
+            !stage->initialize(params)) {
             std::cerr << "[error] Could not initialize opengl canvas!"
                       << std::endl;
         }
@@ -205,14 +206,15 @@ void MainWindow::decode_plot_buffer_contents()
     } else {
 
         // Update buffer data
-        buffer_stage->second->buffer_update(buff_ptr,
-                                            buff_width,
-                                            buff_height,
-                                            buff_channels,
-                                            buff_type,
-                                            buff_stride,
-                                            pixel_layout_str,
-                                            transpose_buffer);
+        const BufferParams params{buff_ptr,
+                                  buff_width,
+                                  buff_height,
+                                  buff_channels,
+                                  buff_type,
+                                  buff_stride,
+                                  pixel_layout_str,
+                                  transpose_buffer};
+        buffer_stage->second->buffer_update(params);
     }
 
     // Construct a new list widget if needed
