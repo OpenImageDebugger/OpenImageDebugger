@@ -269,11 +269,11 @@ void BufferValues::draw_text(const DrawTextParams& params)
 
     const GLuint buff_tex = buffer_component->sub_texture_id_at_coord(
         x_plus_half_buffer_width, y_plus_half_buffer_height);
-    glBindTexture(GL_TEXTURE_2D, buff_tex);
+    gl_canvas_->glBindTexture(GL_TEXTURE_2D, buff_tex);
     text_renderer->text_prog.uniform1i("buff_sampler", 0);
 
     gl_canvas_->glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, text_renderer->text_tex);
+    gl_canvas_->glBindTexture(GL_TEXTURE_2D, text_renderer->text_tex);
     text_renderer->text_prog.uniform1i("text_sampler", 1);
 
     text_renderer->text_prog.uniform_matrix4fv(

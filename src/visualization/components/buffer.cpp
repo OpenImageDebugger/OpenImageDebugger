@@ -64,7 +64,7 @@ Buffer::~Buffer()
 bool Buffer::buffer_update()
 {
     const auto num_textures = num_textures_x * num_textures_y;
-    glDeleteTextures(num_textures, buff_tex.data());
+    gl_canvas_->glDeleteTextures(num_textures, buff_tex.data());
 
     create_shader_program();
     setup_gl_buffer();
@@ -511,7 +511,8 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
             const auto buff_w = (std::min)(remaining_w, max_texture_size);
             remaining_w -= buff_w;
 
-            glBindTexture(GL_TEXTURE_2D, buff_tex[ty * num_textures_x + tx]);
+            gl_canvas_->glBindTexture(GL_TEXTURE_2D,
+                                      buff_tex[ty * num_textures_x + tx]);
 
             auto tile_model = mat4{};
 
@@ -580,7 +581,7 @@ void Buffer::setup_gl_buffer()
     const int num_textures = num_textures_x * num_textures_y;
 
     buff_tex.resize(num_textures);
-    glGenTextures(num_textures, buff_tex.data());
+    gl_canvas_->glGenTextures(num_textures, buff_tex.data());
 
     auto tex_type   = GLuint{GL_UNSIGNED_BYTE};
     auto tex_format = GLuint{GL_RED};
@@ -609,9 +610,8 @@ void Buffer::setup_gl_buffer()
 
     auto remaining_h = buffer_height_i;
 
-    glPixelStoref(GL_UNPACK_ALIGNMENT, 1);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, step);
+    gl_canvas_->glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    gl_canvas_->glPixelStorei(GL_UNPACK_ROW_LENGTH, step);
 
     for (int ty = 0; ty < num_textures_y; ++ty) {
         const auto buff_h = (std::min)(remaining_h, max_texture_size);
