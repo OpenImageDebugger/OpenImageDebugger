@@ -228,7 +228,7 @@ void BufferValues::draw_text(const DrawTextParams& params)
 
     const float* auto_buffer_contrast_brightness{};
 
-    if (game_object_->get_stage()->contrast_enabled) {
+    if (game_object_->get_stage()->get_contrast_enabled()) {
         auto_buffer_contrast_brightness =
             buffer_component->auto_buffer_contrast_brightness();
     } else {

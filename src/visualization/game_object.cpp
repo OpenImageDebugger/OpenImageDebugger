@@ -99,7 +99,7 @@ void GameObject::set_pose(const mat4& pose)
 
 void GameObject::request_render_update() const
 {
-    stage_->main_window->request_render_update();
+    stage_->get_main_window()->request_render_update();
 }
 
 

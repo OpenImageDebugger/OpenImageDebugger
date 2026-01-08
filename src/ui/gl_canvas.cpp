@@ -193,8 +193,8 @@ void GLCanvas::render_buffer_icon(Stage* stage,
     stage->set_icon_drawing_mode(true);
 
     stage->draw();
-    stage->buffer_icon.resize(3 * static_cast<size_t>(icon_width) *
-                              static_cast<size_t>(icon_height));
+    stage->get_buffer_icon().resize(3 * static_cast<size_t>(icon_width) *
+                                    static_cast<size_t>(icon_height));
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0,
                  0,
@@ -202,7 +202,7 @@ void GLCanvas::render_buffer_icon(Stage* stage,
                  icon_height,
                  GL_RGB,
                  GL_UNSIGNED_BYTE,
-                 stage->buffer_icon.data());
+                 stage->get_buffer_icon().data());
 
     // Reset stage camera
     stage->set_icon_drawing_mode(false);

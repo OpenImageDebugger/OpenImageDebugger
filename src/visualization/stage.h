@@ -57,10 +57,6 @@ struct BufferParams
 class Stage
 {
   public:
-    bool contrast_enabled{};
-    std::vector<uint8_t> buffer_icon{};
-    MainWindow* main_window{nullptr};
-
     explicit Stage(MainWindow* main_window);
 
     bool initialize(const BufferParams& params);
@@ -87,7 +83,20 @@ class Stage
 
     void set_icon_drawing_mode(bool is_enabled);
 
+    [[nodiscard]] bool get_contrast_enabled() const;
+
+    void set_contrast_enabled(bool enabled);
+
+    [[nodiscard]] std::vector<uint8_t>& get_buffer_icon();
+
+    [[nodiscard]] const std::vector<uint8_t>& get_buffer_icon() const;
+
+    [[nodiscard]] MainWindow* get_main_window() const;
+
   private:
+    bool contrast_enabled_{};
+    std::vector<uint8_t> buffer_icon_{};
+    MainWindow* main_window_{nullptr};
     std::map<std::string, std::shared_ptr<GameObject>, std::less<>>
         all_game_objects{};
 };

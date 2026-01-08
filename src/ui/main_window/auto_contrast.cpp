@@ -221,7 +221,7 @@ void MainWindow::ac_toggle(const bool is_checked)
 {
     state_.ac_enabled = is_checked;
     for (const auto& stage : buffer_data_.stages | std::views::values) {
-        stage->contrast_enabled = state_.ac_enabled;
+        stage->set_contrast_enabled(state_.ac_enabled);
     }
 
     state_.request_render_update = true;
