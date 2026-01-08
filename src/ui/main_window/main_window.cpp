@@ -325,7 +325,8 @@ void MainWindow::update_status_bar() const
                     << "]";
         }
 
-        ui_components_.status_bar->setText(message.str().c_str());
+        ui_components_.status_bar->setText(
+            QString::fromStdString(message.str()));
     }
 }
 

@@ -38,7 +38,7 @@ namespace oid
 
 GLCanvas::GLCanvas(QWidget* parent)
     : QOpenGLWidget{parent}
-    , text_renderer_{std::make_unique<GLTextRenderer>(this)}
+    , text_renderer_{std::make_unique<GLTextRenderer>(*this)}
 {
     mouse_down_[0] = mouse_down_[1] = false;
 }

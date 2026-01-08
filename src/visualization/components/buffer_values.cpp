@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cstring>
 #include <string>
 
 #include <GL/glcorearb.h>
@@ -85,9 +86,9 @@ inline void pix2str(const PixelFormatParams& params)
             std::bit_cast<const unsigned short*>(buffer)[pixel_pos];
         snprintf(pix_label, label_length, "%d", fpix);
     } else if (type == BufferType::Int32) {
-        const int fpix = std::bit_cast<const int*>(buffer)[pixel_pos];
-        snprintf(pix_label, label_length, "%d", fpix);
-        if (std::string{pix_label}.length() > 7) {
+        const int fpix     = std::bit_cast<const int*>(buffer)[pixel_pos];
+        const auto written = snprintf(pix_label, label_length, "%d", fpix);
+        if (written > 0 && static_cast<size_t>(written) > 7) {
             snprintf(pix_label, label_length, "%.3e", static_cast<float>(fpix));
         }
     }

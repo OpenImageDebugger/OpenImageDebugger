@@ -32,9 +32,9 @@
 namespace oid
 {
 
-GLTextRenderer::GLTextRenderer(GLCanvas* gl_canvas)
+GLTextRenderer::GLTextRenderer(GLCanvas& gl_canvas)
     : text_prog{gl_canvas}
-    , gl_canvas_{gl_canvas}
+    , gl_canvas_{&gl_canvas}
 {
 }
 
