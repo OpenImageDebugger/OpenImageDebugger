@@ -101,17 +101,19 @@ inline void pix2str(const PixelFormatParams& params)
 
 void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params)
 {
-    const auto step     = params.buffer.step;
-    const auto channels = params.buffer.channels;
-    const auto type     = params.buffer.type;
-    const auto pos      = (params.y * step + params.x) * channels;
+    const auto step       = params.buffer.step;
+    const auto channels   = params.buffer.channels;
+    const auto channels_f = static_cast<float>(channels);
+    const auto type       = params.buffer.type;
+    const auto pos        = (params.y * step + params.x) * channels;
 
     for (int c = 0; c < channels; ++c) {
         constexpr auto label_length{30};
         auto pix_label = std::string{};
         pix_label.reserve(label_length);
-        const float y_off =
-            (0.5f * (channels - 1) - c) / channels - params.recenter_factors[c];
+        const auto c_f    = static_cast<float>(c);
+        const float y_off = (0.5f * (channels_f - 1.0f) - c_f) / channels_f -
+                            params.recenter_factors[c];
 
         const PixelFormatParams pix_params{type,
                                            params.buffer.buffer,
@@ -129,7 +131,7 @@ void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params)
             static_cast<float>(params.x + params.pos_center_x),
             static_cast<float>(params.y + params.pos_center_y),
             y_off,
-            static_cast<float>(channels)};
+            channels_f};
         draw_text(text_params);
     }
 }
@@ -149,6 +151,7 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
         const auto buffer_width_f  = buffer_component->buffer_width_f;
         const auto buffer_height_f = buffer_component->buffer_height_f;
         const auto channels        = buffer_component->channels;
+        const auto channels_f      = static_cast<float>(channels);
 
         const auto tl_ndc = vec4{-1.0f, 1.0f, 0.0f, 1.0f};
         const auto br_ndc = vec4{1.0f, -1.0f, 0.0f, 1.0f};
@@ -158,32 +161,36 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 
         // Since the clip ROI may be rotated, we need to re-compute TL and BR
         // from their Xs and Ys
-        const auto tl_x = static_cast<int>((std::min)(tl.x(), br.x()));
-        const auto tl_y = static_cast<int>((std::min)(tl.y(), br.y()));
-        const auto br_x = static_cast<int>((std::max)(tl.x(), br.x()));
-        const auto br_y = static_cast<int>((std::max)(tl.y(), br.y()));
-        tl.x()          = static_cast<float>(tl_x);
-        tl.y()          = static_cast<float>(tl_y);
-        br.x()          = static_cast<float>(br_x);
-        br.y()          = static_cast<float>(br_y);
+        const auto tl_x = (std::min)(tl.x(), br.x());
+        const auto tl_y = (std::min)(tl.y(), br.y());
+        const auto br_x = (std::max)(tl.x(), br.x());
+        const auto br_y = (std::max)(tl.y(), br.y());
+        tl.x()          = tl_x;
+        tl.y()          = tl_y;
+        br.x()          = br_x;
+        br.y()          = br_y;
 
 
-        const int lower_x = std::clamp(truncf(tl.x()) - 1.0f,
-                                       -buffer_width_f / 2.0f,
-                                       buffer_width_f / 2.0f - 1.0f);
-        const int upper_x = std::clamp(ceilf(br.x()) + 1.0f,
-                                       -(buffer_width_f + 1.0f) / 2.0f + 1.0f,
-                                       (buffer_width_f + 1.0f) / 2.0f);
+        const auto lower_x =
+            static_cast<int>(std::clamp(truncf(tl.x()) - 1.0f,
+                                        -buffer_width_f / 2.0f,
+                                        buffer_width_f / 2.0f - 1.0f));
+        const auto upper_x =
+            static_cast<int>(std::clamp(ceilf(br.x()) + 1.0f,
+                                        -(buffer_width_f + 1.0f) / 2.0f + 1.0f,
+                                        (buffer_width_f + 1.0f) / 2.0f));
 
-        const int lower_y = std::clamp(truncf(tl.y()) - 1.0f,
-                                       -buffer_height_f / 2.0f,
-                                       buffer_height_f / 2.0f - 1.0f);
-        const int upper_y = std::clamp(ceilf(br.y()) + 1.0f,
-                                       -(buffer_height_f + 1.0f) / 2.0f + 1.0f,
-                                       (buffer_height_f + 1.0f) / 2.0f);
+        const auto lower_y =
+            static_cast<int>(std::clamp(truncf(tl.y()) - 1.0f,
+                                        -buffer_height_f / 2.0f,
+                                        buffer_height_f / 2.0f - 1.0f));
+        const auto upper_y =
+            static_cast<int>(std::clamp(ceilf(br.y()) + 1.0f,
+                                        -(buffer_height_f + 1.0f) / 2.0f + 1.0f,
+                                        (buffer_height_f + 1.0f) / 2.0f));
 
-        const int pos_center_x = -buffer_width_f / 2;
-        const int pos_center_y = -buffer_height_f / 2;
+        const auto pos_center_x = static_cast<int>(-buffer_width_f / 2.0f);
+        const auto pos_center_y = static_cast<int>(-buffer_height_f / 2.0f);
 
         // Offset for vertical channel position to account for padding
         auto recenter_factors = std::array<float, 4>{};
@@ -191,14 +198,14 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
         if (channels == 1) {
             recenter_factors = {0.0f, 0.0f, 0.0f, 0.0f};
         } else if (channels == 2) {
-            const auto rfUp  = padding_ / 3.0f / channels;
+            const auto rfUp  = padding_ / 3.0f / channels_f;
             recenter_factors = {rfUp, -rfUp, 0.0f, 0.0f};
         } else if (channels == 3) {
-            const auto rfUp  = padding_ / 2.0f / channels;
+            const auto rfUp  = padding_ / 2.0f / channels_f;
             recenter_factors = {rfUp, 0.0f, -rfUp, 0.0f};
         } else if (channels == 4) {
-            const auto rfUp   = 3.0f * padding_ / 5.0f / channels;
-            const auto rfDown = padding_ / 5.0f / channels;
+            const auto rfUp   = 3.0f * padding_ / 5.0f / channels_f;
+            const auto rfDown = padding_ / 5.0f / channels_f;
             recenter_factors  = {rfUp, rfDown, -rfDown, -rfUp};
         }
 
@@ -304,18 +311,20 @@ void BufferValues::draw_text(const DrawTextParams& params)
 
     for (const auto c : std::string{params.text}) {
         const auto uchar = static_cast<unsigned char>(c);
-        const auto x2 =
-            x +
-            static_cast<float>(text_renderer->text_texture_tls[uchar][0]) * sx;
-        const auto y2 =
-            y -
-            static_cast<float>(text_renderer->text_texture_tls[uchar][1]) * sy;
+        const auto tex_tl_x =
+            static_cast<float>(text_renderer->text_texture_tls[uchar][0]);
+        const auto tex_tl_y =
+            static_cast<float>(text_renderer->text_texture_tls[uchar][1]);
+        const auto x2 = x + tex_tl_x * sx;
+        const auto y2 = y - tex_tl_y * sy;
 
-        const auto tex_wid = text_renderer->text_texture_sizes[uchar][0];
-        const auto tex_hei = text_renderer->text_texture_sizes[uchar][1];
+        const auto tex_wid =
+            static_cast<float>(text_renderer->text_texture_sizes[uchar][0]);
+        const auto tex_hei =
+            static_cast<float>(text_renderer->text_texture_sizes[uchar][1]);
 
-        const auto w = static_cast<float>(tex_wid) * sx;
-        const auto h = static_cast<float>(tex_hei) * sy;
+        const auto w = tex_wid * sx;
+        const auto h = tex_hei * sy;
 
         const auto tex_lower_x =
             static_cast<float>(text_renderer->text_texture_offsets[uchar][0]) /
@@ -324,11 +333,9 @@ void BufferValues::draw_text(const DrawTextParams& params)
             static_cast<float>(text_renderer->text_texture_offsets[uchar][1]) /
             text_renderer->text_texture_height;
         const auto tex_upper_x =
-            tex_lower_x + (static_cast<float>(tex_wid) - 1.0f) /
-                              text_renderer->text_texture_width;
+            tex_lower_x + (tex_wid - 1.0f) / text_renderer->text_texture_width;
         const auto tex_upper_y =
-            tex_lower_y + (static_cast<float>(tex_hei) - 1.0f) /
-                              text_renderer->text_texture_height;
+            tex_lower_y + (tex_hei - 1.0f) / text_renderer->text_texture_height;
 
         /*
          * box format: <pixel coord x, pixel coord y, texture coord x, texture
@@ -345,13 +352,12 @@ void BufferValues::draw_text(const DrawTextParams& params)
             GL_ARRAY_BUFFER, sizeof box, box.data(), GL_DYNAMIC_DRAW);
         gl_canvas_->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-        auto char_step_direction = vec4{
-            static_cast<float>(text_renderer->text_texture_advances[uchar][0]) *
-                sx,
-            static_cast<float>(text_renderer->text_texture_advances[uchar][1]) *
-                sy,
-            0.0f,
-            1.0f};
+        const auto tex_adv_x =
+            static_cast<float>(text_renderer->text_texture_advances[uchar][0]);
+        const auto tex_adv_y =
+            static_cast<float>(text_renderer->text_texture_advances[uchar][1]);
+        auto char_step_direction =
+            vec4{tex_adv_x * sx, tex_adv_y * sy, 0.0f, 1.0f};
 
         x += char_step_direction.x();
         y += char_step_direction.y();
