@@ -38,6 +38,12 @@
 namespace oid
 {
 
+namespace BufferConstants
+{
+constexpr int MAX_TEXTURE_SIZE        = 2048;
+constexpr float ZOOM_BORDER_THRESHOLD = 40.0f;
+} // namespace BufferConstants
+
 struct BufferParams
 {
     const uint8_t* buffer;
@@ -65,7 +71,7 @@ class Buffer final : public Component
 
     Buffer& operator=(Buffer&&) = delete;
 
-    static constexpr int max_texture_size = 2048;
+    static constexpr int max_texture_size = BufferConstants::MAX_TEXTURE_SIZE;
 
     std::vector<GLuint> buff_tex{};
 

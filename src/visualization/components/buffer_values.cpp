@@ -146,7 +146,7 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
     const auto camera  = cam_obj->get_component<Camera>("camera_component");
     const auto zoom    = camera->compute_zoom();
 
-    if (zoom > 40.0f) {
+    if (zoom > BufferConstants::ZOOM_BORDER_THRESHOLD) {
         const auto buffer_pose = game_object_->get_pose();
 
         const auto buffer_component =

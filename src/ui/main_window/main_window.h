@@ -47,6 +47,12 @@
 namespace oid
 {
 
+namespace UIConstants
+{
+constexpr int ICON_WIDTH_BASE  = 100;
+constexpr int ICON_HEIGHT_BASE = 75;
+} // namespace UIConstants
+
 struct ConnectionSettings
 {
     std::string url{};
@@ -218,8 +224,6 @@ class MainWindow final : public QMainWindow
     BufferData buffer_data_{};
     ChannelNames channel_names_{};
 
-    const int icon_width_base_{100};
-    const int icon_height_base_{75};
     double render_framerate_{};
     QString default_export_suffix_{};
     // Thread safety: All access to buffer_data_ and state_ must be protected by

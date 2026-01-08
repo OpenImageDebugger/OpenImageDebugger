@@ -372,7 +372,7 @@ void Buffer::update()
     const auto zoom    = camera->compute_zoom();
 
     buff_prog_.use();
-    if (zoom > 40.0f) {
+    if (zoom > BufferConstants::ZOOM_BORDER_THRESHOLD) {
         buff_prog_.uniform1i("enable_borders", 1);
     } else {
         buff_prog_.uniform1i("enable_borders", 0);
