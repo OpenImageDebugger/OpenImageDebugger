@@ -79,7 +79,7 @@ void GLTextRenderer::generate_glyphs_texture()
     const auto g = QFontMetrics{font};
 
     gl_canvas_->glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, text_tex);
+    gl_canvas_->glBindTexture(GL_TEXTURE_2D, text_tex);
 
     // Generate text bitmap
     const auto texture_size = g.size(Qt::TextSingleLine, text);
