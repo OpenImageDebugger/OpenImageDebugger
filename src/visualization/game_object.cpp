@@ -30,7 +30,6 @@
 #include <map>
 #include <ranges>
 
-#include "ui/main_window/main_window.h"
 #include "visualization/components/component.h"
 #include "visualization/stage.h"
 
@@ -99,7 +98,9 @@ void GameObject::set_pose(const mat4& pose)
 
 void GameObject::request_render_update() const
 {
-    stage_->get_main_window()->request_render_update();
+    if (stage_ != nullptr) {
+        stage_->request_render_update();
+    }
 }
 
 

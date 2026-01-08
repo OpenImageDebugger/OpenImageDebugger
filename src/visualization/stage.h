@@ -71,6 +71,8 @@ class Stage
 
     void set_icon_drawing_mode(bool is_enabled);
 
+    void request_render_update() const;
+
     [[nodiscard]] bool get_contrast_enabled() const;
 
     void set_contrast_enabled(bool enabled);
