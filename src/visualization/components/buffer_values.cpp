@@ -158,12 +158,14 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 
         // Since the clip ROI may be rotated, we need to re-compute TL and BR
         // from their Xs and Ys
-        const int tl_x = (std::min)(tl.x(), br.x());
-        const int tl_y = (std::min)(tl.y(), br.y());
-        const int br_x = (std::max)(tl.x(), br.x());
-        const int br_y = (std::max)(tl.y(), br.y());
-        tl.x() = tl_x, tl.y() = tl_y;
-        br.x() = br_x, br.y() = br_y;
+        const auto tl_x = static_cast<int>((std::min)(tl.x(), br.x()));
+        const auto tl_y = static_cast<int>((std::min)(tl.y(), br.y()));
+        const auto br_x = static_cast<int>((std::max)(tl.x(), br.x()));
+        const auto br_y = static_cast<int>((std::max)(tl.y(), br.y()));
+        tl.x()          = static_cast<float>(tl_x);
+        tl.y()          = static_cast<float>(tl_y);
+        br.x()          = static_cast<float>(br_x);
+        br.y()          = static_cast<float>(br_y);
 
 
         const int lower_x = std::clamp(truncf(tl.x()) - 1.0f,
