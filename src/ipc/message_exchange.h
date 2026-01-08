@@ -29,6 +29,7 @@
 #include <bit>
 #include <deque>
 #include <memory>
+#include <span>
 
 #include <QTcpSocket>
 
@@ -87,27 +88,45 @@ struct StringBlock final : MessageBlock
     std::string data_{};
 };
 
+/**
+ * @brief Message block that references an external buffer without owning it.
+ *
+ * @warning Lifetime Requirements:
+ *   - The buffer pointed to by `buffer_span` MUST remain valid for the entire
+ *     lifetime of this BufferBlock object.
+ *   - The buffer MUST NOT be deallocated or modified while this BufferBlock
+ *     exists.
+ *   - Typically, BufferBlock is used immediately in MessageComposer::send(),
+ *     ensuring the buffer lifetime is managed by the caller.
+ *
+ * @note This class uses std::span for safer buffer access. The span provides
+ *       bounds checking capabilities and does not own the buffer data.
+ */
 struct BufferBlock final : MessageBlock
 {
-    BufferBlock(const uint8_t* buffer, const std::size_t length)
-        : buffer_{buffer}
-        , length_{length}
+    /**
+     * @brief Construct a BufferBlock from a std::span.
+     *
+     * @param span Span over the buffer data (the span's underlying buffer must
+     *             remain valid for the lifetime of this BufferBlock)
+     */
+    explicit BufferBlock(std::span<const uint8_t> span)
+        : buffer_span_{span}
     {
     }
 
     [[nodiscard]] std::size_t size() const override
     {
-        return length_;
+        return buffer_span_.size();
     }
 
     [[nodiscard]] const uint8_t* data() const override
     {
-        return buffer_;
+        return buffer_span_.data();
     }
 
   private:
-    const uint8_t* buffer_{};
-    std::size_t length_{};
+    std::span<const uint8_t> buffer_span_{};
 };
 
 template <typename PrimitiveType>
@@ -138,7 +157,8 @@ class MessageComposer
     MessageComposer& push(const uint8_t* buffer, const std::size_t size)
     {
         push(size);
-        message_blocks_.emplace_back(new BufferBlock(buffer, size));
+        message_blocks_.emplace_back(
+            new BufferBlock(std::span<const uint8_t>{buffer, size}));
 
         return *this;
     }

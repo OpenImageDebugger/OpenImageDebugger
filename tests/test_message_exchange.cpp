@@ -30,6 +30,7 @@
 #include <chrono>
 #include <cstring>
 #include <gtest/gtest.h>
+#include <span>
 #include <string_view>
 #include <thread>
 
@@ -164,12 +165,14 @@ constexpr std::size_t TEST_BUFFER_SIZE = sizeof(TEST_BUFFER_VALUES);
 } // namespace
 
 TEST_F(MessageExchangeTest, BufferBlockSize) {
-  BufferBlock block(TEST_BUFFER_VALUES, TEST_BUFFER_SIZE);
+  BufferBlock block(
+      std::span<const uint8_t>{TEST_BUFFER_VALUES, TEST_BUFFER_SIZE});
   EXPECT_EQ(block.size(), TEST_BUFFER_SIZE);
 }
 
 TEST_F(MessageExchangeTest, BufferBlockData) {
-  BufferBlock block(TEST_BUFFER_VALUES, TEST_BUFFER_SIZE);
+  BufferBlock block(
+      std::span<const uint8_t>{TEST_BUFFER_VALUES, TEST_BUFFER_SIZE});
   const auto *data = block.data();
   for (auto i = 0U; i < TEST_BUFFER_SIZE; ++i) {
     EXPECT_EQ(data[i], TEST_BUFFER_VALUES[i]);
