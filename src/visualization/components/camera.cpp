@@ -36,7 +36,7 @@
 namespace oid
 {
 
-Camera::Camera(GameObject* game_object, GLCanvas* gl_canvas)
+Camera::Camera(GameObject& game_object, GLCanvas& gl_canvas)
     : Component{game_object, gl_canvas}
 {
 }

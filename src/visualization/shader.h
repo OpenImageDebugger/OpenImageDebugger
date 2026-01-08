@@ -43,7 +43,7 @@ class ShaderProgram
   public:
     enum class TexelChannels { FormatR, FormatRG, FormatRGB, FormatRGBA };
 
-    explicit ShaderProgram(GLCanvas* gl_canvas);
+    explicit ShaderProgram(GLCanvas& gl_canvas);
 
     ShaderProgram(const ShaderProgram&) = delete;
 

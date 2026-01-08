@@ -35,7 +35,7 @@ namespace oid
 class Background final : public Component
 {
   public:
-    Background(GameObject* game_object, GLCanvas* gl_canvas);
+    Background(GameObject& game_object, GLCanvas& gl_canvas);
 
     ~Background() override;
 
@@ -59,7 +59,7 @@ class Background final : public Component
     [[nodiscard]] int render_index() const override;
 
   private:
-    ShaderProgram background_prog{nullptr};
+    ShaderProgram background_prog;
     GLuint background_vbo{0};
 };
 

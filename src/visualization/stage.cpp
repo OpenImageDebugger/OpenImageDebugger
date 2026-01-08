@@ -121,10 +121,10 @@ bool Stage::initialize(const BufferParams& params)
 
     camera_obj->add_component(
         "camera_component",
-        std::make_shared<Camera>(camera_obj.get(), main_window_->gl_canvas()));
-    camera_obj->add_component("background_component",
-                              std::make_shared<Background>(
-                                  camera_obj.get(), main_window_->gl_canvas()));
+        std::make_shared<Camera>(*camera_obj, *main_window_->gl_canvas()));
+    camera_obj->add_component(
+        "background_component",
+        std::make_shared<Background>(*camera_obj, *main_window_->gl_canvas()));
 
     all_game_objects["camera"] = camera_obj;
 
@@ -134,10 +134,10 @@ bool Stage::initialize(const BufferParams& params)
 
     buffer_obj->add_component("text_component",
                               std::make_shared<BufferValues>(
-                                  buffer_obj.get(), main_window_->gl_canvas()));
+                                  *buffer_obj, *main_window_->gl_canvas()));
 
     const auto buffer_component =
-        std::make_shared<Buffer>(buffer_obj.get(), main_window_->gl_canvas());
+        std::make_shared<Buffer>(*buffer_obj, *main_window_->gl_canvas());
 
     buffer_component->configure(params);
     buffer_obj->add_component("buffer_component", buffer_component);

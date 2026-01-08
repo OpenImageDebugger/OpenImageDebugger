@@ -75,7 +75,7 @@ struct DrawTextParams
 class BufferValues final : public Component
 {
   public:
-    BufferValues(GameObject* game_object, GLCanvas* gl_canvas);
+    BufferValues(GameObject& game_object, GLCanvas& gl_canvas);
 
     ~BufferValues() override;
 

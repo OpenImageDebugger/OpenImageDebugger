@@ -34,9 +34,9 @@
 namespace oid
 {
 
-Background::Background(GameObject* game_object, GLCanvas* gl_canvas)
+Background::Background(GameObject& game_object, GLCanvas& gl_canvas)
     : Component{game_object, gl_canvas}
-    , background_prog{gl_canvas}
+    , background_prog{&gl_canvas}
 {
 }
 

@@ -32,8 +32,8 @@
 namespace oid
 {
 
-ShaderProgram::ShaderProgram(GLCanvas* gl_canvas)
-    : gl_canvas_{gl_canvas}
+ShaderProgram::ShaderProgram(GLCanvas& gl_canvas)
+    : gl_canvas_{&gl_canvas}
 {
 }
 
