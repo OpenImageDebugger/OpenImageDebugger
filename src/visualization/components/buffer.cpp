@@ -295,6 +295,19 @@ int Buffer::sub_texture_id_at_coord(const int x, const int y) const
 }
 
 
+void Buffer::configure(const BufferParams& params)
+{
+    buffer          = params.buffer;
+    channels        = params.channels;
+    type            = params.type;
+    buffer_width_f  = static_cast<float>(params.buffer_width_i);
+    buffer_height_f = static_cast<float>(params.buffer_height_i);
+    step            = params.step;
+    transpose       = params.transpose_buffer;
+    set_pixel_layout(params.pixel_layout);
+}
+
+
 void Buffer::set_pixel_layout(const std::string& pixel_layout)
 {
     ///

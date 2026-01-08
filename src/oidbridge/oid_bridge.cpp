@@ -191,18 +191,30 @@ class OidBridge
 
     void plot_buffer(const PlotBufferParams& params) const
     {
+        const auto& variable_name_str = params.variable_name_str;
+        const auto& display_name_str  = params.display_name_str;
+        const auto& pixel_layout_str  = params.pixel_layout_str;
+        const auto transpose_buffer   = params.transpose_buffer;
+        const auto buff_width         = params.buff_width;
+        const auto buff_height        = params.buff_height;
+        const auto buff_channels      = params.buff_channels;
+        const auto buff_stride        = params.buff_stride;
+        const auto buff_type          = params.buff_type;
+        const auto buff_ptr           = params.buff_ptr;
+        const auto buff_size          = params.buff_size;
+
         auto message_composer = MessageComposer{};
         message_composer.push(MessageType::PlotBufferContents)
-            .push(params.variable_name_str)
-            .push(params.display_name_str)
-            .push(params.pixel_layout_str)
-            .push(params.transpose_buffer)
-            .push(params.buff_width)
-            .push(params.buff_height)
-            .push(params.buff_channels)
-            .push(params.buff_stride)
-            .push(params.buff_type)
-            .push(params.buff_ptr, params.buff_size)
+            .push(variable_name_str)
+            .push(display_name_str)
+            .push(pixel_layout_str)
+            .push(transpose_buffer)
+            .push(buff_width)
+            .push(buff_height)
+            .push(buff_channels)
+            .push(buff_stride)
+            .push(buff_type)
+            .push(buff_ptr, buff_size)
             .send(client_);
     }
 

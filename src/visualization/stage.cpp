@@ -111,16 +111,7 @@ bool Stage::initialize(const BufferParams& params)
     const auto buffer_component =
         std::make_shared<Buffer>(buffer_obj.get(), main_window_->gl_canvas());
 
-    buffer_component->buffer   = params.buffer;
-    buffer_component->channels = params.channels;
-    buffer_component->type     = params.type;
-    buffer_component->buffer_width_f =
-        static_cast<float>(params.buffer_width_i);
-    buffer_component->buffer_height_f =
-        static_cast<float>(params.buffer_height_i);
-    buffer_component->step      = params.step;
-    buffer_component->transpose = params.transpose_buffer;
-    buffer_component->set_pixel_layout(params.pixel_layout);
+    buffer_component->configure(params);
     buffer_obj->add_component("buffer_component", buffer_component);
 
     all_game_objects["buffer"] = buffer_obj;
@@ -143,16 +134,7 @@ bool Stage::buffer_update(const BufferParams& params)
     const auto buffer_component =
         buffer_obj->get_component<Buffer>("buffer_component");
 
-    buffer_component->buffer   = params.buffer;
-    buffer_component->channels = params.channels;
-    buffer_component->type     = params.type;
-    buffer_component->buffer_width_f =
-        static_cast<float>(params.buffer_width_i);
-    buffer_component->buffer_height_f =
-        static_cast<float>(params.buffer_height_i);
-    buffer_component->step      = params.step;
-    buffer_component->transpose = params.transpose_buffer;
-    buffer_component->set_pixel_layout(params.pixel_layout);
+    buffer_component->configure(params);
 
     for (const auto& game_obj_it : all_game_objects | std::views::values) {
         const auto game_obj = game_obj_it.get();

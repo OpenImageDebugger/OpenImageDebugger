@@ -63,37 +63,32 @@ int BufferValues::render_index() const
 
 inline void pix2str(const PixelFormatParams& params)
 {
-    if (params.type == BufferType::Float32 ||
-        params.type == BufferType::Float64) {
-        const float fpix = std::bit_cast<const float*>(
-            params.buffer)[params.pos + params.channel];
-        snprintf(params.pix_label,
-                 params.label_length,
-                 "%.*f",
-                 params.float_precision,
-                 fpix);
-    } else if (params.type == BufferType::UnsignedByte) {
-        snprintf(params.pix_label,
-                 params.label_length,
-                 "%d",
-                 params.buffer[params.pos + params.channel]);
-    } else if (params.type == BufferType::Short) {
-        const short fpix = std::bit_cast<const short*>(
-            params.buffer)[params.pos + params.channel];
-        snprintf(params.pix_label, params.label_length, "%d", fpix);
-    } else if (params.type == BufferType::UnsignedShort) {
-        const unsigned short fpix = std::bit_cast<const unsigned short*>(
-            params.buffer)[params.pos + params.channel];
-        snprintf(params.pix_label, params.label_length, "%d", fpix);
-    } else if (params.type == BufferType::Int32) {
-        const int fpix = std::bit_cast<const int*>(
-            params.buffer)[params.pos + params.channel];
-        snprintf(params.pix_label, params.label_length, "%d", fpix);
-        if (std::string{params.pix_label}.length() > 7) {
-            snprintf(params.pix_label,
-                     params.label_length,
-                     "%.3e",
-                     static_cast<float>(fpix));
+    const auto type            = params.type;
+    const auto buffer          = params.buffer;
+    const auto pos             = params.pos;
+    const auto channel         = params.channel;
+    const auto pix_label       = params.pix_label;
+    const auto label_length    = params.label_length;
+    const auto float_precision = params.float_precision;
+    const auto pixel_pos       = pos + channel;
+
+    if (type == BufferType::Float32 || type == BufferType::Float64) {
+        const float fpix = std::bit_cast<const float*>(buffer)[pixel_pos];
+        snprintf(pix_label, label_length, "%.*f", float_precision, fpix);
+    } else if (type == BufferType::UnsignedByte) {
+        snprintf(pix_label, label_length, "%d", buffer[pixel_pos]);
+    } else if (type == BufferType::Short) {
+        const short fpix = std::bit_cast<const short*>(buffer)[pixel_pos];
+        snprintf(pix_label, label_length, "%d", fpix);
+    } else if (type == BufferType::UnsignedShort) {
+        const unsigned short fpix =
+            std::bit_cast<const unsigned short*>(buffer)[pixel_pos];
+        snprintf(pix_label, label_length, "%d", fpix);
+    } else if (type == BufferType::Int32) {
+        const int fpix = std::bit_cast<const int*>(buffer)[pixel_pos];
+        snprintf(pix_label, label_length, "%d", fpix);
+        if (std::string{pix_label}.length() > 7) {
+            snprintf(pix_label, label_length, "%.3e", static_cast<float>(fpix));
         }
     }
 }
@@ -101,11 +96,20 @@ inline void pix2str(const PixelFormatParams& params)
 
 void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params)
 {
-    const auto step       = params.buffer.step;
-    const auto channels   = params.buffer.channels;
-    const auto channels_f = static_cast<float>(channels);
-    const auto type       = params.buffer.type;
-    const auto pos        = (params.y * step + params.x) * channels;
+    const auto& buffer           = params.buffer;
+    const auto step              = buffer.step;
+    const auto channels          = buffer.channels;
+    const auto channels_f        = static_cast<float>(channels);
+    const auto type              = buffer.type;
+    const auto x                 = params.x;
+    const auto y                 = params.y;
+    const auto pos_center_x      = params.pos_center_x;
+    const auto pos_center_y      = params.pos_center_y;
+    const auto& recenter_factors = params.recenter_factors;
+    const auto& projection       = params.projection;
+    const auto& view_inv         = params.view_inv;
+    const auto& buffer_pose      = params.buffer_pose;
+    const auto pos               = (y * step + x) * channels;
 
     for (int c = 0; c < channels; ++c) {
         constexpr auto label_length{30};
@@ -113,25 +117,24 @@ void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params)
         pix_label.reserve(label_length);
         const auto c_f    = static_cast<float>(c);
         const float y_off = (0.5f * (channels_f - 1.0f) - c_f) / channels_f -
-                            params.recenter_factors[c];
+                            recenter_factors[c];
 
         const PixelFormatParams pix_params{type,
-                                           params.buffer.buffer,
+                                           buffer.buffer,
                                            pos,
                                            c,
                                            label_length,
                                            float_precision_,
                                            pix_label.data()};
         pix2str(pix_params);
-        const DrawTextParams text_params{
-            params.projection,
-            params.view_inv,
-            params.buffer_pose,
-            pix_label.data(),
-            static_cast<float>(params.x + params.pos_center_x),
-            static_cast<float>(params.y + params.pos_center_y),
-            y_off,
-            channels_f};
+        const DrawTextParams text_params{projection,
+                                         view_inv,
+                                         buffer_pose,
+                                         pix_label.data(),
+                                         static_cast<float>(x + pos_center_x),
+                                         static_cast<float>(y + pos_center_y),
+                                         y_off,
+                                         channels_f};
         draw_text(text_params);
     }
 }
@@ -230,6 +233,15 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
 
 void BufferValues::draw_text(const DrawTextParams& params)
 {
+    const auto x            = params.x;
+    const auto y            = params.y;
+    const auto& text        = params.text;
+    const auto& projection  = params.projection;
+    const auto& view_inv    = params.view_inv;
+    const auto& buffer_pose = params.buffer_pose;
+    const auto channels     = params.channels;
+    const auto y_offset     = params.y_offset;
+
     const auto text_renderer = gl_canvas_->get_text_renderer();
 
     const auto buffer_component =
@@ -251,9 +263,9 @@ void BufferValues::draw_text(const DrawTextParams& params)
 
     gl_canvas_->glActiveTexture(GL_TEXTURE0);
     const auto x_plus_half_buffer_width =
-        static_cast<int>(params.x + buffer_component->buffer_width_f / 2.0f);
+        static_cast<int>(x + buffer_component->buffer_width_f / 2.0f);
     const auto y_plus_half_buffer_height =
-        static_cast<int>(params.y + buffer_component->buffer_height_f / 2.0f);
+        static_cast<int>(y + buffer_component->buffer_height_f / 2.0f);
 
     const GLuint buff_tex = buffer_component->sub_texture_id_at_coord(
         x_plus_half_buffer_width, y_plus_half_buffer_height);
@@ -265,7 +277,7 @@ void BufferValues::draw_text(const DrawTextParams& params)
     text_renderer->text_prog.uniform1i("text_sampler", 1);
 
     text_renderer->text_prog.uniform_matrix4fv(
-        "mvp", 1, GL_FALSE, (params.projection * params.view_inv).data());
+        "mvp", 1, GL_FALSE, (projection * view_inv).data());
     text_renderer->text_prog.uniform2f(
         "pix_coord",
         buffer_component->tile_coord_x(x_plus_half_buffer_width),
@@ -277,7 +289,7 @@ void BufferValues::draw_text(const DrawTextParams& params)
     // Compute text box size
     auto boxW = 0.0f;
     auto boxH = 0.0f;
-    for (const auto c : std::string{params.text}) {
+    for (const auto c : std::string{text}) {
         const auto uchar = static_cast<unsigned char>(c);
         boxW +=
             static_cast<float>(text_renderer->text_texture_advances[uchar][0]);
@@ -289,13 +301,13 @@ void BufferValues::draw_text(const DrawTextParams& params)
     constexpr auto paddingScale = 1.0f / (1.0f - 2.0f * padding_);
     text_pixel_scale_ =
         (std::max)(text_pixel_scale_,
-                   (std::max)(boxW, boxH) * paddingScale * params.channels);
+                   (std::max)(boxW, boxH) * paddingScale * channels);
     const auto sx = 1.0f / text_pixel_scale_;
     const auto sy = 1.0f / text_pixel_scale_;
 
-    auto channel_offset = vec4{0.0f, params.y_offset, 0.0f, 0.0f};
+    auto channel_offset = vec4{0.0f, y_offset, 0.0f, 0.0f};
 
-    auto centeredCoord = vec4{params.x, params.y, 0.0f, 1.0f};
+    auto centeredCoord = vec4{x, y, 0.0f, 1.0f};
 
     if (static_cast<int>(buffer_component->buffer_width_f) % 2 == 0) {
         centeredCoord.x() += 0.5f;
@@ -304,19 +316,19 @@ void BufferValues::draw_text(const DrawTextParams& params)
         centeredCoord.y() += 0.5f;
     }
 
-    centeredCoord = params.buffer_pose * centeredCoord;
+    centeredCoord = buffer_pose * centeredCoord;
 
-    auto y = centeredCoord.y() + boxH / 2.0f * sy - channel_offset.y();
-    auto x = centeredCoord.x() - boxW / 2.0f * sx - channel_offset.x();
+    auto y_pos = centeredCoord.y() + boxH / 2.0f * sy - channel_offset.y();
+    auto x_pos = centeredCoord.x() - boxW / 2.0f * sx - channel_offset.x();
 
-    for (const auto c : std::string{params.text}) {
+    for (const auto c : std::string{text}) {
         const auto uchar = static_cast<unsigned char>(c);
         const auto tex_tl_x =
             static_cast<float>(text_renderer->text_texture_tls[uchar][0]);
         const auto tex_tl_y =
             static_cast<float>(text_renderer->text_texture_tls[uchar][1]);
-        const auto x2 = x + tex_tl_x * sx;
-        const auto y2 = y - tex_tl_y * sy;
+        const auto x2 = x_pos + tex_tl_x * sx;
+        const auto y2 = y_pos - tex_tl_y * sy;
 
         const auto tex_wid =
             static_cast<float>(text_renderer->text_texture_sizes[uchar][0]);
@@ -359,8 +371,8 @@ void BufferValues::draw_text(const DrawTextParams& params)
         auto char_step_direction =
             vec4{tex_adv_x * sx, tex_adv_y * sy, 0.0f, 1.0f};
 
-        x += char_step_direction.x();
-        y += char_step_direction.y();
+        x_pos += char_step_direction.x();
+        y_pos += char_step_direction.y();
     }
 }
 

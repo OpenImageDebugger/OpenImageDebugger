@@ -38,6 +38,18 @@
 namespace oid
 {
 
+struct BufferParams
+{
+    const uint8_t* buffer;
+    int buffer_width_i;
+    int buffer_height_i;
+    int channels;
+    BufferType type;
+    int step;
+    std::string pixel_layout;
+    bool transpose_buffer;
+};
+
 class Buffer final : public Component
 {
   public:
@@ -86,6 +98,8 @@ class Buffer final : public Component
     void set_pixel_layout(const std::string& pixel_layout);
 
     [[nodiscard]] const char* get_pixel_layout() const;
+
+    void configure(const BufferParams& params);
 
     [[nodiscard]] float tile_coord_x(int x) const;
     [[nodiscard]] float tile_coord_y(int y) const;
