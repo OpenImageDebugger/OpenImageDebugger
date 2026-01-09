@@ -29,6 +29,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "GL/gl.h"
@@ -55,8 +56,8 @@ class ShaderProgram
 
     ~ShaderProgram() noexcept;
 
-    [[nodiscard]] bool create(const char* v_source,
-                              const char* f_source,
+    [[nodiscard]] bool create(std::string_view v_source,
+                              std::string_view f_source,
                               TexelChannels texel_format,
                               const std::string& pixel_layout,
                               const std::vector<std::string>& uniforms);
