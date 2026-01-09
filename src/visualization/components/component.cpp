@@ -28,7 +28,7 @@
 namespace oid
 {
 
-Component::Component(GameObject* game_object, GLCanvas* gl_canvas)
+Component::Component(GameObject& game_object, GLCanvas& gl_canvas)
     : game_object_{game_object}
     , gl_canvas_{gl_canvas}
 {

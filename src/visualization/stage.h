@@ -26,53 +26,42 @@
 #ifndef STAGE_H_
 #define STAGE_H_
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "visualization/components/buffer.h"
+#include "visualization/events.h"
 
 
 namespace oid
 {
 
+class MainWindow;
+class GameObject;
+
 class Stage
 {
   public:
-    bool contrast_enabled{};
-    std::vector<uint8_t> buffer_icon{};
-    MainWindow* main_window{nullptr};
+    explicit Stage(MainWindow& main_window);
 
-    explicit Stage(MainWindow* main_window);
+    bool initialize(const BufferParams& params);
 
-    bool initialize(const uint8_t* buffer,
-                    int buffer_width_i,
-                    int buffer_height_i,
-                    int channels,
-                    BufferType type,
-                    int step,
-                    const std::string& pixel_layout,
-                    bool transpose_buffer);
+    bool buffer_update(const BufferParams& params);
 
-    bool buffer_update(const uint8_t* buffer,
-                       int buffer_width_i,
-                       int buffer_height_i,
-                       int channels,
-                       BufferType type,
-                       int step,
-                       const std::string& pixel_layout,
-                       bool transpose_buffer);
-
-    GameObject* get_game_object(const std::string& tag);
+    std::optional<std::reference_wrapper<GameObject>>
+    get_game_object(const std::string& tag);
 
     void update() const;
 
     void draw();
 
-    void scroll_callback(float delta);
+    void scroll_callback(float delta) const;
 
-    void resize_callback(int w, int h);
+    void resize_callback(int w, int h) const;
 
     void mouse_drag_event(int mouse_x, int mouse_y) const;
 
@@ -80,11 +69,26 @@ class Stage
 
     [[nodiscard]] EventProcessCode key_press_event(int key_code) const;
 
-    void go_to_pixel(float x, float y);
+    void go_to_pixel(float x, float y) const;
 
     void set_icon_drawing_mode(bool is_enabled);
 
+    void request_render_update() const;
+
+    [[nodiscard]] bool get_contrast_enabled() const;
+
+    void set_contrast_enabled(bool enabled);
+
+    [[nodiscard]] std::vector<uint8_t>& get_buffer_icon();
+
+    [[nodiscard]] const std::vector<uint8_t>& get_buffer_icon() const;
+
+    [[nodiscard]] MainWindow& get_main_window() const;
+
   private:
+    bool contrast_enabled_{};
+    std::vector<uint8_t> buffer_icon_{};
+    MainWindow& main_window_; // Non-owning reference
     std::map<std::string, std::shared_ptr<GameObject>, std::less<>>
         all_game_objects{};
 };

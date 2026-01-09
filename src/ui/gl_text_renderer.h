@@ -51,20 +51,20 @@ class GLTextRenderer
     Array_256_2 text_texture_sizes{};
     Array_256_2 text_texture_tls{};
 
-    explicit GLTextRenderer(GLCanvas* gl_canvas);
+    explicit GLTextRenderer(GLCanvas& gl_canvas);
     ~GLTextRenderer();
 
     bool initialize();
 
     void generate_glyphs_texture();
 
-    ShaderProgram text_prog{nullptr};
+    ShaderProgram text_prog;
 
     float text_texture_width{0};
     float text_texture_height{0};
 
   private:
-    GLCanvas* gl_canvas_{};
+    GLCanvas& gl_canvas_;
 };
 
 } // namespace oid

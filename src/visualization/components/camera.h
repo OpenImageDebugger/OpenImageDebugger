@@ -35,17 +35,17 @@ namespace oid
 class Camera final : public Component
 {
   public:
-    Camera(GameObject* game_object, GLCanvas* gl_canvas);
+    Camera(GameObject& game_object, GLCanvas& gl_canvas);
 
     ~Camera() override = default;
 
     Camera(const Camera& cam);
 
-    Camera(Camera&& cam) = default;
+    Camera(Camera&& cam) noexcept;
 
     Camera& operator=(const Camera& cam);
 
-    Camera& operator=(Camera&& cam) = default;
+    Camera& operator=(Camera&& cam) noexcept;
 
     static constexpr float zoom_factor{1.1f};
 

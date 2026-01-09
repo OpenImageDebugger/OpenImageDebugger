@@ -31,6 +31,10 @@
 #ifndef SYMBOL_SEARCH_INPUT_H_
 #define SYMBOL_SEARCH_INPUT_H_
 
+#include <cassert>
+#include <functional>
+#include <optional>
+
 #include <QLineEdit>
 
 #include "ui/symbol_completer.h"
@@ -46,18 +50,24 @@ class SymbolSearchInput final : public QLineEdit
     explicit SymbolSearchInput(QWidget* parent = nullptr);
     ~SymbolSearchInput() override;
 
-    void set_completer(SymbolCompleter* completer);
+    void set_completer(SymbolCompleter& completer);
 
     [[nodiscard]] SymbolCompleter* symbolCompleter() const;
 
   protected:
     void keyPressEvent(QKeyEvent* e) override;
 
-  private Q_SLOTS:
-    void insert_completion(const QString& completion);
-
   private:
-    SymbolCompleter* completer_{nullptr};
+    void insert_completion(const QString& completion);
+    std::optional<std::reference_wrapper<SymbolCompleter>>
+        completer_{}; // Always set via set_completer() before use
+
+    [[nodiscard]] SymbolCompleter& completer() const
+    {
+        assert(completer_.has_value() &&
+               "completer_ must be set via set_completer() before use");
+        return completer_->get();
+    }
 };
 
 } // namespace oid

@@ -38,7 +38,7 @@ namespace oid
 
 GLCanvas::GLCanvas(QWidget* parent)
     : QOpenGLWidget{parent}
-    , text_renderer_{std::make_unique<GLTextRenderer>(this)}
+    , text_renderer_{std::make_unique<GLTextRenderer>(*this)}
 {
     mouse_down_[0] = mouse_down_[1] = false;
 }
@@ -56,10 +56,10 @@ void GLCanvas::mouseMoveEvent(QMouseEvent* ev)
     mouse_y_ = static_cast<int>(ev->position().y());
 
     if (mouse_down_[0]) {
-        main_window_->mouse_drag_event(mouse_x_ - last_mouse_x,
+        main_window().mouse_drag_event(mouse_x_ - last_mouse_x,
                                        mouse_y_ - last_mouse_y);
     } else {
-        main_window_->mouse_move_event(mouse_x_ - last_mouse_x,
+        main_window().mouse_move_event(mouse_x_ - last_mouse_x,
                                        mouse_y_ - last_mouse_y);
     }
 }
@@ -92,6 +92,14 @@ void GLCanvas::mouseReleaseEvent(QMouseEvent* ev)
 void GLCanvas::initializeGL()
 {
     this->makeCurrent();
+    if (const auto context = this->context();
+        context == nullptr || !context->isValid()) {
+        std::cerr << "[Error] OpenGL context is not valid. OpenGL "
+                     "initialization cannot proceed."
+                  << std::endl;
+        initialized_ = false;
+        return;
+    }
     initializeOpenGLFunctions();
 
     glEnable(GL_BLEND);
@@ -100,8 +108,7 @@ void GLCanvas::initializeGL()
 
     ///
     // Texture for generating icons
-    assert(main_window_ != nullptr);
-    const auto icon_size   = main_window_->get_icon_size();
+    const auto icon_size   = main_window().get_icon_size();
     const auto icon_width  = static_cast<int>(icon_size.width());
     const auto icon_height = static_cast<int>(icon_size.height());
     glGenTextures(1, &icon_texture_);
@@ -130,8 +137,10 @@ void GLCanvas::initializeGL()
 
     // Check if the GPU won't freak out about our FBO
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        std::cerr << "Error: FBO configuration is not supported -- sorry mate!"
+        std::cerr << "[Error] FBO configuration is not supported. Framebuffer "
+                     "initialization failed."
                   << std::endl;
+        initialized_ = false;
         return;
     }
 
@@ -147,13 +156,13 @@ void GLCanvas::initializeGL()
 void GLCanvas::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    main_window_->draw();
+    main_window().draw();
 }
 
 
 void GLCanvas::wheelEvent(QWheelEvent* ev)
 {
-    main_window_->scroll_callback(static_cast<float>(ev->angleDelta().y()) /
+    main_window().scroll_callback(static_cast<float>(ev->angleDelta().y()) /
                                   120.0f);
 }
 
@@ -164,7 +173,7 @@ const GLTextRenderer* GLCanvas::get_text_renderer() const
 }
 
 
-void GLCanvas::render_buffer_icon(Stage* stage,
+void GLCanvas::render_buffer_icon(Stage& stage,
                                   const int icon_width,
                                   const int icon_height)
 {
@@ -172,29 +181,36 @@ void GLCanvas::render_buffer_icon(Stage* stage,
 
     glViewport(0, 0, icon_width, icon_height);
 
-    const auto camera = stage->get_game_object("camera");
-    const auto cam    = camera->get_component<Camera>("camera_component");
+    const auto camera = stage.get_game_object("camera");
+    if (!camera.has_value()) {
+        return;
+    }
+    const auto cam_opt =
+        camera->get().get_component<Camera>("camera_component");
+    if (!cam_opt.has_value()) {
+        return;
+    }
+    auto& cam = cam_opt->get();
 
     // Save original camera pose
-    const auto original_pose = Camera{*cam};
+    const auto original_pose = Camera{cam};
 
     // Adapt camera to the thumbnail dimensions
-    cam->window_resized(icon_width, icon_height);
+    cam.window_resized(icon_width, icon_height);
     // Flips the projected image along the horizontal axis
-    cam->projection.set_ortho_projection(static_cast<float>(icon_width) / 2.0f,
-                                         static_cast<float>(-icon_height) /
-                                             2.0f,
-                                         -1.0f,
-                                         1.0f);
+    cam.projection.set_ortho_projection(static_cast<float>(icon_width) / 2.0f,
+                                        static_cast<float>(-icon_height) / 2.0f,
+                                        -1.0f,
+                                        1.0f);
     // Reposition buffer in the center of the canvas
-    cam->recenter_camera();
+    cam.recenter_camera();
 
     // Enable icon drawing mode (forbids pixel borders drawing)
-    stage->set_icon_drawing_mode(true);
+    stage.set_icon_drawing_mode(true);
 
-    stage->draw();
-    stage->buffer_icon.resize(3 * static_cast<size_t>(icon_width) *
-                              static_cast<size_t>(icon_height));
+    stage.draw();
+    stage.get_buffer_icon().resize(3 * static_cast<size_t>(icon_width) *
+                                   static_cast<size_t>(icon_height));
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0,
                  0,
@@ -202,27 +218,27 @@ void GLCanvas::render_buffer_icon(Stage* stage,
                  icon_height,
                  GL_RGB,
                  GL_UNSIGNED_BYTE,
-                 stage->buffer_icon.data());
+                 stage.get_buffer_icon().data());
 
     // Reset stage camera
-    stage->set_icon_drawing_mode(false);
+    stage.set_icon_drawing_mode(false);
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
     glViewport(0, 0, width(), height());
-    *cam = original_pose;
-    cam->window_resized(width(), height());
+    cam = original_pose;
+    cam.window_resized(width(), height());
 }
 
 
 void GLCanvas::resizeGL(const int w, const int h)
 {
     glViewport(0, 0, w, h);
-    main_window_->resize_callback(w, h);
+    main_window().resize_callback(w, h);
 }
 
 
-void GLCanvas::set_main_window(MainWindow* mw)
+void GLCanvas::set_main_window(MainWindow& mw)
 {
-    main_window_ = mw;
+    main_window_ = std::ref(mw);
 }
 
 

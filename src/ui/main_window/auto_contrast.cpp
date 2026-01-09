@@ -30,6 +30,7 @@
 #include <QLineEdit>
 
 #include "ui_main_window.h"
+#include "visualization/components/buffer.h"
 #include "visualization/game_object.h"
 
 
@@ -55,194 +56,283 @@ void disable_inputs(const std::initializer_list<QLineEdit*>& inputs)
 
 void MainWindow::reset_ac_min_labels() const
 {
-    const auto buffer_obj =
-        currently_selected_stage_->get_game_object("buffer");
-    const auto buffer = buffer_obj->get_component<Buffer>("buffer_component");
-    const auto ac_min = buffer->min_buffer_values();
+    const auto lock  = std::unique_lock{ui_mutex_};
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (!stage) {
+        return;
+    }
+    const auto buffer_obj = stage->get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
+    const auto buffer_opt =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (!buffer_opt.has_value()) {
+        return;
+    }
+    auto& buffer      = buffer_opt->get();
+    const auto ac_min = buffer.min_buffer_values();
 
-    ui_->ac_c1_min->setText(QString::number(ac_min[0]));
+    ui_components_.ui->ac_c1_min->setText(QString::number(ac_min[0]));
 
-    if (buffer->channels == 4) {
-        enable_inputs({ui_->ac_c2_min, ui_->ac_c3_min, ui_->ac_c4_min});
+    if (buffer.channels == 4) {
+        enable_inputs({ui_components_.ui->ac_c2_min,
+                       ui_components_.ui->ac_c3_min,
+                       ui_components_.ui->ac_c4_min});
 
-        ui_->ac_c2_min->setText(QString::number(ac_min[1]));
-        ui_->ac_c3_min->setText(QString::number(ac_min[2]));
-        ui_->ac_c4_min->setText(QString::number(ac_min[3]));
-    } else if (buffer->channels == 3) {
-        enable_inputs({ui_->ac_c2_min, ui_->ac_c3_min});
+        ui_components_.ui->ac_c2_min->setText(QString::number(ac_min[1]));
+        ui_components_.ui->ac_c3_min->setText(QString::number(ac_min[2]));
+        ui_components_.ui->ac_c4_min->setText(QString::number(ac_min[3]));
+    } else if (buffer.channels == 3) {
+        enable_inputs(
+            {ui_components_.ui->ac_c2_min, ui_components_.ui->ac_c3_min});
 
-        ui_->ac_c4_min->setEnabled(false);
+        ui_components_.ui->ac_c4_min->setEnabled(false);
 
-        ui_->ac_c2_min->setText(QString::number(ac_min[1]));
-        ui_->ac_c3_min->setText(QString::number(ac_min[2]));
-    } else if (buffer->channels == 2) {
-        ui_->ac_c2_min->setEnabled(true);
+        ui_components_.ui->ac_c2_min->setText(QString::number(ac_min[1]));
+        ui_components_.ui->ac_c3_min->setText(QString::number(ac_min[2]));
+    } else if (buffer.channels == 2) {
+        ui_components_.ui->ac_c2_min->setEnabled(true);
 
-        disable_inputs({ui_->ac_c3_min, ui_->ac_c4_min});
+        disable_inputs(
+            {ui_components_.ui->ac_c3_min, ui_components_.ui->ac_c4_min});
 
-        ui_->ac_c2_min->setText(QString::number(ac_min[1]));
+        ui_components_.ui->ac_c2_min->setText(QString::number(ac_min[1]));
     } else {
-        disable_inputs({ui_->ac_c2_min, ui_->ac_c3_min, ui_->ac_c4_min});
+        disable_inputs({ui_components_.ui->ac_c2_min,
+                        ui_components_.ui->ac_c3_min,
+                        ui_components_.ui->ac_c4_min});
     }
 }
 
 
 void MainWindow::reset_ac_max_labels() const
 {
-    const auto buffer_obj =
-        currently_selected_stage_->get_game_object("buffer");
-    const auto buffer = buffer_obj->get_component<Buffer>("buffer_component");
-    const auto ac_max = buffer->max_buffer_values();
+    const auto lock  = std::unique_lock{ui_mutex_};
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (!stage) {
+        return;
+    }
+    const auto buffer_obj = stage->get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
+    const auto buffer_opt =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (!buffer_opt.has_value()) {
+        return;
+    }
+    auto& buffer      = buffer_opt->get();
+    const auto ac_max = buffer.max_buffer_values();
 
-    ui_->ac_c1_max->setText(QString::number(ac_max[0]));
-    if (buffer->channels == 4) {
-        enable_inputs({ui_->ac_c2_max, ui_->ac_c3_max, ui_->ac_c4_max});
+    ui_components_.ui->ac_c1_max->setText(QString::number(ac_max[0]));
+    if (buffer.channels == 4) {
+        enable_inputs({ui_components_.ui->ac_c2_max,
+                       ui_components_.ui->ac_c3_max,
+                       ui_components_.ui->ac_c4_max});
 
-        ui_->ac_c2_max->setText(QString::number(ac_max[1]));
-        ui_->ac_c3_max->setText(QString::number(ac_max[2]));
-        ui_->ac_c4_max->setText(QString::number(ac_max[3]));
-    } else if (buffer->channels == 3) {
-        enable_inputs({ui_->ac_c2_max, ui_->ac_c3_max});
+        ui_components_.ui->ac_c2_max->setText(QString::number(ac_max[1]));
+        ui_components_.ui->ac_c3_max->setText(QString::number(ac_max[2]));
+        ui_components_.ui->ac_c4_max->setText(QString::number(ac_max[3]));
+    } else if (buffer.channels == 3) {
+        enable_inputs(
+            {ui_components_.ui->ac_c2_max, ui_components_.ui->ac_c3_max});
 
-        ui_->ac_c4_max->setEnabled(false);
+        ui_components_.ui->ac_c4_max->setEnabled(false);
 
-        ui_->ac_c2_max->setText(QString::number(ac_max[1]));
-        ui_->ac_c3_max->setText(QString::number(ac_max[2]));
-    } else if (buffer->channels == 2) {
-        ui_->ac_c2_max->setEnabled(true);
+        ui_components_.ui->ac_c2_max->setText(QString::number(ac_max[1]));
+        ui_components_.ui->ac_c3_max->setText(QString::number(ac_max[2]));
+    } else if (buffer.channels == 2) {
+        ui_components_.ui->ac_c2_max->setEnabled(true);
 
-        disable_inputs({ui_->ac_c3_max, ui_->ac_c4_max});
+        disable_inputs(
+            {ui_components_.ui->ac_c3_max, ui_components_.ui->ac_c4_max});
 
-        ui_->ac_c2_max->setText(QString::number(ac_max[1]));
+        ui_components_.ui->ac_c2_max->setText(QString::number(ac_max[1]));
     } else {
-        disable_inputs({ui_->ac_c2_max, ui_->ac_c3_max, ui_->ac_c4_max});
+        disable_inputs({ui_components_.ui->ac_c2_max,
+                        ui_components_.ui->ac_c3_max,
+                        ui_components_.ui->ac_c4_max});
     }
 }
 
 
 void MainWindow::ac_c1_min_update()
 {
-    set_ac_min_value(0, ui_->ac_c1_min->text().toFloat());
+    set_ac_min_value(0, ui_components_.ui->ac_c1_min->text().toFloat());
 }
 
 
 void MainWindow::ac_c2_min_update()
 {
-    set_ac_min_value(1, ui_->ac_c2_min->text().toFloat());
+    set_ac_min_value(1, ui_components_.ui->ac_c2_min->text().toFloat());
 }
 
 
 void MainWindow::ac_c3_min_update()
 {
-    set_ac_min_value(2, ui_->ac_c3_min->text().toFloat());
+    set_ac_min_value(2, ui_components_.ui->ac_c3_min->text().toFloat());
 }
 
 
 void MainWindow::ac_c4_min_update()
 {
-    set_ac_min_value(3, ui_->ac_c4_min->text().toFloat());
+    set_ac_min_value(3, ui_components_.ui->ac_c4_min->text().toFloat());
 }
 
 
 void MainWindow::ac_c1_max_update()
 {
-    set_ac_max_value(0, ui_->ac_c1_max->text().toFloat());
+    set_ac_max_value(0, ui_components_.ui->ac_c1_max->text().toFloat());
 }
 
 
 void MainWindow::ac_c2_max_update()
 {
-    set_ac_max_value(1, ui_->ac_c2_max->text().toFloat());
+    set_ac_max_value(1, ui_components_.ui->ac_c2_max->text().toFloat());
 }
 
 
 void MainWindow::ac_c3_max_update()
 {
-    set_ac_max_value(2, ui_->ac_c3_max->text().toFloat());
+    set_ac_max_value(2, ui_components_.ui->ac_c3_max->text().toFloat());
 }
 
 
 void MainWindow::ac_c4_max_update()
 {
-    set_ac_max_value(3, ui_->ac_c4_max->text().toFloat());
+    set_ac_max_value(3, ui_components_.ui->ac_c4_max->text().toFloat());
 }
 
 
 void MainWindow::ac_min_reset()
 {
-    if (currently_selected_stage_ != nullptr) {
-        const auto buffer_obj =
-            currently_selected_stage_->get_game_object("buffer");
-        const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
-        buff->recompute_min_color_values();
-        buff->compute_contrast_brightness_parameters();
-
-        // Update inputs
-        reset_ac_min_labels();
-
-        request_render_update_ = true;
-        request_icons_update_  = true;
+    const auto lock  = std::unique_lock{ui_mutex_};
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (stage == nullptr) {
+        return;
     }
+
+    const auto buffer_obj = stage->get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
+
+    const auto buff_opt =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (!buff_opt.has_value()) {
+        return;
+    }
+    auto& buff = buff_opt->get();
+
+    buff.recompute_min_color_values();
+    buff.compute_contrast_brightness_parameters();
+
+    // Update inputs
+    reset_ac_min_labels();
+
+    state_.request_render_update = true;
+    state_.request_icons_update  = true;
 }
 
 
 void MainWindow::ac_max_reset()
 {
-    if (currently_selected_stage_ != nullptr) {
-        const auto buffer_obj =
-            currently_selected_stage_->get_game_object("buffer");
-        const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
-        buff->recompute_max_color_values();
-        buff->compute_contrast_brightness_parameters();
-
-        // Update inputs
-        reset_ac_max_labels();
-
-        request_render_update_ = true;
-        request_icons_update_  = true;
+    const auto lock  = std::unique_lock{ui_mutex_};
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (stage == nullptr) {
+        return;
     }
+
+    const auto buffer_obj = stage->get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
+
+    const auto buff_opt =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (!buff_opt.has_value()) {
+        return;
+    }
+    auto& buff = buff_opt->get();
+
+    buff.recompute_max_color_values();
+    buff.compute_contrast_brightness_parameters();
+
+    // Update inputs
+    reset_ac_max_labels();
+
+    state_.request_render_update = true;
+    state_.request_icons_update  = true;
 }
 
 
 void MainWindow::ac_toggle(const bool is_checked)
 {
-    ac_enabled_ = is_checked;
-    for (const auto& stage : stages_ | std::views::values) {
-        stage->contrast_enabled = ac_enabled_;
+    const auto lock   = std::unique_lock{ui_mutex_};
+    state_.ac_enabled = is_checked;
+    for (const auto& stage : buffer_data_.stages | std::views::values) {
+        stage->set_contrast_enabled(state_.ac_enabled);
     }
 
-    request_render_update_ = true;
-    request_icons_update_  = true;
+    state_.request_render_update = true;
+    state_.request_icons_update  = true;
 }
 
 
 void MainWindow::set_ac_min_value(const int idx, const float value)
 {
-    if (currently_selected_stage_ != nullptr) {
-        const auto buffer_obj =
-            currently_selected_stage_->get_game_object("buffer");
-        const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
-        buff->min_buffer_values()[idx] = value;
-        buff->compute_contrast_brightness_parameters();
-
-        request_render_update_ = true;
-        request_icons_update_  = true;
+    const auto lock  = std::unique_lock{ui_mutex_};
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (stage == nullptr) {
+        return;
     }
+
+    const auto buffer_obj = stage->get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
+
+    const auto buff_opt =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (!buff_opt.has_value()) {
+        return;
+    }
+    auto& buff = buff_opt->get();
+
+    buff.min_buffer_values()[idx] = value;
+    buff.compute_contrast_brightness_parameters();
+
+    state_.request_render_update = true;
+    state_.request_icons_update  = true;
 }
 
 
 void MainWindow::set_ac_max_value(const int idx, const float value)
 {
-    if (currently_selected_stage_ != nullptr) {
-        const auto buffer_obj =
-            currently_selected_stage_->get_game_object("buffer");
-        const auto buff = buffer_obj->get_component<Buffer>("buffer_component");
-        buff->max_buffer_values()[idx] = value;
-        buff->compute_contrast_brightness_parameters();
-
-        request_render_update_ = true;
-        request_icons_update_  = true;
+    const auto lock  = std::unique_lock{ui_mutex_};
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (stage == nullptr) {
+        return;
     }
+
+    const auto buffer_obj = stage->get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
+
+    const auto buff_opt =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (!buff_opt.has_value()) {
+        return;
+    }
+    auto& buff = buff_opt->get();
+
+    buff.max_buffer_values()[idx] = value;
+    buff.compute_contrast_brightness_parameters();
+
+    state_.request_render_update = true;
+    state_.request_icons_update  = true;
 }
 
 } // namespace oid

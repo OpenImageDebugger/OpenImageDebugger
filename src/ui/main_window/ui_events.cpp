@@ -43,31 +43,37 @@ namespace oid
 
 void MainWindow::resize_callback(const int w, const int h) const
 {
-    for (const auto& stage : stages_ | std::views::values) {
+    const auto lock = std::unique_lock{ui_mutex_};
+    for (const auto& stage : buffer_data_.stages | std::views::values) {
         stage->resize_callback(w, h);
     }
 
-    go_to_widget_->move(ui_->bufferPreview->width() - go_to_widget_->width(),
-                        ui_->bufferPreview->height() - go_to_widget_->height());
+    ui_components_.go_to_widget->move(
+        ui_components_.ui->bufferPreview->width() -
+            ui_components_.go_to_widget->width(),
+        ui_components_.ui->bufferPreview->height() -
+            ui_components_.go_to_widget->height());
 }
 
 
 void MainWindow::scroll_callback(const float delta)
 {
-    if (link_views_enabled_) {
-        for (const auto& stage : stages_ | std::views::values) {
+    const auto lock = std::unique_lock{ui_mutex_};
+    if (state_.link_views_enabled) {
+        for (const auto& stage : buffer_data_.stages | std::views::values) {
             stage->scroll_callback(delta);
         }
-    } else if (currently_selected_stage_ != nullptr) {
-        currently_selected_stage_->scroll_callback(delta);
+    } else if (const auto stage =
+                   buffer_data_.currently_selected_stage.lock()) {
+        stage->scroll_callback(delta);
     }
 
     update_status_bar();
 
 #if defined(Q_OS_DARWIN)
-    ui_->bufferPreview->update();
+    ui_components_.ui->bufferPreview->update();
 #endif
-    request_render_update_ = true;
+    state_.request_render_update = true;
 }
 
 
@@ -75,16 +81,17 @@ void MainWindow::mouse_drag_event(const int mouse_x, const int mouse_y)
 {
     const auto virtual_motion = QPoint{mouse_x, mouse_y};
 
-    if (link_views_enabled_) {
-        for (const auto& stage : stages_ | std::views::values) {
+    const auto lock = std::unique_lock{ui_mutex_};
+    if (state_.link_views_enabled) {
+        for (const auto& stage : buffer_data_.stages | std::views::values) {
             stage->mouse_drag_event(virtual_motion.x(), virtual_motion.y());
         }
-    } else if (currently_selected_stage_ != nullptr) {
-        currently_selected_stage_->mouse_drag_event(virtual_motion.x(),
-                                                    virtual_motion.y());
+    } else if (const auto stage =
+                   buffer_data_.currently_selected_stage.lock()) {
+        stage->mouse_drag_event(virtual_motion.x(), virtual_motion.y());
     }
 
-    request_render_update_ = true;
+    state_.request_render_update = true;
 }
 
 
@@ -108,7 +115,8 @@ void MainWindow::moveEvent(QMoveEvent*)
 
 void MainWindow::closeEvent(QCloseEvent*)
 {
-    is_window_ready_ = false;
+    const auto lock        = std::unique_lock{ui_mutex_};
+    state_.is_window_ready = false;
     persist_settings_deferred();
 }
 
@@ -117,7 +125,8 @@ void MainWindow::propagate_key_press_event(
     const QKeyEvent* key_event,
     EventProcessCode& event_intercepted) const
 {
-    for (const auto& stage : stages_ | std::views::values) {
+    const auto lock = std::unique_lock{ui_mutex_};
+    for (const auto& stage : buffer_data_.stages | std::views::values) {
         if (stage->key_press_event(key_event->key()) ==
             EventProcessCode::INTERCEPTED) {
             event_intercepted = EventProcessCode::INTERCEPTED;
@@ -135,15 +144,16 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
 
         auto event_intercepted = EventProcessCode::IGNORED;
 
-        if (link_views_enabled_) {
+        const auto lock = std::unique_lock{ui_mutex_};
+        if (state_.link_views_enabled) {
             propagate_key_press_event(key_event, event_intercepted);
-        } else if (currently_selected_stage_ != nullptr) {
-            event_intercepted =
-                currently_selected_stage_->key_press_event(key_event->key());
+        } else if (const auto stage =
+                       buffer_data_.currently_selected_stage.lock()) {
+            event_intercepted = stage->key_press_event(key_event->key());
         }
 
         if (event_intercepted == EventProcessCode::INTERCEPTED) {
-            request_render_update_ = true;
+            state_.request_render_update = true;
             update_status_bar();
 
             event->accept();
@@ -159,178 +169,228 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
 
 void MainWindow::recenter_buffer()
 {
-    if (link_views_enabled_) {
-        for (const auto& stage : stages_ | std::views::values) {
-            const auto cam_obj = stage->get_game_object("camera");
-            const auto cam = cam_obj->get_component<Camera>("camera_component");
-            cam->recenter_camera();
+    const auto lock                 = std::unique_lock{ui_mutex_};
+    const auto recenter_camera_impl = [](Stage& stage) {
+        const auto cam_obj = stage.get_game_object("camera");
+        if (!cam_obj.has_value()) {
+            return;
+        }
+        const auto cam_opt =
+            cam_obj->get().get_component<Camera>("camera_component");
+        if (!cam_opt.has_value()) {
+            return;
+        }
+        auto& cam = cam_opt->get();
+        cam.recenter_camera();
+    };
+
+    if (state_.link_views_enabled) {
+        for (const auto& stage : buffer_data_.stages | std::views::values) {
+            recenter_camera_impl(*stage);
         }
     } else {
-        if (currently_selected_stage_ != nullptr) {
-            const auto cam_obj =
-                currently_selected_stage_->get_game_object("camera");
-            const auto cam = cam_obj->get_component<Camera>("camera_component");
-            cam->recenter_camera();
+        if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
+            recenter_camera_impl(*stage);
         }
     }
 
-    request_render_update_ = true;
+    state_.request_render_update = true;
 }
 
 
 void MainWindow::link_views_toggle()
 {
-    link_views_enabled_ = !link_views_enabled_;
+    const auto lock           = std::unique_lock{ui_mutex_};
+    state_.link_views_enabled = !state_.link_views_enabled;
 }
 
 void MainWindow::decrease_float_precision()
 {
-    const auto shift_precision_left_impl = [](Stage* stage) {
-        const auto buffer_obj = stage->get_game_object("buffer");
-        const auto buffer_comp =
-            buffer_obj->get_component<BufferValues>("text_component");
-
-        buffer_comp->decrease_float_precision();
+    const auto shift_precision_left_impl = [](Stage& stage) {
+        const auto buffer_obj = stage.get_game_object("buffer");
+        if (buffer_obj.has_value()) {
+            const auto buffer_comp_opt =
+                buffer_obj->get().get_component<BufferValues>("text_component");
+            if (buffer_comp_opt.has_value()) {
+                auto& buffer_comp = buffer_comp_opt->get();
+                buffer_comp.decrease_float_precision();
+            }
+        }
     };
 
-    if (link_views_enabled_) {
-        for (const auto& stage : stages_ | std::views::values) {
-            shift_precision_left_impl(stage.get());
+    const auto lock = std::unique_lock{ui_mutex_};
+    if (state_.link_views_enabled) {
+        for (const auto& stage : buffer_data_.stages | std::views::values) {
+            shift_precision_left_impl(*stage);
         }
     } else {
-        if (currently_selected_stage_ != nullptr) {
-            shift_precision_left_impl(currently_selected_stage_);
+        if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
+            shift_precision_left_impl(*stage);
         }
     }
 
-    request_render_update_ = true;
+    state_.request_render_update = true;
 }
 
 void MainWindow::increase_float_precision()
 {
-    const auto shift_precision_right_impl = [](Stage* stage) {
-        const auto buffer_obj = stage->get_game_object("buffer");
-        const auto buffer_comp =
-            buffer_obj->get_component<BufferValues>("text_component");
-
-        buffer_comp->increase_float_precision();
+    const auto shift_precision_right_impl = [](Stage& stage) {
+        const auto buffer_obj = stage.get_game_object("buffer");
+        if (buffer_obj.has_value()) {
+            const auto buffer_comp_opt =
+                buffer_obj->get().get_component<BufferValues>("text_component");
+            if (buffer_comp_opt.has_value()) {
+                auto& buffer_comp = buffer_comp_opt->get();
+                buffer_comp.increase_float_precision();
+            }
+        }
     };
 
-    if (link_views_enabled_) {
-        for (const auto& stage : stages_ | std::views::values) {
-            shift_precision_right_impl(stage.get());
+    const auto lock = std::unique_lock{ui_mutex_};
+    if (state_.link_views_enabled) {
+        for (const auto& stage : buffer_data_.stages | std::views::values) {
+            shift_precision_right_impl(*stage);
         }
     } else {
-        if (currently_selected_stage_ != nullptr) {
-            shift_precision_right_impl(currently_selected_stage_);
+        if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
+            shift_precision_right_impl(*stage);
         }
     }
 
-    request_render_update_ = true;
+    state_.request_render_update = true;
 }
 
 void MainWindow::update_shift_precision() const
 {
-    if (currently_selected_stage_ != nullptr) {
-        const auto buffer_obj =
-            currently_selected_stage_->get_game_object("buffer");
-        const auto buffer =
-            buffer_obj->get_component<Buffer>("buffer_component");
+    const auto lock = std::unique_lock{ui_mutex_};
 
-        if (BufferType::Float32 == buffer->type ||
-            BufferType::Float64 == buffer->type) {
-            ui_->decrease_float_precision->setEnabled(true);
-            ui_->increase_float_precision->setEnabled(true);
-        } else {
-            ui_->decrease_float_precision->setEnabled(false);
-            ui_->increase_float_precision->setEnabled(false);
-        }
-    } else {
-        ui_->decrease_float_precision->setEnabled(false);
-        ui_->increase_float_precision->setEnabled(false);
+    // Default to disabled
+    ui_components_.ui->decrease_float_precision->setEnabled(false);
+    ui_components_.ui->increase_float_precision->setEnabled(false);
+
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (!stage) {
+        return;
+    }
+
+    const auto buffer_obj = stage->get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
+
+    const auto buffer_opt =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (!buffer_opt.has_value()) {
+        return;
+    }
+
+    const auto& buffer = buffer_opt->get();
+    if (BufferType::Float32 == buffer.type ||
+        BufferType::Float64 == buffer.type) {
+        ui_components_.ui->decrease_float_precision->setEnabled(true);
+        ui_components_.ui->increase_float_precision->setEnabled(true);
     }
 }
 
 void MainWindow::rotate_90_cw()
 {
-    const auto request_90_cw_rotation = [](Stage* stage) {
-        const auto buffer_obj = stage->get_game_object("buffer");
-        const auto buffer_comp =
-            buffer_obj->get_component<Buffer>("buffer_component");
-
-        buffer_comp->rotate(90.0f * static_cast<float>(M_PI) / 180.0f);
+    const auto request_90_cw_rotation = [](Stage& stage) {
+        const auto buffer_obj = stage.get_game_object("buffer");
+        if (buffer_obj.has_value()) {
+            const auto buffer_comp_opt =
+                buffer_obj->get().get_component<Buffer>("buffer_component");
+            if (buffer_comp_opt.has_value()) {
+                auto& buffer_comp = buffer_comp_opt->get();
+                buffer_comp.rotate(90.0f * static_cast<float>(M_PI) / 180.0f);
+            }
+        }
     };
 
-    if (link_views_enabled_) {
-        for (const auto& stage : stages_ | std::views::values) {
-            request_90_cw_rotation(stage.get());
+    const auto lock = std::unique_lock{ui_mutex_};
+    if (state_.link_views_enabled) {
+        for (const auto& stage : buffer_data_.stages | std::views::values) {
+            request_90_cw_rotation(*stage);
         }
     } else {
-        if (currently_selected_stage_ != nullptr) {
-            request_90_cw_rotation(currently_selected_stage_);
+        if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
+            request_90_cw_rotation(*stage);
         }
     }
 
-    request_render_update_ = true;
+    state_.request_render_update = true;
 }
 
 
 void MainWindow::rotate_90_ccw()
 {
-    const auto request_90_ccw_rotation = [](Stage* stage) {
-        const auto buffer_obj = stage->get_game_object("buffer");
-        const auto buffer_comp =
-            buffer_obj->get_component<Buffer>("buffer_component");
-
-        buffer_comp->rotate(-90.0f * static_cast<float>(M_PI) / 180.0f);
+    const auto request_90_ccw_rotation = [](Stage& stage) {
+        const auto buffer_obj = stage.get_game_object("buffer");
+        if (buffer_obj.has_value()) {
+            const auto buffer_comp_opt =
+                buffer_obj->get().get_component<Buffer>("buffer_component");
+            if (buffer_comp_opt.has_value()) {
+                auto& buffer_comp = buffer_comp_opt->get();
+                buffer_comp.rotate(-90.0f * static_cast<float>(M_PI) / 180.0f);
+            }
+        }
     };
 
-    if (link_views_enabled_) {
-        for (const auto& stage : stages_ | std::views::values) {
-            request_90_ccw_rotation(stage.get());
+    const auto lock = std::unique_lock{ui_mutex_};
+    if (state_.link_views_enabled) {
+        for (const auto& stage : buffer_data_.stages | std::views::values) {
+            request_90_ccw_rotation(*stage);
         }
     } else {
-        if (currently_selected_stage_ != nullptr) {
-            request_90_ccw_rotation(currently_selected_stage_);
+        if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
+            request_90_ccw_rotation(*stage);
         }
     }
 
-    request_render_update_ = true;
+    state_.request_render_update = true;
 }
 
 
-void MainWindow::buffer_selected(QListWidgetItem* item)
+// NOSONAR: Parameter must be non-const to match Qt signal signature
+// currentItemChanged(QListWidgetItem*, QListWidgetItem*) which emits
+// non-const pointers.
+void MainWindow::buffer_selected(QListWidgetItem* item) // NOSONAR
 {
     if (item == nullptr) {
         return;
     }
 
-    const auto stage =
-        stages_.find(item->data(Qt::UserRole).toString().toStdString());
-    if (stage != stages_.end()) {
-        set_currently_selected_stage(stage->second.get());
-        reset_ac_min_labels();
-        reset_ac_max_labels();
-        update_shift_precision();
-        update_status_bar();
+    const auto lock  = std::unique_lock{ui_mutex_};
+    const auto stage = buffer_data_.stages.find(
+        item->data(Qt::UserRole).toString().toStdString());
+    if (stage == buffer_data_.stages.end()) {
+        return;
     }
+
+    set_currently_selected_stage(stage->second);
+    reset_ac_min_labels();
+    reset_ac_max_labels();
+    update_shift_precision();
+    update_status_bar();
 }
 
 
 void MainWindow::remove_selected_buffer()
 {
-    if (ui_->imageList->count() > 0 && currently_selected_stage_ != nullptr) {
+    const auto lock = std::unique_lock{ui_mutex_};
+    if (ui_components_.ui->imageList->count() > 0 &&
+        !buffer_data_.currently_selected_stage.expired()) {
         auto removed_item = std::unique_ptr<QListWidgetItem>{
-            ui_->imageList->takeItem(ui_->imageList->currentRow())};
+            ui_components_.ui->imageList->takeItem(
+                ui_components_.ui->imageList->currentRow())};
         const auto buffer_name =
             removed_item->data(Qt::UserRole).toString().toStdString();
-        stages_.erase(buffer_name);
-        held_buffers_.erase(buffer_name);
+        buffer_data_.stages.erase(buffer_name);
+        buffer_data_.held_buffers.erase(buffer_name);
         removed_item.reset();
 
-        removed_buffer_names_.insert(buffer_name);
+        buffer_data_.removed_buffer_names.insert(buffer_name);
 
-        if (stages_.empty()) {
+        if (buffer_data_.stages.empty()) {
             set_currently_selected_stage(nullptr);
             update_shift_precision();
         }
@@ -342,15 +402,16 @@ void MainWindow::remove_selected_buffer()
 
 void MainWindow::symbol_selected()
 {
-    if (ui_->symbolList->text().isEmpty()) {
+    if (ui_components_.ui->symbolList->text().isEmpty()) {
         return;
     }
 
-    const auto symbol_name_qba = ui_->symbolList->text().toLocal8Bit();
-    const auto symbol_name     = symbol_name_qba.constData();
+    const auto symbol_name_qba =
+        ui_components_.ui->symbolList->text().toLocal8Bit();
+    const auto symbol_name = symbol_name_qba.constData();
     request_plot_buffer(symbol_name);
     // Clear symbol input
-    ui_->symbolList->setText("");
+    ui_components_.ui->symbolList->setText("");
 }
 
 
@@ -363,8 +424,8 @@ void MainWindow::symbol_completed(const QString& str)
     const auto symbol_name_qba = str.toLocal8Bit();
     request_plot_buffer(symbol_name_qba.constData());
     // Clear symbol input
-    ui_->symbolList->setText("");
-    ui_->symbolList->clearFocus();
+    ui_components_.ui->symbolList->setText("");
+    ui_components_.ui->symbolList->clearFocus();
 }
 
 
@@ -372,12 +433,21 @@ void MainWindow::export_buffer()
 {
     const auto sender_action(dynamic_cast<QAction*>(sender()));
 
-    const auto stage =
-        stages_.find(sender_action->data().toString().toStdString())->second;
+    const auto lock  = std::unique_lock{ui_mutex_};
+    const auto stage = buffer_data_.stages
+                           .find(sender_action->data().toString().toStdString())
+                           ->second;
 
     const auto buffer_obj = stage->get_game_object("buffer");
-    const auto component =
-        buffer_obj->get_component<Buffer>("buffer_component");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
+    const auto component_opt =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (!component_opt.has_value()) {
+        return;
+    }
+    const auto& component = component_opt->get();
 
     auto file_dialog = QFileDialog{this};
     file_dialog.setAcceptMode(QFileDialog::AcceptSave);
@@ -424,18 +494,19 @@ void MainWindow::export_buffer()
 
 void MainWindow::show_context_menu(const QPoint& pos)
 {
-    if (ui_->imageList->itemAt(pos) != nullptr) {
+    if (ui_components_.ui->imageList->itemAt(pos) != nullptr) {
         // Handle global position
-        const auto globalPos = ui_->imageList->mapToGlobal(pos);
+        const auto globalPos = ui_components_.ui->imageList->mapToGlobal(pos);
 
         // Create menu and insert context actions
         auto menu = QMenu{this};
 
         const auto exportAction =
-            menu.addAction("Export buffer", this, SLOT(export_buffer()));
+            menu.addAction("Export buffer", this, &MainWindow::export_buffer);
 
         // Add parameter to action: buffer name
-        exportAction->setData(ui_->imageList->itemAt(pos)->data(Qt::UserRole));
+        exportAction->setData(
+            ui_components_.ui->imageList->itemAt(pos)->data(Qt::UserRole));
 
         // Show context menu at handling position
         menu.exec(globalPos);
@@ -445,35 +516,45 @@ void MainWindow::show_context_menu(const QPoint& pos)
 
 void MainWindow::toggle_go_to_dialog() const
 {
-    if (!go_to_widget_->isVisible()) {
+    const auto lock = std::unique_lock{ui_mutex_};
+    if (!ui_components_.go_to_widget->isVisible()) {
         auto default_goal = vec4{0.0f, 0.0f, 0.0f, 0.0f};
 
-        if (currently_selected_stage_ != nullptr) {
-            const auto cam_obj =
-                currently_selected_stage_->get_game_object("camera");
-            const auto cam = cam_obj->get_component<Camera>("camera_component");
-
-            default_goal = cam->get_position();
+        if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
+            const auto cam_obj = stage->get_game_object("camera");
+            if (!cam_obj.has_value()) {
+                return;
+            }
+            const auto cam_opt =
+                cam_obj->get().get_component<Camera>("camera_component");
+            if (!cam_opt.has_value()) {
+                return;
+            }
+            const auto& cam = cam_opt->get();
+            default_goal    = cam.get_position();
         }
 
-        go_to_widget_->set_defaults(default_goal.x(), default_goal.y());
+        ui_components_.go_to_widget->set_defaults(default_goal.x(),
+                                                  default_goal.y());
     }
 
-    go_to_widget_->toggle_visible();
+    ui_components_.go_to_widget->toggle_visible();
 }
 
 
 void MainWindow::go_to_pixel(const float x, const float y)
 {
-    if (link_views_enabled_) {
-        for (const auto& stage : stages_ | std::views::values) {
+    const auto lock = std::unique_lock{ui_mutex_};
+    if (state_.link_views_enabled) {
+        for (const auto& stage : buffer_data_.stages | std::views::values) {
             stage->go_to_pixel(x, y);
         }
-    } else if (currently_selected_stage_ != nullptr) {
-        currently_selected_stage_->go_to_pixel(x, y);
+    } else if (const auto stage =
+                   buffer_data_.currently_selected_stage.lock()) {
+        stage->go_to_pixel(x, y);
     }
 
-    request_render_update_ = true;
+    state_.request_render_update = true;
 }
 
 } // namespace oid

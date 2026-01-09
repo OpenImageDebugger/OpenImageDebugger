@@ -30,7 +30,6 @@
 #include <map>
 #include <ranges>
 
-#include "ui/main_window/main_window.h"
 #include "visualization/components/component.h"
 #include "visualization/stage.h"
 
@@ -40,6 +39,21 @@ namespace oid
 GameObject::GameObject()
 {
     pose_.set_identity();
+}
+
+
+void GameObject::set_stage(Stage& stage)
+{
+    stage_ = std::ref(stage);
+}
+
+
+std::optional<std::reference_wrapper<Stage>> GameObject::get_stage() const
+{
+    if (!stage_.has_value()) {
+        return std::nullopt;
+    }
+    return stage_;
 }
 
 
@@ -87,7 +101,9 @@ void GameObject::set_pose(const mat4& pose)
 
 void GameObject::request_render_update() const
 {
-    stage->main_window->request_render_update();
+    if (stage_.has_value()) {
+        stage().request_render_update();
+    }
 }
 
 

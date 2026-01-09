@@ -40,25 +40,27 @@ void MainWindow::decode_set_available_symbols()
 {
     const auto lock      = std::unique_lock{ui_mutex_};
     auto message_decoder = MessageDecoder{&socket_};
-    message_decoder.read<QStringList, QString>(available_vars_);
+    message_decoder.read<QStringList, QString>(buffer_data_.available_vars);
 
-    for (const auto& symbol_value : available_vars_) {
+    for (const auto& symbol_value : buffer_data_.available_vars) {
         // Plot buffer if it was available in the previous session
-        if (previous_session_buffers_.contains(symbol_value.toStdString())) {
-            request_plot_buffer(symbol_value.toStdString().data());
+        const auto symbol_std_str = symbol_value.toStdString();
+        if (buffer_data_.previous_session_buffers.contains(symbol_std_str)) {
+            request_plot_buffer(symbol_std_str.data());
         }
     }
 
-    completer_updated_ = true;
+    state_.completer_updated = true;
 }
 
 
 void MainWindow::respond_get_observed_symbols()
 {
+    const auto lock       = std::unique_lock{ui_mutex_};
     auto message_composer = MessageComposer{};
     message_composer.push(MessageType::GetObservedSymbolsResponse)
-        .push(held_buffers_.size());
-    for (const auto& name : held_buffers_ | std::views::keys) {
+        .push(buffer_data_.held_buffers.size());
+    for (const auto& name : buffer_data_.held_buffers | std::views::keys) {
         message_composer.push(name);
     }
     message_composer.send(&socket_);
@@ -69,8 +71,8 @@ QListWidgetItem*
 MainWindow::find_image_list_item(const std::string& variable_name_str) const
 {
     // Looking for corresponding item...
-    for (int i = 0; i < ui_->imageList->count(); ++i) {
-        const auto item = ui_->imageList->item(i);
+    for (int i = 0; i < ui_components_.ui->imageList->count(); ++i) {
+        const auto item = ui_components_.ui->imageList->item(i);
         if (item->data(Qt::UserRole) != variable_name_str.c_str()) {
             continue;
         }
@@ -83,8 +85,9 @@ MainWindow::find_image_list_item(const std::string& variable_name_str) const
 
 void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
 {
-    const auto itStage = stages_.find(variable_name_str);
-    if (itStage == stages_.end()) {
+    const auto lock    = std::unique_lock{ui_mutex_};
+    const auto itStage = buffer_data_.stages.find(variable_name_str);
+    if (itStage == buffer_data_.stages.end()) {
         return;
     }
 
@@ -97,11 +100,11 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
     const auto bytes_per_line = icon_width * 3;
 
     // Update buffer icon
-    ui_->bufferPreview->render_buffer_icon(
-        stage.get(), icon_width, icon_height);
+    ui_components_.ui->bufferPreview->render_buffer_icon(
+        *stage, icon_width, icon_height);
 
     // Construct icon widget
-    const auto bufferIcon = QImage{stage->buffer_icon.data(),
+    const auto bufferIcon = QImage{stage->get_buffer_icon().data(),
                                    icon_width,
                                    icon_height,
                                    bytes_per_line,
@@ -152,14 +155,17 @@ void MainWindow::decode_plot_buffer_contents()
         .read(buff_type)
         .read(buff_contents);
 
+    const auto lock = std::unique_lock{ui_mutex_};
+
     // Put the data buffer into the container
     if (buff_type == BufferType::Float64) {
-        held_buffers_[variable_name_str] =
+        buffer_data_.held_buffers[variable_name_str] =
             make_float_buffer_from_double(buff_contents);
     } else {
-        held_buffers_[variable_name_str] = std::move(buff_contents);
+        buffer_data_.held_buffers[variable_name_str] = std::move(buff_contents);
     }
-    const auto buff_ptr = held_buffers_[variable_name_str].data();
+    const auto& held_buffer = buffer_data_.held_buffers[variable_name_str];
+    const auto buff_span    = std::span<const uint8_t>(held_buffer);
 
     // Human readable dimensions
     auto visualized_width  = int{};
@@ -182,46 +188,54 @@ void MainWindow::decode_plot_buffer_contents()
     }();
 
     // Find corresponding stage buffer
-    if (auto buffer_stage = stages_.find(variable_name_str);
-        buffer_stage == stages_.end()) {
+    if (auto buffer_stage = buffer_data_.stages.find(variable_name_str);
+        buffer_stage == buffer_data_.stages.end()) {
 
         // Construct a new stage buffer if needed
-        auto stage = std::make_shared<Stage>(this);
-        if (!stage->initialize(buff_ptr,
-                               buff_width,
-                               buff_height,
-                               buff_channels,
-                               buff_type,
-                               buff_stride,
-                               pixel_layout_str,
-                               transpose_buffer)) {
-            std::cerr << "[error] Could not initialize opengl canvas!"
+        auto stage = std::make_shared<Stage>(*this);
+        if (const BufferParams params{buff_span,
+                                      buff_width,
+                                      buff_height,
+                                      buff_channels,
+                                      buff_type,
+                                      buff_stride,
+                                      pixel_layout_str,
+                                      transpose_buffer};
+            !stage->initialize(params)) {
+            std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
+                         "initialization failed."
                       << std::endl;
+            // Continue execution but mark that initialization failed
+            // The stage will not be usable, but the application can continue
         }
-        stage->contrast_enabled = ac_enabled_;
-        buffer_stage = stages_.try_emplace(variable_name_str, stage).first;
+        stage->set_contrast_enabled(state_.ac_enabled);
+        buffer_stage =
+            buffer_data_.stages.try_emplace(variable_name_str, stage).first;
     } else {
 
         // Update buffer data
-        buffer_stage->second->buffer_update(buff_ptr,
-                                            buff_width,
-                                            buff_height,
-                                            buff_channels,
-                                            buff_type,
-                                            buff_stride,
-                                            pixel_layout_str,
-                                            transpose_buffer);
+        const BufferParams params{buff_span,
+                                  buff_width,
+                                  buff_height,
+                                  buff_channels,
+                                  buff_type,
+                                  buff_stride,
+                                  pixel_layout_str,
+                                  transpose_buffer};
+        buffer_stage->second->buffer_update(params);
     }
 
     // Construct a new list widget if needed
     if (auto item = find_image_list_item(variable_name_str); item == nullptr) {
-        item =
-            std::make_unique<QListWidgetItem>(label_str.c_str(), ui_->imageList)
-                .release();
-        item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
-        item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
-                       Qt::ItemIsDragEnabled);
-        ui_->imageList->addItem(item);
+        // Create item with unique_ptr to manage ownership until addItem takes
+        // it
+        auto new_item = std::make_unique<QListWidgetItem>(
+            label_str.c_str(), ui_components_.ui->imageList);
+        new_item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
+        new_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
+                           Qt::ItemIsDragEnabled);
+        // addItem() takes ownership, so release() is safe here
+        ui_components_.ui->imageList->addItem(new_item.release());
     }
 
     // Update icon and text of corresponding item in image list
@@ -229,7 +243,7 @@ void MainWindow::decode_plot_buffer_contents()
     update_image_list_label(variable_name_str, label_str);
 
     // Update AC values
-    if (currently_selected_stage_ != nullptr) {
+    if (!buffer_data_.currently_selected_stage.expired()) {
         reset_ac_min_labels();
         reset_ac_max_labels();
     }
@@ -237,7 +251,7 @@ void MainWindow::decode_plot_buffer_contents()
     // Update list of observed symbols in settings
     persist_settings_deferred();
 
-    request_render_update_ = true;
+    state_.request_render_update = true;
 }
 
 
@@ -248,7 +262,10 @@ void MainWindow::decode_incoming_messages()
         QApplication::quit();
     }
 
-    available_vars_.clear();
+    {
+        const auto lock = std::unique_lock{ui_mutex_};
+        buffer_data_.available_vars.clear();
+    }
 
     if (socket_.bytesAvailable() == 0) {
         return;
@@ -257,6 +274,23 @@ void MainWindow::decode_incoming_messages()
     auto header = MessageType{};
     if (!socket_.read(std::bit_cast<char*>(&header),
                       static_cast<qint64>(sizeof(header)))) {
+        const auto error = socket_.error();
+        std::cerr << "[Error] Failed to read message header: "
+                  << socket_.errorString().toStdString() << std::endl;
+
+        // Handle critical errors that indicate connection is broken
+        if (error == QAbstractSocket::RemoteHostClosedError ||
+            error == QAbstractSocket::NetworkError ||
+            error == QAbstractSocket::ConnectionRefusedError ||
+            error == QAbstractSocket::SocketTimeoutError) {
+            std::cerr
+                << "[Error] Critical socket error detected. Closing connection."
+                << std::endl;
+            socket_.close();
+            // Next call will detect UnconnectedState and quit
+        }
+        // For other errors (e.g., temporary read errors), just return and retry
+        // next time
         return;
     }
 

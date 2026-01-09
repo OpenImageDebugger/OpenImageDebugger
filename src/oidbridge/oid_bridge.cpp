@@ -29,6 +29,7 @@
 
 #include <bit>
 #include <deque>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -41,11 +42,27 @@
 #include "system/process/process.h"
 
 #include <QDataStream>
+#include <QPointer>
 #include <QTcpServer>
 #include <QTcpSocket>
 
 
 using namespace oid;
+
+struct PlotBufferParams
+{
+    std::string variable_name_str;
+    std::string display_name_str;
+    std::string pixel_layout_str;
+    bool transpose_buffer;
+    int buff_width;
+    int buff_height;
+    int buff_channels;
+    int buff_stride;
+    BufferType buff_type;
+    const uint8_t* buff_ptr;
+    size_t buff_size;
+};
 
 struct UiMessage
 {
@@ -88,8 +105,8 @@ class PyGILRAII
 class OidBridge
 {
   public:
-    explicit OidBridge(int (*plot_callback)(const char*))
-        : plot_callback_{plot_callback}
+    explicit OidBridge(std::function<int(const char*)> plot_callback)
+        : plot_callback_{std::move(plot_callback)}
     {
     }
 
@@ -97,7 +114,6 @@ class OidBridge
     {
         // Initialize server
         if (!server_.listen(QHostAddress::Any)) {
-            // TODO escalate error
             std::cerr << "[OpenImageDebugger] Could not start TCP server"
                       << std::endl;
             return false;
@@ -130,7 +146,7 @@ class OidBridge
 
     std::deque<std::string> get_observed_symbols()
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         auto message_composer = MessageComposer{};
         message_composer.push(MessageType::GetObservedSymbols).send(client_);
@@ -150,7 +166,7 @@ class OidBridge
     void
     set_available_symbols(const std::deque<std::string>& available_vars) const
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         auto message_composer = MessageComposer{};
         message_composer.push(MessageType::SetAvailableSymbols)
@@ -168,22 +184,26 @@ class OidBridge
             const PlotBufferRequestMessage* msg =
                 dynamic_cast<PlotBufferRequestMessage*>(
                     plot_request_message.get());
-            plot_callback_(msg->buffer_name.c_str());
+            if (plot_callback_) {
+                plot_callback_(msg->buffer_name.c_str());
+            }
         }
     }
 
-    void plot_buffer(const std::string& variable_name_str,
-                     const std::string& display_name_str,
-                     const std::string& pixel_layout_str,
-                     const bool transpose_buffer,
-                     const int buff_width,
-                     const int buff_height,
-                     const int buff_channels,
-                     const int buff_stride,
-                     const BufferType buff_type,
-                     const uint8_t* buff_ptr,
-                     const size_t buff_length) const
+    void plot_buffer(const PlotBufferParams& params) const
     {
+        const auto& variable_name_str = params.variable_name_str;
+        const auto& display_name_str  = params.display_name_str;
+        const auto& pixel_layout_str  = params.pixel_layout_str;
+        const auto transpose_buffer   = params.transpose_buffer;
+        const auto buff_width         = params.buff_width;
+        const auto buff_height        = params.buff_height;
+        const auto buff_channels      = params.buff_channels;
+        const auto buff_stride        = params.buff_stride;
+        const auto buff_type          = params.buff_type;
+        const auto buff_ptr           = params.buff_ptr;
+        const auto buff_size          = params.buff_size;
+
         auto message_composer = MessageComposer{};
         message_composer.push(MessageType::PlotBufferContents)
             .push(variable_name_str)
@@ -195,7 +215,7 @@ class OidBridge
             .push(buff_channels)
             .push(buff_stride)
             .push(buff_type)
-            .push(buff_ptr, buff_length)
+            .push(buff_ptr, buff_size)
             .send(client_);
     }
 
@@ -207,10 +227,10 @@ class OidBridge
   private:
     Process ui_proc_{};
     QTcpServer server_{};
-    QTcpSocket* client_{nullptr};
+    QPointer<QTcpSocket> client_{}; // Qt-managed non-owning pointer
     std::string oid_path_{};
 
-    int (*plot_callback_)(const char*){};
+    std::function<int(const char*)> plot_callback_{};
 
     std::map<MessageType, std::unique_ptr<UiMessage>> received_messages_{};
 
@@ -230,12 +250,12 @@ class OidBridge
 
     void try_read_incoming_messages(const int msecs = 3000)
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         do {
             client_->waitForReadyRead(msecs);
 
-            if (client_->bytesAvailable() == 0) {
+            if (client_.isNull() || client_->bytesAvailable() == 0) {
                 break;
             }
 
@@ -258,13 +278,13 @@ class OidBridge
                     << std::endl;
                 break;
             }
-        } while (client_->bytesAvailable() > 0);
+        } while (!client_.isNull() && client_->bytesAvailable() > 0);
     }
 
 
     [[nodiscard]] std::unique_ptr<UiMessage> decode_plot_buffer_request() const
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         auto response        = std::make_unique<PlotBufferRequestMessage>();
         auto message_decoder = MessageDecoder{client_};
@@ -275,7 +295,7 @@ class OidBridge
     [[nodiscard]] std::unique_ptr<UiMessage>
     decode_get_observed_symbols_response() const
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         auto response = std::make_unique<GetObservedSymbolsResponseMessage>();
 
@@ -302,13 +322,13 @@ class OidBridge
 
     void wait_for_client()
     {
-        if (client_ == nullptr) {
+        if (client_.isNull()) {
             if (!server_.waitForNewConnection(10000)) {
                 std::cerr << "[OpenImageDebugger] No clients connected to "
                              "OpenImageDebugger server"
                           << std::endl;
             }
-            client_ = server_.nextPendingConnection();
+            client_ = QPointer<QTcpSocket>(server_.nextPendingConnection());
         }
     }
 };
@@ -333,7 +353,10 @@ AppHandler oid_initialize(int (*plot_callback)(const char*),
     const auto py_oid_path =
         PyDict_GetItemString(optional_parameters, "oid_path");
 
-    auto app = std::make_unique<OidBridge>(plot_callback);
+    std::function<int(const char*)> callback =
+        plot_callback ? std::function<int(const char*)>{plot_callback}
+                      : std::function<int(const char*)>{};
+    auto app = std::make_unique<OidBridge>(std::move(callback));
 
     if (py_oid_path) {
         auto oid_path_str = std::string{};
@@ -595,15 +618,16 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
         return;
     }
 
-    app->plot_buffer(variable_name_str,
-                     display_name_str,
-                     pixel_layout_str,
-                     transpose_buffer,
-                     buff_width,
-                     buff_height,
-                     buff_channels,
-                     buff_stride,
-                     buff_type,
-                     buff_ptr,
-                     buff_size);
+    const PlotBufferParams params{variable_name_str,
+                                  display_name_str,
+                                  pixel_layout_str,
+                                  transpose_buffer,
+                                  buff_width,
+                                  buff_height,
+                                  buff_channels,
+                                  buff_stride,
+                                  buff_type,
+                                  buff_ptr,
+                                  buff_size};
+    app->plot_buffer(params);
 }

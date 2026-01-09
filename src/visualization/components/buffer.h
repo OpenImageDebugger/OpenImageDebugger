@@ -27,6 +27,7 @@
 #define BUFFER_H_
 
 #include <array>
+#include <span>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -38,10 +39,35 @@
 namespace oid
 {
 
+namespace BufferConstants
+{
+constexpr int MAX_TEXTURE_SIZE        = 2048;
+constexpr float ZOOM_BORDER_THRESHOLD = 40.0f;
+constexpr int MIN_BUFFER_DIMENSION    = 1;
+constexpr int MAX_BUFFER_DIMENSION =
+    131072; // 2^17 = 128K (closest power of 2 to 100k)
+constexpr int MIN_CHANNELS = 1;
+constexpr int MAX_CHANNELS = 4;
+constexpr std::size_t MAX_BUFFER_SIZE =
+    16ULL * 1024ULL * 1024ULL * 1024ULL; // 16GB
+} // namespace BufferConstants
+
+struct BufferParams
+{
+    std::span<const uint8_t> buffer;
+    int buffer_width_i;
+    int buffer_height_i;
+    int channels;
+    BufferType type;
+    int step;
+    std::string pixel_layout;
+    bool transpose_buffer;
+};
+
 class Buffer final : public Component
 {
   public:
-    Buffer(GameObject* game_object, GLCanvas* gl_canvas);
+    Buffer(GameObject& game_object, GLCanvas& gl_canvas);
 
     ~Buffer() override;
 
@@ -53,7 +79,7 @@ class Buffer final : public Component
 
     Buffer& operator=(Buffer&&) = delete;
 
-    static constexpr int max_texture_size = 2048;
+    static constexpr int max_texture_size = BufferConstants::MAX_TEXTURE_SIZE;
 
     std::vector<GLuint> buff_tex{};
 
@@ -67,7 +93,7 @@ class Buffer final : public Component
 
     BufferType type{BufferType::UnsignedByte};
 
-    const std::uint8_t* buffer{};
+    std::span<const uint8_t> buffer_{};
 
     bool transpose{};
 
@@ -87,6 +113,8 @@ class Buffer final : public Component
 
     [[nodiscard]] const char* get_pixel_layout() const;
 
+    void configure(const BufferParams& params);
+
     [[nodiscard]] float tile_coord_x(int x) const;
     [[nodiscard]] float tile_coord_y(int y) const;
 
@@ -99,9 +127,11 @@ class Buffer final : public Component
     int num_textures_x{};
     int num_textures_y{};
 
-    float* min_buffer_values();
+    std::span<float> min_buffer_values();
 
-    float* max_buffer_values();
+    std::span<float> max_buffer_values();
+
+    [[nodiscard]] std::span<const float> max_buffer_values() const;
 
     [[nodiscard]] const float* auto_buffer_contrast_brightness() const;
 
@@ -136,7 +166,7 @@ class Buffer final : public Component
                                                           0.0f};
     float angle_{0.0f};
 
-    ShaderProgram buff_prog_{nullptr};
+    ShaderProgram buff_prog_;
     GLuint vbo_{};
 };
 

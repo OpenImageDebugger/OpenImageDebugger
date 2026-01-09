@@ -39,7 +39,7 @@ class GameObject;
 class Component
 {
   public:
-    Component(GameObject* game_object, GLCanvas* gl_canvas);
+    Component(GameObject& game_object, GLCanvas& gl_canvas);
 
     virtual bool initialize();
 
@@ -75,9 +75,9 @@ class Component
 
     virtual ~Component();
 
-    GameObject* game_object_{};
+    GameObject& game_object_;
 
-    GLCanvas* gl_canvas_{};
+    GLCanvas& gl_canvas_;
 };
 
 } // namespace oid
