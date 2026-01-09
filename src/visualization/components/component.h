@@ -26,6 +26,8 @@
 #ifndef COMPONENT_H_
 #define COMPONENT_H_
 
+#include <memory>
+
 #include "math/linear_algebra.h"
 #include "ui/gl_canvas.h"
 #include "visualization/events.h"
@@ -39,7 +41,8 @@ class GameObject;
 class Component
 {
   public:
-    Component(GameObject& game_object, GLCanvas& gl_canvas);
+    Component(std::shared_ptr<GameObject> game_object,
+              std::shared_ptr<GLCanvas> gl_canvas);
 
     [[nodiscard]] virtual bool initialize();
 
@@ -75,9 +78,34 @@ class Component
 
     virtual ~Component() noexcept;
 
-    GameObject& game_object_;
+    [[nodiscard]] std::shared_ptr<GameObject> game_object() const noexcept
+    {
+        return game_object_.lock();
+    }
 
-    GLCanvas& gl_canvas_;
+    [[nodiscard]] GameObject& game_object_ref() const
+    {
+        auto obj = game_object_.lock();
+        assert(obj && "GameObject has been destroyed");
+        return *obj;
+    }
+
+    [[nodiscard]] std::shared_ptr<GLCanvas> gl_canvas() const noexcept
+    {
+        return gl_canvas_.lock();
+    }
+
+    [[nodiscard]] GLCanvas& gl_canvas_ref() const
+    {
+        auto canvas = gl_canvas_.lock();
+        assert(canvas && "GLCanvas has been destroyed");
+        return *canvas;
+    }
+
+  public:
+    std::weak_ptr<GameObject> game_object_;
+
+    std::weak_ptr<GLCanvas> gl_canvas_;
 };
 
 } // namespace oid

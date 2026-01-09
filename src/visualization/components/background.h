@@ -35,7 +35,8 @@ namespace oid
 class Background final : public Component
 {
   public:
-    Background(GameObject& game_object, GLCanvas& gl_canvas);
+    Background(std::shared_ptr<GameObject> game_object,
+               std::shared_ptr<GLCanvas> gl_canvas);
 
     ~Background() noexcept override;
 

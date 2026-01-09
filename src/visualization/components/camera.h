@@ -32,20 +32,22 @@
 namespace oid
 {
 
+
 class Camera final : public Component
 {
   public:
-    Camera(GameObject& game_object, GLCanvas& gl_canvas);
+    Camera(std::shared_ptr<GameObject> game_object,
+           std::shared_ptr<GLCanvas> gl_canvas);
 
     ~Camera() override = default;
 
     Camera(const Camera& cam);
 
-    Camera(Camera&& cam) noexcept;
-
     Camera& operator=(const Camera& cam);
 
-    Camera& operator=(Camera&& cam) noexcept;
+    Camera(Camera&&) = default;
+
+    Camera& operator=(Camera&&) = default;
 
     static constexpr float zoom_factor{1.1f};
 
@@ -79,6 +81,10 @@ class Camera final : public Component
     void move_to(float x, float y);
 
     [[nodiscard]] vec4 get_position() const;
+
+    [[nodiscard]] float get_zoom_power() const;
+
+    void set_zoom_power(float zoom_power);
 
   private:
     void update_object_pose() const;

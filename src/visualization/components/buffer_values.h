@@ -74,7 +74,8 @@ struct DrawTextParams
 class BufferValues final : public Component
 {
   public:
-    BufferValues(GameObject& game_object, GLCanvas& gl_canvas);
+    BufferValues(std::shared_ptr<GameObject> game_object,
+                 std::shared_ptr<GLCanvas> gl_canvas);
 
     ~BufferValues() override;
 

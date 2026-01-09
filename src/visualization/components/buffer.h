@@ -67,7 +67,8 @@ struct BufferParams
 class Buffer final : public Component
 {
   public:
-    Buffer(GameObject& game_object, GLCanvas& gl_canvas);
+    Buffer(std::shared_ptr<GameObject> game_object,
+           std::shared_ptr<GLCanvas> gl_canvas);
 
     ~Buffer() noexcept override;
 

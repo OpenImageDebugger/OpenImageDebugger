@@ -66,26 +66,28 @@ constexpr std::array<float, 8>
     Buffer::no_ac_params{1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
 
-Buffer::Buffer(GameObject& game_object, GLCanvas& gl_canvas)
+Buffer::Buffer(std::shared_ptr<GameObject> game_object,
+               std::shared_ptr<GLCanvas> gl_canvas)
     : Component{game_object, gl_canvas}
-    , buff_prog_{gl_canvas}
+    , buff_prog_{*gl_canvas}
 {
 }
 
 
 Buffer::~Buffer() noexcept
 {
-    const auto num_textures = num_textures_x * num_textures_y;
-
-    gl_canvas_.glDeleteTextures(num_textures, buff_tex.data());
-    gl_canvas_.glDeleteBuffers(1, &vbo_);
+    if (const auto canvas = gl_canvas()) {
+        const auto num_textures = num_textures_x * num_textures_y;
+        canvas->glDeleteTextures(num_textures, buff_tex.data());
+        canvas->glDeleteBuffers(1, &vbo_);
+    }
 }
 
 
 bool Buffer::buffer_update()
 {
     const auto num_textures = num_textures_x * num_textures_y;
-    gl_canvas_.glDeleteTextures(num_textures, buff_tex.data());
+    gl_canvas_ref().glDeleteTextures(num_textures, buff_tex.data());
 
     if (!create_shader_program()) {
         return false;
@@ -457,7 +459,7 @@ float Buffer::tile_coord_y(int y) const
 
 void Buffer::update()
 {
-    const auto stage = game_object_.get_stage();
+    const auto stage = game_object_ref().get_stage();
     if (!stage.has_value()) {
         return;
     }
@@ -503,7 +505,7 @@ void Buffer::update_object_pose() const
         transposition.set_identity();
     }
 
-    game_object_.set_pose(rotation * transposition);
+    game_object_ref().set_pose(rotation * transposition);
 }
 
 
@@ -553,12 +555,12 @@ bool Buffer::initialize()
     };
     // clang-format on
 
-    gl_canvas_.glGenBuffers(1, &vbo_);
-    gl_canvas_.glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    gl_canvas_.glBufferData(GL_ARRAY_BUFFER,
-                            sizeof(g_vertex_buffer_data),
-                            g_vertex_buffer_data.data(),
-                            GL_STATIC_DRAW);
+    gl_canvas_ref().glGenBuffers(1, &vbo_);
+    gl_canvas_ref().glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+    gl_canvas_ref().glBufferData(GL_ARRAY_BUFFER,
+                                 sizeof(g_vertex_buffer_data),
+                                 g_vertex_buffer_data.data(),
+                                 GL_STATIC_DRAW);
 
     setup_gl_buffer();
 
@@ -571,14 +573,14 @@ bool Buffer::initialize()
 void Buffer::draw(const mat4& projection, const mat4& viewInv)
 {
     buff_prog_.use();
-    const auto model = game_object_.get_pose();
+    const auto model = game_object_ref().get_pose();
     const auto mvp   = projection * viewInv * model;
 
-    gl_canvas_.glEnableVertexAttribArray(0);
-    gl_canvas_.glActiveTexture(GL_TEXTURE0);
+    gl_canvas_ref().glEnableVertexAttribArray(0);
+    gl_canvas_ref().glActiveTexture(GL_TEXTURE0);
 
     buff_prog_.uniform1i("sampler", 0);
-    if (const auto stage = game_object_.get_stage();
+    if (const auto stage = game_object_ref().get_stage();
         stage.has_value() && stage->get().get_contrast_enabled()) {
         buff_prog_.uniform4fv(
             "brightness_contrast", 2, auto_buffer_contrast_brightness_.data());
@@ -616,8 +618,8 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
             const auto buff_w = (std::min)(remaining_w, max_texture_size);
             remaining_w -= buff_w;
 
-            gl_canvas_.glBindTexture(GL_TEXTURE_2D,
-                                     buff_tex[ty * num_textures_x + tx]);
+            gl_canvas_ref().glBindTexture(GL_TEXTURE_2D,
+                                          buff_tex[ty * num_textures_x + tx]);
 
             auto tile_model = mat4{};
 
@@ -640,10 +642,10 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
 
             px += static_cast<float>(buff_w) / 2.0f;
 
-            gl_canvas_.glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-            gl_canvas_.glVertexAttribPointer(
+            gl_canvas_ref().glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+            gl_canvas_ref().glVertexAttribPointer(
                 0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-            gl_canvas_.glDrawArrays(GL_TRIANGLES, 0, 6);
+            gl_canvas_ref().glDrawArrays(GL_TRIANGLES, 0, 6);
         }
 
         py += static_cast<float>(buff_h) / 2.0f;
@@ -691,7 +693,7 @@ void Buffer::setup_gl_buffer()
     const int num_textures = num_textures_x * num_textures_y;
 
     buff_tex.resize(num_textures);
-    gl_canvas_.glGenTextures(num_textures, buff_tex.data());
+    gl_canvas_ref().glGenTextures(num_textures, buff_tex.data());
 
     auto tex_type   = GLuint{GL_UNSIGNED_BYTE};
     auto tex_format = GLuint{GL_RED};
@@ -720,8 +722,8 @@ void Buffer::setup_gl_buffer()
 
     auto remaining_h = buffer_height_i;
 
-    gl_canvas_.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    gl_canvas_.glPixelStorei(GL_UNPACK_ROW_LENGTH, step);
+    gl_canvas_ref().glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    gl_canvas_ref().glPixelStorei(GL_UNPACK_ROW_LENGTH, step);
 
     for (int ty = 0; ty < num_textures_y; ++ty) {
         const auto buff_h = (std::min)(remaining_h, max_texture_size);
@@ -733,24 +735,24 @@ void Buffer::setup_gl_buffer()
             remaining_w -= buff_w;
 
             const auto tex_id = ty * num_textures_x + tx;
-            gl_canvas_.glBindTexture(GL_TEXTURE_2D, buff_tex[tex_id]);
+            gl_canvas_ref().glBindTexture(GL_TEXTURE_2D, buff_tex[tex_id]);
 
-            gl_canvas_.glPixelStorei(GL_UNPACK_SKIP_ROWS,
-                                     ty * max_texture_size);
-            gl_canvas_.glPixelStorei(GL_UNPACK_SKIP_PIXELS,
-                                     tx * max_texture_size);
+            gl_canvas_ref().glPixelStorei(GL_UNPACK_SKIP_ROWS,
+                                          ty * max_texture_size);
+            gl_canvas_ref().glPixelStorei(GL_UNPACK_SKIP_PIXELS,
+                                          tx * max_texture_size);
 
-            gl_canvas_.glTexImage2D(GL_TEXTURE_2D,
-                                    0,
-                                    GL_RGBA32F,
-                                    buff_w,
-                                    buff_h,
-                                    0,
-                                    tex_format,
-                                    tex_type,
-                                    nullptr);
+            gl_canvas_ref().glTexImage2D(GL_TEXTURE_2D,
+                                         0,
+                                         GL_RGBA32F,
+                                         buff_w,
+                                         buff_h,
+                                         0,
+                                         tex_format,
+                                         tex_type,
+                                         nullptr);
 
-            gl_canvas_.glTexSubImage2D(
+            gl_canvas_ref().glTexSubImage2D(
                 GL_TEXTURE_2D,
                 0,
                 0,
@@ -761,22 +763,22 @@ void Buffer::setup_gl_buffer()
                 tex_type,
                 std::bit_cast<const GLvoid*>(buffer_.data()));
 
-            gl_canvas_.glTexParameteri(
+            gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            gl_canvas_.glTexParameteri(
+            gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            gl_canvas_.glTexParameteri(
+            gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            gl_canvas_.glTexParameteri(
+            gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            gl_canvas_.glTexParameteri(
+            gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         }
     }
 
-    gl_canvas_.glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    gl_canvas_.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-    gl_canvas_.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    gl_canvas_ref().glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    gl_canvas_ref().glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+    gl_canvas_ref().glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
 }
 
 } // namespace oid
