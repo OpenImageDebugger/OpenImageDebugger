@@ -149,9 +149,8 @@ class MainWindow final : public QMainWindow
 
     void closeEvent(QCloseEvent*) override;
 
-  public Q_SLOTS:
     ///
-    // Assorted methods - slots - implemented in main_window.cpp
+    // Assorted methods - implemented in main_window.cpp
     void loop();
 
     void request_render_update();
@@ -159,7 +158,7 @@ class MainWindow final : public QMainWindow
     void request_icons_update();
 
     ///
-    // Auto contrast pane - slots - implemented in auto_contrast.cpp
+    // Auto contrast pane - implemented in auto_contrast.cpp
     void ac_c1_min_update();
 
     void ac_c2_min_update();
@@ -183,7 +182,7 @@ class MainWindow final : public QMainWindow
     void ac_toggle(bool is_checked);
 
     ///
-    // General UI Events - slots - implemented in ui_events.cpp
+    // General UI Events - implemented in ui_events.cpp
     void recenter_buffer();
 
     void link_views_toggle();
@@ -200,8 +199,7 @@ class MainWindow final : public QMainWindow
 
     // NOSONAR: Parameter must be non-const to match Qt signal signature
     // currentItemChanged(QListWidgetItem*, QListWidgetItem*) which emits
-    // non-const pointers. Qt's old-style SIGNAL/SLOT macros require exact type
-    // matching.
+    // non-const pointers.
     void buffer_selected(QListWidgetItem* item); // NOSONAR
 
     void remove_selected_buffer();
@@ -218,9 +216,8 @@ class MainWindow final : public QMainWindow
 
     void go_to_pixel(float x, float y);
 
-  private Q_SLOTS:
     ///
-    // Assorted methods - private slots - implemented in main_window.cpp
+    // Assorted methods - private - implemented in main_window.cpp
     void persist_settings();
 
   private:

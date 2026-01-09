@@ -403,13 +403,15 @@ void MainWindow::initialize_ui_icons() const
 void MainWindow::initialize_timers()
 {
     connect(&ui_components_.settings_persist_timer,
-            SIGNAL(timeout()),
+            &QTimer::timeout,
             this,
-            SLOT(persist_settings()));
+            &MainWindow::persist_settings);
     ui_components_.settings_persist_timer.setSingleShot(true);
 
-    connect(
-        &ui_components_.update_timer, SIGNAL(timeout()), this, SLOT(loop()));
+    connect(&ui_components_.update_timer,
+            &QTimer::timeout,
+            this,
+            &MainWindow::loop);
 }
 
 
@@ -441,27 +443,27 @@ void MainWindow::initialize_shortcuts()
     auto symbol_list_focus_shortcut =
         std::make_unique<QShortcut>(QKeySequence::fromString("Ctrl+K"), this);
     connect(symbol_list_focus_shortcut.release(),
-            SIGNAL(activated()),
+            &QShortcut::activated,
             ui_components_.ui->symbolList,
-            SLOT(setFocus()));
+            [this]() { ui_components_.ui->symbolList->setFocus(); });
 
     auto buffer_removal_shortcut = std::make_unique<QShortcut>(
         QKeySequence{Qt::Key_Delete}, ui_components_.ui->imageList);
     connect(buffer_removal_shortcut.release(),
-            SIGNAL(activated()),
+            &QShortcut::activated,
             this,
-            SLOT(remove_selected_buffer()));
+            &MainWindow::remove_selected_buffer);
 
     auto go_to_shortcut =
         std::make_unique<QShortcut>(QKeySequence::fromString("Ctrl+L"), this);
     connect(go_to_shortcut.release(),
-            SIGNAL(activated()),
+            &QShortcut::activated,
             this,
-            SLOT(toggle_go_to_dialog()));
+            &MainWindow::toggle_go_to_dialog);
     connect(ui_components_.go_to_widget.get(),
-            SIGNAL(go_to_requested(float, float)),
+            &GoToWidget::go_to_requested,
             this,
-            SLOT(go_to_pixel(float, float)));
+            &MainWindow::go_to_pixel);
 }
 
 
@@ -486,30 +488,30 @@ void MainWindow::initialize_symbol_completer()
 
     ui_components_.ui->symbolList->set_completer(
         *ui_components_.symbol_completer);
-    connect(ui_components_.ui->symbolList->symbolCompleter(),
-            SIGNAL(activated(QString)),
+    connect(ui_components_.symbol_completer.get(),
+            qOverload<const QString&>(&QCompleter::activated),
             this,
-            SLOT(symbol_completed(QString)));
+            &MainWindow::symbol_completed);
 }
 
 
 void MainWindow::initialize_left_pane() const
 {
     connect(ui_components_.ui->imageList,
-            SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),
+            &QListWidget::currentItemChanged,
             this,
-            SLOT(buffer_selected(QListWidgetItem*)));
+            &MainWindow::buffer_selected);
 
     connect(ui_components_.ui->symbolList,
-            SIGNAL(editingFinished()),
+            &QLineEdit::editingFinished,
             this,
-            SLOT(symbol_selected()));
+            &MainWindow::symbol_selected);
 
     ui_components_.ui->imageList->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui_components_.ui->imageList,
-            SIGNAL(customContextMenuRequested(const QPoint&)),
+            &QWidget::customContextMenuRequested,
             this,
-            SLOT(show_context_menu(const QPoint&)));
+            &MainWindow::show_context_menu);
 }
 
 
@@ -539,46 +541,46 @@ void MainWindow::initialize_auto_contrast_form() const
             .release());
 
     connect(ui_components_.ui->ac_c1_min,
-            SIGNAL(editingFinished()),
+            &QLineEdit::editingFinished,
             this,
-            SLOT(ac_c1_min_update()));
+            &MainWindow::ac_c1_min_update);
     connect(ui_components_.ui->ac_c1_max,
-            SIGNAL(editingFinished()),
+            &QLineEdit::editingFinished,
             this,
-            SLOT(ac_c1_max_update()));
+            &MainWindow::ac_c1_max_update);
     connect(ui_components_.ui->ac_c2_min,
-            SIGNAL(editingFinished()),
+            &QLineEdit::editingFinished,
             this,
-            SLOT(ac_c2_min_update()));
+            &MainWindow::ac_c2_min_update);
     connect(ui_components_.ui->ac_c2_max,
-            SIGNAL(editingFinished()),
+            &QLineEdit::editingFinished,
             this,
-            SLOT(ac_c2_max_update()));
+            &MainWindow::ac_c2_max_update);
     connect(ui_components_.ui->ac_c3_min,
-            SIGNAL(editingFinished()),
+            &QLineEdit::editingFinished,
             this,
-            SLOT(ac_c3_min_update()));
+            &MainWindow::ac_c3_min_update);
     connect(ui_components_.ui->ac_c3_max,
-            SIGNAL(editingFinished()),
+            &QLineEdit::editingFinished,
             this,
-            SLOT(ac_c3_max_update()));
+            &MainWindow::ac_c3_max_update);
     connect(ui_components_.ui->ac_c4_min,
-            SIGNAL(editingFinished()),
+            &QLineEdit::editingFinished,
             this,
-            SLOT(ac_c4_min_update()));
+            &MainWindow::ac_c4_min_update);
     connect(ui_components_.ui->ac_c4_max,
-            SIGNAL(editingFinished()),
+            &QLineEdit::editingFinished,
             this,
-            SLOT(ac_c4_max_update()));
+            &MainWindow::ac_c4_max_update);
 
     connect(ui_components_.ui->ac_reset_min,
-            SIGNAL(clicked()),
+            &QAbstractButton::clicked,
             this,
-            SLOT(ac_min_reset()));
+            &MainWindow::ac_min_reset);
     connect(ui_components_.ui->ac_reset_max,
-            SIGNAL(clicked()),
+            &QAbstractButton::clicked,
             this,
-            SLOT(ac_max_reset()));
+            &MainWindow::ac_max_reset);
 }
 
 
@@ -590,35 +592,35 @@ void MainWindow::initialize_toolbar() const
             &MainWindow::ac_toggle);
 
     connect(ui_components_.ui->reposition_buffer,
-            SIGNAL(clicked()),
+            &QAbstractButton::clicked,
             this,
-            SLOT(recenter_buffer()));
+            &MainWindow::recenter_buffer);
 
     connect(ui_components_.ui->linkViewsToggle,
-            SIGNAL(clicked()),
+            &QAbstractButton::clicked,
             this,
-            SLOT(link_views_toggle()));
+            &MainWindow::link_views_toggle);
 
     connect(ui_components_.ui->rotate_90_cw,
-            SIGNAL(clicked()),
+            &QAbstractButton::clicked,
             this,
-            SLOT(rotate_90_cw()));
+            &MainWindow::rotate_90_cw);
     connect(ui_components_.ui->rotate_90_ccw,
-            SIGNAL(clicked()),
+            &QAbstractButton::clicked,
             this,
-            SLOT(rotate_90_ccw()));
+            &MainWindow::rotate_90_ccw);
     connect(ui_components_.ui->increase_float_precision,
-            SIGNAL(clicked()),
+            &QAbstractButton::clicked,
             this,
-            SLOT(increase_float_precision()));
+            &MainWindow::increase_float_precision);
     connect(ui_components_.ui->decrease_float_precision,
-            SIGNAL(clicked()),
+            &QAbstractButton::clicked,
             this,
-            SLOT(decrease_float_precision()));
+            &MainWindow::decrease_float_precision);
     connect(ui_components_.ui->go_to_pixel,
-            SIGNAL(clicked()),
+            &QAbstractButton::clicked,
             this,
-            SLOT(toggle_go_to_dialog()));
+            &MainWindow::toggle_go_to_dialog);
 
     ui_components_.ui->increase_float_precision->setEnabled(false);
     ui_components_.ui->decrease_float_precision->setEnabled(false);

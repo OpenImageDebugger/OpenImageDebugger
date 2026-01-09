@@ -55,9 +55,9 @@ void SymbolSearchInput::set_completer(SymbolCompleter& completer)
 
     this->completer().setWidget(this);
     connect(&completer,
-            SIGNAL(activated(const QString&)),
+            qOverload<const QString&>(&QCompleter::activated),
             this,
-            SLOT(insert_completion(const QString&)));
+            &SymbolSearchInput::insert_completion);
 }
 
 

@@ -352,8 +352,7 @@ void MainWindow::rotate_90_ccw()
 
 // NOSONAR: Parameter must be non-const to match Qt signal signature
 // currentItemChanged(QListWidgetItem*, QListWidgetItem*) which emits
-// non-const pointers. Qt's old-style SIGNAL/SLOT macros require exact type
-// matching.
+// non-const pointers.
 void MainWindow::buffer_selected(QListWidgetItem* item) // NOSONAR
 {
     if (item == nullptr) {
@@ -503,7 +502,7 @@ void MainWindow::show_context_menu(const QPoint& pos)
         auto menu = QMenu{this};
 
         const auto exportAction =
-            menu.addAction("Export buffer", this, SLOT(export_buffer()));
+            menu.addAction("Export buffer", this, &MainWindow::export_buffer);
 
         // Add parameter to action: buffer name
         exportAction->setData(
