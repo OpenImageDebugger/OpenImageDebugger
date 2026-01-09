@@ -92,7 +92,7 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions
 
     void set_main_window(MainWindow& mw);
 
-    void render_buffer_icon(Stage* stage, int icon_width, int icon_height);
+    void render_buffer_icon(Stage& stage, int icon_width, int icon_height);
 
   private:
     std::array<bool, 2> mouse_down_{};

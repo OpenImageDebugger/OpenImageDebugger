@@ -101,7 +101,7 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
 
     // Update buffer icon
     ui_components_.ui->bufferPreview->render_buffer_icon(
-        stage.get(), icon_width, icon_height);
+        *stage, icon_width, icon_height);
 
     // Construct icon widget
     const auto bufferIcon = QImage{stage->get_buffer_icon().data(),
@@ -164,7 +164,8 @@ void MainWindow::decode_plot_buffer_contents()
     } else {
         buffer_data_.held_buffers[variable_name_str] = std::move(buff_contents);
     }
-    const auto buff_ptr = buffer_data_.held_buffers[variable_name_str].data();
+    const auto& held_buffer = buffer_data_.held_buffers[variable_name_str];
+    const auto buff_span    = std::span<const uint8_t>(held_buffer);
 
     // Human readable dimensions
     auto visualized_width  = int{};
@@ -192,7 +193,7 @@ void MainWindow::decode_plot_buffer_contents()
 
         // Construct a new stage buffer if needed
         auto stage = std::make_shared<Stage>(*this);
-        if (const BufferParams params{buff_ptr,
+        if (const BufferParams params{buff_span,
                                       buff_width,
                                       buff_height,
                                       buff_channels,
@@ -213,7 +214,7 @@ void MainWindow::decode_plot_buffer_contents()
     } else {
 
         // Update buffer data
-        const BufferParams params{buff_ptr,
+        const BufferParams params{buff_span,
                                   buff_width,
                                   buff_height,
                                   buff_channels,

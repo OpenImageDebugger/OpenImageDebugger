@@ -27,6 +27,7 @@
 #define BUFFER_H_
 
 #include <array>
+#include <span>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -53,7 +54,7 @@ constexpr std::size_t MAX_BUFFER_SIZE =
 
 struct BufferParams
 {
-    const uint8_t* buffer;
+    std::span<const uint8_t> buffer;
     int buffer_width_i;
     int buffer_height_i;
     int channels;
@@ -92,7 +93,7 @@ class Buffer final : public Component
 
     BufferType type{BufferType::UnsignedByte};
 
-    const std::uint8_t* buffer{};
+    std::span<const uint8_t> buffer_{};
 
     bool transpose{};
 
@@ -126,9 +127,11 @@ class Buffer final : public Component
     int num_textures_x{};
     int num_textures_y{};
 
-    float* min_buffer_values();
+    std::span<float> min_buffer_values();
 
-    float* max_buffer_values();
+    std::span<float> max_buffer_values();
+
+    [[nodiscard]] std::span<const float> max_buffer_values() const;
 
     [[nodiscard]] const float* auto_buffer_contrast_brightness() const;
 

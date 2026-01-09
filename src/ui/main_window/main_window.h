@@ -117,7 +117,7 @@ class MainWindow final : public QMainWindow
 
     void draw() const;
 
-    [[nodiscard]] GLCanvas* gl_canvas() const;
+    [[nodiscard]] GLCanvas& gl_canvas() const;
 
     [[nodiscard]] QSizeF get_icon_size() const;
 

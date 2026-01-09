@@ -78,23 +78,23 @@ void repeat_first_channel_into_g_and_b(
 
 
 template <typename T>
-void export_bitmap(const std::string& fname, const Buffer* buffer)
+void export_bitmap(const std::string& fname, const Buffer& buffer)
 {
-    const auto width_i  = static_cast<std::size_t>(buffer->buffer_width_f);
-    const auto height_i = static_cast<std::size_t>(buffer->buffer_height_f);
+    const auto width_i  = static_cast<std::size_t>(buffer.buffer_width_f);
+    const auto height_i = static_cast<std::size_t>(buffer.buffer_height_f);
 
     auto processed_buffer = std::vector<std::uint8_t>(4 * width_i * height_i);
 
     auto out_ptr = processed_buffer.data();
 
-    const auto bc_comp     = buffer->auto_buffer_contrast_brightness();
+    const auto bc_comp     = buffer.auto_buffer_contrast_brightness();
     const auto color_scale = get_multiplier<T>();
 
     const auto max_intensity = get_max_intensity<T>();
 
     auto pixel_layout = std::array<std::uint8_t, 4>{};
     for (int c = 0; c < 4; ++c) {
-        switch (buffer->get_pixel_layout()[c]) {
+        switch (buffer.get_pixel_layout()[c]) {
         case 'r':
             pixel_layout[c] = 0;
             break;
@@ -113,14 +113,14 @@ void export_bitmap(const std::string& fname, const Buffer* buffer)
         }
     }
 
-    auto in_ptr             = std::bit_cast<const T*>(buffer->buffer);
-    const auto input_stride = buffer->channels * buffer->step;
+    auto in_ptr             = std::bit_cast<const T*>(buffer.buffer_.data());
+    const auto input_stride = buffer.channels * buffer.step;
     auto unformatted_pixel  = std::array<std::uint8_t, 4>{};
-    const auto channels     = static_cast<std::size_t>(buffer->channels);
+    const auto channels     = static_cast<std::size_t>(buffer.channels);
 
     for (std::size_t y = 0; y < height_i; ++y) {
         for (std::size_t x = 0; x < width_i; ++x) {
-            const auto col_offset = x * buffer->channels;
+            const auto col_offset = x * buffer.channels;
             auto c                = std::size_t{0};
 
             // Perform contrast normalization
@@ -210,30 +210,30 @@ std::string get_type_descriptor<float>()
 
 
 template <typename T>
-void export_binary(const std::string& fname, const Buffer* buffer)
+void export_binary(const std::string& fname, const Buffer& buffer)
 {
-    const auto width_i  = static_cast<std::size_t>(buffer->buffer_width_f);
-    const auto height_i = static_cast<std::size_t>(buffer->buffer_height_f);
+    const auto width_i  = static_cast<std::size_t>(buffer.buffer_width_f);
+    const auto height_i = static_cast<std::size_t>(buffer.buffer_height_f);
 
-    const auto in_ptr = std::bit_cast<const T*>(buffer->buffer);
+    const auto in_ptr = std::bit_cast<const T*>(buffer.buffer_.data());
 
     const auto output_path = std::filesystem::path{fname};
     auto ofs               = std::ofstream{output_path};
 
-    ofs << get_type_descriptor<T>() << height_i << width_i << buffer->channels;
+    ofs << get_type_descriptor<T>() << height_i << width_i << buffer.channels;
     for (std::size_t y = 0; y < height_i; ++y) {
-        ofs << in_ptr + y * buffer->step * buffer->channels;
+        ofs << in_ptr + y * buffer.step * buffer.channels;
     }
 }
 
 
-void export_buffer(const Buffer* buffer,
+void export_buffer(const Buffer& buffer,
                    const std::string& path,
                    const OutputType type)
 {
     using enum BufferType;
     if (type == OutputType::Bitmap) {
-        switch (buffer->type) {
+        switch (buffer.type) {
         case UnsignedByte:
             export_bitmap<std::uint8_t>(path, buffer);
             break;
@@ -254,7 +254,7 @@ void export_buffer(const Buffer* buffer,
         }
     } else {
         // Matlab/Octave matrix (load with the oid_load.m function)
-        switch (buffer->type) {
+        switch (buffer.type) {
         case UnsignedByte:
             export_binary<std::uint8_t>(path, buffer);
             break;

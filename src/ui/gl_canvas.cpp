@@ -173,7 +173,7 @@ const GLTextRenderer* GLCanvas::get_text_renderer() const
 }
 
 
-void GLCanvas::render_buffer_icon(Stage* stage,
+void GLCanvas::render_buffer_icon(Stage& stage,
                                   const int icon_width,
                                   const int icon_height)
 {
@@ -181,35 +181,36 @@ void GLCanvas::render_buffer_icon(Stage* stage,
 
     glViewport(0, 0, icon_width, icon_height);
 
-    const auto camera = stage->get_game_object("camera");
+    const auto camera = stage.get_game_object("camera");
     if (!camera.has_value()) {
         return;
     }
-    const auto cam = camera->get().get_component<Camera>("camera_component");
-    if (cam == nullptr) {
+    const auto cam_opt =
+        camera->get().get_component<Camera>("camera_component");
+    if (!cam_opt.has_value()) {
         return;
     }
+    auto& cam = cam_opt->get();
 
     // Save original camera pose
-    const auto original_pose = Camera{*cam};
+    const auto original_pose = Camera{cam};
 
     // Adapt camera to the thumbnail dimensions
-    cam->window_resized(icon_width, icon_height);
+    cam.window_resized(icon_width, icon_height);
     // Flips the projected image along the horizontal axis
-    cam->projection.set_ortho_projection(static_cast<float>(icon_width) / 2.0f,
-                                         static_cast<float>(-icon_height) /
-                                             2.0f,
-                                         -1.0f,
-                                         1.0f);
+    cam.projection.set_ortho_projection(static_cast<float>(icon_width) / 2.0f,
+                                        static_cast<float>(-icon_height) / 2.0f,
+                                        -1.0f,
+                                        1.0f);
     // Reposition buffer in the center of the canvas
-    cam->recenter_camera();
+    cam.recenter_camera();
 
     // Enable icon drawing mode (forbids pixel borders drawing)
-    stage->set_icon_drawing_mode(true);
+    stage.set_icon_drawing_mode(true);
 
-    stage->draw();
-    stage->get_buffer_icon().resize(3 * static_cast<size_t>(icon_width) *
-                                    static_cast<size_t>(icon_height));
+    stage.draw();
+    stage.get_buffer_icon().resize(3 * static_cast<size_t>(icon_width) *
+                                   static_cast<size_t>(icon_height));
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0,
                  0,
@@ -217,14 +218,14 @@ void GLCanvas::render_buffer_icon(Stage* stage,
                  icon_height,
                  GL_RGB,
                  GL_UNSIGNED_BYTE,
-                 stage->get_buffer_icon().data());
+                 stage.get_buffer_icon().data());
 
     // Reset stage camera
-    stage->set_icon_drawing_mode(false);
+    stage.set_icon_drawing_mode(false);
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
     glViewport(0, 0, width(), height());
-    *cam = original_pose;
-    cam->window_resized(width(), height());
+    cam = original_pose;
+    cam.window_resized(width(), height());
 }
 
 
