@@ -27,7 +27,6 @@
 #define BUFFER_VALUES_H_
 
 #include <array>
-#include <cstdint>
 
 #include "component.h"
 #include "ipc/raw_data_decode.h"
@@ -39,7 +38,7 @@ namespace oid
 struct PixelFormatParams
 {
     BufferType type;
-    const uint8_t* buffer;
+    const std::byte* buffer;
     int pos;
     int channel;
     int label_length;

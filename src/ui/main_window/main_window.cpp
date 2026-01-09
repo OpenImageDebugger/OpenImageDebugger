@@ -187,7 +187,8 @@ void MainWindow::persist_settings()
     // Of the buffers not currently being visualized, only keep those whose
     // timer hasn't expired yet and is not in the set of removed names
     for (const auto& prev_buff : previous_session_buffers_qlist) {
-        const auto buff_name_std_str = prev_buff.first.toStdString();
+        const auto& [buff_name, timestamp] = prev_buff;
+        const auto buff_name_std_str       = buff_name.toStdString();
 
         const auto being_viewed =
             buffer_data_.held_buffers.contains(buff_name_std_str);
@@ -196,7 +197,7 @@ void MainWindow::persist_settings()
 
         if (was_removed) {
             buffer_data_.previous_session_buffers.erase(buff_name_std_str);
-        } else if (!being_viewed && prev_buff.second >= now) {
+        } else if (!being_viewed && timestamp >= now) {
             persisted_session_buffers.append(prev_buff);
         }
     }

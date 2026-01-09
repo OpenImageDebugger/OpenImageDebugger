@@ -60,9 +60,9 @@ class Camera final : public Component
         // Do nothing
     }
 
-    bool post_buffer_update() override;
+    [[nodiscard]] bool post_buffer_update() override;
 
-    bool post_initialize() override;
+    [[nodiscard]] bool post_initialize() override;
 
     EventProcessCode key_press_event(int key_code) override;
 

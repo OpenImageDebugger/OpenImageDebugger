@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cstdint>
 #include <cstring>
 #include <string>
 
@@ -77,7 +78,10 @@ inline void pix2str(const PixelFormatParams& params)
         const float fpix = std::bit_cast<const float*>(buffer)[pixel_pos];
         snprintf(pix_label, label_length, "%.*f", float_precision, fpix);
     } else if (type == BufferType::UnsignedByte) {
-        snprintf(pix_label, label_length, "%d", buffer[pixel_pos]);
+        snprintf(pix_label,
+                 label_length,
+                 "%d",
+                 static_cast<uint8_t>(buffer[pixel_pos]));
     } else if (type == BufferType::Short) {
         const short fpix = std::bit_cast<const short*>(buffer)[pixel_pos];
         snprintf(pix_label, label_length, "%d", fpix);

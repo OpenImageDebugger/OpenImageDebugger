@@ -60,7 +60,8 @@ std::optional<std::reference_wrapper<Stage>> GameObject::get_stage() const
 bool GameObject::initialize() const
 {
     return std::ranges::all_of(all_components_, [](const auto& comp) {
-        return comp.second->initialize();
+        const auto& [name, component] = comp;
+        return component->initialize();
     });
 }
 
@@ -68,7 +69,8 @@ bool GameObject::initialize() const
 bool GameObject::post_initialize() const
 {
     return std::ranges::all_of(all_components_, [](const auto& comp) {
-        return comp.second->post_initialize();
+        const auto& [name, component] = comp;
+        return component->post_initialize();
     });
 }
 

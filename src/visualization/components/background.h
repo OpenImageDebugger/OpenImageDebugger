@@ -37,7 +37,7 @@ class Background final : public Component
   public:
     Background(GameObject& game_object, GLCanvas& gl_canvas);
 
-    ~Background() override;
+    ~Background() noexcept override;
 
     Background(const Background&) = delete;
 
@@ -47,7 +47,7 @@ class Background final : public Component
 
     Background& operator=(Background&&) = delete;
 
-    bool initialize() override;
+    [[nodiscard]] bool initialize() override;
 
     void update() override
     {

@@ -41,7 +41,7 @@ Background::Background(GameObject& game_object, GLCanvas& gl_canvas)
 }
 
 
-Background::~Background()
+Background::~Background() noexcept
 {
     gl_canvas_.glDeleteBuffers(1, &background_vbo);
 }
@@ -49,11 +49,13 @@ Background::~Background()
 
 bool Background::initialize()
 {
-    background_prog.create(shader::background_vert_shader,
-                           shader::background_frag_shader,
-                           ShaderProgram::TexelChannels::FormatR,
-                           "rgba",
-                           {});
+    if (!background_prog.create(shader::background_vert_shader,
+                                shader::background_frag_shader,
+                                ShaderProgram::TexelChannels::FormatR,
+                                "rgba",
+                                {})) {
+        return false;
+    }
 
     // Generate square VBO
     // clang-format off

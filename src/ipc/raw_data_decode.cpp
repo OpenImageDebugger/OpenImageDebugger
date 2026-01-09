@@ -25,6 +25,7 @@
 
 #include "raw_data_decode.h"
 
+#include <algorithm>
 #include <cassert>
 
 #include <bit>
@@ -32,42 +33,19 @@
 namespace oid
 {
 
-std::vector<std::uint8_t>
-make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double)
+std::vector<std::byte>
+make_float_buffer_from_double(const std::vector<std::byte>& buff_double)
 {
     const auto element_count = buff_double.size() / sizeof(double);
-    std::vector<std::uint8_t> buff_float(element_count * sizeof(float));
+    std::vector<std::byte> buff_float(element_count * sizeof(float));
 
-    // Cast from double to float
     const auto src = std::bit_cast<const double*>(buff_double.data());
     const auto dst = std::bit_cast<float*>(buff_float.data());
-    for (std::size_t i = 0; i < element_count; ++i) {
-        dst[i] = static_cast<float>(src[i]);
-    }
+    std::transform(src, src + element_count, dst, [](double d) {
+        return static_cast<float>(d);
+    });
 
     return buff_float;
-}
-
-
-size_t type_size(const BufferType type)
-{
-    switch (type) {
-    case BufferType::Int32:
-        return sizeof(std::int32_t);
-    case BufferType::Short:
-        [[fallthrough]];
-    case BufferType::UnsignedShort:
-        return sizeof(std::int16_t);
-    case BufferType::Float32:
-        return sizeof(float);
-    case BufferType::Float64:
-        return sizeof(double);
-    case BufferType::UnsignedByte:
-        return sizeof(std::uint8_t);
-    default:
-        assert(!"Unknown BufferType received");
-        return sizeof(std::uint8_t);
-    }
 }
 
 } // namespace oid

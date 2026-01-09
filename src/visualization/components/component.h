@@ -41,16 +41,16 @@ class Component
   public:
     Component(GameObject& game_object, GLCanvas& gl_canvas);
 
-    virtual bool initialize();
+    [[nodiscard]] virtual bool initialize();
 
-    virtual bool buffer_update();
+    [[nodiscard]] virtual bool buffer_update();
 
-    virtual bool post_buffer_update();
+    [[nodiscard]] virtual bool post_buffer_update();
 
     [[nodiscard]] virtual int render_index() const;
 
     // Called after all components are initialized
-    virtual bool post_initialize();
+    [[nodiscard]] virtual bool post_initialize();
 
     virtual void update() = 0;
 
@@ -73,7 +73,7 @@ class Component
         // Do nothing
     }
 
-    virtual ~Component();
+    virtual ~Component() noexcept;
 
     GameObject& game_object_;
 
