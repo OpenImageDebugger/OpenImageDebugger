@@ -117,7 +117,7 @@ class MainWindow final : public QMainWindow
 
     void draw() const;
 
-    [[nodiscard]] GLCanvas& gl_canvas() const;
+    [[nodiscard]] std::shared_ptr<GLCanvas> gl_canvas() const;
 
     [[nodiscard]] QSizeF get_icon_size() const;
 
@@ -225,7 +225,7 @@ class MainWindow final : public QMainWindow
     UIComponents ui_components_{};
     BufferData buffer_data_{};
     ChannelNames channel_names_{};
-
+    std::shared_ptr<GLCanvas> gl_canvas_ptr_{};
     double render_framerate_{};
     QString default_export_suffix_{};
     // Thread safety: All access to buffer_data_ and state_ must be protected by

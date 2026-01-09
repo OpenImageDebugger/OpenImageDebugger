@@ -53,6 +53,11 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
 
     ui_components_.ui->setupUi(this);
 
+    // Must be done after setupUi() so the widget exists
+    gl_canvas_ptr_ =
+        std::shared_ptr<GLCanvas>(ui_components_.ui->bufferPreview,
+                                  [](GLCanvas*) { /* no-op: Qt owns it */ });
+
     initialize_settings();
     initialize_ui_icons();
     initialize_ui_signals();
@@ -93,9 +98,9 @@ void MainWindow::draw() const
 }
 
 
-GLCanvas& MainWindow::gl_canvas() const
+std::shared_ptr<GLCanvas> MainWindow::gl_canvas() const
 {
-    return *ui_components_.ui->bufferPreview;
+    return gl_canvas_ptr_;
 }
 
 
