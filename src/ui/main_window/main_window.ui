@@ -1055,7 +1055,4 @@ Larger values will be clamped at this level when auto contrast is enabled</strin
    </hints>
   </connection>
  </connections>
- <slots>
-  <slot>slot1()</slot>
- </slots>
 </ui>

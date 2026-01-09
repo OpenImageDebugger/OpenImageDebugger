@@ -57,10 +57,8 @@ class SymbolSearchInput final : public QLineEdit
   protected:
     void keyPressEvent(QKeyEvent* e) override;
 
-  private Q_SLOTS:
-    void insert_completion(const QString& completion);
-
   private:
+    void insert_completion(const QString& completion);
     std::optional<std::reference_wrapper<SymbolCompleter>>
         completer_{}; // Always set via set_completer() before use
 
