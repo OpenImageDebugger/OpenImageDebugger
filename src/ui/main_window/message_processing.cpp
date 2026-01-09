@@ -46,7 +46,7 @@ void MainWindow::decode_set_available_symbols()
         // Plot buffer if it was available in the previous session
         const auto symbol_std_str = symbol_value.toStdString();
         if (buffer_data_.previous_session_buffers.contains(symbol_std_str)) {
-            request_plot_buffer(symbol_std_str.data());
+            request_plot_buffer(symbol_std_str);
         }
     }
 
@@ -317,7 +317,7 @@ void MainWindow::decode_incoming_messages()
 }
 
 
-void MainWindow::request_plot_buffer(const char* buffer_name)
+void MainWindow::request_plot_buffer(std::string_view buffer_name)
 {
     auto message_composer = MessageComposer{};
     message_composer.push(MessageType::PlotBufferRequest)

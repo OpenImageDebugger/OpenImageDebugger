@@ -26,6 +26,7 @@
 #include "decorated_line_edit.h"
 
 #include <memory>
+#include <string>
 
 #include <QAction>
 #include <QIcon>
@@ -34,13 +35,16 @@
 namespace oid
 {
 
-DecoratedLineEdit::DecoratedLineEdit(const char* icon_path,
-                                     const char* tooltip,
+DecoratedLineEdit::DecoratedLineEdit(std::string_view icon_path,
+                                     std::string_view tooltip,
                                      QWidget* parent)
     : QLineEdit{parent}
 {
-    const auto label_icon = QIcon{icon_path};
-    auto label_widget = std::make_unique<QAction>(label_icon, tooltip, this);
+    // Convert std::string_view to std::string for Qt API (QIcon and QAction
+    // require null-terminated strings)
+    const auto label_icon = QIcon{std::string(icon_path).c_str()};
+    auto label_widget     = std::make_unique<QAction>(
+        label_icon, std::string(tooltip).c_str(), this);
     addAction(label_widget.release(), LeadingPosition);
 }
 

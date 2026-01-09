@@ -31,6 +31,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <string_view>
 
 #include <QLabel>
 #include <QSettings>
@@ -279,7 +280,7 @@ class MainWindow final : public QMainWindow
 
     void decode_incoming_messages();
 
-    void request_plot_buffer(const char* buffer_name);
+    void request_plot_buffer(std::string_view buffer_name);
 
     ///
     // Auto contrast pane - private - implemented in auto_contrast.cpp
