@@ -170,26 +170,27 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
 void MainWindow::recenter_buffer()
 {
     const auto lock                 = std::unique_lock{ui_mutex_};
-    const auto recenter_camera_impl = [](Stage* stage) {
-        const auto cam_obj = stage->get_game_object("camera");
+    const auto recenter_camera_impl = [](Stage& stage) {
+        const auto cam_obj = stage.get_game_object("camera");
         if (!cam_obj.has_value()) {
             return;
         }
-        const auto cam =
+        const auto cam_opt =
             cam_obj->get().get_component<Camera>("camera_component");
-        if (cam == nullptr) {
+        if (!cam_opt.has_value()) {
             return;
         }
-        cam->recenter_camera();
+        auto& cam = cam_opt->get();
+        cam.recenter_camera();
     };
 
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
-            recenter_camera_impl(stage.get());
+            recenter_camera_impl(*stage);
         }
     } else {
         if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
-            recenter_camera_impl(stage.get());
+            recenter_camera_impl(*stage);
         }
     }
 
@@ -205,13 +206,14 @@ void MainWindow::link_views_toggle()
 
 void MainWindow::decrease_float_precision()
 {
-    const auto shift_precision_left_impl = [](Stage* stage) {
-        const auto buffer_obj = stage->get_game_object("buffer");
+    const auto shift_precision_left_impl = [](Stage& stage) {
+        const auto buffer_obj = stage.get_game_object("buffer");
         if (buffer_obj.has_value()) {
-            const auto buffer_comp =
+            const auto buffer_comp_opt =
                 buffer_obj->get().get_component<BufferValues>("text_component");
-            if (buffer_comp != nullptr) {
-                buffer_comp->decrease_float_precision();
+            if (buffer_comp_opt.has_value()) {
+                auto& buffer_comp = buffer_comp_opt->get();
+                buffer_comp.decrease_float_precision();
             }
         }
     };
@@ -219,11 +221,11 @@ void MainWindow::decrease_float_precision()
     const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
-            shift_precision_left_impl(stage.get());
+            shift_precision_left_impl(*stage);
         }
     } else {
         if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
-            shift_precision_left_impl(stage.get());
+            shift_precision_left_impl(*stage);
         }
     }
 
@@ -232,13 +234,14 @@ void MainWindow::decrease_float_precision()
 
 void MainWindow::increase_float_precision()
 {
-    const auto shift_precision_right_impl = [](Stage* stage) {
-        const auto buffer_obj = stage->get_game_object("buffer");
+    const auto shift_precision_right_impl = [](Stage& stage) {
+        const auto buffer_obj = stage.get_game_object("buffer");
         if (buffer_obj.has_value()) {
-            const auto buffer_comp =
+            const auto buffer_comp_opt =
                 buffer_obj->get().get_component<BufferValues>("text_component");
-            if (buffer_comp != nullptr) {
-                buffer_comp->increase_float_precision();
+            if (buffer_comp_opt.has_value()) {
+                auto& buffer_comp = buffer_comp_opt->get();
+                buffer_comp.increase_float_precision();
             }
         }
     };
@@ -246,11 +249,11 @@ void MainWindow::increase_float_precision()
     const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
-            shift_precision_right_impl(stage.get());
+            shift_precision_right_impl(*stage);
         }
     } else {
         if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
-            shift_precision_right_impl(stage.get());
+            shift_precision_right_impl(*stage);
         }
     }
 
@@ -260,35 +263,45 @@ void MainWindow::increase_float_precision()
 void MainWindow::update_shift_precision() const
 {
     const auto lock = std::unique_lock{ui_mutex_};
-    if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
-        const auto buffer_obj = stage->get_game_object("buffer");
-        if (buffer_obj.has_value()) {
-            const auto buffer =
-                buffer_obj->get().get_component<Buffer>("buffer_component");
-            if (buffer != nullptr && (BufferType::Float32 == buffer->type ||
-                                      BufferType::Float64 == buffer->type)) {
-                ui_components_.ui->decrease_float_precision->setEnabled(true);
-                ui_components_.ui->increase_float_precision->setEnabled(true);
-            } else {
-                ui_components_.ui->decrease_float_precision->setEnabled(false);
-                ui_components_.ui->increase_float_precision->setEnabled(false);
-            }
-        }
-    } else {
-        ui_components_.ui->decrease_float_precision->setEnabled(false);
-        ui_components_.ui->increase_float_precision->setEnabled(false);
+
+    // Default to disabled
+    ui_components_.ui->decrease_float_precision->setEnabled(false);
+    ui_components_.ui->increase_float_precision->setEnabled(false);
+
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (!stage) {
+        return;
+    }
+
+    const auto buffer_obj = stage->get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
+
+    const auto buffer_opt =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (!buffer_opt.has_value()) {
+        return;
+    }
+
+    const auto& buffer = buffer_opt->get();
+    if (BufferType::Float32 == buffer.type ||
+        BufferType::Float64 == buffer.type) {
+        ui_components_.ui->decrease_float_precision->setEnabled(true);
+        ui_components_.ui->increase_float_precision->setEnabled(true);
     }
 }
 
 void MainWindow::rotate_90_cw()
 {
-    const auto request_90_cw_rotation = [](Stage* stage) {
-        const auto buffer_obj = stage->get_game_object("buffer");
+    const auto request_90_cw_rotation = [](Stage& stage) {
+        const auto buffer_obj = stage.get_game_object("buffer");
         if (buffer_obj.has_value()) {
-            const auto buffer_comp =
+            const auto buffer_comp_opt =
                 buffer_obj->get().get_component<Buffer>("buffer_component");
-            if (buffer_comp != nullptr) {
-                buffer_comp->rotate(90.0f * static_cast<float>(M_PI) / 180.0f);
+            if (buffer_comp_opt.has_value()) {
+                auto& buffer_comp = buffer_comp_opt->get();
+                buffer_comp.rotate(90.0f * static_cast<float>(M_PI) / 180.0f);
             }
         }
     };
@@ -296,11 +309,11 @@ void MainWindow::rotate_90_cw()
     const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
-            request_90_cw_rotation(stage.get());
+            request_90_cw_rotation(*stage);
         }
     } else {
         if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
-            request_90_cw_rotation(stage.get());
+            request_90_cw_rotation(*stage);
         }
     }
 
@@ -310,13 +323,14 @@ void MainWindow::rotate_90_cw()
 
 void MainWindow::rotate_90_ccw()
 {
-    const auto request_90_ccw_rotation = [](Stage* stage) {
-        const auto buffer_obj = stage->get_game_object("buffer");
+    const auto request_90_ccw_rotation = [](Stage& stage) {
+        const auto buffer_obj = stage.get_game_object("buffer");
         if (buffer_obj.has_value()) {
-            const auto buffer_comp =
+            const auto buffer_comp_opt =
                 buffer_obj->get().get_component<Buffer>("buffer_component");
-            if (buffer_comp != nullptr) {
-                buffer_comp->rotate(-90.0f * static_cast<float>(M_PI) / 180.0f);
+            if (buffer_comp_opt.has_value()) {
+                auto& buffer_comp = buffer_comp_opt->get();
+                buffer_comp.rotate(-90.0f * static_cast<float>(M_PI) / 180.0f);
             }
         }
     };
@@ -324,11 +338,11 @@ void MainWindow::rotate_90_ccw()
     const auto lock = std::unique_lock{ui_mutex_};
     if (state_.link_views_enabled) {
         for (const auto& stage : buffer_data_.stages | std::views::values) {
-            request_90_ccw_rotation(stage.get());
+            request_90_ccw_rotation(*stage);
         }
     } else {
         if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
-            request_90_ccw_rotation(stage.get());
+            request_90_ccw_rotation(*stage);
         }
     }
 
@@ -429,11 +443,12 @@ void MainWindow::export_buffer()
     if (!buffer_obj.has_value()) {
         return;
     }
-    const auto component =
+    const auto component_opt =
         buffer_obj->get().get_component<Buffer>("buffer_component");
-    if (component == nullptr) {
+    if (!component_opt.has_value()) {
         return;
     }
+    const auto& component = component_opt->get();
 
     auto file_dialog = QFileDialog{this};
     file_dialog.setAcceptMode(QFileDialog::AcceptSave);
@@ -511,12 +526,13 @@ void MainWindow::toggle_go_to_dialog() const
             if (!cam_obj.has_value()) {
                 return;
             }
-            const auto cam =
+            const auto cam_opt =
                 cam_obj->get().get_component<Camera>("camera_component");
-            if (cam == nullptr) {
+            if (!cam_opt.has_value()) {
                 return;
             }
-            default_goal = cam->get_position();
+            const auto& cam = cam_opt->get();
+            default_goal    = cam.get_position();
         }
 
         ui_components_.go_to_widget->set_defaults(default_goal.x(),

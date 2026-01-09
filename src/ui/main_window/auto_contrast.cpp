@@ -65,16 +65,17 @@ void MainWindow::reset_ac_min_labels() const
     if (!buffer_obj.has_value()) {
         return;
     }
-    const auto buffer =
+    const auto buffer_opt =
         buffer_obj->get().get_component<Buffer>("buffer_component");
-    if (buffer == nullptr) {
+    if (!buffer_opt.has_value()) {
         return;
     }
-    const auto ac_min = buffer->min_buffer_values();
+    auto& buffer      = buffer_opt->get();
+    const auto ac_min = buffer.min_buffer_values();
 
     ui_components_.ui->ac_c1_min->setText(QString::number(ac_min[0]));
 
-    if (buffer->channels == 4) {
+    if (buffer.channels == 4) {
         enable_inputs({ui_components_.ui->ac_c2_min,
                        ui_components_.ui->ac_c3_min,
                        ui_components_.ui->ac_c4_min});
@@ -82,7 +83,7 @@ void MainWindow::reset_ac_min_labels() const
         ui_components_.ui->ac_c2_min->setText(QString::number(ac_min[1]));
         ui_components_.ui->ac_c3_min->setText(QString::number(ac_min[2]));
         ui_components_.ui->ac_c4_min->setText(QString::number(ac_min[3]));
-    } else if (buffer->channels == 3) {
+    } else if (buffer.channels == 3) {
         enable_inputs(
             {ui_components_.ui->ac_c2_min, ui_components_.ui->ac_c3_min});
 
@@ -90,7 +91,7 @@ void MainWindow::reset_ac_min_labels() const
 
         ui_components_.ui->ac_c2_min->setText(QString::number(ac_min[1]));
         ui_components_.ui->ac_c3_min->setText(QString::number(ac_min[2]));
-    } else if (buffer->channels == 2) {
+    } else if (buffer.channels == 2) {
         ui_components_.ui->ac_c2_min->setEnabled(true);
 
         disable_inputs(
@@ -116,15 +117,16 @@ void MainWindow::reset_ac_max_labels() const
     if (!buffer_obj.has_value()) {
         return;
     }
-    const auto buffer =
+    const auto buffer_opt =
         buffer_obj->get().get_component<Buffer>("buffer_component");
-    if (buffer == nullptr) {
+    if (!buffer_opt.has_value()) {
         return;
     }
-    const auto ac_max = buffer->max_buffer_values();
+    auto& buffer      = buffer_opt->get();
+    const auto ac_max = buffer.max_buffer_values();
 
     ui_components_.ui->ac_c1_max->setText(QString::number(ac_max[0]));
-    if (buffer->channels == 4) {
+    if (buffer.channels == 4) {
         enable_inputs({ui_components_.ui->ac_c2_max,
                        ui_components_.ui->ac_c3_max,
                        ui_components_.ui->ac_c4_max});
@@ -132,7 +134,7 @@ void MainWindow::reset_ac_max_labels() const
         ui_components_.ui->ac_c2_max->setText(QString::number(ac_max[1]));
         ui_components_.ui->ac_c3_max->setText(QString::number(ac_max[2]));
         ui_components_.ui->ac_c4_max->setText(QString::number(ac_max[3]));
-    } else if (buffer->channels == 3) {
+    } else if (buffer.channels == 3) {
         enable_inputs(
             {ui_components_.ui->ac_c2_max, ui_components_.ui->ac_c3_max});
 
@@ -140,7 +142,7 @@ void MainWindow::reset_ac_max_labels() const
 
         ui_components_.ui->ac_c2_max->setText(QString::number(ac_max[1]));
         ui_components_.ui->ac_c3_max->setText(QString::number(ac_max[2]));
-    } else if (buffer->channels == 2) {
+    } else if (buffer.channels == 2) {
         ui_components_.ui->ac_c2_max->setEnabled(true);
 
         disable_inputs(
@@ -216,14 +218,15 @@ void MainWindow::ac_min_reset()
         return;
     }
 
-    const auto buff =
+    const auto buff_opt =
         buffer_obj->get().get_component<Buffer>("buffer_component");
-    if (buff == nullptr) {
+    if (!buff_opt.has_value()) {
         return;
     }
+    auto& buff = buff_opt->get();
 
-    buff->recompute_min_color_values();
-    buff->compute_contrast_brightness_parameters();
+    buff.recompute_min_color_values();
+    buff.compute_contrast_brightness_parameters();
 
     // Update inputs
     reset_ac_min_labels();
@@ -246,14 +249,15 @@ void MainWindow::ac_max_reset()
         return;
     }
 
-    const auto buff =
+    const auto buff_opt =
         buffer_obj->get().get_component<Buffer>("buffer_component");
-    if (buff == nullptr) {
+    if (!buff_opt.has_value()) {
         return;
     }
+    auto& buff = buff_opt->get();
 
-    buff->recompute_max_color_values();
-    buff->compute_contrast_brightness_parameters();
+    buff.recompute_max_color_values();
+    buff.compute_contrast_brightness_parameters();
 
     // Update inputs
     reset_ac_max_labels();
@@ -289,14 +293,15 @@ void MainWindow::set_ac_min_value(const int idx, const float value)
         return;
     }
 
-    const auto buff =
+    const auto buff_opt =
         buffer_obj->get().get_component<Buffer>("buffer_component");
-    if (buff == nullptr) {
+    if (!buff_opt.has_value()) {
         return;
     }
+    auto& buff = buff_opt->get();
 
-    buff->min_buffer_values()[idx] = value;
-    buff->compute_contrast_brightness_parameters();
+    buff.min_buffer_values()[idx] = value;
+    buff.compute_contrast_brightness_parameters();
 
     state_.request_render_update = true;
     state_.request_icons_update  = true;
@@ -316,14 +321,15 @@ void MainWindow::set_ac_max_value(const int idx, const float value)
         return;
     }
 
-    const auto buff =
+    const auto buff_opt =
         buffer_obj->get().get_component<Buffer>("buffer_component");
-    if (buff == nullptr) {
+    if (!buff_opt.has_value()) {
         return;
     }
+    auto& buff = buff_opt->get();
 
-    buff->max_buffer_values()[idx] = value;
-    buff->compute_contrast_brightness_parameters();
+    buff.max_buffer_values()[idx] = value;
+    buff.compute_contrast_brightness_parameters();
 
     state_.request_render_update = true;
     state_.request_icons_update  = true;

@@ -45,22 +45,22 @@ namespace
 {
 
 // Helper function to safely get the camera component
-Camera* get_camera_component(
+std::optional<std::reference_wrapper<Camera>> get_camera_component(
     const std::map<std::string, std::shared_ptr<GameObject>, std::less<>>&
         game_objects)
 {
     const auto camera_it = game_objects.find("camera");
     if (camera_it == game_objects.end() || !camera_it->second) {
         std::cerr << "[Error] Camera game object not found" << std::endl;
-        return nullptr;
+        return std::nullopt;
     }
 
     const auto camera_component =
         camera_it->second->get_component<Camera>("camera_component");
 
-    if (camera_component == nullptr) {
+    if (!camera_component.has_value()) {
         std::cerr << "[Error] Camera component not found" << std::endl;
-        return nullptr;
+        return std::nullopt;
     }
 
     return camera_component;
@@ -121,10 +121,10 @@ bool Stage::initialize(const BufferParams& params)
 
     camera_obj->add_component(
         "camera_component",
-        std::make_shared<Camera>(*camera_obj, *main_window_.gl_canvas()));
+        std::make_shared<Camera>(*camera_obj, main_window_.gl_canvas()));
     camera_obj->add_component(
         "background_component",
-        std::make_shared<Background>(*camera_obj, *main_window_.gl_canvas()));
+        std::make_shared<Background>(*camera_obj, main_window_.gl_canvas()));
 
     all_game_objects["camera"] = camera_obj;
 
@@ -134,10 +134,10 @@ bool Stage::initialize(const BufferParams& params)
 
     buffer_obj->add_component(
         "text_component",
-        std::make_shared<BufferValues>(*buffer_obj, *main_window_.gl_canvas()));
+        std::make_shared<BufferValues>(*buffer_obj, main_window_.gl_canvas()));
 
     const auto buffer_component =
-        std::make_shared<Buffer>(*buffer_obj, *main_window_.gl_canvas());
+        std::make_shared<Buffer>(*buffer_obj, main_window_.gl_canvas());
 
     buffer_component->configure(params);
     buffer_obj->add_component("buffer_component", buffer_component);
@@ -165,15 +165,16 @@ bool Stage::buffer_update(const BufferParams& params)
     }
 
     const auto buffer_obj = buffer_it->second.get();
-    const auto buffer_component =
+    const auto buffer_component_opt =
         buffer_obj->get_component<Buffer>("buffer_component");
 
-    if (buffer_component == nullptr) {
+    if (!buffer_component_opt.has_value()) {
         std::cerr << "[Error] Buffer component not found" << std::endl;
         return false;
     }
 
-    buffer_component->configure(params);
+    auto& buffer_component = buffer_component_opt->get();
+    buffer_component.configure(params);
 
     for (const auto& game_obj_it : all_game_objects | std::views::values) {
         const auto game_obj = game_obj_it.get();
@@ -232,15 +233,16 @@ void Stage::draw()
     }
 
     const auto camera_obj = camera_it->second.get();
-    const auto camera_component =
+    const auto camera_component_opt =
         camera_obj->get_component<Camera>("camera_component");
 
-    if (camera_component == nullptr) {
+    if (!camera_component_opt.has_value()) {
         std::cerr << "[Error] Camera component not found" << std::endl;
         return;
     }
 
-    const auto view_inv = camera_obj->get_pose().inv();
+    const auto& camera_component = camera_component_opt->get();
+    const auto view_inv          = camera_obj->get_pose().inv();
 
     for (const auto& game_obj : all_game_objects | std::views::values) {
         for (const auto& component :
@@ -250,30 +252,32 @@ void Stage::draw()
     }
 
     for (const auto& component : ordered_components) {
-        component->draw(camera_component->projection, view_inv);
+        component->draw(camera_component.projection, view_inv);
     }
 }
 
 
 void Stage::scroll_callback(const float delta) const
 {
-    const auto camera_component = get_camera_component(all_game_objects);
-    if (camera_component == nullptr) {
+    const auto camera_component_opt = get_camera_component(all_game_objects);
+    if (!camera_component_opt.has_value()) {
         return;
     }
 
-    camera_component->scroll_callback(delta);
+    auto& camera_component = camera_component_opt->get();
+    camera_component.scroll_callback(delta);
 }
 
 
 void Stage::resize_callback(const int w, const int h) const
 {
-    const auto camera_component = get_camera_component(all_game_objects);
-    if (camera_component == nullptr) {
+    const auto camera_component_opt = get_camera_component(all_game_objects);
+    if (!camera_component_opt.has_value()) {
         return;
     }
 
-    camera_component->window_resized(w, h);
+    auto& camera_component = camera_component_opt->get();
+    camera_component.window_resized(w, h);
 }
 
 
@@ -318,12 +322,13 @@ void Stage::request_render_update() const
 
 void Stage::go_to_pixel(const float x, const float y) const
 {
-    const auto camera_component = get_camera_component(all_game_objects);
-    if (camera_component == nullptr) {
+    const auto camera_component_opt = get_camera_component(all_game_objects);
+    if (!camera_component_opt.has_value()) {
         return;
     }
 
-    camera_component->move_to(x, y);
+    auto& camera_component = camera_component_opt->get();
+    camera_component.move_to(x, y);
 }
 
 
@@ -334,13 +339,14 @@ void Stage::set_icon_drawing_mode(const bool is_enabled)
         return;
     }
 
-    const auto buffer_component =
+    const auto buffer_component_opt =
         buffer_obj->get_component<Buffer>("buffer_component");
-    if (buffer_component == nullptr) {
+    if (!buffer_component_opt.has_value()) {
         return;
     }
 
-    buffer_component->set_icon_drawing_mode(is_enabled);
+    const auto& buffer_component = buffer_component_opt->get();
+    buffer_component.set_icon_drawing_mode(is_enabled);
 }
 
 } // namespace oid

@@ -52,12 +52,17 @@ class GameObject
     get_stage() const;
 
     template <typename T>
-    T* get_component(const std::string& tag)
+    [[nodiscard]] std::optional<std::reference_wrapper<T>>
+    get_component(const std::string& tag)
     {
         if (!all_components_.contains(tag)) {
-            return nullptr;
+            return std::nullopt;
         }
-        return dynamic_cast<T*>(all_components_[tag].get());
+        auto* ptr = dynamic_cast<T*>(all_components_[tag].get());
+        if (ptr == nullptr) {
+            return std::nullopt;
+        }
+        return std::ref(*ptr);
     }
 
     [[nodiscard]] bool initialize() const;

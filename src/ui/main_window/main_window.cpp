@@ -93,9 +93,9 @@ void MainWindow::draw() const
 }
 
 
-GLCanvas* MainWindow::gl_canvas() const
+GLCanvas& MainWindow::gl_canvas() const
 {
-    return ui_components_.ui->bufferPreview;
+    return *ui_components_.ui->bufferPreview;
 }
 
 
@@ -258,20 +258,23 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
     if (!cam_obj.has_value()) {
         return {};
     }
-    const auto cam = cam_obj->get().get_component<Camera>("camera_component");
-    if (cam == nullptr) {
+    const auto cam_opt =
+        cam_obj->get().get_component<Camera>("camera_component");
+    if (!cam_opt.has_value()) {
         return {};
     }
+    const auto& cam = cam_opt->get();
 
     const auto buffer_obj = stage->get_game_object("buffer");
     if (!buffer_obj.has_value()) {
         return {};
     }
-    const auto buffer =
+    const auto buffer_opt =
         buffer_obj->get().get_component<Buffer>("buffer_component");
-    if (buffer == nullptr) {
+    if (!buffer_opt.has_value()) {
         return {};
     }
+    const auto& buffer = buffer_opt->get();
 
     const auto win_w =
         static_cast<float>(ui_components_.ui->bufferPreview->width());
@@ -283,13 +286,11 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
                                     1.0f};
     const auto view          = cam_obj->get().get_pose().inv();
     const auto buff_pose     = buffer_obj->get().get_pose();
-    const auto vp_inv        = (cam->projection * view * buff_pose).inv();
+    const auto vp_inv        = (cam.projection * view * buff_pose).inv();
 
     auto mouse_pos = vp_inv * mouse_pos_ndc;
-    mouse_pos += vec4(buffer->buffer_width_f / 2.0f,
-                      buffer->buffer_height_f / 2.f,
-                      0.0f,
-                      0.0f);
+    mouse_pos += vec4(
+        buffer.buffer_width_f / 2.0f, buffer.buffer_height_f / 2.f, 0.0f, 0.0f);
 
     return mouse_pos;
 }
@@ -304,23 +305,25 @@ void MainWindow::update_status_bar() const
         if (!cam_obj.has_value()) {
             return;
         }
-        const auto cam =
+        const auto cam_opt =
             cam_obj->get().get_component<Camera>("camera_component");
-        if (cam == nullptr) {
+        if (!cam_opt.has_value()) {
             return;
         }
+        const auto& cam = cam_opt->get();
 
         const auto buffer_obj = stage->get_game_object("buffer");
         if (!buffer_obj.has_value()) {
             return;
         }
-        const auto buffer =
+        const auto buffer_opt =
             buffer_obj->get().get_component<Buffer>("buffer_component");
-        if (buffer == nullptr) {
+        if (!buffer_opt.has_value()) {
             return;
         }
+        const auto& buffer = buffer_opt->get();
 
-        const auto text_comp =
+        const auto text_comp_opt =
             buffer_obj->get().get_component<BufferValues>("text_component");
 
         const auto mouse_x =
@@ -335,20 +338,21 @@ void MainWindow::update_status_bar() const
         message << std::fixed << std::setprecision(3) << "("
                 << static_cast<int>(floor(mouse_pos.x())) << ", "
                 << static_cast<int>(floor(mouse_pos.y())) << ")\t"
-                << cam->compute_zoom() * 100.0f << "%";
+                << cam.compute_zoom() * 100.0f << "%";
 
         // Value
         message << " val=";
 
-        buffer->get_pixel_info(message,
-                               static_cast<int>(floor(mouse_pos.x())),
-                               static_cast<int>(floor(mouse_pos.y())));
+        buffer.get_pixel_info(message,
+                              static_cast<int>(floor(mouse_pos.x())),
+                              static_cast<int>(floor(mouse_pos.y())));
 
         // Float precision
-        if (BufferType::Float64 == buffer->type ||
-            BufferType::Float32 == buffer->type) {
-            message << " precision=[" << text_comp->get_float_precision()
-                    << "]";
+        if ((BufferType::Float64 == buffer.type ||
+             BufferType::Float32 == buffer.type) &&
+            text_comp_opt.has_value()) {
+            const auto& text_comp = text_comp_opt->get();
+            message << " precision=[" << text_comp.get_float_precision() << "]";
         }
 
         ui_components_.status_bar->setText(

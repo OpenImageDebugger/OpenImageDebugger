@@ -121,7 +121,7 @@ void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params)
                             recenter_factors[c];
 
         const PixelFormatParams pix_params{type,
-                                           buffer.buffer,
+                                           buffer.buffer_.data(),
                                            pos,
                                            c,
                                            label_length,
@@ -151,22 +151,27 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
     if (!cam_obj.has_value()) {
         return;
     }
-    const auto camera =
+    const auto camera_opt =
         cam_obj->get().get_component<Camera>("camera_component");
-    if (camera == nullptr) {
+    if (!camera_opt.has_value()) {
         return;
     }
-    const auto zoom = camera->compute_zoom();
+    const auto& camera = camera_opt->get();
+    const auto zoom    = camera.compute_zoom();
 
     if (zoom > BufferConstants::ZOOM_BORDER_THRESHOLD) {
         const auto buffer_pose = game_object_.get_pose();
 
-        const auto buffer_component =
+        const auto buffer_component_opt =
             game_object_.get_component<Buffer>("buffer_component");
-        const auto buffer_width_f  = buffer_component->buffer_width_f;
-        const auto buffer_height_f = buffer_component->buffer_height_f;
-        const auto channels        = buffer_component->channels;
-        const auto channels_f      = static_cast<float>(channels);
+        if (!buffer_component_opt.has_value()) {
+            return;
+        }
+        const auto& buffer_component = buffer_component_opt->get();
+        const auto buffer_width_f    = buffer_component.buffer_width_f;
+        const auto buffer_height_f   = buffer_component.buffer_height_f;
+        const auto channels          = buffer_component.channels;
+        const auto channels_f        = static_cast<float>(channels);
 
         const auto tl_ndc = vec4{-1.0f, 1.0f, 0.0f, 1.0f};
         const auto br_ndc = vec4{1.0f, -1.0f, 0.0f, 1.0f};
@@ -229,7 +234,7 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
                  ++x) {
                 const DrawPixelValuesParams params{x,
                                                    y,
-                                                   *buffer_component,
+                                                   buffer_component,
                                                    pos_center_x,
                                                    pos_center_y,
                                                    recenter_factors,
@@ -256,15 +261,19 @@ void BufferValues::draw_text(const DrawTextParams& params)
 
     const auto text_renderer = gl_canvas_.get_text_renderer();
 
-    const auto buffer_component =
+    const auto buffer_component_opt =
         game_object_.get_component<Buffer>("buffer_component");
+    if (!buffer_component_opt.has_value()) {
+        return;
+    }
+    const auto& buffer_component = buffer_component_opt->get();
 
     const float* auto_buffer_contrast_brightness{};
 
     if (const auto stage = game_object_.get_stage();
         stage.has_value() && stage->get().get_contrast_enabled()) {
         auto_buffer_contrast_brightness =
-            buffer_component->auto_buffer_contrast_brightness();
+            buffer_component.auto_buffer_contrast_brightness();
     } else {
         auto_buffer_contrast_brightness = Buffer::no_ac_params.data();
     }
@@ -276,11 +285,11 @@ void BufferValues::draw_text(const DrawTextParams& params)
 
     gl_canvas_.glActiveTexture(GL_TEXTURE0);
     const auto x_plus_half_buffer_width =
-        static_cast<int>(x + buffer_component->buffer_width_f / 2.0f);
+        static_cast<int>(x + buffer_component.buffer_width_f / 2.0f);
     const auto y_plus_half_buffer_height =
-        static_cast<int>(y + buffer_component->buffer_height_f / 2.0f);
+        static_cast<int>(y + buffer_component.buffer_height_f / 2.0f);
 
-    const GLuint buff_tex = buffer_component->sub_texture_id_at_coord(
+    const GLuint buff_tex = buffer_component.sub_texture_id_at_coord(
         x_plus_half_buffer_width, y_plus_half_buffer_height);
     gl_canvas_.glBindTexture(GL_TEXTURE_2D, buff_tex);
     text_renderer->text_prog.uniform1i("buff_sampler", 0);
@@ -293,8 +302,8 @@ void BufferValues::draw_text(const DrawTextParams& params)
         "mvp", 1, GL_FALSE, (projection * view_inv).data());
     text_renderer->text_prog.uniform2f(
         "pix_coord",
-        buffer_component->tile_coord_x(x_plus_half_buffer_width),
-        buffer_component->tile_coord_y(y_plus_half_buffer_height));
+        buffer_component.tile_coord_x(x_plus_half_buffer_width),
+        buffer_component.tile_coord_y(y_plus_half_buffer_height));
 
     text_renderer->text_prog.uniform4fv(
         "brightness_contrast", 2, auto_buffer_contrast_brightness);
@@ -322,10 +331,10 @@ void BufferValues::draw_text(const DrawTextParams& params)
 
     auto centeredCoord = vec4{x, y, 0.0f, 1.0f};
 
-    if (static_cast<int>(buffer_component->buffer_width_f) % 2 == 0) {
+    if (static_cast<int>(buffer_component.buffer_width_f) % 2 == 0) {
         centeredCoord.x() += 0.5f;
     }
-    if (static_cast<int>(buffer_component->buffer_height_f) % 2 == 0) {
+    if (static_cast<int>(buffer_component.buffer_height_f) % 2 == 0) {
         centeredCoord.y() += 0.5f;
     }
 
