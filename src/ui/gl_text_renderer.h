@@ -54,7 +54,7 @@ class GLTextRenderer
     explicit GLTextRenderer(GLCanvas& gl_canvas);
     ~GLTextRenderer();
 
-    bool initialize();
+    [[nodiscard]] bool initialize();
 
     void generate_glyphs_texture();
 

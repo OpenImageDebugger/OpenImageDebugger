@@ -38,7 +38,7 @@ ShaderProgram::ShaderProgram(GLCanvas& gl_canvas)
 }
 
 
-ShaderProgram::~ShaderProgram()
+ShaderProgram::~ShaderProgram() noexcept
 {
     gl_canvas_.glDeleteProgram(program_);
 }
@@ -93,7 +93,7 @@ bool ShaderProgram::create(const char* v_source,
     const auto vertex_shader   = compile(GL_VERTEX_SHADER, v_source);
     const auto fragment_shader = compile(GL_FRAGMENT_SHADER, f_source);
 
-    if (vertex_shader == 0 || fragment_shader == 0) {
+    if (vertex_shader == 0 || fragment_shader == 0) [[unlikely]] {
         return false;
     }
 
@@ -109,7 +109,7 @@ bool ShaderProgram::create(const char* v_source,
     // Check for link errors
     auto linked = GLint{};
     gl_canvas_.glGetProgramiv(program_, GL_LINK_STATUS, &linked);
-    if (!linked) {
+    if (!linked) [[unlikely]] {
         GLint length;
         gl_canvas_.glGetProgramiv(program_, GL_INFO_LOG_LENGTH, &length);
         auto log = std::string(length, ' ');

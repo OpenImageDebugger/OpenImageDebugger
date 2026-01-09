@@ -30,21 +30,26 @@
 namespace oid
 {
 
-MessageBlock::~MessageBlock() = default;
+MessageBlock::~MessageBlock() noexcept = default;
 
 StringBlock::StringBlock(std::string value)
     : data_{std::move(value)}
 {
 }
 
-size_t StringBlock::size() const
+size_t StringBlock::size() const noexcept
 {
     return data_.size();
 }
 
-const uint8_t* StringBlock::data() const
+[[nodiscard]] const std::byte* StringBlock::data() const noexcept
 {
-    return reinterpret_cast<const uint8_t*>(data_.data());
+    // Note: reinterpret_cast is necessary here for pointer conversion from
+    // const char* (std::string::data()) to const std::byte*. std::bit_cast
+    // cannot be used for pointer-to-pointer conversions, only for value
+    // conversions of same-sized types. Using std::byte* for semantic clarity
+    // that this is raw byte storage.
+    return reinterpret_cast<const std::byte*>(data_.data());
 }
 
 } // namespace oid

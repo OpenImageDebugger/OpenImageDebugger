@@ -81,7 +81,7 @@ struct UIComponents
 
 struct BufferData
 {
-    std::map<std::string, std::vector<uint8_t>, std::less<>> held_buffers{};
+    std::map<std::string, std::vector<std::byte>, std::less<>> held_buffers{};
     std::map<std::string, std::shared_ptr<Stage>, std::less<>> stages{};
     std::set<std::string, std::less<>> previous_session_buffers{};
     std::set<std::string, std::less<>> removed_buffer_names{};

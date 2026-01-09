@@ -50,15 +50,16 @@ std::optional<std::reference_wrapper<Camera>> get_camera_component(
         game_objects)
 {
     const auto camera_it = game_objects.find("camera");
-    if (camera_it == game_objects.end() || !camera_it->second) {
+    if (camera_it == game_objects.end() || !camera_it->second) [[unlikely]] {
         std::cerr << "[Error] Camera game object not found" << std::endl;
         return std::nullopt;
     }
 
+    const auto& [camera_name, camera_obj] = *camera_it;
     const auto camera_component =
-        camera_it->second->get_component<Camera>("camera_component");
+        camera_obj->get_component<Camera>("camera_component");
 
-    if (!camera_component.has_value()) {
+    if (!camera_component.has_value()) [[unlikely]] {
         std::cerr << "[Error] Camera component not found" << std::endl;
         return std::nullopt;
     }
@@ -151,7 +152,8 @@ bool Stage::initialize(const BufferParams& params)
     }
 
     return std::ranges::all_of(all_game_objects, [](auto& go) {
-        return go.second->post_initialize();
+        const auto& [name, game_object] = go;
+        return game_object->post_initialize();
     });
 }
 
@@ -159,16 +161,18 @@ bool Stage::initialize(const BufferParams& params)
 bool Stage::buffer_update(const BufferParams& params)
 {
     const auto buffer_it = all_game_objects.find("buffer");
-    if (buffer_it == all_game_objects.end() || !buffer_it->second) {
+    if (buffer_it == all_game_objects.end() || !buffer_it->second)
+        [[unlikely]] {
         std::cerr << "[Error] Buffer game object not found" << std::endl;
         return false;
     }
 
-    const auto buffer_obj = buffer_it->second.get();
+    const auto& [buffer_name, buffer_shared_ptr] = *buffer_it;
+    const auto buffer_obj                        = buffer_shared_ptr.get();
     const auto buffer_component_opt =
         buffer_obj->get_component<Buffer>("buffer_component");
 
-    if (!buffer_component_opt.has_value()) {
+    if (!buffer_component_opt.has_value()) [[unlikely]] {
         std::cerr << "[Error] Buffer component not found" << std::endl;
         return false;
     }
@@ -227,16 +231,18 @@ void Stage::draw()
     // GUI)
 
     const auto camera_it = all_game_objects.find("camera");
-    if (camera_it == all_game_objects.end() || !camera_it->second) {
+    if (camera_it == all_game_objects.end() || !camera_it->second)
+        [[unlikely]] {
         std::cerr << "[Error] Camera game object not found" << std::endl;
         return;
     }
 
-    const auto camera_obj = camera_it->second.get();
+    const auto& [camera_name, camera_shared_ptr] = *camera_it;
+    const auto camera_obj                        = camera_shared_ptr.get();
     const auto camera_component_opt =
         camera_obj->get_component<Camera>("camera_component");
 
-    if (!camera_component_opt.has_value()) {
+    if (!camera_component_opt.has_value()) [[unlikely]] {
         std::cerr << "[Error] Camera component not found" << std::endl;
         return;
     }

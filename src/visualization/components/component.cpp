@@ -35,7 +35,7 @@ Component::Component(GameObject& game_object, GLCanvas& gl_canvas)
 }
 
 
-Component::~Component() = default;
+Component::~Component() noexcept = default;
 
 
 bool Component::initialize()

@@ -27,6 +27,7 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <array>
+#include <bit>
 #include <chrono>
 #include <cstring>
 #include <gtest/gtest.h>
@@ -155,8 +156,10 @@ TEST_F(MessageExchangeTest, StringBlockSize) {
 TEST_F(MessageExchangeTest, StringBlockData) {
   const auto test_string = std::string(TEST_STRING_HELLO);
   StringBlock block(test_string);
-  EXPECT_EQ(std::string(block.data(), block.data() + block.size()),
-            test_string);
+  // Convert std::byte* to const char* for std::string (safe: same
+  // size/alignment)
+  const auto *data = std::bit_cast<const char *>(block.data());
+  EXPECT_EQ(std::string(data, data + block.size()), test_string);
 }
 
 namespace {
@@ -165,17 +168,20 @@ constexpr std::size_t TEST_BUFFER_SIZE = sizeof(TEST_BUFFER_VALUES);
 } // namespace
 
 TEST_F(MessageExchangeTest, BufferBlockSize) {
-  BufferBlock block(
-      std::span<const uint8_t>{TEST_BUFFER_VALUES, TEST_BUFFER_SIZE});
+  BufferBlock block(std::span<const std::byte>{
+      reinterpret_cast<const std::byte *>(TEST_BUFFER_VALUES),
+      TEST_BUFFER_SIZE});
   EXPECT_EQ(block.size(), TEST_BUFFER_SIZE);
 }
 
 TEST_F(MessageExchangeTest, BufferBlockData) {
-  BufferBlock block(
-      std::span<const uint8_t>{TEST_BUFFER_VALUES, TEST_BUFFER_SIZE});
+  BufferBlock block(std::span<const std::byte>{
+      reinterpret_cast<const std::byte *>(TEST_BUFFER_VALUES),
+      TEST_BUFFER_SIZE});
+  // Compare std::byte values directly (convert to uint8_t for comparison)
   const auto *data = block.data();
   for (auto i = 0U; i < TEST_BUFFER_SIZE; ++i) {
-    EXPECT_EQ(data[i], TEST_BUFFER_VALUES[i]);
+    EXPECT_EQ(static_cast<uint8_t>(data[i]), TEST_BUFFER_VALUES[i]);
   }
 }
 
@@ -193,7 +199,9 @@ TEST_F(MessageExchangeTest, MessageComposerPushString) {
 
 TEST_F(MessageExchangeTest, MessageComposerPushBuffer) {
   MessageComposer composer;
-  composer.push(TEST_BUFFER_VALUES, TEST_BUFFER_SIZE);
+  composer.push(std::span<const std::byte>{
+      reinterpret_cast<const std::byte *>(TEST_BUFFER_VALUES),
+      TEST_BUFFER_SIZE});
   composer.clear();
 }
 
@@ -292,10 +300,11 @@ TEST_F(MessageExchangeTest, MessageDecoderReadVector) {
   QCoreApplication::processEvents();
 
   MessageDecoder decoder(server_socket_);
-  std::vector<uint8_t> result;
+  std::vector<std::byte> result;
   decoder.read(result);
 
-  EXPECT_EQ(result, test_vector);
+  EXPECT_EQ(result.size(), test_vector.size());
+  EXPECT_EQ(std::memcmp(result.data(), test_vector.data(), result.size()), 0);
 }
 
 TEST_F(MessageExchangeTest, MessageDecoderReadStringContainer) {

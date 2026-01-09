@@ -48,11 +48,11 @@ class Stage
   public:
     explicit Stage(MainWindow& main_window);
 
-    bool initialize(const BufferParams& params);
+    [[nodiscard]] bool initialize(const BufferParams& params);
 
-    bool buffer_update(const BufferParams& params);
+    [[nodiscard]] bool buffer_update(const BufferParams& params);
 
-    std::optional<std::reference_wrapper<GameObject>>
+    [[nodiscard]] std::optional<std::reference_wrapper<GameObject>>
     get_game_object(const std::string& tag);
 
     void update() const;

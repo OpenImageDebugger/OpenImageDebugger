@@ -87,11 +87,11 @@ void MainWindow::repaint_image_list_icon(const std::string& variable_name_str)
 {
     const auto lock    = std::unique_lock{ui_mutex_};
     const auto itStage = buffer_data_.stages.find(variable_name_str);
-    if (itStage == buffer_data_.stages.end()) {
+    if (itStage == buffer_data_.stages.end()) [[unlikely]] {
         return;
     }
 
-    const auto& stage = itStage->second;
+    const auto& [name, stage] = *itStage;
 
     // Buffer icon dimensions
     const auto icon_size      = get_icon_size();
@@ -141,7 +141,7 @@ void MainWindow::decode_plot_buffer_contents()
     auto buff_channels     = int{};
     auto buff_stride       = int{};
     auto buff_type         = BufferType{};
-    auto buff_contents     = std::vector<std::uint8_t>{};
+    auto buff_contents     = std::vector<std::byte>{};
 
     auto message_decoder = MessageDecoder{&socket_};
     message_decoder.read(variable_name_str)
@@ -165,7 +165,7 @@ void MainWindow::decode_plot_buffer_contents()
         buffer_data_.held_buffers[variable_name_str] = std::move(buff_contents);
     }
     const auto& held_buffer = buffer_data_.held_buffers[variable_name_str];
-    const auto buff_span    = std::span<const uint8_t>(held_buffer);
+    const auto buff_span    = std::span<const std::byte>(held_buffer);
 
     // Human readable dimensions
     auto visualized_width  = int{};
@@ -193,15 +193,15 @@ void MainWindow::decode_plot_buffer_contents()
 
         // Construct a new stage buffer if needed
         auto stage = std::make_shared<Stage>(*this);
-        if (const BufferParams params{buff_span,
-                                      buff_width,
-                                      buff_height,
-                                      buff_channels,
-                                      buff_type,
-                                      buff_stride,
-                                      pixel_layout_str,
-                                      transpose_buffer};
-            !stage->initialize(params)) {
+        if (const BufferParams params{.buffer           = buff_span,
+                                      .buffer_width_i   = buff_width,
+                                      .buffer_height_i  = buff_height,
+                                      .channels         = buff_channels,
+                                      .type             = buff_type,
+                                      .step             = buff_stride,
+                                      .pixel_layout     = pixel_layout_str,
+                                      .transpose_buffer = transpose_buffer};
+            !stage->initialize(params)) [[unlikely]] {
             std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
                          "initialization failed."
                       << std::endl;
@@ -214,15 +214,20 @@ void MainWindow::decode_plot_buffer_contents()
     } else {
 
         // Update buffer data
-        const BufferParams params{buff_span,
-                                  buff_width,
-                                  buff_height,
-                                  buff_channels,
-                                  buff_type,
-                                  buff_stride,
-                                  pixel_layout_str,
-                                  transpose_buffer};
-        buffer_stage->second->buffer_update(params);
+        const BufferParams params{.buffer           = buff_span,
+                                  .buffer_width_i   = buff_width,
+                                  .buffer_height_i  = buff_height,
+                                  .channels         = buff_channels,
+                                  .type             = buff_type,
+                                  .step             = buff_stride,
+                                  .pixel_layout     = pixel_layout_str,
+                                  .transpose_buffer = transpose_buffer};
+        const auto& [buffer_name, buffer_stage_ptr] = *buffer_stage;
+        if (!buffer_stage_ptr->buffer_update(params)) [[unlikely]] {
+            std::cerr << "[Error] Buffer update failed for: "
+                      << variable_name_str << std::endl;
+            // Continue processing other buffers even if this one fails
+        }
     }
 
     // Construct a new list widget if needed
@@ -258,7 +263,7 @@ void MainWindow::decode_plot_buffer_contents()
 void MainWindow::decode_incoming_messages()
 {
     // Close application if server has disconnected
-    if (socket_.state() == QTcpSocket::UnconnectedState) {
+    if (socket_.state() == QTcpSocket::UnconnectedState) [[unlikely]] {
         QApplication::quit();
     }
 
@@ -267,13 +272,13 @@ void MainWindow::decode_incoming_messages()
         buffer_data_.available_vars.clear();
     }
 
-    if (socket_.bytesAvailable() == 0) {
+    if (socket_.bytesAvailable() == 0) [[unlikely]] {
         return;
     }
 
     auto header = MessageType{};
     if (!socket_.read(std::bit_cast<char*>(&header),
-                      static_cast<qint64>(sizeof(header)))) {
+                      static_cast<qint64>(sizeof(header)))) [[unlikely]] {
         const auto error = socket_.error();
         std::cerr << "[Error] Failed to read message header: "
                   << socket_.errorString().toStdString() << std::endl;
@@ -282,7 +287,7 @@ void MainWindow::decode_incoming_messages()
         if (error == QAbstractSocket::RemoteHostClosedError ||
             error == QAbstractSocket::NetworkError ||
             error == QAbstractSocket::ConnectionRefusedError ||
-            error == QAbstractSocket::SocketTimeoutError) {
+            error == QAbstractSocket::SocketTimeoutError) [[unlikely]] {
             std::cerr
                 << "[Error] Critical socket error detected. Closing connection."
                 << std::endl;

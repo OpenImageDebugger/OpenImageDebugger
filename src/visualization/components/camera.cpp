@@ -127,16 +127,16 @@ void Camera::update()
 std::pair<float, float> Camera::get_buffer_initial_dimensions() const
 {
     const auto stage = game_object_.get_stage();
-    if (!stage.has_value()) {
+    if (!stage.has_value()) [[unlikely]] {
         return {0.0f, 0.0f};
     }
     const auto buffer_obj = stage->get().get_game_object("buffer");
-    if (!buffer_obj.has_value()) {
+    if (!buffer_obj.has_value()) [[unlikely]] {
         return {0.0f, 0.0f};
     }
     const auto buff_opt =
         buffer_obj->get().get_component<Buffer>("buffer_component");
-    if (!buff_opt.has_value()) {
+    if (!buff_opt.has_value()) [[unlikely]] {
         return {0.0f, 0.0f};
     }
     const auto& buff = buff_opt->get();

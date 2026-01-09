@@ -48,15 +48,17 @@ GLTextRenderer::~GLTextRenderer()
 
 bool GLTextRenderer::initialize()
 {
-    text_prog.create(shader::text_vert_shader,
-                     shader::text_frag_shader,
-                     ShaderProgram::TexelChannels::FormatR,
-                     "rgba",
-                     {"mvp",
-                      "buff_sampler",
-                      "text_sampler",
-                      "pix_coord",
-                      "brightness_contrast"});
+    if (!text_prog.create(shader::text_vert_shader,
+                          shader::text_frag_shader,
+                          ShaderProgram::TexelChannels::FormatR,
+                          "rgba",
+                          {"mvp",
+                           "buff_sampler",
+                           "text_sampler",
+                           "pix_coord",
+                           "brightness_contrast"})) {
+        return false;
+    }
 
     gl_canvas_.glGenTextures(1, &text_tex);
     gl_canvas_.glActiveTexture(GL_TEXTURE0);

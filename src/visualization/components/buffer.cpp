@@ -73,7 +73,7 @@ Buffer::Buffer(GameObject& game_object, GLCanvas& gl_canvas)
 }
 
 
-Buffer::~Buffer()
+Buffer::~Buffer() noexcept
 {
     const auto num_textures = num_textures_x * num_textures_y;
 
@@ -87,7 +87,9 @@ bool Buffer::buffer_update()
     const auto num_textures = num_textures_x * num_textures_y;
     gl_canvas_.glDeleteTextures(num_textures, buff_tex.data());
 
-    create_shader_program();
+    if (!create_shader_program()) {
+        return false;
+    }
     setup_gl_buffer();
     return true;
 }
@@ -113,7 +115,8 @@ void Buffer::get_pixel_info(std::stringstream& message,
                 std::bit_cast<const float*>(buffer_.data())[pos + c];
             message << fpix;
         } else if (type == BufferType::UnsignedByte) {
-            const auto fpix = static_cast<short>(buffer_[pos + c]);
+            const auto fpix =
+                static_cast<short>(static_cast<uint8_t>(buffer_[pos + c]));
             message << fpix;
         } else if (type == BufferType::Short) {
             const auto fpix =
@@ -160,7 +163,8 @@ void Buffer::update_min_color_value(float* lowest,
                                    buffer_.data())[channels * i + c]);
     } else if (type == BufferType::UnsignedByte) {
         lowest[c] = (std::min)(lowest[c],
-                               static_cast<float>(buffer_[channels * i + c]));
+                               static_cast<float>(static_cast<uint8_t>(
+                                   buffer_[channels * i + c])));
     } else if (type == BufferType::Short) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(std::bit_cast<const short*>(
@@ -214,8 +218,9 @@ void Buffer::update_max_color_value(float* upper,
                               std::bit_cast<const float*>(
                                   buffer_.data())[channels * i + c]);
     } else if (type == BufferType::UnsignedByte) {
-        upper[c] =
-            (std::max)(upper[c], static_cast<float>(buffer_[channels * i + c]));
+        upper[c] = (std::max)(upper[c],
+                              static_cast<float>(static_cast<uint8_t>(
+                                  buffer_[channels * i + c])));
     } else if (type == BufferType::Short) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(std::bit_cast<const short*>(
@@ -502,7 +507,7 @@ void Buffer::update_object_pose() const
 }
 
 
-void Buffer::create_shader_program()
+bool Buffer::create_shader_program()
 {
     // Buffer Shaders
     auto channel_type = ShaderProgram::TexelChannels{};
@@ -517,22 +522,24 @@ void Buffer::create_shader_program()
         channel_type = ShaderProgram::TexelChannels::FormatRGBA;
     }
 
-    buff_prog_.create(shader::buff_vert_shader,
-                      shader::buff_frag_shader,
-                      channel_type,
-                      pixel_layout_,
-                      {"mvp",
-                       "sampler",
-                       "brightness_contrast",
-                       "buffer_dimension",
-                       "enable_borders",
-                       "enable_icon_mode"});
+    return buff_prog_.create(shader::buff_vert_shader,
+                             shader::buff_frag_shader,
+                             channel_type,
+                             pixel_layout_,
+                             {"mvp",
+                              "sampler",
+                              "brightness_contrast",
+                              "buffer_dimension",
+                              "enable_borders",
+                              "enable_icon_mode"});
 }
 
 
 bool Buffer::initialize()
 {
-    create_shader_program();
+    if (!create_shader_program()) {
+        return false;
+    }
 
     // Buffer VBO
     // clang-format off
