@@ -53,6 +53,11 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
 
     ui_components_.ui->setupUi(this);
 
+    // Must be done after setupUi() so the widget exists
+    gl_canvas_ptr_ =
+        std::shared_ptr<GLCanvas>(ui_components_.ui->bufferPreview,
+                                  [](GLCanvas*) { /* no-op: Qt owns it */ });
+
     initialize_settings();
     initialize_ui_icons();
     initialize_ui_signals();
@@ -93,9 +98,9 @@ void MainWindow::draw() const
 }
 
 
-GLCanvas& MainWindow::gl_canvas() const
+std::shared_ptr<GLCanvas> MainWindow::gl_canvas() const
 {
-    return *ui_components_.ui->bufferPreview;
+    return gl_canvas_ptr_;
 }
 
 
@@ -187,7 +192,8 @@ void MainWindow::persist_settings()
     // Of the buffers not currently being visualized, only keep those whose
     // timer hasn't expired yet and is not in the set of removed names
     for (const auto& prev_buff : previous_session_buffers_qlist) {
-        const auto buff_name_std_str = prev_buff.first.toStdString();
+        const auto& [buff_name, timestamp] = prev_buff;
+        const auto buff_name_std_str       = buff_name.toStdString();
 
         const auto being_viewed =
             buffer_data_.held_buffers.contains(buff_name_std_str);
@@ -196,7 +202,7 @@ void MainWindow::persist_settings()
 
         if (was_removed) {
             buffer_data_.previous_session_buffers.erase(buff_name_std_str);
-        } else if (!being_viewed && prev_buff.second >= now) {
+        } else if (!being_viewed && timestamp >= now) {
             persisted_session_buffers.append(prev_buff);
         }
     }

@@ -36,7 +36,8 @@
 namespace oid
 {
 
-Camera::Camera(GameObject& game_object, GLCanvas& gl_canvas)
+Camera::Camera(std::shared_ptr<GameObject> game_object,
+               std::shared_ptr<GLCanvas> gl_canvas)
     : Component{game_object, gl_canvas}
 {
 }
@@ -44,19 +45,8 @@ Camera::Camera(GameObject& game_object, GLCanvas& gl_canvas)
 
 Camera::Camera(const Camera& cam)
     : Component{cam}
-    , zoom_power_{cam.zoom_power_}
-    , camera_pos_x_{cam.camera_pos_x_}
-    , camera_pos_y_{cam.camera_pos_y_}
-    , canvas_width_{cam.canvas_width_}
-    , canvas_height_{cam.canvas_height_}
-    , scale_{cam.scale_}
-{
-    update_object_pose();
-}
-
-
-Camera::Camera(Camera&& cam) noexcept
-    : Component{cam} // Copy Component base (references can't be moved)
+    , projection{cam.projection}
+    , mouse_position{cam.mouse_position}
     , zoom_power_{cam.zoom_power_}
     , camera_pos_x_{cam.camera_pos_x_}
     , camera_pos_y_{cam.camera_pos_y_}
@@ -70,6 +60,12 @@ Camera::Camera(Camera&& cam) noexcept
 
 Camera& Camera::operator=(const Camera& cam)
 {
+    if (this == &cam) {
+        return *this;
+    }
+
+    projection     = cam.projection;
+    mouse_position = cam.mouse_position;
     zoom_power_    = cam.zoom_power_;
     camera_pos_x_  = cam.camera_pos_x_;
     camera_pos_y_  = cam.camera_pos_y_;
@@ -79,15 +75,6 @@ Camera& Camera::operator=(const Camera& cam)
 
     update_object_pose();
 
-    return *this;
-}
-
-
-Camera& Camera::operator=(Camera&& cam) noexcept
-{
-    // Move assignment implemented as copy assignment because Component base
-    // class has reference members that cannot be moved
-    operator=(cam);
     return *this;
 }
 
@@ -105,10 +92,10 @@ void Camera::window_resized(const int w, const int h)
 
 void Camera::scroll_callback(const float delta)
 {
-    const auto mouse_x = static_cast<float>(gl_canvas_.mouse_x());
-    const auto mouse_y = static_cast<float>(gl_canvas_.mouse_y());
-    const auto win_w   = static_cast<float>(gl_canvas_.width());
-    const auto win_h   = static_cast<float>(gl_canvas_.height());
+    const auto mouse_x = static_cast<float>(gl_canvas_ref().mouse_x());
+    const auto mouse_y = static_cast<float>(gl_canvas_ref().mouse_y());
+    const auto win_w   = static_cast<float>(gl_canvas_ref().width());
+    const auto win_h   = static_cast<float>(gl_canvas_ref().height());
 
     const auto mouse_pos_ndc = vec4{2.0f * (mouse_x - win_w / 2.0f) / win_w,
                                     -2.0f * (mouse_y - win_h / 2.0f) / win_h,
@@ -126,17 +113,17 @@ void Camera::update()
 
 std::pair<float, float> Camera::get_buffer_initial_dimensions() const
 {
-    const auto stage = game_object_.get_stage();
-    if (!stage.has_value()) {
+    const auto stage = game_object_ref().get_stage();
+    if (!stage.has_value()) [[unlikely]] {
         return {0.0f, 0.0f};
     }
     const auto buffer_obj = stage->get().get_game_object("buffer");
-    if (!buffer_obj.has_value()) {
+    if (!buffer_obj.has_value()) [[unlikely]] {
         return {0.0f, 0.0f};
     }
     const auto buff_opt =
         buffer_obj->get().get_component<Buffer>("buffer_component");
-    if (!buff_opt.has_value()) {
+    if (!buff_opt.has_value()) [[unlikely]] {
         return {0.0f, 0.0f};
     }
     const auto& buff = buff_opt->get();
@@ -159,13 +146,13 @@ void Camera::update_object_pose() const
     // applied to world coordinates during rendering will also be reversed
     const auto pose = scale_ * mat4::translation(position);
 
-    game_object_.set_pose(pose);
+    game_object_ref().set_pose(pose);
 }
 
 
 bool Camera::post_initialize()
 {
-    window_resized(gl_canvas_.width(), gl_canvas_.height());
+    window_resized(gl_canvas_ref().width(), gl_canvas_ref().height());
     set_initial_zoom();
     update_object_pose();
 
@@ -210,7 +197,7 @@ void Camera::handle_key_events()
 
             update_object_pose();
 
-            game_object_.request_render_update();
+            game_object_ref().request_render_update();
         }
     }
 }
@@ -300,7 +287,7 @@ void Camera::scale_at(const vec4& center_ndc, const float delta)
         new_delta = (std::min)(new_delta, delta_greatest);
     }
 
-    const auto vp_inv = game_object_.get_pose() * projection.inv();
+    const auto vp_inv = game_object_ref().get_pose() * projection.inv();
 
     const auto delta_zoom = std::pow(zoom_factor, -new_delta);
 
@@ -385,9 +372,26 @@ float Camera::compute_zoom() const
 }
 
 
+float Camera::get_zoom_power() const
+{
+    return zoom_power_;
+}
+
+
+void Camera::set_zoom_power(const float zoom_power)
+{
+    zoom_power_ = zoom_power;
+
+    const auto zoom{1.0f / compute_zoom()};
+    scale_ = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
+
+    update_object_pose();
+}
+
+
 void Camera::move_to(const float x, const float y)
 {
-    const auto stage = game_object_.get_stage();
+    const auto stage = game_object_ref().get_stage();
     if (!stage.has_value()) {
         return;
     }
@@ -422,7 +426,7 @@ void Camera::move_to(const float x, const float y)
 
 vec4 Camera::get_position() const
 {
-    const auto stage = game_object_.get_stage();
+    const auto stage = game_object_ref().get_stage();
     if (!stage.has_value()) {
         return vec4{0.0f, 0.0f, 0.0f, 1.0f};
     }

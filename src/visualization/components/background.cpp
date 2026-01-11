@@ -34,26 +34,31 @@
 namespace oid
 {
 
-Background::Background(GameObject& game_object, GLCanvas& gl_canvas)
+Background::Background(std::shared_ptr<GameObject> game_object,
+                       std::shared_ptr<GLCanvas> gl_canvas)
     : Component{game_object, gl_canvas}
-    , background_prog{gl_canvas}
+    , background_prog{*gl_canvas}
 {
 }
 
 
-Background::~Background()
+Background::~Background() noexcept
 {
-    gl_canvas_.glDeleteBuffers(1, &background_vbo);
+    if (const auto canvas = gl_canvas()) {
+        canvas->glDeleteBuffers(1, &background_vbo);
+    }
 }
 
 
 bool Background::initialize()
 {
-    background_prog.create(shader::background_vert_shader,
-                           shader::background_frag_shader,
-                           ShaderProgram::TexelChannels::FormatR,
-                           "rgba",
-                           {});
+    if (!background_prog.create(shader::background_vert_shader,
+                                shader::background_frag_shader,
+                                ShaderProgram::TexelChannels::FormatR,
+                                "rgba",
+                                {})) {
+        return false;
+    }
 
     // Generate square VBO
     // clang-format off
@@ -66,13 +71,13 @@ bool Background::initialize()
         -1.0f, -1.0f,
     };
     // clang-format on
-    gl_canvas_.glGenBuffers(1, &background_vbo);
+    gl_canvas_ref().glGenBuffers(1, &background_vbo);
 
-    gl_canvas_.glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
-    gl_canvas_.glBufferData(GL_ARRAY_BUFFER,
-                            sizeof(vertex_buffer_data),
-                            vertex_buffer_data.data(),
-                            GL_STATIC_DRAW);
+    gl_canvas_ref().glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
+    gl_canvas_ref().glBufferData(GL_ARRAY_BUFFER,
+                                 sizeof(vertex_buffer_data),
+                                 vertex_buffer_data.data(),
+                                 GL_STATIC_DRAW);
 
     return true;
 }
@@ -82,10 +87,10 @@ void Background::draw(const mat4&, const mat4&)
 {
     background_prog.use();
 
-    gl_canvas_.glEnableVertexAttribArray(0);
-    gl_canvas_.glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
-    gl_canvas_.glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-    gl_canvas_.glDrawArrays(GL_TRIANGLES, 0, 6);
+    gl_canvas_ref().glEnableVertexAttribArray(0);
+    gl_canvas_ref().glBindBuffer(GL_ARRAY_BUFFER, background_vbo);
+    gl_canvas_ref().glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+    gl_canvas_ref().glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 

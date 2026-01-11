@@ -38,7 +38,7 @@ ShaderProgram::ShaderProgram(GLCanvas& gl_canvas)
 }
 
 
-ShaderProgram::~ShaderProgram()
+ShaderProgram::~ShaderProgram() noexcept
 {
     gl_canvas_.glDeleteProgram(program_);
 }
@@ -72,8 +72,8 @@ bool ShaderProgram::is_shader_outdated(const TexelChannels texel_format,
     return false;
 }
 
-bool ShaderProgram::create(const char* v_source,
-                           const char* f_source,
+bool ShaderProgram::create(std::string_view v_source,
+                           std::string_view f_source,
                            const TexelChannels texel_format,
                            const std::string& pixel_layout,
                            const std::vector<std::string>& uniforms)
@@ -89,11 +89,15 @@ bool ShaderProgram::create(const char* v_source,
 
     texel_format_ = texel_format;
     memcpy(pixel_layout_.data(), pixel_layout.data(), 4);
-    pixel_layout_[4]           = '\0';
-    const auto vertex_shader   = compile(GL_VERTEX_SHADER, v_source);
-    const auto fragment_shader = compile(GL_FRAGMENT_SHADER, f_source);
+    pixel_layout_[4] = '\0';
+    // Convert std::string_view to std::string for OpenGL API (requires
+    // null-terminated strings)
+    const auto vertex_shader =
+        compile(GL_VERTEX_SHADER, std::string(v_source).c_str());
+    const auto fragment_shader =
+        compile(GL_FRAGMENT_SHADER, std::string(f_source).c_str());
 
-    if (vertex_shader == 0 || fragment_shader == 0) {
+    if (vertex_shader == 0 || fragment_shader == 0) [[unlikely]] {
         return false;
     }
 
@@ -109,7 +113,7 @@ bool ShaderProgram::create(const char* v_source,
     // Check for link errors
     auto linked = GLint{};
     gl_canvas_.glGetProgramiv(program_, GL_LINK_STATUS, &linked);
-    if (!linked) {
+    if (!linked) [[unlikely]] {
         GLint length;
         gl_canvas_.glGetProgramiv(program_, GL_INFO_LOG_LENGTH, &length);
         auto log = std::string(length, ' ');

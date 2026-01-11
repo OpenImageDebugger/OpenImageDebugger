@@ -31,6 +31,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <string_view>
 
 #include <QLabel>
 #include <QSettings>
@@ -81,7 +82,7 @@ struct UIComponents
 
 struct BufferData
 {
-    std::map<std::string, std::vector<uint8_t>, std::less<>> held_buffers{};
+    std::map<std::string, std::vector<std::byte>, std::less<>> held_buffers{};
     std::map<std::string, std::shared_ptr<Stage>, std::less<>> stages{};
     std::set<std::string, std::less<>> previous_session_buffers{};
     std::set<std::string, std::less<>> removed_buffer_names{};
@@ -117,7 +118,7 @@ class MainWindow final : public QMainWindow
 
     void draw() const;
 
-    [[nodiscard]] GLCanvas& gl_canvas() const;
+    [[nodiscard]] std::shared_ptr<GLCanvas> gl_canvas() const;
 
     [[nodiscard]] QSizeF get_icon_size() const;
 
@@ -225,7 +226,7 @@ class MainWindow final : public QMainWindow
     UIComponents ui_components_{};
     BufferData buffer_data_{};
     ChannelNames channel_names_{};
-
+    std::shared_ptr<GLCanvas> gl_canvas_ptr_{};
     double render_framerate_{};
     QString default_export_suffix_{};
     // Thread safety: All access to buffer_data_ and state_ must be protected by
@@ -279,7 +280,7 @@ class MainWindow final : public QMainWindow
 
     void decode_incoming_messages();
 
-    void request_plot_buffer(const char* buffer_name);
+    void request_plot_buffer(std::string_view buffer_name);
 
     ///
     // Auto contrast pane - private - implemented in auto_contrast.cpp

@@ -27,7 +27,6 @@
 #define BUFFER_VALUES_H_
 
 #include <array>
-#include <cstdint>
 
 #include "component.h"
 #include "ipc/raw_data_decode.h"
@@ -39,7 +38,7 @@ namespace oid
 struct PixelFormatParams
 {
     BufferType type;
-    const uint8_t* buffer;
+    const std::byte* buffer;
     int pos;
     int channel;
     int label_length;
@@ -75,7 +74,8 @@ struct DrawTextParams
 class BufferValues final : public Component
 {
   public:
-    BufferValues(GameObject& game_object, GLCanvas& gl_canvas);
+    BufferValues(std::shared_ptr<GameObject> game_object,
+                 std::shared_ptr<GLCanvas> gl_canvas);
 
     ~BufferValues() override;
 

@@ -30,6 +30,7 @@
 #include "main_window/main_window.h"
 #include "ui/gl_text_renderer.h"
 #include "visualization/components/camera.h"
+// Required for GameObject::get_component<>() template method instantiation
 #include "visualization/game_object.h"
 
 
@@ -93,7 +94,7 @@ void GLCanvas::initializeGL()
 {
     this->makeCurrent();
     if (const auto context = this->context();
-        context == nullptr || !context->isValid()) {
+        context == nullptr || !context->isValid()) [[unlikely]] {
         std::cerr << "[Error] OpenGL context is not valid. OpenGL "
                      "initialization cannot proceed."
                   << std::endl;
@@ -136,7 +137,8 @@ void GLCanvas::initializeGL()
         GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, icon_texture_, 0);
 
     // Check if the GPU won't freak out about our FBO
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        [[unlikely]] {
         std::cerr << "[Error] FBO configuration is not supported. Framebuffer "
                      "initialization failed."
                   << std::endl;
@@ -147,7 +149,10 @@ void GLCanvas::initializeGL()
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
 
     // Initialize text renderer
-    text_renderer_->initialize();
+    if (!text_renderer_->initialize()) {
+        initialized_ = false;
+        return;
+    }
 
     initialized_ = true;
 }
@@ -182,12 +187,12 @@ void GLCanvas::render_buffer_icon(Stage& stage,
     glViewport(0, 0, icon_width, icon_height);
 
     const auto camera = stage.get_game_object("camera");
-    if (!camera.has_value()) {
+    if (!camera.has_value()) [[unlikely]] {
         return;
     }
     const auto cam_opt =
         camera->get().get_component<Camera>("camera_component");
-    if (!cam_opt.has_value()) {
+    if (!cam_opt.has_value()) [[unlikely]] {
         return;
     }
     auto& cam = cam_opt->get();

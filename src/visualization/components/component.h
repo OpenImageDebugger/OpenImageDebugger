@@ -26,6 +26,8 @@
 #ifndef COMPONENT_H_
 #define COMPONENT_H_
 
+#include <memory>
+
 #include "math/linear_algebra.h"
 #include "ui/gl_canvas.h"
 #include "visualization/events.h"
@@ -39,18 +41,19 @@ class GameObject;
 class Component
 {
   public:
-    Component(GameObject& game_object, GLCanvas& gl_canvas);
+    Component(std::shared_ptr<GameObject> game_object,
+              std::shared_ptr<GLCanvas> gl_canvas);
 
-    virtual bool initialize();
+    [[nodiscard]] virtual bool initialize();
 
-    virtual bool buffer_update();
+    [[nodiscard]] virtual bool buffer_update();
 
-    virtual bool post_buffer_update();
+    [[nodiscard]] virtual bool post_buffer_update();
 
     [[nodiscard]] virtual int render_index() const;
 
     // Called after all components are initialized
-    virtual bool post_initialize();
+    [[nodiscard]] virtual bool post_initialize();
 
     virtual void update() = 0;
 
@@ -73,11 +76,36 @@ class Component
         // Do nothing
     }
 
-    virtual ~Component();
+    virtual ~Component() noexcept;
 
-    GameObject& game_object_;
+    [[nodiscard]] std::shared_ptr<GameObject> game_object() const noexcept
+    {
+        return game_object_.lock();
+    }
 
-    GLCanvas& gl_canvas_;
+    [[nodiscard]] GameObject& game_object_ref() const
+    {
+        auto obj = game_object_.lock();
+        assert(obj && "GameObject has been destroyed");
+        return *obj;
+    }
+
+    [[nodiscard]] std::shared_ptr<GLCanvas> gl_canvas() const noexcept
+    {
+        return gl_canvas_.lock();
+    }
+
+    [[nodiscard]] GLCanvas& gl_canvas_ref() const
+    {
+        auto canvas = gl_canvas_.lock();
+        assert(canvas && "GLCanvas has been destroyed");
+        return *canvas;
+    }
+
+  public:
+    std::weak_ptr<GameObject> game_object_;
+
+    std::weak_ptr<GLCanvas> gl_canvas_;
 };
 
 } // namespace oid

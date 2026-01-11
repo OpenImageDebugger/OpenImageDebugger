@@ -54,7 +54,7 @@ constexpr std::size_t MAX_BUFFER_SIZE =
 
 struct BufferParams
 {
-    std::span<const uint8_t> buffer;
+    std::span<const std::byte> buffer;
     int buffer_width_i;
     int buffer_height_i;
     int channels;
@@ -67,9 +67,10 @@ struct BufferParams
 class Buffer final : public Component
 {
   public:
-    Buffer(GameObject& game_object, GLCanvas& gl_canvas);
+    Buffer(std::shared_ptr<GameObject> game_object,
+           std::shared_ptr<GLCanvas> gl_canvas);
 
-    ~Buffer() override;
+    ~Buffer() noexcept override;
 
     Buffer(const Buffer&) = delete;
 
@@ -93,11 +94,11 @@ class Buffer final : public Component
 
     BufferType type{BufferType::UnsignedByte};
 
-    std::span<const uint8_t> buffer_{};
+    std::span<const std::byte> buffer_{};
 
     bool transpose{};
 
-    bool buffer_update() override;
+    [[nodiscard]] bool buffer_update() override;
 
     void recompute_min_color_values();
 
@@ -118,7 +119,7 @@ class Buffer final : public Component
     [[nodiscard]] float tile_coord_x(int x) const;
     [[nodiscard]] float tile_coord_y(int y) const;
 
-    bool initialize() override;
+    [[nodiscard]] bool initialize() override;
 
     void update() override;
 
@@ -142,7 +143,7 @@ class Buffer final : public Component
     void set_icon_drawing_mode(bool is_enabled) const;
 
   private:
-    void create_shader_program();
+    bool create_shader_program();
 
     void setup_gl_buffer();
 

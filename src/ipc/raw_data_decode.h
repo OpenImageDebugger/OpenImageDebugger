@@ -43,10 +43,29 @@ enum class BufferType {
     Float64       = 6
 };
 
-std::vector<std::uint8_t>
-make_float_buffer_from_double(const std::vector<std::uint8_t>& buff_double);
+std::vector<std::byte>
+make_float_buffer_from_double(const std::vector<std::byte>& buff_double);
 
-std::size_t type_size(BufferType type);
+[[nodiscard]] constexpr std::size_t type_size(const BufferType type) noexcept
+{
+    switch (type) {
+    case BufferType::Int32:
+        return sizeof(std::int32_t);
+    case BufferType::Short:
+        [[fallthrough]];
+    case BufferType::UnsignedShort:
+        return sizeof(std::int16_t);
+    case BufferType::Float32:
+        return sizeof(float);
+    case BufferType::Float64:
+        return sizeof(double);
+    case BufferType::UnsignedByte:
+        [[fallthrough]];
+    default:
+        // All enum values are handled above, this should never be reached
+        return sizeof(std::uint8_t);
+    }
+}
 
 } // namespace oid
 
