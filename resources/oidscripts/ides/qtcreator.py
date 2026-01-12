@@ -54,8 +54,21 @@ def lldb_fetch_hook(debugger, event_handler):
 
 def prevents_stop_hook():
     # type: () -> bool
+    # #region agent log
+    import json
+    try:
+        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1','location':'qtcreator.py:55','message':'qtcreator_prevents_check','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
+    except: pass
+    # #endregion
     import lldb
     is_running_from_qtcreator = hasattr(lldb, 'theDumper')
+    # #region agent log
+    try:
+        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1','location':'qtcreator.py:59','message':'qtcreator_prevents_result','data':{'is_running_from_qtcreator':is_running_from_qtcreator},'timestamp':int(__import__('time').time()*1000)})+'\n')
+    except: pass
+    # #endregion
     return is_running_from_qtcreator
 
 

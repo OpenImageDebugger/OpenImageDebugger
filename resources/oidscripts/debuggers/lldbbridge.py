@@ -24,8 +24,21 @@ class LldbBridge(BridgeInterface):
 
     def __init__(self, type_bridge):
         # type: (TypeInspectorInterface) -> None
+        # #region agent log
+        import json
+        try:
+            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H4,H5','location':'lldbbridge.py:25','message':'LldbBridge_init_entry','data':{'thread':threading.current_thread().name},'timestamp':int(__import__('time').time()*1000)})+'\n')
+        except: pass
+        # #endregion
         global instance
         instance = self
+        # #region agent log
+        try:
+            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H4,H5','location':'lldbbridge.py:28','message':'instance_set','data':{'instance_id':id(instance)},'timestamp':int(__import__('time').time()*1000)})+'\n')
+        except: pass
+        # #endregion
         self._type_bridge = type_bridge
         self._pending_requests = []
         self._lock = threading.Lock()
@@ -40,6 +53,12 @@ class LldbBridge(BridgeInterface):
         event_loop_thread = threading.Thread(target=self.event_loop)
         event_loop_thread.daemon = True
         event_loop_thread.start()
+        # #region agent log
+        try:
+            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H5','location':'lldbbridge.py:42','message':'LldbBridge_init_complete','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
+        except: pass
+        # #endregion
 
     def get_lldb_backend(self):
         # type: () -> lldb.SBDebugger
@@ -211,8 +230,21 @@ class LldbBridge(BridgeInterface):
         return available_symbols
 
     def stop_hook(self, *args):
+        # #region agent log
+        import json
+        try:
+            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H2,H4','location':'lldbbridge.py:213','message':'stop_hook_method_called','data':{'thread':threading.current_thread().name},'timestamp':int(__import__('time').time()*1000)})+'\n')
+        except: pass
+        # #endregion
         with self._lock:
             self._event_queue.append('stop')
+        # #region agent log
+        try:
+            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H2','location':'lldbbridge.py:216','message':'stop_event_queued','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
+        except: pass
+        # #endregion
 
 
 class SymbolWrapper(DebuggerSymbolReference):

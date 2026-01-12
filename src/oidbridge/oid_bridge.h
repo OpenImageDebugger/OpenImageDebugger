@@ -144,6 +144,40 @@ void oid_run_event_loop(AppHandler handler);
 OID_API
 void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata);
 
+/**
+ * Add a buffer to the plot list (LLDB-safe version)
+ *
+ * This version takes individual parameters instead of a Python dictionary,
+ * allowing it to be called from the event loop thread in LLDB mode without
+ * requiring Python C API calls to parse the dictionary.
+ *
+ * @param handler  Handler of the window where the buffer should be plotted
+ * @param variable_name  Variable name as string
+ * @param display_name  Display name as string
+ * @param buffer_ptr  Pointer to buffer data
+ * @param buffer_size  Size of buffer in bytes
+ * @param width  Buffer width, in pixels
+ * @param height  Buffer height, in pixels
+ * @param channels  Number of channels (1 to 4)
+ * @param type  Buffer type (see symbols.py for details)
+ * @param row_stride  Row stride, in pixels
+ * @param pixel_layout  Pixel channel layout string (e.g. 'rgba')
+ * @param transpose_buffer  Whether to transpose the buffer
+ */
+OID_API
+void oid_plot_buffer_safe(AppHandler handler,
+                          const char* variable_name,
+                          const char* display_name,
+                          const void* buffer_ptr,
+                          size_t buffer_size,
+                          int width,
+                          int height,
+                          int channels,
+                          int type,
+                          int row_stride,
+                          const char* pixel_layout,
+                          int transpose_buffer);
+
 #ifdef __cplusplus
 }
 #endif

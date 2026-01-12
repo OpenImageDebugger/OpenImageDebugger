@@ -28,9 +28,12 @@
 
 #define RAISE_PY_EXCEPTION(exception_type, msg)        \
     do {                                               \
-        PyGILState_STATE gstate = PyGILState_Ensure(); \
+        /* FIXED: Assume GIL is already held when called from Python code. */ \
+        /* PyGILState_Ensure() can abort in embedded Python (LLDB) when */ \
+        /* called from a thread that already has the GIL. Since all our C API */ \
+        /* functions are called from Python via ctypes, we assume the GIL is */ \
+        /* held and skip PyGILState_Ensure() to avoid the abort. */ \
         PyErr_SetString(exception_type, msg);          \
-        PyGILState_Release(gstate);                    \
     } while (0)
 
 #define CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, ret)         \
