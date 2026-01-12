@@ -22,29 +22,15 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
         """
         Retrieve the list of available symbols and provide it to the OID window
         for autocompleting.
-
-        In LLDB mode, this queues the call to run on the main thread to avoid
-        GIL issues when calling Python C API functions from the event loop
-        thread.
         """
         observable_symbols = list(self._debugger.get_available_symbols())
 
-        # Check if we're in LLDB mode
-        # In LLDB mode, set_available_symbols() eventually calls
-        # oid_set_available_symbols() which crashes if called from a non-main
-        # thread. We need to queue it.
-        is_lldb_mode = 'lldb' in sys.modules
-
-        if is_lldb_mode:
-            # Queue the call to run on the main thread via the event loop
-            # This ensures it runs in a safe context where Python C API
-            # calls work
+        if 'lldb' in sys.modules:
             from oidscripts.oidwindow import DeferredSymbolListSetter
             deferred_setter = DeferredSymbolListSetter(
                 self._window, observable_symbols)
             self._debugger.queue_request(deferred_setter)
         else:
-            # Non-LLDB mode: can call directly
             if self._window.is_ready():
                 self._window.set_available_symbols(observable_symbols)
 
@@ -56,25 +42,14 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
         The debugger has stopped (e.g. a breakpoint was hit). We must list all
         available buffers and pass it to the Open Image Debugger window.
         """
-        # FIXED: Window should already be initialized from main thread.
-        # If not ready, wait a bit for it to become ready (it's being initialized
-        # from main thread). This avoids calling initialize_window() from the
-        # event loop thread which causes GIL errors.
         if not self._window.is_ready():
-            # Wait for window to become ready (initialized from main thread)
-            max_wait = 50  # 5 seconds max wait
+            max_wait = 50
             waited = 0
             while not self._window.is_ready() and waited < max_wait:
                 time.sleep(0.1)
                 waited += 1
 
-        # Update buffers being visualized
-        # In LLDB mode, get_observed_buffers now uses a Python-side cache
-        # since C++ can't create Python objects. This cache is maintained
-        # when buffers are plotted.
         observed_buffers = self._window.get_observed_buffers()
-
-        # Update all observed buffers (check for both None and empty list)
         if observed_buffers:
             for buffer_name in observed_buffers:
                 self._window.plot_variable(buffer_name)

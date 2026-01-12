@@ -27,10 +27,7 @@
 
 #include "process.h"
 
-#include <cerrno>
-#include <chrono>
 #include <csignal>
-#include <fstream>
 #include <spawn.h>
 
 extern char** environ;
@@ -67,20 +64,17 @@ class ProcessImplUnix final : public ProcessImpl
         }
         argv.push_back(nullptr);
 
-        [[maybe_unused]] int spawn_result =
-            posix_spawn(&pid_,
-                        windowBinaryPath.c_str(),
-                        nullptr, // TODO consider passing something here
-                        nullptr, // and here
-                        argv.data(),
-                        environ);
+        posix_spawn(&pid_,
+                    windowBinaryPath.c_str(),
+                    nullptr,
+                    nullptr,
+                    argv.data(),
+                    environ);
     }
 
     [[nodiscard]] bool isRunning() const override
     {
-        bool result = pid_ != 0 && ::kill(pid_, 0) == 0;
-
-        return result;
+        return pid_ != 0 && ::kill(pid_, 0) == 0;
     }
 
     void kill() override

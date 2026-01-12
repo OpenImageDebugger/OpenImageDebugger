@@ -472,9 +472,6 @@ void MainWindow::initialize_networking()
     socket_.connectToHost(QString(host_settings_.url.c_str()),
                           host_settings_.port);
     socket_.waitForConnected();
-    
-    // Connect socket's readyRead signal to process messages immediately
-    // This ensures messages are processed as soon as they arrive, not just on timer ticks
     connect(&socket_,
             &QTcpSocket::readyRead,
             this,

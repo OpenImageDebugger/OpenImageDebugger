@@ -257,7 +257,6 @@ void MainWindow::decode_plot_buffer_contents()
     persist_settings_deferred();
 
     state_.request_render_update = true;
-    std::cerr << "[OpenImageDebugger] UI: Buffer updated, request_render_update set to true for: " << variable_name_str << std::endl;
 }
 
 
@@ -287,14 +286,14 @@ void MainWindow::decode_incoming_messages()
                 error == QAbstractSocket::NetworkError ||
                 error == QAbstractSocket::ConnectionRefusedError ||
                 error == QAbstractSocket::SocketTimeoutError) [[unlikely]] {
-                std::cerr
-                    << "[Error] Critical socket error detected. Closing connection."
-                    << std::endl;
+                std::cerr << "[Error] Critical socket error detected. Closing "
+                             "connection."
+                          << std::endl;
                 socket_.close();
                 // Next call will detect UnconnectedState and quit
             }
-            // For other errors (e.g., temporary read errors), just return and retry
-            // next time
+            // For other errors (e.g., temporary read errors), just return and
+            // retry next time
             return;
         }
 
@@ -308,9 +307,7 @@ void MainWindow::decode_incoming_messages()
             respond_get_observed_symbols();
             break;
         case MessageType::PlotBufferContents:
-            std::cerr << "[OpenImageDebugger] UI: Received PlotBufferContents message" << std::endl;
             decode_plot_buffer_contents();
-            std::cerr << "[OpenImageDebugger] UI: Finished processing PlotBufferContents" << std::endl;
             break;
         default:
             break;

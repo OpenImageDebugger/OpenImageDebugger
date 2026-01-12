@@ -25,9 +25,6 @@
 
 #include "python_native_interface.h"
 
-#include <chrono>
-#include <fstream>
-
 namespace oid
 {
 
@@ -48,22 +45,10 @@ uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, const int tuple_index)
 
 void copy_py_string(std::string& dst, PyObject* src)
 {
-
     if (PyUnicode_Check(src)) {
-
-        // H13: Use PyUnicode_AsUTF8 instead of PyUnicode_AsEncodedString to
-        // avoid abort in LLDB's embedded Python. PyUnicode_AsUTF8 returns a
-        // const char* directly without creating new objects.
         const char* utf8_str = PyUnicode_AsUTF8(src);
-
-        if (utf8_str != nullptr) {
-            dst = utf8_str;
-        } else {
-            dst = "";
-        }
-
+        dst                  = utf8_str != nullptr ? utf8_str : "";
     } else {
-
         assert(PyBytes_Check(src));
         dst = PyBytes_AS_STRING(src);
     }

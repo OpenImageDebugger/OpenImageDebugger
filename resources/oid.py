@@ -33,20 +33,11 @@ def import_lldb(type_bridge):
     return lldbbridge.LldbBridge(type_bridge)
 
 def lldb_stop_hook_handler(debugger, command, result, dict):
-    """
-    LLDB stop hook handler. This is called when the debugger stops.
-    We need to ensure proper GIL management to avoid mutex lock failures.
-    
-    WARNING: This should NOT be called if the fix is working correctly.
-    If this is called, it means the stop hook was registered despite prevention.
-    """
     try:
         from oidscripts.debuggers import lldbbridge
         if lldbbridge.instance is not None:
             lldbbridge.instance.stop_hook(debugger, command, result, dict)
-    except Exception as e:
-        # Silently ignore errors in stop hook to prevent GIL issues
-        # The event loop will still detect frame changes via polling
+    except Exception:
         pass
 
 def __lldb_init_module(debugger, internal_dict):
@@ -64,29 +55,20 @@ def __lldb_init_module(debugger, internal_dict):
 
         for stop_hook_check in ide_checkers:
             try:
-                result = stop_hook_check()
-                if result:
+                if stop_hook_check():
                     log.info('Stop hook prevented by IDE detection')
                     return True
             except Exception as e:
-                # If detection fails, log but continue
                 log.debug('IDE detection check failed: %s', str(e))
 
         return False
 
-    # FIXED: Check if IDE hooks will fail before registering stop hook
-    # If QtCreator is not available, IDE hooks will fail, and we should prevent
-    # stop hooks to avoid GIL issues when they fire from non-main threads
     import lldb
     qtcreator_not_available = not hasattr(lldb, 'theDumper')
     
-    prevents = ide_prevents_stop_hook()
-    
-    # FIXED: If QtCreator is not available, IDE hooks will fail, so prevent stop hooks
-    # to avoid GIL errors. This is a safety measure when running in unsupported IDEs.
-    if prevents or qtcreator_not_available:
-        if qtcreator_not_available and not prevents:
-            log.info('Stop hook prevented: QtCreator not available, IDE hooks will fail')
+    if ide_prevents_stop_hook() or qtcreator_not_available:
+        if qtcreator_not_available:
+            log.info('Stop hook prevented: QtCreator not available')
         return
 
     try:
@@ -169,15 +151,9 @@ def main():
         # Test application
         oidtest(script_path)
     else:
-        # Setup GDB interface
         debugger = get_debugger_bridge()
         window = OpenImageDebuggerWindow(script_path, debugger)
-
-        # FIXED: Initialize window from main thread before event handlers start.
-        # This ensures oid_initialize() is called from a thread with proper Python
-        # thread state, avoiding GIL errors when called from the event loop thread.
         window.initialize_window()
-        
         event_handler = OpenImageDebuggerEvents(window, debugger)
 
         register_ide_hooks(debugger, event_handler)

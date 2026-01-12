@@ -55,13 +55,9 @@ class LldbBridge(BridgeInterface):
     def _check_frame_modification(self):
         process = self._get_process(self.get_lldb_backend())
 
-        # Try to register process listener if not already registered
-        # This helps with Android Studio where process might not be available at init
-        # Register whenever process is valid, not just when stopped
         if not self._listener_registered and process.IsValid():
             self._try_register_process_listener(process)
 
-        # Check if process is stopped using GetState() instead of is_stopped property
         if process.IsValid() and process.GetState() == lldb.eStateStopped:
             thread = self._get_thread(process)
             frame = self._get_frame(thread)
@@ -106,20 +102,14 @@ class LldbBridge(BridgeInterface):
 
     def queue_request(self, callable_request):
         # type: (Callable[[None], None]) -> None
-        # Deduplicate plotting requests: if a DeferredVariablePlotter for the same
-        # variable is already queued, remove the old one and add the new one.
-        # This prevents stale buffer data from being plotted when the user continues
-        # quickly and multiple stop events queue plotting requests.
         from oidscripts.oidwindow import DeferredVariablePlotter
         if isinstance(callable_request, DeferredVariablePlotter):
             variable_name = callable_request._variable
             with self._lock:
-                # Remove any existing plotting requests for the same variable
                 self._pending_requests = [
                     req for req in self._pending_requests
                     if not (isinstance(req, DeferredVariablePlotter) and req._variable == variable_name)
                 ]
-                # Add the new request (most recent data)
                 self._pending_requests.append(callable_request)
         else:
             with self._lock:
@@ -256,11 +246,9 @@ class LldbBridge(BridgeInterface):
             if not broadcaster.IsValid():
                 return
 
-            # Create listener if not already created
             if self._process_listener is None:
                 self._process_listener = lldb.SBListener('oid-lldb-process-listener')
 
-            # Register for state change events
             rc = broadcaster.AddListener(self._process_listener,
                                         lldb.SBProcess.eBroadcastBitStateChanged)
             if not rc:
@@ -270,26 +258,19 @@ class LldbBridge(BridgeInterface):
             from oidscripts.logger import log
             log.info('LldbBridge: Process event listener registered successfully')
 
-            # Start monitoring thread if not already started
             if self._listener_thread is None or not self._listener_thread.is_alive():
                 def event_monitor_thread():
                     event = lldb.SBEvent()
                     last_state = None
                     while True:
                         try:
-                            # Wait for state change events (timeout: 1 second)
                             if self._process_listener.WaitForEventForBroadcasterWithType(
                                     1, broadcaster,
                                     lldb.SBProcess.eBroadcastBitStateChanged, event):
-                                # Check if process is stopped
                                 if process.IsValid():
                                     state = process.GetState()
 
-                                    # Only queue stop event when transitioning TO stopped state
-                                    # not when already stopped (prevents repeated events)
                                     if state == lldb.eStateStopped and last_state != lldb.eStateStopped:
-                                        # Process just stopped (e.g., breakpoint hit)
-                                        # Queue the stop event only once per transition
                                         from oidscripts.logger import log
                                         log.debug('LldbBridge: Process stopped, queuing stop event')
                                         with self._lock:
@@ -297,24 +278,17 @@ class LldbBridge(BridgeInterface):
                                     last_state = state
 
                                     if state == lldb.eStateExited or state == lldb.eStateDetached:
-                                        # Process terminated, exit thread
                                         break
                             else:
-                                # Timeout - check if process is still valid
                                 if not process.IsValid():
-                                    # Process terminated, exit thread
                                     break
-                                # Do NOT update last_state on timeout - only update on actual events
-                                # This prevents false transitions when timeout happens while stopped
-                        except Exception as e:
-                            # Continue monitoring despite errors
+                        except Exception:
                             time.sleep(0.1)
 
                 self._listener_thread = threading.Thread(target=event_monitor_thread,
                                                          daemon=True)
                 self._listener_thread.start()
         except Exception:
-            # Failed to register listener, continue with polling
             pass
 
 

@@ -26,7 +26,6 @@
 #include "process.h"
 
 #include <chrono>
-#include <fstream>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -59,10 +58,7 @@ void Process::kill() const
 
 void Process::waitForStart() const
 {
-
-    // Add timeout to prevent infinite hang - especially important in LLDB's
-    // embedded Python where there may be no event loop
-    const int timeout_ms  = 5000; // 5 second timeout
+    const int timeout_ms  = 5000;
     const auto start_time = std::chrono::steady_clock::now();
 
     while (!impl_->isRunning()) {
@@ -72,17 +68,12 @@ void Process::waitForStart() const
                 .count();
 
         if (elapsed_ms > timeout_ms) {
-
-            // Timeout - process didn't start in time
-            // This can happen in LLDB's embedded Python context where there's
-            // no event loop to process process signals
             std::cerr
                 << "[OpenImageDebugger] Warning: Process start timeout after "
                 << timeout_ms << "ms. Continuing anyway." << std::endl;
             break;
         }
 
-        // Small sleep to avoid busy-waiting
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
