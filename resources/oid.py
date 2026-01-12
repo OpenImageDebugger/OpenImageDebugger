@@ -169,13 +169,10 @@ def main():
         # Test application
         oidtest(script_path)
     else:
-        # 
         # Setup GDB interface
         debugger = get_debugger_bridge()
-        # 
         window = OpenImageDebuggerWindow(script_path, debugger)
-        # 
-        
+
         # FIXED: Initialize window from main thread before event handlers start.
         # This ensures oid_initialize() is called from a thread with proper Python
         # thread state, avoiding GIL errors when called from the event loop thread.

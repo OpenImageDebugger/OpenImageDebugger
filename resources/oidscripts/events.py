@@ -56,12 +56,6 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
         The debugger has stopped (e.g. a breakpoint was hit). We must list all
         available buffers and pass it to the Open Image Debugger window.
         """
-        # #region agent log
-        import json
-        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H5,H6","location":"events.py:54","message":"stop_handler_entry","data":{"window_ready":self._window.is_ready()},"timestamp":int(time.time()*1000)}) + '\n')
-        # #endregion
-        
         # FIXED: Window should already be initialized from main thread.
         # If not ready, wait a bit for it to become ready (it's being initialized
         # from main thread). This avoids calling initialize_window() from the
@@ -79,30 +73,14 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
         # since C++ can't create Python objects. This cache is maintained
         # when buffers are plotted.
         observed_buffers = self._window.get_observed_buffers()
-        # #region agent log
-        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H6","location":"events.py:74","message":"got_observed_buffers","data":{"observed_buffers":observed_buffers if observed_buffers is None else list(observed_buffers),"buffer_count":len(observed_buffers) if observed_buffers is not None else 0},"timestamp":int(time.time()*1000)}) + '\n')
-        # #endregion
-        
+
         # Update all observed buffers (check for both None and empty list)
         if observed_buffers:
             for buffer_name in observed_buffers:
-                # #region agent log
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H6","location":"events.py:87","message":"plotting_buffer","data":{"buffer_name":buffer_name},"timestamp":int(time.time()*1000)}) + '\n')
-                # #endregion
                 self._window.plot_variable(buffer_name)
 
         # Set list of available symbols
-        # #region agent log
-        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H6","location":"events.py:80","message":"calling_set_symbol_complete_list","data":{},"timestamp":int(time.time()*1000)}) + '\n')
-        # #endregion
         self._set_symbol_complete_list()
-        # #region agent log
-        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H5,H6","location":"events.py:82","message":"stop_handler_exit","data":{},"timestamp":int(time.time()*1000)}) + '\n')
-        # #endregion
 
     def plot_handler(self, variable_name):
         """
