@@ -33,6 +33,10 @@ class LldbBridge(BridgeInterface):
         self._event_handler = None
         self._last_thread_id = 0
         self._last_frame_idx = 0
+        self._process_listener = None
+        self._listener_thread = None
+        self._listener_registered = False
+        self._last_process_state = None  # Track last known process state
 
         # Store debugger from the main thread since it isn't available from an event loop.
         self._debugger = lldb.debugger
@@ -50,7 +54,15 @@ class LldbBridge(BridgeInterface):
 
     def _check_frame_modification(self):
         process = self._get_process(self.get_lldb_backend())
-        if process.is_stopped:
+        
+        # Try to register process listener if not already registered
+        # This helps with Android Studio where process might not be available at init
+        # Register whenever process is valid, not just when stopped
+        if not self._listener_registered and process.IsValid():
+            self._try_register_process_listener(process)
+        
+        # Check if process is stopped using GetState() instead of is_stopped property
+        if process.IsValid() and process.GetState() == lldb.eStateStopped:
             thread = self._get_thread(process)
             frame = self._get_frame(thread)
 
@@ -83,8 +95,21 @@ class LldbBridge(BridgeInterface):
 
             while pending_events:
                 event = pending_events.pop(0)
+                # #region agent log
+                import json
+                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H5","location":"lldbbridge.py:95","message":"processing_event","data":{"event":event,"handler_exists":self._event_handler is not None},"timestamp":int(time.time()*1000)}) + '\n')
+                # #endregion
                 if event == 'stop' and self._event_handler is not None:
+                    # #region agent log
+                    with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H5","location":"lldbbridge.py:98","message":"calling_stop_handler","data":{},"timestamp":int(time.time()*1000)}) + '\n')
+                    # #endregion
                     self._event_handler.stop_handler()
+                    # #region agent log
+                    with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H5","location":"lldbbridge.py:102","message":"stop_handler_returned","data":{},"timestamp":int(time.time()*1000)}) + '\n')
+                    # #endregion
 
             while requests_to_process:
                 callback = requests_to_process.pop(0)
@@ -94,8 +119,24 @@ class LldbBridge(BridgeInterface):
 
     def queue_request(self, callable_request):
         # type: (Callable[[None],None]) -> None
-        with self._lock:
-            self._pending_requests.append(callable_request)
+        # Deduplicate plotting requests: if a DeferredVariablePlotter for the same
+        # variable is already queued, remove the old one and add the new one.
+        # This prevents stale buffer data from being plotted when the user continues
+        # quickly and multiple stop events queue plotting requests.
+        from oidscripts.oidwindow import DeferredVariablePlotter
+        if isinstance(callable_request, DeferredVariablePlotter):
+            variable_name = callable_request._variable
+            with self._lock:
+                # Remove any existing plotting requests for the same variable
+                self._pending_requests = [
+                    req for req in self._pending_requests
+                    if not (isinstance(req, DeferredVariablePlotter) and req._variable == variable_name)
+                ]
+                # Add the new request (most recent data)
+                self._pending_requests.append(callable_request)
+        else:
+            with self._lock:
+                self._pending_requests.append(callable_request)
 
     def _get_process(self, debugger):
         # type: (lldb.SBDebugger) -> lldb.SBProcess
@@ -213,6 +254,101 @@ class LldbBridge(BridgeInterface):
     def stop_hook(self, *args):
         with self._lock:
             self._event_queue.append('stop')
+    
+    def _try_register_process_listener(self, process):
+        # type: (lldb.SBProcess) -> None
+        """
+        Try to register an event listener for the process to detect state changes.
+        This is used for Android Studio integration where stop hooks don't work.
+        """
+        if self._listener_registered or not process.IsValid():
+            return
+        
+        try:
+            broadcaster = process.GetBroadcaster()
+            if not broadcaster.IsValid():
+                return
+            
+            # Create listener if not already created
+            if self._process_listener is None:
+                self._process_listener = lldb.SBListener('oid-lldb-process-listener')
+            
+            # Register for state change events
+            rc = broadcaster.AddListener(self._process_listener, 
+                                        lldb.SBProcess.eBroadcastBitStateChanged)
+            if not rc:
+                return
+            
+            self._listener_registered = True
+            from oidscripts.logger import log
+            log.info('LldbBridge: Process event listener registered successfully')
+            
+            # Start monitoring thread if not already started
+            if self._listener_thread is None or not self._listener_thread.is_alive():
+                def event_monitor_thread():
+                    import json
+                    import os
+                    event = lldb.SBEvent()
+                    last_state = None
+                    event_count = 0
+                    while True:
+                        try:
+                            # Wait for state change events (timeout: 1 second)
+                            if self._process_listener.WaitForEventForBroadcasterWithType(
+                                    1, broadcaster, 
+                                    lldb.SBProcess.eBroadcastBitStateChanged, event):
+                                # #region agent log
+                                event_count += 1
+                                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H1","location":"lldbbridge.py:265","message":"event_received","data":{"event_count":event_count,"event_type":"state_changed"},"timestamp":int(time.time()*1000)}) + '\n')
+                                # #endregion
+                                
+                                # Check if process is stopped
+                                if process.IsValid():
+                                    state = process.GetState()
+                                    # #region agent log
+                                    with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H1,H2,H3","location":"lldbbridge.py:271","message":"state_check","data":{"current_state":state,"last_state":last_state,"state_name":str(state),"is_stopped":state==lldb.eStateStopped,"transition_detected":state==lldb.eStateStopped and last_state!=lldb.eStateStopped},"timestamp":int(time.time()*1000)}) + '\n')
+                                    # #endregion
+                                    
+                                    # Only queue stop event when transitioning TO stopped state
+                                    # not when already stopped (prevents repeated events)
+                                    if state == lldb.eStateStopped and last_state != lldb.eStateStopped:
+                                        # Process just stopped (e.g., breakpoint hit)
+                                        # Queue the stop event only once per transition
+                                        from oidscripts.logger import log
+                                        log.debug('LldbBridge: Process stopped, queuing stop event')
+                                        # #region agent log
+                                        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                                            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H1","location":"lldbbridge.py:279","message":"queuing_stop_event","data":{"event_count":event_count,"last_state":last_state,"current_state":state},"timestamp":int(time.time()*1000)}) + '\n')
+                                        # #endregion
+                                        with self._lock:
+                                            self._event_queue.append('stop')
+                                    last_state = state
+                                    
+                                    if state == lldb.eStateExited or state == lldb.eStateDetached:
+                                        # Process terminated, exit thread
+                                        break
+                            else:
+                                # Timeout - check if process is still valid
+                                if not process.IsValid():
+                                    # Process terminated, exit thread
+                                    break
+                                # Do NOT update last_state on timeout - only update on actual events
+                                # This prevents false transitions when timeout happens while stopped
+                        except Exception as e:
+                            # #region agent log
+                            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H1","location":"lldbbridge.py:295","message":"exception_in_monitor","data":{"error":str(e)},"timestamp":int(time.time()*1000)}) + '\n')
+                            # #endregion
+                            # Continue monitoring despite errors
+                            time.sleep(0.1)
+                
+                self._listener_thread = threading.Thread(target=event_monitor_thread, daemon=True)
+                self._listener_thread.start()
+        except Exception:
+            # Failed to register listener, continue with polling
+            pass
 
 
 class SymbolWrapper(DebuggerSymbolReference):

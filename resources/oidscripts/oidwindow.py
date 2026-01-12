@@ -27,6 +27,8 @@ class OpenImageDebuggerWindow(object):
     def __init__(self, script_path, bridge):
         self._bridge = bridge
         self._script_path = script_path
+        # Cache of observed buffer names for LLDB mode where get_observed_buffers() doesn't work
+        self._observed_buffers_cache = set()
 
         if PLATFORM_NAME == 'windows':
             os.add_dll_directory(script_path)
@@ -133,10 +135,14 @@ class OpenImageDebuggerWindow(object):
             else:
                 variable = requested_symbol
 
+            # Add to cache immediately - will be removed if plotting fails
+            self._observed_buffers_cache.add(variable)
+
             plot_callable = DeferredVariablePlotter(variable,
                                                     self._lib,
                                                     self._bridge,
-                                                    self._native_handler)
+                                                    self._native_handler,
+                                                    self)  # Pass window reference
 
             self._bridge.queue_request(plot_callable)
 
@@ -144,6 +150,11 @@ class OpenImageDebuggerWindow(object):
         except Exception as err:
             log.error('Could not plot variable')
             log.error(err)
+            # Remove from cache if plotting failed
+            if isinstance(requested_symbol, str):
+                self._observed_buffers_cache.discard(requested_symbol)
+            else:
+                self._observed_buffers_cache.discard(requested_symbol.decode('utf-8'))
 
         return 0
 
@@ -193,19 +204,30 @@ class OpenImageDebuggerWindow(object):
     def get_observed_buffers(self):
         """
         Get a list with the currently observed symbols in the OID window
+        
+        In LLDB mode, oid_get_observed_buffers returns Py_None because Python
+        objects can't be created. In this case, we fall back to the Python-side
+        cache of observed buffers.
         """
-        # In LLDB mode, oid_get_observed_buffers returns Py_None, which may
-        # not convert correctly via ctypes. Try to call it, and if it returns
-        # None or fails, return an empty list instead.
+        import sys
+        is_lldb_mode = 'lldb' in sys.modules
+        
+        # In LLDB mode, use the cache since C++ can't return the list
+        if is_lldb_mode:
+            return list(self._observed_buffers_cache)
+        
+        # Non-LLDB mode: try to get from C++ side
         try:
             result = self._lib.oid_get_observed_buffers(self._native_handler)
-            # If result is None or not a list, return empty list
+            # If result is None or not a list, fall back to cache
             if result is None or not isinstance(result, list):
-                return []
+                return list(self._observed_buffers_cache)
+            # Update cache with results from C++ side
+            self._observed_buffers_cache = set(result)
             return result
         except Exception:
-            # If call fails, return empty list
-            return []
+            # If call fails, fall back to cache
+            return list(self._observed_buffers_cache)
 
     def initialize_window(self):
         # Initialize OID lib
@@ -213,7 +235,7 @@ class OpenImageDebuggerWindow(object):
             self._native_handler = self._lib.oid_initialize(
                 self._plot_variable_c_callback,
                 {'oid_path': self._script_path})
-        except Exception as e:
+        except Exception:
             raise
 
         # Launch UI
@@ -223,23 +245,90 @@ class OpenImageDebuggerWindow(object):
         self._bridge.queue_request(self.run_event_loop)
 
 
+class DeferredSymbolListSetter(object):
+    """
+    Instances of this class are callable objects whose __call__ method sets
+    the available symbols list for autocompletion. Useful for deferring the
+    symbol list update to a safe thread (main thread) to avoid GIL issues
+    in LLDB mode.
+    """
+    def __init__(self, window, symbols):
+        self._window = window
+        self._symbols = symbols
+    
+    def __call__(self):
+        try:
+            if self._window.is_ready():
+                self._window.set_available_symbols(self._symbols)
+        except Exception as err:
+            import traceback, logging
+            log = logging.getLogger(__name__)
+            log.error("Could not set available symbols")
+            log.error(err)
+            traceback.print_exc()
+
+
 class DeferredVariablePlotter(object):
     """
     Instances of this class are callable objects whose __call__ method triggers
     a buffer plot command. Useful for deferring the plot command to a safe
     thread.
     """
-    def __init__(self, variable, lib, bridge, native_handler):
+    def __init__(self, variable, lib, bridge, native_handler, window=None):
         self._variable = variable
         self._lib = lib
         self._bridge = bridge
         self._native_handler = native_handler
+        self._window = window  # Window reference for cache management
 
     def __call__(self):
+        # #region agent log
+        import json
+        import time
+        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H7","location":"oidwindow.py:284","message":"deferred_plotter_entry","data":{"variable":self._variable},"timestamp":int(time.time()*1000)}) + '\n')
+        # #endregion
         try:
             buffer_metadata = self._bridge.get_buffer_metadata(self._variable)
+            # #region agent log
+            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H7","location":"oidwindow.py:286","message":"got_buffer_metadata","data":{"variable":self._variable,"metadata_is_none":buffer_metadata is None},"timestamp":int(time.time()*1000)}) + '\n')
+            # #endregion
 
             if buffer_metadata is None:
+                # Don't remove from cache if process is running - the buffer might
+                # still be valid, we just can't read it right now. Only remove if
+                # process is stopped and we still can't get metadata (variable doesn't exist).
+                # This prevents the cache from being cleared when continuing quickly.
+                import sys
+                if 'lldb' in sys.modules:
+                    import lldb
+                    try:
+                        # Try to get process state to determine if we should keep buffer in cache
+                        debugger = self._bridge.get_lldb_backend()
+                        if debugger and debugger.GetSelectedTarget().IsValid():
+                            process = debugger.GetSelectedTarget().process
+                            # Only remove from cache if process is stopped and metadata is still None
+                            # If process is running, keep it in cache for next stop event
+                            if process.IsValid() and process.GetState() == lldb.eStateStopped:
+                                # Process is stopped but metadata is None - variable doesn't exist
+                                if self._window is not None:
+                                    self._window._observed_buffers_cache.discard(self._variable)
+                            # If process is running, keep buffer in cache - don't remove it
+                        else:
+                            # Can't determine state - keep buffer in cache to be safe
+                            pass
+                    except Exception:
+                        # If we can't check process state, keep buffer in cache to be safe
+                        pass
+                else:
+                    # Non-LLDB mode: remove from cache on failure
+                    if self._window is not None:
+                        self._window._observed_buffers_cache.discard(self._variable)
+                # #region agent log
+                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H7","location":"oidwindow.py:292","message":"plotting_failed_no_metadata","data":{"variable":self._variable},"timestamp":int(time.time()*1000)}) + '\n')
+                # #endregion
                 return
 
             # In LLDB mode, use the safe version that doesn't require
@@ -299,11 +388,38 @@ class DeferredVariablePlotter(object):
                         import logging
                         log = logging.getLogger(__name__)
                         log.warning(f"Could not extract buffer pointer from memoryview: {e}")
+                        # Don't remove from cache - this is a transient error, keep buffer
+                        # in cache for next attempt. The buffer is still valid.
                         return
                 else:
+                    # Pointer is None - don't remove from cache if process is running
+                    # Only remove if process is stopped (variable doesn't exist)
+                    import sys
+                    if 'lldb' in sys.modules:
+                        import lldb
+                        try:
+                            debugger = self._bridge.get_lldb_backend()
+                            if debugger and debugger.GetSelectedTarget().IsValid():
+                                process = debugger.GetSelectedTarget().process
+                                if process.IsValid() and process.GetState() == lldb.eStateStopped:
+                                    # Process is stopped but pointer is None - variable doesn't exist
+                                    if self._window is not None:
+                                        self._window._observed_buffers_cache.discard(self._variable)
+                            # If process is running or we can't determine state, keep buffer in cache
+                        except Exception:
+                            # If we can't check process state, keep buffer in cache to be safe
+                            pass
+                    else:
+                        # Non-LLDB mode: remove from cache
+                        if self._window is not None:
+                            self._window._observed_buffers_cache.discard(self._variable)
                     return
                 
                 # Call safe version with individual parameters
+                # #region agent log
+                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H7","location":"oidwindow.py:362","message":"calling_oid_plot_buffer_safe","data":{"variable":self._variable,"width":width,"height":height,"buffer_size":buffer_size},"timestamp":int(time.time()*1000)}) + '\n')
+                # #endregion
                 self._lib.oid_plot_buffer_safe(
                     self._native_handler,
                     variable_name.encode('utf-8') if isinstance(variable_name, str) else variable_name,
@@ -317,6 +433,10 @@ class DeferredVariablePlotter(object):
                     row_stride,
                     pixel_layout.encode('utf-8') if isinstance(pixel_layout, str) else pixel_layout,
                     1 if transpose_buffer else 0)
+                # #region agent log
+                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H7","location":"oidwindow.py:374","message":"oid_plot_buffer_safe_returned","data":{"variable":self._variable},"timestamp":int(time.time()*1000)}) + '\n')
+                # #endregion
             else:
                 # Non-LLDB mode: use original function with dictionary
                 self._lib.oid_plot_buffer(
@@ -329,3 +449,11 @@ class DeferredVariablePlotter(object):
             log.error("Could not plot variable")
             log.error(err)
             traceback.print_exc()
+            # #region agent log
+            import json
+            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H7","location":"oidwindow.py:381","message":"plotting_exception","data":{"variable":self._variable,"error":str(err)},"timestamp":int(time.time()*1000)}) + '\n')
+            # #endregion
+            # Don't remove from cache on exception - might be transient (process running, etc.)
+            # Keep buffer in cache for next stop event. Only remove if it's a permanent error.
+            # For now, we keep it in cache to avoid losing track of buffers when continuing quickly.

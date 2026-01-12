@@ -305,6 +305,12 @@ class OidBridge
         const auto buff_type          = params.buff_type;
         const auto& buffer            = params.buffer;
 
+        // Check if client is connected before sending
+        if (client_.isNull() || client_->state() != QAbstractSocket::ConnectedState) {
+            std::cerr << "[OpenImageDebugger] Cannot plot buffer: client socket is null or not connected" << std::endl;
+            return;
+        }
+
         auto message_composer = oid::MessageComposer{};
         message_composer.push(oid::MessageType::PlotBufferContents)
             .push(variable_name_str)

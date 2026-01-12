@@ -257,6 +257,7 @@ void MainWindow::decode_plot_buffer_contents()
     persist_settings_deferred();
 
     state_.request_render_update = true;
+    std::cerr << "[OpenImageDebugger] UI: Buffer updated, request_render_update set to true for: " << variable_name_str << std::endl;
 }
 
 
@@ -272,47 +273,48 @@ void MainWindow::decode_incoming_messages()
         buffer_data_.available_vars.clear();
     }
 
-    if (socket_.bytesAvailable() == 0) [[unlikely]] {
-        return;
-    }
+    // Process all available messages in a loop
+    while (socket_.bytesAvailable() > 0) {
+        auto header = MessageType{};
+        if (!socket_.read(std::bit_cast<char*>(&header),
+                          static_cast<qint64>(sizeof(header)))) [[unlikely]] {
+            const auto error = socket_.error();
+            std::cerr << "[Error] Failed to read message header: "
+                      << socket_.errorString().toStdString() << std::endl;
 
-    auto header = MessageType{};
-    if (!socket_.read(std::bit_cast<char*>(&header),
-                      static_cast<qint64>(sizeof(header)))) [[unlikely]] {
-        const auto error = socket_.error();
-        std::cerr << "[Error] Failed to read message header: "
-                  << socket_.errorString().toStdString() << std::endl;
-
-        // Handle critical errors that indicate connection is broken
-        if (error == QAbstractSocket::RemoteHostClosedError ||
-            error == QAbstractSocket::NetworkError ||
-            error == QAbstractSocket::ConnectionRefusedError ||
-            error == QAbstractSocket::SocketTimeoutError) [[unlikely]] {
-            std::cerr
-                << "[Error] Critical socket error detected. Closing connection."
-                << std::endl;
-            socket_.close();
-            // Next call will detect UnconnectedState and quit
+            // Handle critical errors that indicate connection is broken
+            if (error == QAbstractSocket::RemoteHostClosedError ||
+                error == QAbstractSocket::NetworkError ||
+                error == QAbstractSocket::ConnectionRefusedError ||
+                error == QAbstractSocket::SocketTimeoutError) [[unlikely]] {
+                std::cerr
+                    << "[Error] Critical socket error detected. Closing connection."
+                    << std::endl;
+                socket_.close();
+                // Next call will detect UnconnectedState and quit
+            }
+            // For other errors (e.g., temporary read errors), just return and retry
+            // next time
+            return;
         }
-        // For other errors (e.g., temporary read errors), just return and retry
-        // next time
-        return;
-    }
 
-    socket_.waitForReadyRead(100);
+        socket_.waitForReadyRead(100);
 
-    switch (header) {
-    case MessageType::SetAvailableSymbols:
-        decode_set_available_symbols();
-        break;
-    case MessageType::GetObservedSymbols:
-        respond_get_observed_symbols();
-        break;
-    case MessageType::PlotBufferContents:
-        decode_plot_buffer_contents();
-        break;
-    default:
-        break;
+        switch (header) {
+        case MessageType::SetAvailableSymbols:
+            decode_set_available_symbols();
+            break;
+        case MessageType::GetObservedSymbols:
+            respond_get_observed_symbols();
+            break;
+        case MessageType::PlotBufferContents:
+            std::cerr << "[OpenImageDebugger] UI: Received PlotBufferContents message" << std::endl;
+            decode_plot_buffer_contents();
+            std::cerr << "[OpenImageDebugger] UI: Finished processing PlotBufferContents" << std::endl;
+            break;
+        default:
+            break;
+        }
     }
 }
 
