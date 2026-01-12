@@ -28,11 +28,9 @@ def import_gdb(type_bridge):
     from oidscripts.debuggers import gdbbridge
     return gdbbridge.GdbBridge(type_bridge)
 
-
 def import_lldb(type_bridge):
     from oidscripts.debuggers import lldbbridge
     return lldbbridge.LldbBridge(type_bridge)
-
 
 def lldb_stop_hook_handler(debugger, command, result, dict):
     """
@@ -42,60 +40,21 @@ def lldb_stop_hook_handler(debugger, command, result, dict):
     WARNING: This should NOT be called if the fix is working correctly.
     If this is called, it means the stop hook was registered despite prevention.
     """
-    # #region agent log
-    import json, threading, traceback
-    try:
-        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H2,H3','location':'oid.py:37','message':'stop_hook_handler_called_UNEXPECTED','data':{'thread':threading.current_thread().name,'stack':traceback.format_stack()[-3:-1]},'timestamp':int(__import__('time').time()*1000)})+'\n')
-    except: pass
-    # #endregion
     try:
         from oidscripts.debuggers import lldbbridge
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H4','location':'oid.py:44','message':'checking_instance','data':{'instance_is_none':lldbbridge.instance is None},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         if lldbbridge.instance is not None:
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H4','location':'oid.py:47','message':'calling_stop_hook','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
             lldbbridge.instance.stop_hook(debugger, command, result, dict)
     except Exception as e:
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H2,H3','location':'oid.py:51','message':'stop_hook_exception','data':{'error':str(e),'type':type(e).__name__},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         # Silently ignore errors in stop hook to prevent GIL issues
         # The event loop will still detect frame changes via polling
         pass
 
-
 def __lldb_init_module(debugger, internal_dict):
-    # #region agent log
-    import json
-    try:
-        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1','location':'oid.py:52','message':'lldb_init_module_entry','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-    except: pass
-    # #endregion
     from oidscripts.debuggers import lldbbridge
     from oidscripts.logger import log
 
     def ide_prevents_stop_hook():
         from oidscripts.ides import qtcreator
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1','location':'oid.py:58','message':'ide_prevents_check_entry','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         try:
             from oidscripts.ides import android_studio
             ide_checkers = [qtcreator.prevents_stop_hook,
@@ -106,31 +65,13 @@ def __lldb_init_module(debugger, internal_dict):
         for stop_hook_check in ide_checkers:
             try:
                 result = stop_hook_check()
-                # #region agent log
-                try:
-                    with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                        f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1','location':'oid.py:68','message':'ide_check_result','data':{'checker':stop_hook_check.__module__+'.'+stop_hook_check.__name__,'result':result},'timestamp':int(__import__('time').time()*1000)})+'\n')
-                except: pass
-                # #endregion
                 if result:
                     log.info('Stop hook prevented by IDE detection')
                     return True
             except Exception as e:
-                # #region agent log
-                try:
-                    with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                        f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1','location':'oid.py:73','message':'ide_check_exception','data':{'error':str(e)},'timestamp':int(__import__('time').time()*1000)})+'\n')
-                except: pass
-                # #endregion
                 # If detection fails, log but continue
                 log.debug('IDE detection check failed: %s', str(e))
 
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1','location':'oid.py:76','message':'ide_prevents_check_false','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         return False
 
     # FIXED: Check if IDE hooks will fail before registering stop hook
@@ -140,65 +81,21 @@ def __lldb_init_module(debugger, internal_dict):
     qtcreator_not_available = not hasattr(lldb, 'theDumper')
     
     prevents = ide_prevents_stop_hook()
-    # #region agent log
-    try:
-        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1,H6','location':'oid.py:139','message':'stop_hook_prevention_decision','data':{'prevents':prevents,'qtcreator_not_available':qtcreator_not_available},'timestamp':int(__import__('time').time()*1000)})+'\n')
-    except: pass
-    # #endregion
     
     # FIXED: If QtCreator is not available, IDE hooks will fail, so prevent stop hooks
     # to avoid GIL errors. This is a safety measure when running in unsupported IDEs.
     if prevents or qtcreator_not_available:
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1,H6','location':'oid.py:149','message':'preventing_stop_hook','data':{'prevents':prevents,'qtcreator_not_available':qtcreator_not_available,'reason':'qtcreator_not_available' if qtcreator_not_available else 'ide_detection'},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         if qtcreator_not_available and not prevents:
             log.info('Stop hook prevented: QtCreator not available, IDE hooks will fail')
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1,H6','location':'oid.py:155','message':'returning_early_no_stop_hook','data':{'will_not_register':True},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         return
-    
-    # #region agent log
-    try:
-        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1','location':'oid.py:163','message':'prevention_check_failed_will_register','data':{'prevents':prevents,'qtcreator_not_available':qtcreator_not_available},'timestamp':int(__import__('time').time()*1000)})+'\n')
-    except: pass
-    # #endregion
 
     try:
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1','location':'oid.py:85','message':'registering_stop_hook','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         debugger.HandleCommand("command script add -f "
                                "oid.lldb_stop_hook_handler "
                                "HandleHookStopOnTarget")
         debugger.HandleCommand('target stop-hook add -o "HandleHookStopOnTarget"')
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1','location':'oid.py:90','message':'stop_hook_registered','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
     except Exception as e:
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H1','location':'oid.py:93','message':'stop_hook_registration_failed','data':{'error':str(e)},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         log.warning('Failed to register stop hook: %s', str(e))
-
 
 def register_ide_hooks(debugger,  # type: BridgeInterface
                        event_handler  # type: OpenImageDebuggerEvents
@@ -207,13 +104,6 @@ def register_ide_hooks(debugger,  # type: BridgeInterface
     """
     Check if OID was started from an IDE and sets up the required plugins
     """
-    # #region agent log
-    import json
-    try:
-        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H6','location':'oid.py:88','message':'register_ide_hooks_entry','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-    except: pass
-    # #endregion
     import traceback
     from oidscripts.ides import qtcreator
 
@@ -230,39 +120,14 @@ def register_ide_hooks(debugger,  # type: BridgeInterface
 
     for initializer in ide_initializers:
         try:
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H6','location':'oid.py:109','message':'trying_ide_initializer','data':{'initializer':initializer.__module__+'.'+initializer.__name__},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
             initializer(debugger, event_handler)
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H6','location':'oid.py:113','message':'ide_initializer_success','data':{'initializer':initializer.__module__+'.'+initializer.__name__},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
             return
         except Exception as e:
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H6','location':'oid.py:118','message':'ide_initializer_failed','data':{'initializer':initializer.__module__+'.'+initializer.__name__,'error':str(e)},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
             error_traces.append(traceback.format_exc())
 
-    # #region agent log
-    try:
-        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H6','location':'oid.py:123','message':'all_ide_hooks_failed','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-    except: pass
-    # #endregion
     log.info('Could not activate hooks for any IDEs')
     # To find out more about this issue, uncomment the line below:
     # log.info('\n'.join(error_traces))
-
 
 def get_debugger_bridge():
     """
@@ -289,7 +154,6 @@ def get_debugger_bridge():
     log.error('\n'.join(error_traces))
     exit(1)
 
-
 def main():
     """
     Main entry point.
@@ -305,56 +169,22 @@ def main():
         # Test application
         oidtest(script_path)
     else:
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H3','location':'oid.py:293','message':'main_entry_non_test','data':{'thread':__import__('threading').current_thread().name},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
+        # 
         # Setup GDB interface
         debugger = get_debugger_bridge()
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H3','location':'oid.py:297','message':'creating_window','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
+        # 
         window = OpenImageDebuggerWindow(script_path, debugger)
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H3','location':'oid.py:300','message':'window_created','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
+        # 
         
         # FIXED: Initialize window from main thread before event handlers start.
         # This ensures oid_initialize() is called from a thread with proper Python
         # thread state, avoiding GIL errors when called from the event loop thread.
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H3','location':'oid.py:307','message':'initializing_window_from_main_thread','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         window.initialize_window()
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H3','location':'oid.py:310','message':'window_initialized_from_main_thread','data':{'is_ready':window.is_ready()},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         
         event_handler = OpenImageDebuggerEvents(window, debugger)
 
         register_ide_hooks(debugger, event_handler)
 
         debugger.register_event_handlers(event_handler)
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H3','location':'oid.py:320','message':'main_complete','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
-
 
 main()

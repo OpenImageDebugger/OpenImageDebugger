@@ -25,13 +25,6 @@ class OpenImageDebuggerWindow(object):
     shared library.
     """
     def __init__(self, script_path, bridge):
-        # #region agent log
-        import json, threading
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H3','location':'oidwindow.py:27','message':'OpenImageDebuggerWindow_init_start','data':{'thread':threading.current_thread().name},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         self._bridge = bridge
         self._script_path = script_path
 
@@ -47,20 +40,8 @@ class OpenImageDebuggerWindow(object):
         ctypes.CDLL(ctypes.util.find_library(lib_opengl), ctypes.RTLD_GLOBAL)
 
         # Load OpenImageDebugger library and set up its API
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H3','location':'oidwindow.py:43','message':'loading_library','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         self._lib = ctypes.cdll.LoadLibrary(
             script_path + '/' + OpenImageDebuggerWindow.__get_library_name())
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H3','location':'oidwindow.py:46','message':'library_loaded','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
 
         # lib OID API
         self._lib.oid_initialize.argtypes = [FETCH_BUFFER_CBK_TYPE, ctypes.py_object]
@@ -142,74 +123,25 @@ class OpenImageDebuggerWindow(object):
         will be executed. This object will be given to the debugger bridge so
         that it can schedule its execution in a thread safe context.
         """
-        # #region agent log
-        import json, threading
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H15','location':'oidwindow.py:115','message':'plot_variable_entry','data':{'thread':threading.current_thread().name,'requested_symbol':str(requested_symbol)[:100]},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
-
         if self._bridge is None:
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H15','location':'oidwindow.py:128','message':'plot_variable_bridge_none','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
             log.info(f"Could not plot symbol {requested_symbol}: Not a debugging session")
             return 0
 
         try:
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H15','location':'oidwindow.py:135','message':'plot_variable_before_decode','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
-
             if not isinstance(requested_symbol, str):
                 variable = requested_symbol.decode('utf-8')
             else:
                 variable = requested_symbol
-
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H15','location':'oidwindow.py:143','message':'plot_variable_before_deferred','data':{'variable':variable[:100]},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
 
             plot_callable = DeferredVariablePlotter(variable,
                                                     self._lib,
                                                     self._bridge,
                                                     self._native_handler)
 
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H15','location':'oidwindow.py:150','message':'plot_variable_before_queue','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
-
             self._bridge.queue_request(plot_callable)
-
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H15','location':'oidwindow.py:155','message':'plot_variable_after_queue','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
 
             return 1
         except Exception as err:
-            # #region agent log
-            import traceback
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H15','location':'oidwindow.py:160','message':'plot_variable_exception','data':{'error':str(err),'traceback':traceback.format_exc()},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
             log.error('Could not plot variable')
             log.error(err)
 
@@ -235,42 +167,14 @@ class OpenImageDebuggerWindow(object):
         Set the autocomplete list of symbols with the list of string
         'observable_symbols'
         """
-        # #region agent log
-        import json
-        import time
-        log_file = open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a')
-        log_file.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H18", "location": "oidwindow.py:216", "message": "set_available_symbols_entry", "data": {"symbols_count": len(observable_symbols)}, "timestamp": int(time.time() * 1000)}) + "\n")
-        log_file.close()
-        # #endregion
-
         # Perform two-level sorting:
         #    1. By amount of nodes.
         #    2. By variable name.
-        # #region agent log
-        log_file = open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a')
-        log_file.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H18", "location": "oidwindow.py:225", "message": "before_sorted", "data": {}, "timestamp": int(time.time() * 1000)}) + "\n")
-        log_file.close()
-        # #endregion
         sorted_observable_symbols = sorted(observable_symbols, key=lambda symbol: (symbol.count('.'), symbol))
-        # #region agent log
-        log_file = open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a')
-        log_file.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H18", "location": "oidwindow.py:228", "message": "after_sorted", "data": {"sorted_count": len(sorted_observable_symbols)}, "timestamp": int(time.time() * 1000)}) + "\n")
-        log_file.close()
-        # #endregion
 
-        # #region agent log
-        log_file = open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a')
-        log_file.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H18", "location": "oidwindow.py:231", "message": "before_oid_set_available_symbols_call", "data": {}, "timestamp": int(time.time() * 1000)}) + "\n")
-        log_file.close()
-        # #endregion
         self._lib.oid_set_available_symbols(
             self._native_handler,
             sorted_observable_symbols)
-        # #region agent log
-        log_file = open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a')
-        log_file.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H18", "location": "oidwindow.py:235", "message": "after_oid_set_available_symbols_call", "data": {}, "timestamp": int(time.time() * 1000)}) + "\n")
-        log_file.close()
-        # #endregion
 
     def run_event_loop(self):
         """
@@ -290,7 +194,7 @@ class OpenImageDebuggerWindow(object):
         """
         Get a list with the currently observed symbols in the OID window
         """
-        # H18: In LLDB mode, oid_get_observed_buffers returns Py_None, which may
+        # In LLDB mode, oid_get_observed_buffers returns Py_None, which may
         # not convert correctly via ctypes. Try to call it, and if it returns
         # None or fails, return an empty list instead.
         try:
@@ -305,52 +209,15 @@ class OpenImageDebuggerWindow(object):
 
     def initialize_window(self):
         # Initialize OID lib
-        # #region agent log
-        import json, threading, traceback
         try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H4','location':'oidwindow.py:202','message':'calling_oid_initialize','data':{'thread':threading.current_thread().name},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
-        try:
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H4','location':'oidwindow.py:209','message':'before_oid_initialize_call','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
             self._native_handler = self._lib.oid_initialize(
                 self._plot_variable_c_callback,
                 {'oid_path': self._script_path})
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H4','location':'oidwindow.py:215','message':'oid_initialize_returned','data':{'handler_is_none':self._native_handler is None},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
         except Exception as e:
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H4','location':'oidwindow.py:220','message':'oid_initialize_exception','data':{'error':str(e),'traceback':traceback.format_exc()},'timestamp':int(__import__('time').time()*1000)})+'\n')
-            except: pass
-            # #endregion
             raise
 
         # Launch UI
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H4','location':'oidwindow.py:228','message':'before_oid_exec','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
         self._lib.oid_exec(self._native_handler)
-        # #region agent log
-        try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H4','location':'oidwindow.py:232','message':'after_oid_exec','data':{},'timestamp':int(__import__('time').time()*1000)})+'\n')
-        except: pass
-        # #endregion
 
         # Schedule event loop
         self._bridge.queue_request(self.run_event_loop)
@@ -369,51 +236,20 @@ class DeferredVariablePlotter(object):
         self._native_handler = native_handler
 
     def __call__(self):
-        # #region agent log
-        import json, threading, time
         try:
-            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:371','message':'DeferredVariablePlotter_call_entry','data':{'thread':threading.current_thread().name,'variable':self._variable},'timestamp':int(time.time()*1000)})+'\n')
-        except: pass
-        # #endregion
-        try:
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:375','message':'before_get_buffer_metadata','data':{'variable':self._variable},'timestamp':int(time.time()*1000)})+'\n')
-            except: pass
-            # #endregion
             buffer_metadata = self._bridge.get_buffer_metadata(self._variable)
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:380','message':'after_get_buffer_metadata','data':{'buffer_metadata_is_none':buffer_metadata is None},'timestamp':int(time.time()*1000)})+'\n')
-            except: pass
-            # #endregion
 
             if buffer_metadata is None:
                 return
 
-            # H19: In LLDB mode, use the safe version that doesn't require
+            # In LLDB mode, use the safe version that doesn't require
             # Python C API calls to parse the dictionary. Extract values in
             # Python and pass as individual arguments.
             import sys
             # Check if we're in LLDB mode by checking for lldb module
             is_lldb = 'lldb' in sys.modules
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:390','message':'lldb_mode_check','data':{'is_lldb':is_lldb},'timestamp':int(time.time()*1000)})+'\n')
-            except: pass
-            # #endregion
             
             if is_lldb:
-                # #region agent log
-                try:
-                    with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                        f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:395','message':'entering_lldb_branch','data':{},'timestamp':int(time.time()*1000)})+'\n')
-                except: pass
-                # #endregion
                 # Extract values from dictionary in Python (safe)
                 variable_name = buffer_metadata.get('variable_name', '')
                 display_name = buffer_metadata.get('display_name', '')
@@ -424,40 +260,15 @@ class DeferredVariablePlotter(object):
                 row_stride = buffer_metadata.get('row_stride', 0)
                 pixel_layout = buffer_metadata.get('pixel_layout', 'rgba')
                 transpose_buffer = buffer_metadata.get('transpose_buffer', False)
-                # #region agent log
-                try:
-                    with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                        f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:407','message':'after_extract_metadata','data':{'variable_name':str(variable_name)[:50],'width':width,'height':height,'channels':channels},'timestamp':int(time.time()*1000)})+'\n')
-                except: pass
-                # #endregion
                 
                 # Get pointer and size from memoryview using ctypes (safe)
                 import ctypes
                 mv = buffer_metadata.get('pointer')
-                # #region agent log
-                try:
-                    with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                        f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:412','message':'before_get_pointer','data':{'mv_is_none':mv is None},'timestamp':int(time.time()*1000)})+'\n')
-                except: pass
-                # #endregion
                 if mv is not None:
                     try:
-                        # #region agent log
-                        try:
-                            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:416','message':'before_get_pointer_from_mv','data':{},'timestamp':int(time.time()*1000)})+'\n')
-                        except: pass
-                        # #endregion
-                        import ctypes
                         # For memoryview, access the underlying object
                         # The memoryview from LLDB is created from bytes (process.ReadMemory)
                         underlying = mv.obj if hasattr(mv, 'obj') else mv
-                        # #region agent log
-                        try:
-                            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:422','message':'got_underlying_object','data':{'underlying_type':str(type(underlying)),'has_buffer_info':hasattr(underlying,'buffer_info')},'timestamp':int(time.time()*1000)})+'\n')
-                        except: pass
-                        # #endregion
                         
                         # If underlying object has buffer_info (like array.array), use it
                         if hasattr(underlying, 'buffer_info'):
@@ -479,12 +290,6 @@ class DeferredVariablePlotter(object):
                             self._buffer_refs.append(c_array)
                         
                         buffer_size = mv.nbytes
-                        # #region agent log
-                        try:
-                            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:444','message':'after_pointer_extraction','data':{'buffer_ptr':buffer_ptr is not None,'buffer_size':buffer_size},'timestamp':int(time.time()*1000)})+'\n')
-                        except: pass
-                        # #endregion
                         # Keep reference to prevent garbage collection
                         if not hasattr(self, '_buffer_refs'):
                             self._buffer_refs = []
@@ -494,28 +299,10 @@ class DeferredVariablePlotter(object):
                         import logging
                         log = logging.getLogger(__name__)
                         log.warning(f"Could not extract buffer pointer from memoryview: {e}")
-                        # #region agent log
-                        try:
-                            with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                                f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:456','message':'pointer_extraction_exception','data':{'error':str(e)},'timestamp':int(time.time()*1000)})+'\n')
-                        except: pass
-                        # #endregion
                         return
                 else:
-                    # #region agent log
-                    try:
-                        with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                            f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:437','message':'mv_is_none_returning','data':{},'timestamp':int(time.time()*1000)})+'\n')
-                    except: pass
-                    # #endregion
                     return
                 
-                # #region agent log
-                try:
-                    with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                        f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:420','message':'before_oid_plot_buffer_safe','data':{'variable_name':variable_name,'buffer_ptr':buffer_ptr is not None,'buffer_size':buffer_size},'timestamp':int(time.time()*1000)})+'\n')
-                except: pass
-                # #endregion
                 # Call safe version with individual parameters
                 self._lib.oid_plot_buffer_safe(
                     self._native_handler,
@@ -530,12 +317,6 @@ class DeferredVariablePlotter(object):
                     row_stride,
                     pixel_layout.encode('utf-8') if isinstance(pixel_layout, str) else pixel_layout,
                     1 if transpose_buffer else 0)
-                # #region agent log
-                try:
-                    with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                        f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:435','message':'after_oid_plot_buffer_safe','data':{},'timestamp':int(time.time()*1000)})+'\n')
-                except: pass
-                # #endregion
             else:
                 # Non-LLDB mode: use original function with dictionary
                 self._lib.oid_plot_buffer(
@@ -548,9 +329,3 @@ class DeferredVariablePlotter(object):
             log.error("Could not plot variable")
             log.error(err)
             traceback.print_exc()
-            # #region agent log
-            try:
-                with open('/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({'sessionId':'debug-session','runId':'run1','hypothesisId':'H19','location':'oidwindow.py:450','message':'DeferredVariablePlotter_exception','data':{'error':str(err)},'timestamp':int(time.time()*1000)})+'\n')
-            except: pass
-            # #endregion
