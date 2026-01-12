@@ -25,9 +25,26 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project(oidipc CXX)
 
+find_package(Qt6 "6.2.4" REQUIRED COMPONENTS Network)
+
+# Find required protobuf package
+find_package(protobuf "5.27.0" CONFIG)
+if(NOT Protobuf_FOUND)
+  find_package(Protobuf "5.27.0" REQUIRED)
+endif()
+
+find_package(gRPC "1.72" REQUIRED)
+
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+
+set(PROTO_FILES
+    buffer.proto
+)
+
 add_library(${PROJECT_NAME} SHARED
             message_exchange.cpp
-            raw_data_decode.cpp)
+            raw_data_decode.cpp
+            ${PROTO_FILES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -35,8 +52,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 target_include_directories(${PROJECT_NAME}
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC
-                      Qt6::Network)
+target_link_libraries(${PROJECT_NAME}
+                      PUBLIC Qt6::Network
+                      PRIVATE protobuf::libprotobuf
+                      PRIVATE grpc::grpc)
+
+protobuf_generate(TARGET ${PROJECT_NAME}
+                  PROTOC_OUT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)

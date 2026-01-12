@@ -42,15 +42,15 @@ jobs:
             macos-26,
           ]
         ccache-variant: [ccache]
+        profile: [default]
         include:
           - os: ubuntu-22.04
             container: ghcr.io/openimagedebugger/oid:22.04
           - os: ubuntu-24.04
             container: ghcr.io/openimagedebugger/oid:24.04
-          - os: windows-2022
-            ccache-variant: "sccache"
           - os: windows-2025
             ccache-variant: "sccache"
+            profile: "mingw-profile"
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
@@ -61,6 +61,42 @@ jobs:
           submodules: "recursive"
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
+
+      - name: Setup Python (Ubuntu)
+        if: contains(matrix.os, 'ubuntu')
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # 5.6.0
+        with:
+          python-version: 3.x
+
+      - name: Setup Conan
+        id: setup-conan
+        uses: conan-io/setup-conan@434f093a557d1ee6972c4ed78693c3191653537b # 1.1.0
+
+      - name: Restore Conan cache
+        id: restore-conan-cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          enableCrossOsArchive: false
+          path: ${{ steps.setup-conan.outputs.conan-home }}
+          key: conan-${{ matrix.os }}-build-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
+          restore-keys: |
+            conan-${{ matrix.os }}-build-
+
+      - name: Copy Conan profiles
+        run: |
+          cp conan-profiles/* '${{ steps.setup-conan.outputs.conan-home }}/profiles'
+
+      - name: Conan install
+        run: |
+          conan install . -pr=${{ matrix.profile }} --output-folder=. --build=missing --update --settings=compiler.cppstd=17 --settings=tools.cmake.cmaketoolchain:generator=Ninja
+
+      - name: Save Conan cache
+        if: ${{ steps.restore-conan-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # 4.2.3
+        with:
+          enableCrossOsArchive: false
+          path: ${{ steps.setup-conan.outputs.conan-home }}
+          key: conan-${{ matrix.os }}-build-${{ hashFiles('conanfile.txt', 'conan-profiles/**') }}
 
       - name: Setup ${{ matrix.ccache-variant }}
         uses: hendrikmuhs/ccache-action@5ebbd400eff9e74630f759d94ddd7b6c26299639 # 1.2.20
@@ -73,17 +109,13 @@ jobs:
           append-timestamp: true
           variant: ${{ matrix.ccache-variant }}
 
-      # Needed for ninja to work with msvc
-      - if: contains(matrix.os, 'windows')
-        name: Setup MSVC
-        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
-
-      - if: contains(matrix.os, 'windows')
-        name: Install Qt (Windows)
+      - name: Install Qt (Windows)
+        if: contains(matrix.os, 'windows')
         uses: jurplel/install-qt-action@d325aaf2a8baeeda41ad0b5d39f84a6af9bcf005 # 4.3.0
         with:
           version: "6.2.4"
           aqtversion: "==3.3.*"
+          arch: 'win64_mingw'
           setup-python: false
           cache: true
 
@@ -99,22 +131,48 @@ jobs:
           brew install qtbase
           echo "PATH=/usr/local/opt/qt@6/bin:$PATH" >> "$GITHUB_ENV"
 
-      - name: Build
+      # Use YAML's folded style (>) to keep the command readable across multiple lines,
+      # but have it executed as a single line in the shell. This is necessary for Windows 'cmd' steps
+      # to ensure all commands run in the same shell session and directory changes persist.
+      - name: Build (Windows)
+        if: contains(matrix.os, 'windows')
+        shell: cmd
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: sccache
+          CMAKE_CXX_COMPILER_LAUNCHER: sccache
+        run: >
+          build\Release\generators\conanbuild.bat &&
+          cmake --version &&
+          cmake -S . -B build\Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build\Release\generators\conan_toolchain.cmake &&
+          cmake --build build\Release --target install
+
+      - name: Build (Unix)
+        if: ${{ !contains(matrix.os, 'windows') }}
         shell: bash
         env:
-          CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
-          CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
-        # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
         run: |
-          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
-          cmake --build build --config Release
-          cmake --build build --config Release --target install
+          source build/Release/generators/conanbuild.sh
+          cmake --version
+          cmake -S . -B build/Release -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake
+          # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
+          cmake --build build/Release --target install
 
       - name: Run Tests
+        if: ${{ !contains(matrix.os, 'windows') }}
         shell: bash
-        working-directory: build
+        working-directory: build/Release
         run: |
-          ctest --build-config Release --output-on-failure
+          ctest --output-on-failure
+
+      - name: Run Tests (Windows)
+        if: contains(matrix.os, 'windows')
+        shell: cmd
+        working-directory: build\Release
+        run: >
+          generators\conanbuild.bat &&
+          ctest --output-on-failure --timeout 5
 
       - name: Tar files
         shell: bash

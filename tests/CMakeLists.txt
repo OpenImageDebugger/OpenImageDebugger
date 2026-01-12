@@ -33,7 +33,7 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-enable_testing()
+# enable_testing() is already called in the root CMakeLists.txt when BUILD_TESTS is ON
 
 # Test for linear algebra
 add_executable(test_linear_algebra
@@ -55,7 +55,6 @@ target_link_libraries(test_linear_algebra
     GTest::gtest
 )
 
-# Add math source file directly since it's not a separate library
 target_sources(test_linear_algebra PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/math/linear_algebra.cpp
 )
@@ -78,7 +77,6 @@ target_link_libraries(test_raw_data_decode
     GTest::gtest
 )
 
-# Add raw_data_decode source file directly since we need the implementation
 target_sources(test_raw_data_decode PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/raw_data_decode.cpp
 )
@@ -86,8 +84,19 @@ target_sources(test_raw_data_decode PRIVATE
 add_test(NAME RawDataDecodeTests COMMAND test_raw_data_decode)
 
 # Test for IPC message exchange
+find_package(protobuf "5.27.0" CONFIG)
+if(NOT Protobuf_FOUND)
+  find_package(Protobuf "5.27.0" REQUIRED)
+endif()
+
+find_package(Qt6 "6.2.4" REQUIRED COMPONENTS Network Core)
+
+set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
+
 add_executable(test_message_exchange
     test_message_exchange.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/message_exchange.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/buffer.proto
 )
 
 target_include_directories(test_message_exchange
@@ -95,18 +104,19 @@ target_include_directories(test_message_exchange
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc
 )
 
+protobuf_generate(TARGET test_message_exchange
+                  PROTOC_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR}
+                  IMPORT_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc)
+
 target_link_libraries(test_message_exchange
     PRIVATE
     Qt6::Network
     Qt6::Core
+    protobuf::libprotobuf
     GTest::gtest_main
     GTest::gtest
 )
 
-# Add message_exchange source file directly for testing
-target_sources(test_message_exchange PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/message_exchange.cpp
-)
-
 add_test(NAME MessageExchangeTests COMMAND test_message_exchange)
+set_tests_properties(MessageExchangeTests PROPERTIES TIMEOUT 5)
 

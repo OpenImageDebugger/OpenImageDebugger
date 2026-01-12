@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package oid.proto;
+
+enum BufferType {
+    BUFFER_TYPE_UNSPECIFIED    = 0;
+    BUFFER_TYPE_UNSIGNED_BYTE  = 1;
+    BUFFER_TYPE_UNSIGNED_SHORT = 2;
+    BUFFER_TYPE_SHORT          = 3;
+    BUFFER_TYPE_INT32          = 4;
+    BUFFER_TYPE_FLOAT32        = 5;
+    BUFFER_TYPE_FLOAT64        = 6;
+};
+
+message Buffer
+{
+    string variable_name = 1;
+    string display_name  = 2;
+    string pixel_layout  = 3;
+    bool transpose       = 4;
+    int32 width          = 5;
+    int32 height         = 6;
+    int32 channels       = 7;
+    int32 stride         = 8;
+    BufferType type      = 9;
+    bytes contents       = 10;
+}
