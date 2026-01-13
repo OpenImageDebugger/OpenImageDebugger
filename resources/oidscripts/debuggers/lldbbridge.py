@@ -10,8 +10,7 @@ import threading
 
 from oidscripts import sysinfo
 from oidscripts.typebridge import TypeInspectorInterface
-from oidscripts.debuggers.interfaces import BridgeInterface, \
-    DebuggerSymbolReference
+from oidscripts.debuggers.interfaces import BridgeInterface, DebuggerSymbolReference
 
 instance = None
 
@@ -50,7 +49,7 @@ class LldbBridge(BridgeInterface):
         return self._debugger
 
     def get_backend_name(self):
-        return 'lldb'
+        return "lldb"
 
     def _check_frame_modification(self):
         process = self._get_process(self.get_lldb_backend())
@@ -65,15 +64,31 @@ class LldbBridge(BridgeInterface):
             thread_id = thread.id if thread is not None else 0
             frame_idx = frame.idx if thread is not None else 0
 
-            frame_was_updated = thread_id != self._last_thread_id or \
-                                frame_idx != self._last_frame_idx
+            # Detect frame changes (user navigating stack frames)
+            frame_was_updated = (
+                thread_id != self._last_thread_id or frame_idx != self._last_frame_idx
+            )
+
+            # Also detect initial stop (process just stopped, wasn't stopped before)
+            # This ensures we trigger stop_handler() even if frame IDs happen to match
+            process_just_stopped = (
+                self._last_process_state is not None
+                and self._last_process_state != lldb.eStateStopped
+            )
+
+            if frame_was_updated or process_just_stopped:
+                with self._lock:
+                    self._event_queue.append("stop")
 
             self._last_thread_id = thread_id
             self._last_frame_idx = frame_idx
-
-            if frame_was_updated:
-                with self._lock:
-                    self._event_queue.append('stop')
+            self._last_process_state = lldb.eStateStopped
+        else:
+            # Track process state even when not stopped
+            if process.IsValid():
+                self._last_process_state = process.GetState()
+            else:
+                self._last_process_state = None
 
     def event_loop(self):
         while True:
@@ -91,7 +106,7 @@ class LldbBridge(BridgeInterface):
 
             while pending_events:
                 event = pending_events.pop(0)
-                if event == 'stop' and self._event_handler is not None:
+                if event == "stop" and self._event_handler is not None:
                     self._event_handler.stop_handler()
 
             while requests_to_process:
@@ -103,12 +118,17 @@ class LldbBridge(BridgeInterface):
     def queue_request(self, callable_request):
         # type: (Callable[[None], None]) -> None
         from oidscripts.oidwindow import DeferredVariablePlotter
+
         if isinstance(callable_request, DeferredVariablePlotter):
             variable_name = callable_request._variable
             with self._lock:
                 self._pending_requests = [
-                    req for req in self._pending_requests
-                    if not (isinstance(req, DeferredVariablePlotter) and req._variable == variable_name)
+                    req
+                    for req in self._pending_requests
+                    if not (
+                        isinstance(req, DeferredVariablePlotter)
+                        and req._variable == variable_name
+                    )
                 ]
                 self._pending_requests.append(callable_request)
         else:
@@ -122,8 +142,10 @@ class LldbBridge(BridgeInterface):
     def _get_thread(self, process):
         # type: (lldb.SBProcess) -> lldb.SBThread
         for t in process:
-            if t.GetStopReason() != lldb.eStopReasonNone and \
-                    t.GetStopReason() != lldb.eStopReasonInvalid:
+            if (
+                t.GetStopReason() != lldb.eStopReasonNone
+                and t.GetStopReason() != lldb.eStopReasonInvalid
+            ):
                 return t
         return None
 
@@ -146,30 +168,32 @@ class LldbBridge(BridgeInterface):
         picked_obj = frame.EvaluateExpression(variable)  # type: lldb.SBValue
 
         buffer_metadata = self._type_bridge.get_buffer_metadata(
-            variable, SymbolWrapper(picked_obj), self)
+            variable, SymbolWrapper(picked_obj), self
+        )
 
         if buffer_metadata is None:
             # Invalid symbol for current frame
             return None
 
         bufsize = sysinfo.get_buffer_size(
-            buffer_metadata['height'],
-            buffer_metadata['channels'],
-            buffer_metadata['type'],
-            buffer_metadata['row_stride']
+            buffer_metadata["height"],
+            buffer_metadata["channels"],
+            buffer_metadata["type"],
+            buffer_metadata["row_stride"],
         )
 
         # Check if buffer is initialized
-        if buffer_metadata['pointer'] == 0x0:
-            raise RuntimeError('Invalid null buffer pointer')
+        if buffer_metadata["pointer"] == 0x0:
+            raise RuntimeError("Invalid null buffer pointer")
         if bufsize == 0:
-            raise ValueError('Invalid buffer of zero bytes')
+            raise ValueError("Invalid buffer of zero bytes")
         elif bufsize >= sysinfo.get_available_memory() / 10:
-            raise MemoryError('Invalid buffer size larger than available memory')
+            raise MemoryError("Invalid buffer size larger than available memory")
 
-        buffer_metadata['variable_name'] = variable
-        buffer_metadata['pointer'] = memoryview(process.ReadMemory(
-            buffer_metadata['pointer'], bufsize, lldb.SBError()))
+        buffer_metadata["variable_name"] = variable
+        buffer_metadata["pointer"] = memoryview(
+            process.ReadMemory(buffer_metadata["pointer"], bufsize, lldb.SBError())
+        )
 
         return buffer_metadata
 
@@ -179,8 +203,9 @@ class LldbBridge(BridgeInterface):
     def get_casted_pointer(self, typename, lldb_object):
         return lldb_object.get_casted_pointer()
 
-    def _get_observable_children_members(self, symbol, member_name_chain,
-                                         output_set, visited_typenames=None):
+    def _get_observable_children_members(
+        self, symbol, member_name_chain, output_set, visited_typenames=None
+    ):
         # type: (lldb.SBValue, list[str], set, set) -> None
         if visited_typenames is None:
             visited_typenames = set()
@@ -189,28 +214,31 @@ class LldbBridge(BridgeInterface):
             return
 
         for member_idx in range(symbol.GetNumChildren()):
-            symbol_member = symbol.GetChildAtIndex(
-                member_idx)  # type: lldb.SBValue
+            symbol_member = symbol.GetChildAtIndex(member_idx)  # type: lldb.SBValue
 
             member_name_chain_current = member_name_chain.copy()
             member_name_chain_current.append(str(symbol_member.name))
 
             symbol_wrapper = SymbolWrapper(symbol_member)
-            if self._type_bridge.is_symbol_observable(symbol_wrapper,
-                                                      symbol_member.name):
-                member_name_current = '.'.join(member_name_chain_current)
+            if self._type_bridge.is_symbol_observable(
+                symbol_wrapper, symbol_member.name
+            ):
+                member_name_current = ".".join(member_name_chain_current)
                 output_set.add(member_name_current)
             else:
                 if symbol_member.name != symbol_member.GetTypeName():
                     visited_typenames.add(symbol_member.GetTypeName())
-                self._get_observable_children_members(symbol_member,
-                                                      member_name_chain_current,
-                                                      output_set,
-                                                      visited_typenames)
+                self._get_observable_children_members(
+                    symbol_member,
+                    member_name_chain_current,
+                    output_set,
+                    visited_typenames,
+                )
 
     def get_available_symbols(self):
         frame = self._get_frame(
-            self._get_thread(self._get_process(self.get_lldb_backend())))
+            self._get_thread(self._get_process(self.get_lldb_backend()))
+        )
         if not frame:
             return set()
 
@@ -218,19 +246,19 @@ class LldbBridge(BridgeInterface):
 
         for symbol in frame.GetVariables(True, True, True, True):
             symbol_wrapper = SymbolWrapper(symbol)
-            if self._type_bridge.is_symbol_observable(symbol_wrapper,
-                                                      symbol.name):
+            if self._type_bridge.is_symbol_observable(symbol_wrapper, symbol.name):
                 available_symbols.add(symbol.name)
             # Check for members of current field, if it is a class
-            member_name_chain = [symbol.name] if symbol.name != 'this' else []
-            self._get_observable_children_members(symbol, member_name_chain,
-                                                  available_symbols)
+            member_name_chain = [symbol.name] if symbol.name != "this" else []
+            self._get_observable_children_members(
+                symbol, member_name_chain, available_symbols
+            )
 
         return available_symbols
 
     def stop_hook(self, *args):
         with self._lock:
-            self._event_queue.append('stop')
+            self._event_queue.append("stop")
 
     def _try_register_process_listener(self, process):
         # type: (lldb.SBProcess) -> None
@@ -247,37 +275,52 @@ class LldbBridge(BridgeInterface):
                 return
 
             if self._process_listener is None:
-                self._process_listener = lldb.SBListener('oid-lldb-process-listener')
+                self._process_listener = lldb.SBListener("oid-lldb-process-listener")
 
-            rc = broadcaster.AddListener(self._process_listener,
-                                        lldb.SBProcess.eBroadcastBitStateChanged)
+            rc = broadcaster.AddListener(
+                self._process_listener, lldb.SBProcess.eBroadcastBitStateChanged
+            )
             if not rc:
                 return
 
             self._listener_registered = True
             from oidscripts.logger import log
-            log.info('LldbBridge: Process event listener registered successfully')
+
+            log.info("LldbBridge: Process event listener registered successfully")
 
             if self._listener_thread is None or not self._listener_thread.is_alive():
+
                 def event_monitor_thread():
                     event = lldb.SBEvent()
                     last_state = None
                     while True:
                         try:
                             if self._process_listener.WaitForEventForBroadcasterWithType(
-                                    1, broadcaster,
-                                    lldb.SBProcess.eBroadcastBitStateChanged, event):
+                                1,
+                                broadcaster,
+                                lldb.SBProcess.eBroadcastBitStateChanged,
+                                event,
+                            ):
                                 if process.IsValid():
                                     state = process.GetState()
 
-                                    if state == lldb.eStateStopped and last_state != lldb.eStateStopped:
+                                    if (
+                                        state == lldb.eStateStopped
+                                        and last_state != lldb.eStateStopped
+                                    ):
                                         from oidscripts.logger import log
-                                        log.debug('LldbBridge: Process stopped, queuing stop event')
+
+                                        log.debug(
+                                            "LldbBridge: Process stopped, queuing stop event"
+                                        )
                                         with self._lock:
-                                            self._event_queue.append('stop')
+                                            self._event_queue.append("stop")
                                     last_state = state
 
-                                    if state == lldb.eStateExited or state == lldb.eStateDetached:
+                                    if (
+                                        state == lldb.eStateExited
+                                        or state == lldb.eStateDetached
+                                    ):
                                         break
                             else:
                                 if not process.IsValid():
@@ -285,8 +328,9 @@ class LldbBridge(BridgeInterface):
                         except Exception:
                             time.sleep(0.1)
 
-                self._listener_thread = threading.Thread(target=event_monitor_thread,
-                                                         daemon=True)
+                self._listener_thread = threading.Thread(
+                    target=event_monitor_thread, daemon=True
+                )
                 self._listener_thread.start()
         except Exception:
             pass
@@ -309,8 +353,11 @@ class SymbolWrapper(DebuggerSymbolReference):
         return float(string_value)
 
     def __getitem__(self, member):
-        child = self._symbol.GetChildAtIndex(member) if isinstance(member, int) \
-                else self._symbol.GetChildMemberWithName(str(member))
+        child = (
+            self._symbol.GetChildAtIndex(member)
+            if isinstance(member, int)
+            else self._symbol.GetChildMemberWithName(str(member))
+        )
 
         if not child.IsValid():
             raise KeyError
