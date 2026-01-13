@@ -76,14 +76,6 @@ void MainWindow::closeEvent(QCloseEvent*)
 }
 
 
-void MainWindow::propagate_key_press_event(
-    const QKeyEvent* key_event,
-    EventProcessCode& event_intercepted) const
-{
-    event_handler_->propagate_key_press_event(key_event, event_intercepted);
-}
-
-
 bool MainWindow::eventFilter(QObject* target, QEvent* event)
 {
     KeyboardState::update_keyboard_state(event);
@@ -95,7 +87,8 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
 
         const auto lock = std::unique_lock{ui_mutex_};
         if (state_.link_views_enabled) {
-            propagate_key_press_event(key_event, event_intercepted);
+            event_handler_->propagate_key_press_event(key_event,
+                                                      event_intercepted);
         } else if (const auto stage =
                        buffer_data_.currently_selected_stage.lock()) {
             event_intercepted = stage->key_press_event(key_event->key());
@@ -115,95 +108,5 @@ bool MainWindow::eventFilter(QObject* target, QEvent* event)
     return false;
 }
 
-
-void MainWindow::recenter_buffer()
-{
-    event_handler_->recenter_buffer();
-}
-
-
-void MainWindow::link_views_toggle()
-{
-    event_handler_->link_views_toggle();
-}
-
-void MainWindow::decrease_float_precision()
-{
-    event_handler_->decrease_float_precision();
-}
-
-void MainWindow::increase_float_precision()
-{
-    event_handler_->increase_float_precision();
-}
-
-void MainWindow::update_shift_precision() const
-{
-    event_handler_->update_shift_precision();
-}
-
-void MainWindow::rotate_90_cw()
-{
-    event_handler_->rotate_90_cw();
-}
-
-
-void MainWindow::rotate_90_ccw()
-{
-    event_handler_->rotate_90_ccw();
-}
-
-
-// NOSONAR: Parameter must be non-const to match Qt signal signature
-// currentItemChanged(QListWidgetItem*, QListWidgetItem*) which emits
-// non-const pointers.
-void MainWindow::buffer_selected(QListWidgetItem* item) // NOSONAR
-{
-    event_handler_->buffer_selected(item);
-}
-
-
-void MainWindow::remove_selected_buffer()
-{
-    event_handler_->remove_selected_buffer();
-}
-
-
-void MainWindow::symbol_selected()
-{
-    event_handler_->symbol_selected();
-}
-
-
-void MainWindow::symbol_completed(const QString& str)
-{
-    event_handler_->symbol_completed(str);
-}
-
-
-void MainWindow::export_buffer()
-{
-    const auto sender_action(dynamic_cast<QAction*>(sender()));
-    const auto buffer_name = sender_action->data().toString();
-    event_handler_->export_buffer(buffer_name);
-}
-
-
-void MainWindow::show_context_menu(const QPoint& pos)
-{
-    event_handler_->show_context_menu(pos);
-}
-
-
-void MainWindow::toggle_go_to_dialog() const
-{
-    event_handler_->toggle_go_to_dialog();
-}
-
-
-void MainWindow::go_to_pixel(const float x, const float y)
-{
-    event_handler_->go_to_pixel(x, y);
-}
 
 } // namespace oid

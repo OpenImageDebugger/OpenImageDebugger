@@ -44,10 +44,8 @@ set(SOURCES
     ui/gl_canvas.cpp
     ui/gl_text_renderer.cpp
     ui/go_to_widget.cpp
-    ui/main_window/auto_contrast.cpp
     ui/main_window/initialization.cpp
     ui/main_window/main_window.cpp
-    ui/main_window/message_processing.cpp
     ui/main_window/ui_events.cpp
     ui/messaging/message_handler.cpp
     ui/symbol_completer.cpp

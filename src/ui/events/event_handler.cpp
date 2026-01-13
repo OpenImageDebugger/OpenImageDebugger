@@ -348,6 +348,7 @@ void UIEventHandler::buffer_selected(const QListWidgetItem* item)
     emit acMaxLabelsResetRequested();
     emit shiftPrecisionUpdateRequested();
     emit statusBarUpdateRequested();
+    deps_.state.request_render_update = true;
 }
 
 
@@ -361,6 +362,17 @@ void UIEventHandler::remove_selected_buffer()
                 deps_.ui_components.ui->imageList->currentRow())};
         const auto buffer_name =
             removed_item->data(Qt::UserRole).toString().toStdString();
+
+        // Check if the currently selected stage is the one being removed
+        // and clear it BEFORE erasing from the map to prevent use-after-free
+        const auto stage_it = deps_.buffer_data.stages.find(buffer_name);
+        if (const auto selected_stage =
+                deps_.buffer_data.currently_selected_stage.lock();
+            stage_it != deps_.buffer_data.stages.end() && selected_stage &&
+            selected_stage == stage_it->second) {
+            emit stageSelectionCleared();
+        }
+
         deps_.buffer_data.stages.erase(buffer_name);
         deps_.buffer_data.held_buffers.erase(buffer_name);
         removed_item.reset();
@@ -368,7 +380,6 @@ void UIEventHandler::remove_selected_buffer()
         deps_.buffer_data.removed_buffer_names.insert(buffer_name);
 
         if (deps_.buffer_data.stages.empty()) {
-            emit stageSelectionCleared();
             emit shiftPrecisionUpdateRequested();
         }
 
