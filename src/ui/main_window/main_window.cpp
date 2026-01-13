@@ -65,6 +65,19 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
                                               state_,
                                               ui_components_});
 
+    // Initialize message handler
+    message_handler_ = std::make_unique<MessageHandler>(
+        MessageHandler::Dependencies{
+            ui_mutex_,
+            buffer_data_,
+            state_,
+            ui_components_,
+            socket_,
+            *ac_controller_,
+            *this,
+            [this]() { return get_icon_size(); },
+            [this]() { persist_settings_deferred(); }});
+
     initialize_settings();
     initialize_ui_icons();
     initialize_ui_signals();
@@ -129,7 +142,7 @@ bool MainWindow::is_window_ready() const
 
 void MainWindow::loop()
 {
-    decode_incoming_messages();
+    message_handler_->decode_incoming_messages();
 
     const auto lock = std::unique_lock{ui_mutex_};
     if (state_.completer_updated) {
