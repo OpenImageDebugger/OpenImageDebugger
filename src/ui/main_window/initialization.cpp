@@ -265,7 +265,7 @@ void MainWindow::initialize_settings()
     }
     settings.endGroup();
 
-    // Load previous session symbols
+    // Load previous session symbols (both plotted buffers and available vars)
     const auto now              = QDateTime::currentDateTime();
     const auto previous_buffers = settings.value("PreviousSession/buffers")
                                       .value<QList<BufferExpiration>>();
@@ -273,6 +273,19 @@ void MainWindow::initialize_settings()
     for (const auto& [name, time] : previous_buffers) {
         if (time >= now) {
             buffer_data_.previous_session_buffers.insert(name.toStdString());
+        }
+    }
+
+    // Load previous session available_vars (variables that were in
+    // autocomplete)
+    const auto previous_available_vars =
+        settings.value("PreviousSession/available_vars")
+            .value<QList<BufferExpiration>>();
+
+    for (const auto& [name, time] : previous_available_vars) {
+        if (time >= now) {
+            buffer_data_.previous_session_available_vars.insert(
+                name.toStdString());
         }
     }
 

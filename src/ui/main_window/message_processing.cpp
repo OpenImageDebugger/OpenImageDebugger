@@ -30,6 +30,7 @@
 #include <iostream>
 #include <memory>
 #include <ranges>
+#include <vector>
 
 #include "ui_main_window.h"
 
@@ -42,10 +43,23 @@ void MainWindow::decode_set_available_symbols()
     auto message_decoder = MessageDecoder{&socket_};
     message_decoder.read<QStringList, QString>(buffer_data_.available_vars);
 
+    // Store for persistence (available_vars gets cleared in
+    // decode_incoming_messages)
+    buffer_data_.last_known_available_vars = buffer_data_.available_vars;
+
+    // Trigger settings persistence to save available vars
+    persist_settings_deferred();
+
     for (const auto& symbol_value : buffer_data_.available_vars) {
         // Plot buffer if it was available in the previous session
+        // (either as a plotted buffer or as an available variable)
         const auto symbol_std_str = symbol_value.toStdString();
-        if (buffer_data_.previous_session_buffers.contains(symbol_std_str)) {
+        const bool was_plotted =
+            buffer_data_.previous_session_buffers.contains(symbol_std_str);
+        const bool was_available =
+            buffer_data_.previous_session_available_vars.contains(
+                symbol_std_str);
+        if (was_plotted || was_available) {
             request_plot_buffer(symbol_std_str);
         }
     }

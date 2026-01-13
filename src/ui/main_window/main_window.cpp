@@ -212,6 +212,46 @@ void MainWindow::persist_settings()
             BufferExpiration(buffer.c_str(), next_expiration));
     }
 
+    // Also persist available_vars (variables that were in autocomplete but
+    // not necessarily plotted)
+    auto persisted_available_vars = QList<BufferExpiration>{};
+    const auto previous_available_vars_qlist =
+        settings.value("PreviousSession/available_vars")
+            .value<QList<BufferExpiration>>();
+
+    // Keep expired available vars that haven't been removed
+    for (const auto& prev_var : previous_available_vars_qlist) {
+        const auto& [var_name, timestamp] = prev_var;
+        const auto var_name_std_str       = var_name.toStdString();
+
+        const auto being_viewed =
+            buffer_data_.held_buffers.contains(var_name_std_str);
+        const auto was_removed =
+            buffer_data_.removed_buffer_names.contains(var_name_std_str);
+
+        if (was_removed) {
+            buffer_data_.previous_session_available_vars.erase(
+                var_name_std_str);
+        } else if (!being_viewed && timestamp >= now) {
+            persisted_available_vars.append(prev_var);
+        }
+    }
+
+    // Add current available_vars (use last_known_available_vars since
+    // available_vars may be cleared by decode_incoming_messages)
+    for (const auto& var : buffer_data_.last_known_available_vars) {
+        const auto var_std_str = var.toStdString();
+        // Only add if not already in held_buffers (those are saved separately)
+        if (!buffer_data_.held_buffers.contains(var_std_str)) {
+            persisted_available_vars.append(
+                BufferExpiration(var, next_expiration));
+        }
+    }
+
+    // Save available_vars to settings
+    settings.setValue("PreviousSession/available_vars",
+                      QVariant::fromValue(persisted_available_vars));
+
     // Write default suffix for buffer export
     settings.setValue("Export/default_export_suffix", default_export_suffix_);
 

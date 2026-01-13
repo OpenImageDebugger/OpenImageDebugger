@@ -67,6 +67,14 @@ class OpenImageDebuggerWindow(object):
         ]
         self._lib.oid_set_available_symbols.restype = None
 
+        # LLDB-safe version that takes C string array instead of Python list
+        self._lib.oid_set_available_symbols_safe.argtypes = [
+            ctypes.c_void_p,  # handler
+            ctypes.POINTER(ctypes.c_char_p),  # available_vars array
+            ctypes.c_size_t  # count
+        ]
+        self._lib.oid_set_available_symbols_safe.restype = None
+
         self._lib.oid_run_event_loop.argtypes = [ctypes.c_void_p]
         self._lib.oid_run_event_loop.restype = None
 
@@ -178,14 +186,46 @@ class OpenImageDebuggerWindow(object):
         Set the autocomplete list of symbols with the list of string
         'observable_symbols'
         """
+        import sys
+        is_lldb_mode = 'lldb' in sys.modules
+
         # Perform two-level sorting:
         # 1. By amount of nodes.
         # 2. By variable name.
         sorted_observable_symbols = sorted(observable_symbols, key=lambda symbol: (symbol.count('.'), symbol))
 
-        self._lib.oid_set_available_symbols(
-            self._native_handler,
-            sorted_observable_symbols)
+        if is_lldb_mode:
+            # In LLDB mode, use the safe version that takes C string array
+            # instead of Python list to avoid Python C API calls from event loop thread
+            import ctypes
+            count = len(sorted_observable_symbols)
+            
+            # Encode all strings to bytes and keep references to prevent GC
+            encoded_symbols = []
+            for symbol in sorted_observable_symbols:
+                encoded = symbol.encode('utf-8') if isinstance(symbol, str) else symbol
+                encoded_symbols.append(encoded)
+            
+            # Create array of C strings
+            c_string_array = (ctypes.c_char_p * count)()
+            for i, encoded in enumerate(encoded_symbols):
+                c_string_array[i] = encoded
+            
+            # Keep references to prevent garbage collection
+            if not hasattr(self, '_symbol_array_refs'):
+                self._symbol_array_refs = []
+            self._symbol_array_refs.append(c_string_array)
+            self._symbol_array_refs.append(encoded_symbols)
+            
+            self._lib.oid_set_available_symbols_safe(
+                self._native_handler,
+                c_string_array,
+                count)
+        else:
+            # Non-LLDB mode: use original function with Python list
+            self._lib.oid_set_available_symbols(
+                self._native_handler,
+                sorted_observable_symbols)
 
     def run_event_loop(self):
         """

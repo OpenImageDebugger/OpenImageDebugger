@@ -306,8 +306,11 @@ class OidBridge
         const auto& buffer            = params.buffer;
 
         // Check if client is connected before sending
-        if (client_.isNull() || client_->state() != QAbstractSocket::ConnectedState) {
-            std::cerr << "[OpenImageDebugger] Cannot plot buffer: client socket is null or not connected" << std::endl;
+        if (client_.isNull() ||
+            client_->state() != QAbstractSocket::ConnectedState) {
+            std::cerr << "[OpenImageDebugger] Cannot plot buffer: client "
+                         "socket is null or not connected"
+                      << std::endl;
             return;
         }
 
@@ -714,6 +717,30 @@ void oid_set_available_symbols(const AppHandler handler,
 
         oid::copy_py_string(var_name_str, listItem);
         available_vars_stl.push_back(var_name_str);
+    }
+
+    app->set_available_symbols(available_vars_stl);
+}
+
+void oid_set_available_symbols_safe(const AppHandler handler,
+                                    const char* const* available_vars,
+                                    size_t count)
+{
+    // H17: Safe version for LLDB mode - no Python C API calls
+    // This function can be called from any thread without GIL issues
+
+    const auto app = static_cast<OidBridge*>(handler);
+
+    if (app == nullptr) [[unlikely]] {
+        return;
+    }
+
+    auto available_vars_stl = std::deque<std::string>{};
+
+    for (size_t pos = 0; pos < count; ++pos) {
+        if (available_vars[pos] != nullptr) {
+            available_vars_stl.emplace_back(available_vars[pos]);
+        }
     }
 
     app->set_available_symbols(available_vars_stl);
