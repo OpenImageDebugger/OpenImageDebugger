@@ -40,6 +40,7 @@ set(SOURCES
     math/linear_algebra.cpp
     ui/controllers/auto_contrast_controller.cpp
     ui/decorated_line_edit.cpp
+    ui/events/event_handler.cpp
     ui/gl_canvas.cpp
     ui/gl_text_renderer.cpp
     ui/go_to_widget.cpp
