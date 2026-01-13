@@ -38,9 +38,10 @@
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
 #include "visualization/game_object.h"
+#include "visualization/stage.h"
 
 
-Q_DECLARE_METATYPE(QList<QString>)
+Q_DECLARE_METATYPE(QList<QString>) // namespace oid
 
 namespace oid
 {
@@ -57,6 +58,87 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     gl_canvas_ptr_ =
         std::shared_ptr<GLCanvas>(ui_components_.ui->bufferPreview,
                                   [](GLCanvas*) { /* no-op: Qt owns it */ });
+
+    // Initialize auto-contrast controller
+    ac_controller_ = std::make_unique<AutoContrastController>(
+        AutoContrastController::Dependencies{
+            ui_mutex_, buffer_data_, state_, ui_components_});
+
+    // Initialize message handler
+    message_handler_ = std::make_unique<MessageHandler>(
+        MessageHandler::Dependencies{
+            ui_mutex_,
+            buffer_data_,
+            state_,
+            ui_components_,
+            socket_,
+            [this]() { return get_icon_size(); },
+            [this]() { return std::make_shared<Stage>(*this); }},
+        this);
+
+    // Initialize UI event handler
+    event_handler_ = std::make_unique<UIEventHandler>(
+        UIEventHandler::Dependencies{ui_mutex_,
+                                     buffer_data_,
+                                     state_,
+                                     ui_components_,
+                                     channel_names_,
+                                     default_export_suffix_,
+                                     gl_canvas_ptr_},
+        this);
+
+    // Connect UIEventHandler signals to MainWindow slots
+    connect(event_handler_.get(),
+            &UIEventHandler::statusBarUpdateRequested,
+            this,
+            &MainWindow::update_status_bar);
+    connect(event_handler_.get(),
+            &UIEventHandler::stageSelectionRequested,
+            this,
+            [this](const std::shared_ptr<Stage>& stage) {
+                set_currently_selected_stage(stage);
+            });
+    connect(event_handler_.get(),
+            &UIEventHandler::stageSelectionCleared,
+            this,
+            [this]() { set_currently_selected_stage(nullptr); });
+    connect(event_handler_.get(),
+            &UIEventHandler::plotBufferRequested,
+            this,
+            [this](const QString& buffer_name) {
+                message_handler_->request_plot_buffer(
+                    std::string_view(buffer_name.toLocal8Bit().constData()));
+            });
+    connect(event_handler_.get(),
+            &UIEventHandler::acMinLabelsResetRequested,
+            this,
+            [this]() { ac_controller_->reset_min_labels(); });
+    connect(event_handler_.get(),
+            &UIEventHandler::acMaxLabelsResetRequested,
+            this,
+            [this]() { ac_controller_->reset_max_labels(); });
+    connect(event_handler_.get(),
+            &UIEventHandler::shiftPrecisionUpdateRequested,
+            this,
+            [this]() { event_handler_->update_shift_precision(); });
+    connect(event_handler_.get(),
+            &UIEventHandler::settingsPersistenceRequested,
+            this,
+            &MainWindow::persist_settings_deferred);
+
+    // Connect MessageHandler signals to MainWindow slots
+    connect(message_handler_.get(),
+            &MessageHandler::acMinLabelsResetRequested,
+            this,
+            [this]() { ac_controller_->reset_min_labels(); });
+    connect(message_handler_.get(),
+            &MessageHandler::acMaxLabelsResetRequested,
+            this,
+            [this]() { ac_controller_->reset_max_labels(); });
+    connect(message_handler_.get(),
+            &MessageHandler::settingsPersistenceRequested,
+            this,
+            &MainWindow::persist_settings_deferred);
 
     initialize_settings();
     initialize_ui_icons();
@@ -122,7 +204,7 @@ bool MainWindow::is_window_ready() const
 
 void MainWindow::loop()
 {
-    decode_incoming_messages();
+    message_handler_->decode_incoming_messages();
 
     const auto lock = std::unique_lock{ui_mutex_};
     if (state_.completer_updated) {
@@ -148,7 +230,7 @@ void MainWindow::loop()
     if (state_.request_icons_update) {
 
         for (const auto& name : buffer_data_.stages | std::views::keys) {
-            repaint_image_list_icon(name);
+            message_handler_->repaint_image_list_icon(name);
         }
 
         state_.request_icons_update = false;

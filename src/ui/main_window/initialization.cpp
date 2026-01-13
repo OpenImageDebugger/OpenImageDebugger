@@ -465,18 +465,17 @@ void MainWindow::initialize_shortcuts()
     connect(buffer_removal_shortcut.release(),
             &QShortcut::activated,
             this,
-            &MainWindow::remove_selected_buffer);
+            [this]() { event_handler_->remove_selected_buffer(); });
 
     auto go_to_shortcut =
         std::make_unique<QShortcut>(QKeySequence::fromString("Ctrl+L"), this);
-    connect(go_to_shortcut.release(),
-            &QShortcut::activated,
-            this,
-            &MainWindow::toggle_go_to_dialog);
+    connect(go_to_shortcut.release(), &QShortcut::activated, this, [this]() {
+        event_handler_->toggle_go_to_dialog();
+    });
     connect(ui_components_.go_to_widget.get(),
             &GoToWidget::go_to_requested,
             this,
-            &MainWindow::go_to_pixel);
+            [this](float x, float y) { event_handler_->go_to_pixel(x, y); });
 }
 
 
@@ -485,10 +484,9 @@ void MainWindow::initialize_networking()
     socket_.connectToHost(QString(host_settings_.url.c_str()),
                           host_settings_.port);
     socket_.waitForConnected();
-    connect(&socket_,
-            &QTcpSocket::readyRead,
-            this,
-            &MainWindow::decode_incoming_messages);
+    connect(&socket_, &QTcpSocket::readyRead, this, [this]() {
+        message_handler_->decode_incoming_messages();
+    });
 }
 
 
@@ -505,10 +503,11 @@ void MainWindow::initialize_symbol_completer()
 
     ui_components_.ui->symbolList->set_completer(
         *ui_components_.symbol_completer);
-    connect(ui_components_.symbol_completer.get(),
-            qOverload<const QString&>(&QCompleter::activated),
-            this,
-            &MainWindow::symbol_completed);
+    connect(
+        ui_components_.symbol_completer.get(),
+        qOverload<const QString&>(&QCompleter::activated),
+        this,
+        [this](const QString& str) { event_handler_->symbol_completed(str); });
 }
 
 
@@ -517,18 +516,21 @@ void MainWindow::initialize_left_pane() const
     connect(ui_components_.ui->imageList,
             &QListWidget::currentItemChanged,
             this,
-            &MainWindow::buffer_selected);
+            [this](QListWidgetItem* item) {
+                event_handler_->buffer_selected(item);
+            });
 
     connect(ui_components_.ui->symbolList,
             &QLineEdit::editingFinished,
             this,
-            &MainWindow::symbol_selected);
+            [this]() { event_handler_->symbol_selected(); });
 
     ui_components_.ui->imageList->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui_components_.ui->imageList,
-            &QWidget::customContextMenuRequested,
-            this,
-            &MainWindow::show_context_menu);
+    connect(
+        ui_components_.ui->imageList,
+        &QWidget::customContextMenuRequested,
+        this,
+        [this](const QPoint& pos) { event_handler_->show_context_menu(pos); });
 }
 
 
@@ -560,44 +562,44 @@ void MainWindow::initialize_auto_contrast_form() const
     connect(ui_components_.ui->ac_c1_min,
             &QLineEdit::editingFinished,
             this,
-            &MainWindow::ac_c1_min_update);
+            [this]() { ac_controller_->ac_c1_min_update(); });
     connect(ui_components_.ui->ac_c1_max,
             &QLineEdit::editingFinished,
             this,
-            &MainWindow::ac_c1_max_update);
+            [this]() { ac_controller_->ac_c1_max_update(); });
     connect(ui_components_.ui->ac_c2_min,
             &QLineEdit::editingFinished,
             this,
-            &MainWindow::ac_c2_min_update);
+            [this]() { ac_controller_->ac_c2_min_update(); });
     connect(ui_components_.ui->ac_c2_max,
             &QLineEdit::editingFinished,
             this,
-            &MainWindow::ac_c2_max_update);
+            [this]() { ac_controller_->ac_c2_max_update(); });
     connect(ui_components_.ui->ac_c3_min,
             &QLineEdit::editingFinished,
             this,
-            &MainWindow::ac_c3_min_update);
+            [this]() { ac_controller_->ac_c3_min_update(); });
     connect(ui_components_.ui->ac_c3_max,
             &QLineEdit::editingFinished,
             this,
-            &MainWindow::ac_c3_max_update);
+            [this]() { ac_controller_->ac_c3_max_update(); });
     connect(ui_components_.ui->ac_c4_min,
             &QLineEdit::editingFinished,
             this,
-            &MainWindow::ac_c4_min_update);
+            [this]() { ac_controller_->ac_c4_min_update(); });
     connect(ui_components_.ui->ac_c4_max,
             &QLineEdit::editingFinished,
             this,
-            &MainWindow::ac_c4_max_update);
+            [this]() { ac_controller_->ac_c4_max_update(); });
 
     connect(ui_components_.ui->ac_reset_min,
             &QAbstractButton::clicked,
             this,
-            &MainWindow::ac_min_reset);
+            [this]() { ac_controller_->ac_min_reset(); });
     connect(ui_components_.ui->ac_reset_max,
             &QAbstractButton::clicked,
             this,
-            &MainWindow::ac_max_reset);
+            [this]() { ac_controller_->ac_max_reset(); });
 }
 
 
@@ -606,38 +608,38 @@ void MainWindow::initialize_toolbar() const
     connect(ui_components_.ui->acToggle,
             &QToolButton::toggled,
             this,
-            &MainWindow::ac_toggle);
+            [this](bool is_checked) { ac_controller_->ac_toggle(is_checked); });
 
     connect(ui_components_.ui->reposition_buffer,
             &QAbstractButton::clicked,
             this,
-            &MainWindow::recenter_buffer);
+            [this]() { event_handler_->recenter_buffer(); });
 
     connect(ui_components_.ui->linkViewsToggle,
             &QAbstractButton::clicked,
             this,
-            &MainWindow::link_views_toggle);
+            [this]() { event_handler_->link_views_toggle(); });
 
     connect(ui_components_.ui->rotate_90_cw,
             &QAbstractButton::clicked,
             this,
-            &MainWindow::rotate_90_cw);
+            [this]() { event_handler_->rotate_90_cw(); });
     connect(ui_components_.ui->rotate_90_ccw,
             &QAbstractButton::clicked,
             this,
-            &MainWindow::rotate_90_ccw);
+            [this]() { event_handler_->rotate_90_ccw(); });
     connect(ui_components_.ui->increase_float_precision,
             &QAbstractButton::clicked,
             this,
-            &MainWindow::increase_float_precision);
+            [this]() { event_handler_->increase_float_precision(); });
     connect(ui_components_.ui->decrease_float_precision,
             &QAbstractButton::clicked,
             this,
-            &MainWindow::decrease_float_precision);
+            [this]() { event_handler_->decrease_float_precision(); });
     connect(ui_components_.ui->go_to_pixel,
             &QAbstractButton::clicked,
             this,
-            &MainWindow::toggle_go_to_dialog);
+            [this]() { event_handler_->toggle_go_to_dialog(); });
 
     ui_components_.ui->increase_float_precision->setEnabled(false);
     ui_components_.ui->decrease_float_precision->setEnabled(false);

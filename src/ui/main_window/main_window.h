@@ -39,7 +39,10 @@
 #include <QTimer>
 
 #include "math/linear_algebra.h"
+#include "ui/controllers/auto_contrast_controller.h"
+#include "ui/events/event_handler.h"
 #include "ui/go_to_widget.h"
+#include "ui/messaging/message_handler.h"
 #include "ui/symbol_completer.h"
 #include "ui_main_window.h"
 #include "visualization/stage.h"
@@ -128,12 +131,6 @@ class MainWindow final : public QMainWindow
     [[nodiscard]] bool is_window_ready() const;
 
     ///
-    // Auto contrast pane - implemented in auto_contrast.cpp
-    void reset_ac_min_labels() const;
-
-    void reset_ac_max_labels() const;
-
-    ///
     // General UI Events - implemented in ui_events.cpp
     void resize_callback(int w, int h) const;
 
@@ -160,64 +157,6 @@ class MainWindow final : public QMainWindow
 
     void request_icons_update();
 
-    ///
-    // Auto contrast pane - implemented in auto_contrast.cpp
-    void ac_c1_min_update();
-
-    void ac_c2_min_update();
-
-    void ac_c3_min_update();
-
-    void ac_c4_min_update();
-
-    void ac_c1_max_update();
-
-    void ac_c2_max_update();
-
-    void ac_c3_max_update();
-
-    void ac_c4_max_update();
-
-    void ac_min_reset();
-
-    void ac_max_reset();
-
-    void ac_toggle(bool is_checked);
-
-    ///
-    // General UI Events - implemented in ui_events.cpp
-    void recenter_buffer();
-
-    void link_views_toggle();
-
-    void rotate_90_cw();
-
-    void rotate_90_ccw();
-
-    void decrease_float_precision();
-
-    void increase_float_precision();
-
-    void update_shift_precision() const;
-
-    // NOSONAR: Parameter must be non-const to match Qt signal signature
-    // currentItemChanged(QListWidgetItem*, QListWidgetItem*) which emits
-    // non-const pointers.
-    void buffer_selected(QListWidgetItem* item); // NOSONAR
-
-    void remove_selected_buffer();
-
-    void symbol_selected();
-
-    void symbol_completed(const QString& str);
-
-    void export_buffer();
-
-    void show_context_menu(const QPoint& pos);
-
-    void toggle_go_to_dialog() const;
-
-    void go_to_pixel(float x, float y);
 
     ///
     // Assorted methods - private - implemented in main_window.cpp
@@ -231,6 +170,9 @@ class MainWindow final : public QMainWindow
     std::shared_ptr<GLCanvas> gl_canvas_ptr_{};
     double render_framerate_{};
     QString default_export_suffix_{};
+    std::unique_ptr<AutoContrastController> ac_controller_{};
+    std::unique_ptr<MessageHandler> message_handler_{};
+    std::unique_ptr<UIEventHandler> event_handler_{};
     // Thread safety: All access to buffer_data_ and state_ must be protected by
     // ui_mutex_. This mutex is recursive to allow nested locking when helper
     // methods are called from already-locked contexts (e.g.,
@@ -258,37 +200,6 @@ class MainWindow final : public QMainWindow
 
     [[nodiscard]] vec4 get_stage_coordinates(float pos_window_x,
                                              float pos_window_y) const;
-
-    ///
-    // Assorted methods - private - implemented in ui_events.cpp
-    void propagate_key_press_event(const QKeyEvent* key_event,
-                                   EventProcessCode& event_intercepted) const;
-
-    ///
-    // Communication with debugger bridge
-    void decode_set_available_symbols();
-
-    void respond_get_observed_symbols();
-
-    [[nodiscard]] QListWidgetItem*
-    find_image_list_item(const std::string& variable_name_str) const;
-
-    void repaint_image_list_icon(const std::string& variable_name_str);
-
-    void update_image_list_label(const std::string& variable_name_str,
-                                 const std::string& label_str) const;
-
-    void decode_plot_buffer_contents();
-
-    void decode_incoming_messages();
-
-    void request_plot_buffer(std::string_view buffer_name);
-
-    ///
-    // Auto contrast pane - private - implemented in auto_contrast.cpp
-    void set_ac_min_value(int idx, float value);
-
-    void set_ac_max_value(int idx, float value);
 
     ///
     // Initialization - private - implemented in initialization.cpp
