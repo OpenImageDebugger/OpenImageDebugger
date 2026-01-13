@@ -74,9 +74,10 @@ class MessageHandler
     void respond_get_observed_symbols();
     void decode_plot_buffer_contents();
 
-    QListWidgetItem* find_image_list_item(const std::string& variable_name_str) const;
+    QListWidgetItem*
+    find_image_list_item(const std::string& variable_name_str) const;
     void update_image_list_label(const std::string& variable_name_str,
-                                  const std::string& label_str) const;
+                                 const std::string& label_str) const;
 
     static std::string get_type_label(int type, int channels);
 };

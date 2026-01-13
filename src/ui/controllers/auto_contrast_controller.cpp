@@ -278,7 +278,7 @@ void AutoContrastController::ac_max_reset()
 
 void AutoContrastController::ac_toggle(const bool is_checked)
 {
-    const auto lock       = std::unique_lock{deps_.ui_mutex};
+    const auto lock        = std::unique_lock{deps_.ui_mutex};
     deps_.state.ac_enabled = is_checked;
     for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
         stage->set_contrast_enabled(deps_.state.ac_enabled);

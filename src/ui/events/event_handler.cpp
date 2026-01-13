@@ -75,7 +75,8 @@ void UIEventHandler::scroll_callback(const float delta)
 {
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (deps_.state.link_views_enabled) {
-        for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
+        for (const auto& stage :
+             deps_.buffer_data.stages | std::views::values) {
             stage->scroll_callback(delta);
         }
     } else if (const auto stage =
@@ -98,7 +99,8 @@ void UIEventHandler::mouse_drag_event(const int mouse_x, const int mouse_y)
 
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (deps_.state.link_views_enabled) {
-        for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
+        for (const auto& stage :
+             deps_.buffer_data.stages | std::views::values) {
             stage->mouse_drag_event(virtual_motion.x(), virtual_motion.y());
         }
     } else if (const auto stage =
@@ -148,7 +150,8 @@ void UIEventHandler::recenter_buffer()
     };
 
     if (deps_.state.link_views_enabled) {
-        for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
+        for (const auto& stage :
+             deps_.buffer_data.stages | std::views::values) {
             recenter_camera_impl(*stage);
         }
     } else {
@@ -164,7 +167,7 @@ void UIEventHandler::recenter_buffer()
 
 void UIEventHandler::link_views_toggle()
 {
-    const auto lock               = std::unique_lock{deps_.ui_mutex};
+    const auto lock                = std::unique_lock{deps_.ui_mutex};
     deps_.state.link_views_enabled = !deps_.state.link_views_enabled;
 }
 
@@ -185,7 +188,8 @@ void UIEventHandler::decrease_float_precision()
 
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (deps_.state.link_views_enabled) {
-        for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
+        for (const auto& stage :
+             deps_.buffer_data.stages | std::views::values) {
             shift_precision_left_impl(*stage);
         }
     } else {
@@ -215,7 +219,8 @@ void UIEventHandler::increase_float_precision()
 
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (deps_.state.link_views_enabled) {
-        for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
+        for (const auto& stage :
+             deps_.buffer_data.stages | std::views::values) {
             shift_precision_right_impl(*stage);
         }
     } else {
@@ -277,7 +282,8 @@ void UIEventHandler::rotate_90_cw()
 
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (deps_.state.link_views_enabled) {
-        for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
+        for (const auto& stage :
+             deps_.buffer_data.stages | std::views::values) {
             request_90_cw_rotation(*stage);
         }
     } else {
@@ -307,7 +313,8 @@ void UIEventHandler::rotate_90_ccw()
 
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (deps_.state.link_views_enabled) {
-        for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
+        for (const auto& stage :
+             deps_.buffer_data.stages | std::views::values) {
             request_90_ccw_rotation(*stage);
         }
     } else {
@@ -397,7 +404,7 @@ void UIEventHandler::symbol_completed(const QString& str)
 
 void UIEventHandler::export_buffer(const QString& buffer_name)
 {
-    const auto lock  = std::unique_lock{deps_.ui_mutex};
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto stage =
         deps_.buffer_data.stages.find(buffer_name.toStdString())->second;
 
@@ -503,7 +510,8 @@ void UIEventHandler::go_to_pixel(const float x, const float y)
 {
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (deps_.state.link_views_enabled) {
-        for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
+        for (const auto& stage :
+             deps_.buffer_data.stages | std::views::values) {
             stage->go_to_pixel(x, y);
         }
     } else if (const auto stage =

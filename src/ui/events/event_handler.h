@@ -95,7 +95,7 @@ class UIEventHandler
     void go_to_pixel(float x, float y);
 
     void propagate_key_press_event(const QKeyEvent* key_event,
-                                    EventProcessCode& event_intercepted) const;
+                                   EventProcessCode& event_intercepted) const;
 
   private:
     Dependencies deps_;
