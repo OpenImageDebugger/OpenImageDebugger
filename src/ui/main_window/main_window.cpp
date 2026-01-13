@@ -78,6 +78,30 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             [this]() { return get_icon_size(); },
             [this]() { persist_settings_deferred(); }});
 
+    // Initialize UI event handler
+    event_handler_ = std::make_unique<UIEventHandler>(
+        UIEventHandler::Dependencies{
+            ui_mutex_,
+            buffer_data_,
+            state_,
+            ui_components_,
+            channel_names_,
+            default_export_suffix_,
+            gl_canvas_ptr_,
+            this,
+            [this]() { update_status_bar(); },
+            [this](const std::shared_ptr<Stage>& stage) {
+                set_currently_selected_stage(stage);
+            },
+            [this]() { set_currently_selected_stage(nullptr); },
+            [this](std::string_view buffer_name) {
+                request_plot_buffer(buffer_name);
+            },
+            [this]() { reset_ac_min_labels(); },
+            [this]() { reset_ac_max_labels(); },
+            [this]() { update_shift_precision(); },
+            [this]() { persist_settings_deferred(); }});
+
     initialize_settings();
     initialize_ui_icons();
     initialize_ui_signals();

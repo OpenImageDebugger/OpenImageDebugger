@@ -40,6 +40,7 @@
 
 #include "math/linear_algebra.h"
 #include "ui/controllers/auto_contrast_controller.h"
+#include "ui/events/event_handler.h"
 #include "ui/go_to_widget.h"
 #include "ui/messaging/message_handler.h"
 #include "ui/symbol_completer.h"
@@ -233,6 +234,7 @@ class MainWindow final : public QMainWindow
     QString default_export_suffix_{};
     std::unique_ptr<AutoContrastController> ac_controller_{};
     std::unique_ptr<MessageHandler> message_handler_{};
+    std::unique_ptr<UIEventHandler> event_handler_{};
     // Thread safety: All access to buffer_data_ and state_ must be protected by
     // ui_mutex_. This mutex is recursive to allow nested locking when helper
     // methods are called from already-locked contexts (e.g.,
