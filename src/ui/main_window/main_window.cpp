@@ -58,6 +58,13 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
         std::shared_ptr<GLCanvas>(ui_components_.ui->bufferPreview,
                                   [](GLCanvas*) { /* no-op: Qt owns it */ });
 
+    // Initialize auto-contrast controller
+    ac_controller_ = std::make_unique<AutoContrastController>(
+        AutoContrastController::Dependencies{ui_mutex_,
+                                              buffer_data_,
+                                              state_,
+                                              ui_components_});
+
     initialize_settings();
     initialize_ui_icons();
     initialize_ui_signals();

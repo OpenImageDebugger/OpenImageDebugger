@@ -39,6 +39,7 @@
 #include <QTimer>
 
 #include "math/linear_algebra.h"
+#include "ui/controllers/auto_contrast_controller.h"
 #include "ui/go_to_widget.h"
 #include "ui/symbol_completer.h"
 #include "ui_main_window.h"
@@ -229,6 +230,7 @@ class MainWindow final : public QMainWindow
     std::shared_ptr<GLCanvas> gl_canvas_ptr_{};
     double render_framerate_{};
     QString default_export_suffix_{};
+    std::unique_ptr<AutoContrastController> ac_controller_{};
     // Thread safety: All access to buffer_data_ and state_ must be protected by
     // ui_mutex_. This mutex is recursive to allow nested locking when helper
     // methods are called from already-locked contexts (e.g.,
@@ -281,12 +283,6 @@ class MainWindow final : public QMainWindow
     void decode_incoming_messages();
 
     void request_plot_buffer(std::string_view buffer_name);
-
-    ///
-    // Auto contrast pane - private - implemented in auto_contrast.cpp
-    void set_ac_min_value(int idx, float value);
-
-    void set_ac_max_value(int idx, float value);
 
     ///
     // Initialization - private - implemented in initialization.cpp
