@@ -50,8 +50,9 @@
 namespace oid
 {
 
-UIEventHandler::UIEventHandler(Dependencies deps)
-    : deps_{std::move(deps)}
+UIEventHandler::UIEventHandler(Dependencies deps, QObject* parent)
+    : QObject{parent}
+    , deps_{std::move(deps)}
 {
 }
 
@@ -84,7 +85,7 @@ void UIEventHandler::scroll_callback(const float delta)
         stage->scroll_callback(delta);
     }
 
-    deps_.update_status_bar();
+    emit statusBarUpdateRequested();
 
 #if defined(Q_OS_DARWIN)
     deps_.ui_components.ui->bufferPreview->update();
@@ -112,9 +113,10 @@ void UIEventHandler::mouse_drag_event(const int mouse_x, const int mouse_y)
 }
 
 
-void UIEventHandler::mouse_move_event(int, int) const
+void UIEventHandler::mouse_move_event([[maybe_unused]] int mouse_x,
+                                      [[maybe_unused]] int mouse_y)
 {
-    deps_.update_status_bar();
+    emit statusBarUpdateRequested();
 }
 
 
@@ -341,11 +343,11 @@ void UIEventHandler::buffer_selected(const QListWidgetItem* item)
         return;
     }
 
-    deps_.set_currently_selected_stage(stage->second);
-    deps_.reset_ac_min_labels();
-    deps_.reset_ac_max_labels();
-    deps_.update_shift_precision();
-    deps_.update_status_bar();
+    emit stageSelectionRequested(stage->second);
+    emit acMinLabelsResetRequested();
+    emit acMaxLabelsResetRequested();
+    emit shiftPrecisionUpdateRequested();
+    emit statusBarUpdateRequested();
 }
 
 
@@ -366,11 +368,11 @@ void UIEventHandler::remove_selected_buffer()
         deps_.buffer_data.removed_buffer_names.insert(buffer_name);
 
         if (deps_.buffer_data.stages.empty()) {
-            deps_.set_currently_selected_stage_null();
-            deps_.update_shift_precision();
+            emit stageSelectionCleared();
+            emit shiftPrecisionUpdateRequested();
         }
 
-        deps_.persist_settings_deferred();
+        emit settingsPersistenceRequested();
     }
 }
 
@@ -381,10 +383,8 @@ void UIEventHandler::symbol_selected()
         return;
     }
 
-    const auto symbol_name_qba =
-        deps_.ui_components.ui->symbolList->text().toLocal8Bit();
-    const auto symbol_name = symbol_name_qba.constData();
-    deps_.request_plot_buffer(symbol_name);
+    const auto symbol_name = deps_.ui_components.ui->symbolList->text();
+    emit plotBufferRequested(symbol_name);
     deps_.ui_components.ui->symbolList->setText("");
 }
 
@@ -395,8 +395,7 @@ void UIEventHandler::symbol_completed(const QString& str)
         return;
     }
 
-    const auto symbol_name_qba = str.toLocal8Bit();
-    deps_.request_plot_buffer(symbol_name_qba.constData());
+    emit plotBufferRequested(str);
     deps_.ui_components.ui->symbolList->setText("");
     deps_.ui_components.ui->symbolList->clearFocus();
 }
@@ -423,7 +422,7 @@ void UIEventHandler::export_buffer(const QString& buffer_name)
     }
     const auto& component = component_opt->get();
 
-    auto file_dialog = QFileDialog{deps_.parent_widget};
+    auto file_dialog = QFileDialog{deps_.ui_components.ui->bufferPreview};
     file_dialog.setAcceptMode(QFileDialog::AcceptSave);
     file_dialog.setFileMode(QFileDialog::AnyFile);
 
@@ -457,7 +456,7 @@ void UIEventHandler::export_buffer(const QString& buffer_name)
 
         deps_.default_export_suffix = selected_filter;
 
-        deps_.persist_settings_deferred();
+        emit settingsPersistenceRequested();
     }
 }
 
@@ -468,7 +467,7 @@ void UIEventHandler::show_context_menu(const QPoint& pos)
         const auto globalPos =
             deps_.ui_components.ui->imageList->mapToGlobal(pos);
 
-        auto menu = QMenu{deps_.parent_widget};
+        auto menu = QMenu{deps_.ui_components.ui->imageList};
 
         const auto buffer_name =
             deps_.ui_components.ui->imageList->itemAt(pos)->data(Qt::UserRole);

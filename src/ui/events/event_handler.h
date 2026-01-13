@@ -26,15 +26,16 @@
 #ifndef EVENT_HANDLER_H_
 #define EVENT_HANDLER_H_
 
-#include <functional>
 #include <memory>
 #include <mutex>
+#include <string_view>
+
+#include <QObject>
+#include <QString>
 
 class QKeyEvent;
 class QListWidgetItem;
 class QPoint;
-class QString;
-class QWidget;
 
 namespace oid
 {
@@ -46,8 +47,10 @@ struct WindowState;
 class Stage;
 enum class EventProcessCode;
 
-class UIEventHandler
+class UIEventHandler : public QObject
 {
+    Q_OBJECT
+
   public:
     struct Dependencies
     {
@@ -58,24 +61,14 @@ class UIEventHandler
         ChannelNames& channel_names;
         QString& default_export_suffix;
         std::shared_ptr<class GLCanvas> gl_canvas;
-        QWidget* parent_widget;
-        std::function<void()> update_status_bar;
-        std::function<void(const std::shared_ptr<Stage>&)>
-            set_currently_selected_stage;
-        std::function<void()> set_currently_selected_stage_null;
-        std::function<void(std::string_view)> request_plot_buffer;
-        std::function<void()> reset_ac_min_labels;
-        std::function<void()> reset_ac_max_labels;
-        std::function<void()> update_shift_precision;
-        std::function<void()> persist_settings_deferred;
     };
 
-    explicit UIEventHandler(Dependencies deps);
+    explicit UIEventHandler(Dependencies deps, QObject* parent = nullptr);
 
     void resize_callback(int w, int h) const;
     void scroll_callback(float delta);
     void mouse_drag_event(int mouse_x, int mouse_y);
-    void mouse_move_event(int mouse_x, int mouse_y) const;
+    void mouse_move_event(int mouse_x, int mouse_y);
 
     void recenter_buffer();
     void link_views_toggle();
@@ -96,6 +89,16 @@ class UIEventHandler
 
     void propagate_key_press_event(const QKeyEvent* key_event,
                                    EventProcessCode& event_intercepted) const;
+
+  signals:
+    void statusBarUpdateRequested();
+    void stageSelectionRequested(const std::shared_ptr<Stage>& stage);
+    void stageSelectionCleared();
+    void plotBufferRequested(const QString& buffer_name);
+    void acMinLabelsResetRequested();
+    void acMaxLabelsResetRequested();
+    void shiftPrecisionUpdateRequested();
+    void settingsPersistenceRequested();
 
   private:
     Dependencies deps_;

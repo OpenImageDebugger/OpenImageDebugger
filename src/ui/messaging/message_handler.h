@@ -27,12 +27,15 @@
 #define MESSAGE_HANDLER_H_
 
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <string_view>
 
+#include <QObject>
+#include <QSizeF>
+
 class QListWidgetItem;
-class QSizeF;
 class QTcpSocket;
 
 namespace oid
@@ -41,12 +44,12 @@ namespace oid
 struct BufferData;
 struct UIComponents;
 struct WindowState;
-class AutoContrastController;
-class MainWindow;
 class Stage;
 
-class MessageHandler
+class MessageHandler : public QObject
 {
+    Q_OBJECT
+
   public:
     struct Dependencies
     {
@@ -55,17 +58,20 @@ class MessageHandler
         WindowState& state;
         UIComponents& ui_components;
         QTcpSocket& socket;
-        AutoContrastController& ac_controller;
-        MainWindow& main_window;
         std::function<QSizeF()> get_icon_size;
-        std::function<void()> persist_settings_deferred;
+        std::function<std::shared_ptr<Stage>()> create_stage;
     };
 
-    explicit MessageHandler(Dependencies deps);
+    explicit MessageHandler(Dependencies deps, QObject* parent = nullptr);
 
     void decode_incoming_messages();
     void request_plot_buffer(std::string_view buffer_name);
     void repaint_image_list_icon(const std::string& variable_name_str);
+
+  signals:
+    void acMinLabelsResetRequested();
+    void acMaxLabelsResetRequested();
+    void settingsPersistenceRequested();
 
   private:
     Dependencies deps_;
