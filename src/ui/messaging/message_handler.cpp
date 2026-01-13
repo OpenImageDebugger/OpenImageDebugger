@@ -29,8 +29,8 @@
 #include <iostream>
 #include <memory>
 #include <ranges>
-#include <sstream>
 #include <span>
+#include <sstream>
 
 #include <QApplication>
 #include <QListWidgetItem>
@@ -59,7 +59,8 @@ void MessageHandler::decode_set_available_symbols()
 {
     const auto lock      = std::unique_lock{deps_.ui_mutex};
     auto message_decoder = MessageDecoder{&deps_.socket};
-    message_decoder.read<QStringList, QString>(deps_.buffer_data.available_vars);
+    message_decoder.read<QStringList, QString>(
+        deps_.buffer_data.available_vars);
 
     for (const auto& symbol_value : deps_.buffer_data.available_vars) {
         const auto symbol_std_str = symbol_value.toStdString();
@@ -193,7 +194,8 @@ void MessageHandler::decode_plot_buffer_contents()
     const auto label_str = [&] {
         std::stringstream label_ss;
         label_ss << display_name_str;
-        label_ss << "\n[" << visualized_width << "x" << visualized_height << "]";
+        label_ss << "\n[" << visualized_width << "x" << visualized_height
+                 << "]";
         label_ss << "\n"
                  << get_type_label(static_cast<int>(buff_type), buff_channels);
         return label_ss.str();

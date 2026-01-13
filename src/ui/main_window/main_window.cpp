@@ -60,14 +60,12 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
 
     // Initialize auto-contrast controller
     ac_controller_ = std::make_unique<AutoContrastController>(
-        AutoContrastController::Dependencies{ui_mutex_,
-                                              buffer_data_,
-                                              state_,
-                                              ui_components_});
+        AutoContrastController::Dependencies{
+            ui_mutex_, buffer_data_, state_, ui_components_});
 
     // Initialize message handler
-    message_handler_ = std::make_unique<MessageHandler>(
-        MessageHandler::Dependencies{
+    message_handler_ =
+        std::make_unique<MessageHandler>(MessageHandler::Dependencies{
             ui_mutex_,
             buffer_data_,
             state_,
@@ -79,8 +77,8 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             [this]() { persist_settings_deferred(); }});
 
     // Initialize UI event handler
-    event_handler_ = std::make_unique<UIEventHandler>(
-        UIEventHandler::Dependencies{
+    event_handler_ =
+        std::make_unique<UIEventHandler>(UIEventHandler::Dependencies{
             ui_mutex_,
             buffer_data_,
             state_,
