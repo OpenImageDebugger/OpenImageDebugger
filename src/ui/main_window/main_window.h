@@ -129,12 +129,6 @@ class MainWindow final : public QMainWindow
     [[nodiscard]] bool is_window_ready() const;
 
     ///
-    // Auto contrast pane - implemented in auto_contrast.cpp
-    void reset_ac_min_labels() const;
-
-    void reset_ac_max_labels() const;
-
-    ///
     // General UI Events - implemented in ui_events.cpp
     void resize_callback(int w, int h) const;
 
@@ -161,64 +155,6 @@ class MainWindow final : public QMainWindow
 
     void request_icons_update();
 
-    ///
-    // Auto contrast pane - implemented in auto_contrast.cpp
-    void ac_c1_min_update();
-
-    void ac_c2_min_update();
-
-    void ac_c3_min_update();
-
-    void ac_c4_min_update();
-
-    void ac_c1_max_update();
-
-    void ac_c2_max_update();
-
-    void ac_c3_max_update();
-
-    void ac_c4_max_update();
-
-    void ac_min_reset();
-
-    void ac_max_reset();
-
-    void ac_toggle(bool is_checked);
-
-    ///
-    // General UI Events - implemented in ui_events.cpp
-    void recenter_buffer();
-
-    void link_views_toggle();
-
-    void rotate_90_cw();
-
-    void rotate_90_ccw();
-
-    void decrease_float_precision();
-
-    void increase_float_precision();
-
-    void update_shift_precision() const;
-
-    // NOSONAR: Parameter must be non-const to match Qt signal signature
-    // currentItemChanged(QListWidgetItem*, QListWidgetItem*) which emits
-    // non-const pointers.
-    void buffer_selected(QListWidgetItem* item); // NOSONAR
-
-    void remove_selected_buffer();
-
-    void symbol_selected();
-
-    void symbol_completed(const QString& str);
-
-    void export_buffer();
-
-    void show_context_menu(const QPoint& pos);
-
-    void toggle_go_to_dialog() const;
-
-    void go_to_pixel(float x, float y);
 
     ///
     // Assorted methods - private - implemented in main_window.cpp
@@ -262,16 +198,6 @@ class MainWindow final : public QMainWindow
 
     [[nodiscard]] vec4 get_stage_coordinates(float pos_window_x,
                                              float pos_window_y) const;
-
-    ///
-    // Assorted methods - private - implemented in ui_events.cpp
-    void propagate_key_press_event(const QKeyEvent* key_event,
-                                   EventProcessCode& event_intercepted) const;
-
-    ///
-    // Message processing helpers - delegate to message_handler_
-    void repaint_image_list_icon(const std::string& variable_name_str);
-    void request_plot_buffer(std::string_view buffer_name);
 
     ///
     // Initialization - private - implemented in initialization.cpp

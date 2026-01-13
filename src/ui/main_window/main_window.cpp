@@ -106,21 +106,21 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             &UIEventHandler::plotBufferRequested,
             this,
             [this](const QString& buffer_name) {
-                request_plot_buffer(
+                message_handler_->request_plot_buffer(
                     std::string_view(buffer_name.toLocal8Bit().constData()));
             });
     connect(event_handler_.get(),
             &UIEventHandler::acMinLabelsResetRequested,
             this,
-            &MainWindow::reset_ac_min_labels);
+            [this]() { ac_controller_->reset_min_labels(); });
     connect(event_handler_.get(),
             &UIEventHandler::acMaxLabelsResetRequested,
             this,
-            &MainWindow::reset_ac_max_labels);
+            [this]() { ac_controller_->reset_max_labels(); });
     connect(event_handler_.get(),
             &UIEventHandler::shiftPrecisionUpdateRequested,
             this,
-            &MainWindow::update_shift_precision);
+            [this]() { event_handler_->update_shift_precision(); });
     connect(event_handler_.get(),
             &UIEventHandler::settingsPersistenceRequested,
             this,
@@ -130,11 +130,11 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     connect(message_handler_.get(),
             &MessageHandler::acMinLabelsResetRequested,
             this,
-            &MainWindow::reset_ac_min_labels);
+            [this]() { ac_controller_->reset_min_labels(); });
     connect(message_handler_.get(),
             &MessageHandler::acMaxLabelsResetRequested,
             this,
-            &MainWindow::reset_ac_max_labels);
+            [this]() { ac_controller_->reset_max_labels(); });
     connect(message_handler_.get(),
             &MessageHandler::settingsPersistenceRequested,
             this,
@@ -230,7 +230,7 @@ void MainWindow::loop()
     if (state_.request_icons_update) {
 
         for (const auto& name : buffer_data_.stages | std::views::keys) {
-            repaint_image_list_icon(name);
+            message_handler_->repaint_image_list_icon(name);
         }
 
         state_.request_icons_update = false;
