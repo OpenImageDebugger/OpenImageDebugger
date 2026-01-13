@@ -328,7 +328,7 @@ void UIEventHandler::rotate_90_ccw()
 }
 
 
-void UIEventHandler::buffer_selected(QListWidgetItem* item)
+void UIEventHandler::buffer_selected(const QListWidgetItem* item)
 {
     if (item == nullptr) {
         return;
@@ -405,9 +405,13 @@ void UIEventHandler::symbol_completed(const QString& str)
 void UIEventHandler::export_buffer(const QString& buffer_name)
 {
     const auto lock = std::unique_lock{deps_.ui_mutex};
-    const auto stage =
-        deps_.buffer_data.stages.find(buffer_name.toStdString())->second;
+    const auto stage_it =
+        deps_.buffer_data.stages.find(buffer_name.toStdString());
+    if (stage_it == deps_.buffer_data.stages.end()) {
+        return;
+    }
 
+    const auto stage      = stage_it->second;
     const auto buffer_obj = stage->get_game_object("buffer");
     if (!buffer_obj.has_value()) {
         return;

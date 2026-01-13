@@ -325,18 +325,28 @@ void MessageHandler::request_plot_buffer(std::string_view buffer_name)
 std::string MessageHandler::get_type_label(const int type, const int channels)
 {
     auto result = std::stringstream{};
-    if (type == static_cast<int>(BufferType::Float32)) {
+    switch (static_cast<BufferType>(type)) {
+    case BufferType::Float32:
         result << "float32";
-    } else if (type == static_cast<int>(BufferType::UnsignedByte)) {
+        break;
+    case BufferType::UnsignedByte:
         result << "uint8";
-    } else if (type == static_cast<int>(BufferType::Short)) {
+        break;
+    case BufferType::Short:
         result << "int16";
-    } else if (type == static_cast<int>(BufferType::UnsignedShort)) {
+        break;
+    case BufferType::UnsignedShort:
         result << "uint16";
-    } else if (type == static_cast<int>(BufferType::Int32)) {
+        break;
+    case BufferType::Int32:
         result << "int32";
-    } else if (type == static_cast<int>(BufferType::Float64)) {
+        break;
+    case BufferType::Float64:
         result << "float64";
+        break;
+    default:
+        result << "unknown";
+        break;
     }
     result << "x" << channels;
 
