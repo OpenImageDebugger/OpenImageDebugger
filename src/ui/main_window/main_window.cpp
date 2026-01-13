@@ -127,8 +127,10 @@ void MainWindow::loop()
     const auto lock = std::unique_lock{ui_mutex_};
     if (state_.completer_updated) {
         // Update auto-complete suggestion list
+        // Use last_known_available_vars because available_vars gets cleared
+        // by decode_incoming_messages() before we can use it here
         ui_components_.symbol_completer->update_symbol_list(
-            buffer_data_.available_vars);
+            buffer_data_.last_known_available_vars);
         state_.completer_updated = false;
     }
 
