@@ -41,6 +41,7 @@
 #include "math/linear_algebra.h"
 #include "ui/controllers/auto_contrast_controller.h"
 #include "ui/go_to_widget.h"
+#include "ui/messaging/message_handler.h"
 #include "ui/symbol_completer.h"
 #include "ui_main_window.h"
 #include "visualization/stage.h"
@@ -231,6 +232,7 @@ class MainWindow final : public QMainWindow
     double render_framerate_{};
     QString default_export_suffix_{};
     std::unique_ptr<AutoContrastController> ac_controller_{};
+    std::unique_ptr<MessageHandler> message_handler_{};
     // Thread safety: All access to buffer_data_ and state_ must be protected by
     // ui_mutex_. This mutex is recursive to allow nested locking when helper
     // methods are called from already-locked contexts (e.g.,
@@ -265,23 +267,8 @@ class MainWindow final : public QMainWindow
                                    EventProcessCode& event_intercepted) const;
 
     ///
-    // Communication with debugger bridge
-    void decode_set_available_symbols();
-
-    void respond_get_observed_symbols();
-
-    [[nodiscard]] QListWidgetItem*
-    find_image_list_item(const std::string& variable_name_str) const;
-
+    // Message processing helpers - delegate to message_handler_
     void repaint_image_list_icon(const std::string& variable_name_str);
-
-    void update_image_list_label(const std::string& variable_name_str,
-                                 const std::string& label_str) const;
-
-    void decode_plot_buffer_contents();
-
-    void decode_incoming_messages();
-
     void request_plot_buffer(std::string_view buffer_name);
 
     ///

@@ -48,6 +48,7 @@ set(SOURCES
     ui/main_window/main_window.cpp
     ui/main_window/message_processing.cpp
     ui/main_window/ui_events.cpp
+    ui/messaging/message_handler.cpp
     ui/symbol_completer.cpp
     ui/symbol_search_input.cpp
     visualization/components/background.cpp
