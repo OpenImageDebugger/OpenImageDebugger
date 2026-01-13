@@ -201,10 +201,10 @@ class OpenImageDebuggerWindow(object):
             count = len(sorted_observable_symbols)
             
             # Encode all strings to bytes and keep references to prevent GC
-            encoded_symbols = []
-            for symbol in sorted_observable_symbols:
-                encoded = symbol.encode('utf-8') if isinstance(symbol, str) else symbol
-                encoded_symbols.append(encoded)
+            encoded_symbols = [
+                symbol.encode('utf-8') if isinstance(symbol, str) else symbol
+                for symbol in sorted_observable_symbols
+            ]
             
             # Create array of C strings
             c_string_array = (ctypes.c_char_p * count)()
@@ -218,14 +218,11 @@ class OpenImageDebuggerWindow(object):
             self._symbol_array_refs.append(encoded_symbols)
             
             self._lib.oid_set_available_symbols_safe(
-                self._native_handler,
-                c_string_array,
-                count)
+                self._native_handler, c_string_array, count)
         else:
             # Non-LLDB mode: use original function with Python list
             self._lib.oid_set_available_symbols(
-                self._native_handler,
-                sorted_observable_symbols)
+                self._native_handler, sorted_observable_symbols)
 
     def run_event_loop(self):
         """

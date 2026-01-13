@@ -54,12 +54,9 @@ void MainWindow::decode_set_available_symbols()
         // Plot buffer if it was available in the previous session
         // (either as a plotted buffer or as an available variable)
         const auto symbol_std_str = symbol_value.toStdString();
-        const bool was_plotted =
-            buffer_data_.previous_session_buffers.contains(symbol_std_str);
-        const bool was_available =
+        if (buffer_data_.previous_session_buffers.contains(symbol_std_str) ||
             buffer_data_.previous_session_available_vars.contains(
-                symbol_std_str);
-        if (was_plotted || was_available) {
+                symbol_std_str)) {
             request_plot_buffer(symbol_std_str);
         }
     }
