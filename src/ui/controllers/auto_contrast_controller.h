@@ -23,87 +23,56 @@
  * IN THE SOFTWARE.
  */
 
-#include "main_window.h"
+#ifndef AUTO_CONTRAST_CONTROLLER_H_
+#define AUTO_CONTRAST_CONTROLLER_H_
 
+#include <mutex>
 
 namespace oid
 {
 
-void MainWindow::reset_ac_min_labels() const
+struct BufferData;
+struct UIComponents;
+struct WindowState;
+
+class AutoContrastController
 {
-    ac_controller_->reset_min_labels();
-}
+  public:
+    struct Dependencies
+    {
+        std::recursive_mutex& ui_mutex;
+        BufferData& buffer_data;
+        WindowState& state;
+        UIComponents& ui_components;
+    };
 
+    explicit AutoContrastController(Dependencies deps);
 
-void MainWindow::reset_ac_max_labels() const
-{
-    ac_controller_->reset_max_labels();
-}
+    void reset_min_labels() const;
+    void reset_max_labels() const;
 
+    void ac_c1_min_update();
+    void ac_c2_min_update();
+    void ac_c3_min_update();
+    void ac_c4_min_update();
 
-void MainWindow::ac_c1_min_update()
-{
-    ac_controller_->ac_c1_min_update();
-}
+    void ac_c1_max_update();
+    void ac_c2_max_update();
+    void ac_c3_max_update();
+    void ac_c4_max_update();
 
+    void ac_min_reset();
+    void ac_max_reset();
 
-void MainWindow::ac_c2_min_update()
-{
-    ac_controller_->ac_c2_min_update();
-}
+    void ac_toggle(bool is_checked);
 
+  private:
+    Dependencies deps_;
 
-void MainWindow::ac_c3_min_update()
-{
-    ac_controller_->ac_c3_min_update();
-}
-
-
-void MainWindow::ac_c4_min_update()
-{
-    ac_controller_->ac_c4_min_update();
-}
-
-
-void MainWindow::ac_c1_max_update()
-{
-    ac_controller_->ac_c1_max_update();
-}
-
-
-void MainWindow::ac_c2_max_update()
-{
-    ac_controller_->ac_c2_max_update();
-}
-
-
-void MainWindow::ac_c3_max_update()
-{
-    ac_controller_->ac_c3_max_update();
-}
-
-
-void MainWindow::ac_c4_max_update()
-{
-    ac_controller_->ac_c4_max_update();
-}
-
-
-void MainWindow::ac_min_reset()
-{
-    ac_controller_->ac_min_reset();
-}
-
-
-void MainWindow::ac_max_reset()
-{
-    ac_controller_->ac_max_reset();
-}
-
-
-void MainWindow::ac_toggle(const bool is_checked)
-{
-    ac_controller_->ac_toggle(is_checked);
-}
+    void set_ac_min_value(int idx, float value);
+    void set_ac_max_value(int idx, float value);
+};
 
 } // namespace oid
+
+#endif // AUTO_CONTRAST_CONTROLLER_H_
