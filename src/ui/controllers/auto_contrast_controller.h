@@ -46,7 +46,7 @@ class AutoContrastController
         UIComponents& ui_components;
     };
 
-    explicit AutoContrastController(Dependencies deps);
+    explicit AutoContrastController(const Dependencies& deps);
 
     void reset_min_labels() const;
     void reset_max_labels() const;
@@ -71,6 +71,8 @@ class AutoContrastController
 
     void set_ac_min_value(int idx, float value);
     void set_ac_max_value(int idx, float value);
+    void set_ac_value(int idx, float value, bool is_min);
+    void reset_color_values(bool is_min);
 };
 
 } // namespace oid

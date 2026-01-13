@@ -85,7 +85,7 @@ class UIEventHandler
     void rotate_90_cw();
     void rotate_90_ccw();
 
-    void buffer_selected(QListWidgetItem* item);
+    void buffer_selected(const QListWidgetItem* item);
     void remove_selected_buffer();
     void symbol_selected();
     void symbol_completed(const QString& str);
