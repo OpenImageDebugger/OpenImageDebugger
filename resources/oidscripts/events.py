@@ -23,47 +23,7 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
         Retrieve the list of available symbols and provide it to the OID window
         for autocompleting.
         """
-        # #region agent log
-        import json
-        import os
-        log_path = "/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log"
-        try:
-            with open(log_path, "a") as log:
-                entry = {
-                    "sessionId": "debug-session",
-                    "runId": "run1",
-                    "hypothesisId": "A",
-                    "location": "events.py:21",
-                    "message": "_set_symbol_complete_list entry",
-                    "data": {},
-                    "timestamp": int(time.time() * 1000)
-                }
-                log.write(json.dumps(entry) + "\n")
-        except Exception:
-            pass
-        # #endregion
-
         observable_symbols = list(self._debugger.get_available_symbols())
-
-        # #region agent log
-        try:
-            with open(log_path, "a") as log:
-                entry = {
-                    "sessionId": "debug-session",
-                    "runId": "run1",
-                    "hypothesisId": "A",
-                    "location": "events.py:30",
-                    "message": "_set_symbol_complete_list after get_available_symbols",
-                    "data": {
-                        "symbol_count": len(observable_symbols),
-                        "first_5_symbols": ", ".join(list(observable_symbols)[:5])
-                    },
-                    "timestamp": int(time.time() * 1000)
-                }
-                log.write(json.dumps(entry) + "\n")
-        except Exception:
-            pass
-        # #endregion
 
         if 'lldb' in sys.modules:
             from oidscripts.oidwindow import DeferredSymbolListSetter
@@ -82,26 +42,6 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
         The debugger has stopped (e.g. a breakpoint was hit). We must list all
         available buffers and pass it to the Open Image Debugger window.
         """
-        # #region agent log
-        import json
-        import os
-        log_path = "/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log"
-        try:
-            with open(log_path, "a") as log:
-                entry = {
-                    "sessionId": "debug-session",
-                    "runId": "run1",
-                    "hypothesisId": "A",
-                    "location": "events.py:40",
-                    "message": "stop_handler called",
-                    "data": {},
-                    "timestamp": int(time.time() * 1000)
-                }
-                log.write(json.dumps(entry) + "\n")
-        except Exception:
-            pass
-        # #endregion
-
         if not self._window.is_ready():
             max_wait = 50
             waited = 0

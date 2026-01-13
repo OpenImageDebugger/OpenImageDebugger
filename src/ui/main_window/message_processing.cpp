@@ -28,13 +28,9 @@
 
 #include <bit>
 #include <iostream>
-#include <fstream>
-#include <sstream>
 #include <memory>
 #include <ranges>
 #include <vector>
-#include <QString>
-#include <QDateTime>
 
 #include "ui_main_window.h"
 
@@ -43,29 +39,9 @@ namespace oid
 
 void MainWindow::decode_set_available_symbols()
 {
-    // #region agent log
-    {
-        std::ofstream log("/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log", std::ios::app);
-        std::stringstream ss;
-        ss << "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A\",\"location\":\"message_processing.cpp:40\",\"message\":\"decode_set_available_symbols entry\",\"data\":{},\"timestamp\":" << QDateTime::currentMSecsSinceEpoch() << "}\n";
-        log << ss.str();
-    }
-    // #endregion
-
     const auto lock      = std::unique_lock{ui_mutex_};
     auto message_decoder = MessageDecoder{&socket_};
     message_decoder.read<QStringList, QString>(buffer_data_.available_vars);
-
-    // #region agent log
-    {
-        std::ofstream log("/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log", std::ios::app);
-        QString first5 = buffer_data_.available_vars.mid(0, 5).join(", ");
-        first5.replace("\"", "\\\"").replace("\n", "\\n");
-        std::stringstream ss;
-        ss << "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A\",\"location\":\"message_processing.cpp:48\",\"message\":\"decode_set_available_symbols after read\",\"data\":{\"symbol_count\":" << buffer_data_.available_vars.size() << ",\"first_5_symbols\":\"" << first5.toStdString() << "\"},\"timestamp\":" << QDateTime::currentMSecsSinceEpoch() << "}\n";
-        log << ss.str();
-    }
-    // #endregion
 
     // Store for persistence (available_vars gets cleared in
     // decode_incoming_messages)
@@ -86,15 +62,6 @@ void MainWindow::decode_set_available_symbols()
     }
 
     state_.completer_updated = true;
-
-    // #region agent log
-    {
-        std::ofstream log("/Users/bruno/ws/OpenImageDebugger/.cursor/debug.log", std::ios::app);
-        std::stringstream ss;
-        ss << "{\"sessionId\":\"debug-session\",\"runId\":\"run1\",\"hypothesisId\":\"A\",\"location\":\"message_processing.cpp:64\",\"message\":\"decode_set_available_symbols exit\",\"data\":{\"completer_updated\":true},\"timestamp\":" << QDateTime::currentMSecsSinceEpoch() << "}\n";
-        log << ss.str();
-    }
-    // #endregion
 }
 
 
