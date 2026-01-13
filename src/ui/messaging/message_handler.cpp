@@ -40,7 +40,6 @@
 
 #include "ipc/message_exchange.h"
 #include "ipc/raw_data_decode.h"
-#include "ui/controllers/auto_contrast_controller.h"
 #include "ui/main_window/main_window.h"
 #include "visualization/components/buffer.h"
 #include "visualization/stage.h"
@@ -49,8 +48,9 @@
 namespace oid
 {
 
-MessageHandler::MessageHandler(Dependencies deps)
-    : deps_{std::move(deps)}
+MessageHandler::MessageHandler(Dependencies deps, QObject* parent)
+    : QObject{parent}
+    , deps_{std::move(deps)}
 {
 }
 
@@ -204,7 +204,7 @@ void MessageHandler::decode_plot_buffer_contents()
     if (auto buffer_stage = deps_.buffer_data.stages.find(variable_name_str);
         buffer_stage == deps_.buffer_data.stages.end()) {
 
-        auto stage = std::make_shared<Stage>(deps_.main_window);
+        auto stage = deps_.create_stage();
         if (const BufferParams params{.buffer           = buff_span,
                                       .buffer_width_i   = buff_width,
                                       .buffer_height_i  = buff_height,
@@ -251,11 +251,11 @@ void MessageHandler::decode_plot_buffer_contents()
     update_image_list_label(variable_name_str, label_str);
 
     if (!deps_.buffer_data.currently_selected_stage.expired()) {
-        deps_.ac_controller.reset_min_labels();
-        deps_.ac_controller.reset_max_labels();
+        emit acMinLabelsResetRequested();
+        emit acMaxLabelsResetRequested();
     }
 
-    deps_.persist_settings_deferred();
+    emit settingsPersistenceRequested();
 
     deps_.state.request_render_update = true;
 }
