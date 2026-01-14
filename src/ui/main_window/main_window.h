@@ -162,6 +162,9 @@ class MainWindow final : public QMainWindow
 
     void persist_settings_deferred();
 
+    // Pixel format control
+    void pixel_format_changed(const QString& format);
+
   private:
     WindowState state_{};
     UIComponents ui_components_{};

@@ -375,6 +375,21 @@ void MainWindowInitializer::initialize_toolbar() const
                      &deps_.main_window,
                      [this]() { deps_.event_handler.toggle_go_to_dialog(); });
 
+    // Initialize pixel format selector
+    deps_.ui_components.ui->pixelFormatSelector->addItem("BGRA");
+    deps_.ui_components.ui->pixelFormatSelector->addItem("RGBA");
+    deps_.ui_components.ui->pixelFormatSelector->addItem("channel0");
+    deps_.ui_components.ui->pixelFormatSelector->addItem("channel1");
+    deps_.ui_components.ui->pixelFormatSelector->addItem("channel2");
+    deps_.ui_components.ui->pixelFormatSelector->setCurrentText("BGRA");
+
+    QObject::connect(deps_.ui_components.ui->pixelFormatSelector,
+                     &QComboBox::currentTextChanged,
+                     &deps_.main_window,
+                     [this](const QString& format) {
+                         deps_.main_window.pixel_format_changed(format);
+                     });
+
     deps_.ui_components.ui->increase_float_precision->setEnabled(false);
     deps_.ui_components.ui->decrease_float_precision->setEnabled(false);
 }

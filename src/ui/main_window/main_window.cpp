@@ -49,6 +49,69 @@ Q_DECLARE_METATYPE(QList<QString>) // namespace oid
 namespace oid
 {
 
+namespace
+{
+
+enum class PixelDisplayFormat { BGRA, RGBA, Channel0, Channel1, Channel2 };
+
+// Convert QString to PixelDisplayFormat enum
+PixelDisplayFormat string_to_format(const QString& format_str)
+{
+    const auto format_lower = format_str.toLower().toStdString();
+    if (format_lower == "bgra") {
+        return PixelDisplayFormat::BGRA;
+    }
+    if (format_lower == "rgba") {
+        return PixelDisplayFormat::RGBA;
+    }
+    if (format_lower == "channel0") {
+        return PixelDisplayFormat::Channel0;
+    }
+    if (format_lower == "channel1") {
+        return PixelDisplayFormat::Channel1;
+    }
+    if (format_lower == "channel2") {
+        return PixelDisplayFormat::Channel2;
+    }
+    // Default fallback
+    return PixelDisplayFormat::BGRA;
+}
+
+// Apply pixel display format to buffer
+void apply_format(Buffer& buffer, PixelDisplayFormat format)
+{
+    switch (format) {
+    case PixelDisplayFormat::Channel0:
+        if (buffer.channels > 0) {
+            buffer.set_display_channel_mode(1);
+            buffer.set_pixel_layout("rrra");
+        }
+        break;
+    case PixelDisplayFormat::Channel1:
+        if (buffer.channels > 1) {
+            buffer.set_display_channel_mode(1);
+            buffer.set_pixel_layout("ggga");
+        }
+        break;
+    case PixelDisplayFormat::Channel2:
+        if (buffer.channels > 2) {
+            buffer.set_display_channel_mode(1);
+            buffer.set_pixel_layout("bbba");
+        }
+        break;
+    case PixelDisplayFormat::BGRA:
+        buffer.set_display_channel_mode(-1);
+        buffer.set_pixel_layout("bgra");
+        break;
+    case PixelDisplayFormat::RGBA:
+        buffer.set_display_channel_mode(-1);
+        buffer.set_pixel_layout("rgba");
+        break;
+    }
+}
+
+} // namespace
+
 MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     : QMainWindow{parent}
     , host_settings_{std::move(host_settings)}
@@ -490,18 +553,64 @@ void MainWindow::persist_settings_deferred()
 }
 
 
+void MainWindow::pixel_format_changed(const QString& format)
+{
+    const auto lock = std::unique_lock{ui_mutex_};
+
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (!stage) {
+        return;
+    }
+
+    const auto buffer_obj = stage->get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
+
+    const auto buffer_opt =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (!buffer_opt.has_value()) {
+        return;
+    }
+
+    auto& buffer = buffer_opt->get();
+
+    // Convert string to enum and apply format
+    const auto format_enum = string_to_format(format);
+    apply_format(buffer, format_enum);
+
+    state_.request_render_update = true;
+}
+
+
 void MainWindow::set_currently_selected_stage(
     const std::shared_ptr<Stage>& stage)
 {
     const auto lock                       = std::unique_lock{ui_mutex_};
     buffer_data_.currently_selected_stage = stage;
-    state_.request_render_update          = true;
+
+    // Enable pixel format dropdown only if channels >= 3
+    bool enable_dropdown = false;
+    if (stage) {
+        const auto buffer_obj = stage->get_game_object("buffer");
+        if (buffer_obj.has_value()) {
+            const auto buffer_opt =
+                buffer_obj->get().get_component<Buffer>("buffer_component");
+            if (buffer_opt.has_value()) {
+                enable_dropdown = buffer_opt->get().channels >= 3;
+            }
+        }
+    }
+    ui_components_.ui->pixelFormatSelector->setEnabled(enable_dropdown);
+
+    state_.request_render_update = true;
 }
 
 void MainWindow::set_currently_selected_stage(std::nullptr_t)
 {
     const auto lock = std::unique_lock{ui_mutex_};
     buffer_data_.currently_selected_stage.reset();
+    ui_components_.ui->pixelFormatSelector->setEnabled(false);
     state_.request_render_update = true;
 }
 

@@ -90,7 +90,7 @@ class ShaderProgram
 
     std::map<std::string, GLuint, std::less<>> uniforms_{};
 
-    std::string pixel_layout_{};
+    std::string pixel_layout_{"rgba"};
 
     [[nodiscard]] GLuint compile(GLuint type, GLchar const* source) const;
 
@@ -102,6 +102,8 @@ class ShaderProgram
                        const std::string& pixel_layout) const;
 
     [[nodiscard]] const char* get_texel_format_define() const;
+
+    [[nodiscard]] const char* get_source_channel_define() const;
 };
 
 } // namespace oid

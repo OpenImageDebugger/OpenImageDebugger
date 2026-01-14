@@ -88,8 +88,7 @@ bool ShaderProgram::create(std::string_view v_source,
     }
 
     texel_format_ = texel_format;
-    memcpy(pixel_layout_.data(), pixel_layout.data(), 4);
-    pixel_layout_[4] = '\0';
+    pixel_layout_ = pixel_layout.substr(0, 4);
     // Convert std::string_view to std::string for OpenGL API (requires
     // null-terminated strings)
     const auto vertex_shader =
@@ -201,17 +200,38 @@ const char* ShaderProgram::get_texel_format_define() const
 }
 
 
+const char* ShaderProgram::get_source_channel_define() const
+{
+    // Determine which channel to read from the texture based on
+    // pixel_layout_[0] This is used in single-channel display mode (FORMAT_R)
+    if (!pixel_layout_.empty()) {
+        switch (pixel_layout_[0]) {
+        case 'g':
+            return "#define SOURCE_CHANNEL ggga\n";
+        case 'b':
+            return "#define SOURCE_CHANNEL bbba\n";
+        case 'a':
+            return "#define SOURCE_CHANNEL aaaa\n";
+        default:
+            break;
+        }
+    }
+    return "#define SOURCE_CHANNEL rrra\n";
+}
+
+
 GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const
 {
     const auto shader = gl_canvas_.glCreateShader(type);
 
     auto src = std::array{"#version 120\n",
                           get_texel_format_define(),
+                          get_source_channel_define(),
                           "#define PIXEL_LAYOUT ",
                           pixel_layout_.data(),
                           source};
 
-    gl_canvas_.glShaderSource(shader, 5, src.data(), nullptr);
+    gl_canvas_.glShaderSource(shader, 6, src.data(), nullptr);
     gl_canvas_.glCompileShader(shader);
 
     auto compiled = GLint{};

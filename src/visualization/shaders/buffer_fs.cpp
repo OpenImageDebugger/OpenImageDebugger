@@ -41,8 +41,8 @@ void main()
     vec4 color;
 
 #if defined(FORMAT_R)
-    // Output color = grayscale
-    color = texture2D(sampler, uv).rrra;
+    // Output color = grayscale (or single channel based on SOURCE_CHANNEL)
+    color = texture2D(sampler, uv).SOURCE_CHANNEL;
     color.rgb = color.rgb * brightness_contrast[0].xxx +
                             brightness_contrast[1].xxx;
 #elif defined(FORMAT_RG)
