@@ -33,7 +33,9 @@
 #include <QScreen>
 #include <QSettings>
 
+#include "main_window_initializer.h"
 #include "math/linear_algebra.h"
+#include "settings_manager.h"
 #include "ui_main_window.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
@@ -86,6 +88,30 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
                                      default_export_suffix_,
                                      gl_canvas_ptr_},
         this);
+
+    // Initialize settings manager
+    settings_manager_ = std::make_unique<SettingsManager>(
+        SettingsManager::Dependencies{ui_mutex_,
+                                      state_,
+                                      ui_components_,
+                                      buffer_data_,
+                                      channel_names_,
+                                      render_framerate_,
+                                      default_export_suffix_,
+                                      *this});
+
+    // Initialize main window initializer
+    initializer_ = std::make_unique<MainWindowInitializer>(
+        MainWindowInitializer::Dependencies{state_,
+                                            ui_components_,
+                                            buffer_data_,
+                                            channel_names_,
+                                            host_settings_,
+                                            socket_,
+                                            *this,
+                                            *ac_controller_,
+                                            *event_handler_,
+                                            *settings_manager_});
 
     // Connect UIEventHandler signals to MainWindow slots
     connect(event_handler_.get(),
@@ -140,19 +166,11 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             this,
             &MainWindow::persist_settings_deferred);
 
-    initialize_settings();
-    initialize_ui_icons();
-    initialize_ui_signals();
-    initialize_timers();
-    initialize_symbol_completer();
-    initialize_left_pane();
-    initialize_auto_contrast_form();
-    initialize_toolbar();
-    initialize_status_bar();
-    initialize_visualization_pane();
-    initialize_go_to_widget();
-    initialize_shortcuts();
-    initialize_networking();
+    // Load settings (must be done before initialization)
+    settings_manager_->load_settings();
+
+    // Initialize UI components
+    initializer_->initialize();
 }
 
 
@@ -254,84 +272,7 @@ void MainWindow::request_icons_update()
 
 void MainWindow::persist_settings()
 {
-    using BufferExpiration = QPair<QString, QDateTime>;
-
-    auto settings = QSettings{QSettings::Format::IniFormat,
-                              QSettings::Scope::UserScope,
-                              "OpenImageDebugger"};
-
-    auto persisted_session_buffers = QList<BufferExpiration>{};
-
-    // Load previous session symbols
-    const auto previous_session_buffers_qlist =
-        settings.value("PreviousSession/buffers")
-            .value<QList<BufferExpiration>>();
-
-    const auto now             = QDateTime::currentDateTime();
-    const auto next_expiration = now.addDays(1);
-
-    const auto lock = std::unique_lock{ui_mutex_};
-    // Of the buffers not currently being visualized, only keep those whose
-    // timer hasn't expired yet and is not in the set of removed names
-    for (const auto& prev_buff : previous_session_buffers_qlist) {
-        const auto& [buff_name, timestamp] = prev_buff;
-        const auto buff_name_std_str       = buff_name.toStdString();
-
-        const auto being_viewed =
-            buffer_data_.held_buffers.contains(buff_name_std_str);
-        const auto was_removed =
-            buffer_data_.removed_buffer_names.contains(buff_name_std_str);
-
-        if (was_removed) {
-            buffer_data_.previous_session_buffers.erase(buff_name_std_str);
-        } else if (!being_viewed && timestamp >= now) {
-            persisted_session_buffers.append(prev_buff);
-        }
-    }
-
-    for (const auto& buffer : buffer_data_.held_buffers | std::views::keys) {
-        persisted_session_buffers.append(
-            BufferExpiration(buffer.c_str(), next_expiration));
-    }
-
-    // Write default suffix for buffer export
-    settings.setValue("Export/default_export_suffix", default_export_suffix_);
-
-    // Write maximum framerate
-    settings.setValue("Rendering/maximum_framerate", render_framerate_);
-
-    // Write previous session symbols
-    settings.setValue("PreviousSession/buffers",
-                      QVariant::fromValue(persisted_session_buffers));
-
-    // Write UI geometry.
-    settings.beginGroup("UI");
-    {
-        const auto listSizesInt = ui_components_.ui->splitter->sizes();
-
-        auto listSizesVariant = QList<QVariant>{};
-        for (const int size : listSizesInt) {
-            listSizesVariant.append(size);
-        }
-
-        settings.setValue("splitter", listSizesVariant);
-    }
-    settings.setValue("minmax_visible", ui_components_.ui->acEdit->isChecked());
-    settings.setValue("contrast_enabled",
-                      ui_components_.ui->acToggle->isChecked());
-    settings.setValue("link_views_enabled",
-                      ui_components_.ui->linkViewsToggle->isChecked());
-    settings.endGroup();
-
-    // Write window position/size
-    settings.beginGroup("MainWindow");
-    settings.setValue("size", size());
-    settings.setValue("pos", pos());
-    settings.endGroup();
-
-    settings.sync();
-
-    buffer_data_.removed_buffer_names.clear();
+    settings_manager_->persist_settings();
 }
 
 
@@ -480,7 +421,7 @@ std::string MainWindow::get_type_label(const BufferType type,
 
 void MainWindow::persist_settings_deferred()
 {
-    ui_components_.settings_persist_timer.start(100);
+    settings_manager_->persist_settings_deferred();
 }
 
 
