@@ -61,21 +61,10 @@ void MessageHandler::decode_set_available_symbols()
     message_decoder.read<QStringList, QString>(
         deps_.buffer_data.available_vars);
 
-    // Store for persistence (available_vars gets cleared in
-    // decode_incoming_messages)
-    deps_.buffer_data.last_known_available_vars =
-        deps_.buffer_data.available_vars;
-
-    // Trigger settings persistence to save available vars
-    emit settingsPersistenceRequested();
-
     for (const auto& symbol_value : deps_.buffer_data.available_vars) {
         // Plot buffer if it was available in the previous session
-        // (either as a plotted buffer or as an available variable)
         const auto symbol_std_str = symbol_value.toStdString();
         if (deps_.buffer_data.previous_session_buffers.contains(
-                symbol_std_str) ||
-            deps_.buffer_data.previous_session_available_vars.contains(
                 symbol_std_str)) {
             request_plot_buffer(symbol_std_str);
         }

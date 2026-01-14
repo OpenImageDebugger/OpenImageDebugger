@@ -90,10 +90,8 @@ struct BufferData
     std::map<std::string, std::vector<std::byte>, std::less<>> held_buffers{};
     std::map<std::string, std::shared_ptr<Stage>, std::less<>> stages{};
     std::set<std::string, std::less<>> previous_session_buffers{};
-    std::set<std::string, std::less<>> previous_session_available_vars{};
     std::set<std::string, std::less<>> removed_buffer_names{};
     QStringList available_vars{};
-    QStringList last_known_available_vars{}; // Store for persistence
     std::weak_ptr<Stage>
         currently_selected_stage{}; // Non-owning reference to selected stage
 };
