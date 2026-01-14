@@ -31,7 +31,6 @@
 #include <mutex>
 #include <set>
 #include <string>
-#include <string_view>
 
 #include <QLabel>
 #include <QSettings>
@@ -47,9 +46,12 @@
 #include "ui_main_window.h"
 #include "visualization/stage.h"
 
-
 namespace oid
 {
+
+class MainWindowInitializer;
+class SettingsApplier;
+class SettingsManager;
 
 namespace UIConstants
 {
@@ -157,10 +159,10 @@ class MainWindow final : public QMainWindow
 
     void request_icons_update();
 
-
-    ///
-    // Assorted methods - private - implemented in main_window.cpp
+    // Settings persistence - public for MainWindowInitializer
     void persist_settings();
+
+    void persist_settings_deferred();
 
   private:
     WindowState state_{};
@@ -173,6 +175,9 @@ class MainWindow final : public QMainWindow
     std::unique_ptr<AutoContrastController> ac_controller_{};
     std::unique_ptr<MessageHandler> message_handler_{};
     std::unique_ptr<UIEventHandler> event_handler_{};
+    std::unique_ptr<SettingsManager> settings_manager_{};
+    std::unique_ptr<SettingsApplier> settings_applier_{};
+    std::unique_ptr<MainWindowInitializer> initializer_{};
     // Thread safety: All access to buffer_data_ and state_ must be protected by
     // ui_mutex_. This mutex is recursive to allow nested locking when helper
     // methods are called from already-locked contexts (e.g.,
@@ -193,68 +198,13 @@ class MainWindow final : public QMainWindow
 
     static std::string get_type_label(BufferType type, int channels);
 
-    void persist_settings_deferred();
-
     void set_currently_selected_stage(const std::shared_ptr<Stage>& stage);
     void set_currently_selected_stage(std::nullptr_t); // Overload for clearing
 
     [[nodiscard]] vec4 get_stage_coordinates(float pos_window_x,
                                              float pos_window_y) const;
 
-    ///
-    // Initialization - private - implemented in initialization.cpp
-    void initialize_ui_icons() const;
-
-    void initialize_settings_ui_list_position(const QSettings& settings) const;
-
-    void initialize_settings_ui_splitter(const QSettings& settings) const;
-
-    void initialize_settings_ui_minmax_compact(const QSettings& settings) const;
-
-    static QString
-    initialize_settings_ui_colorspace_channel(const QChar& character);
-
-    void initialize_settings_ui_colorspace(const QSettings& settings);
-
-    void initialize_settings_ui_minmax_visible(const QSettings& settings) const;
-
-    void initialize_settings_ui_contrast_enabled(const QSettings& settings);
-
-    void initialize_settings_ui_link_views_enabled(const QSettings& settings);
-
-    void initialize_settings_ui(QSettings& settings);
-
-    void initialize_settings();
-
-    static void setFontIcon(QAbstractButton* ui_element,
-                            const wchar_t unicode_id[]);
-
-    static void setVectorIcon(QLabel* ui_element,
-                              const QString& icon_file_name,
-                              int width,
-                              int height);
-
-    void initialize_ui_signals() const;
-
-    void initialize_timers();
-
-    void initialize_shortcuts();
-
-    void initialize_symbol_completer();
-
-    void initialize_auto_contrast_form() const;
-
-    void initialize_toolbar() const;
-
-    void initialize_left_pane() const;
-
-    void initialize_status_bar();
-
-    void initialize_visualization_pane();
-
-    void initialize_go_to_widget();
-
-    void initialize_networking();
+    void connect_settings_signals() const;
 };
 
 } // namespace oid

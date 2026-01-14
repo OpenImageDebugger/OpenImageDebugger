@@ -33,7 +33,10 @@
 #include <QScreen>
 #include <QSettings>
 
+#include "main_window_initializer.h"
 #include "math/linear_algebra.h"
+#include "settings_applier.h"
+#include "settings_manager.h"
 #include "ui_main_window.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
@@ -86,6 +89,36 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
                                      default_export_suffix_,
                                      gl_canvas_ptr_},
         this);
+
+    // Initialize settings manager
+    settings_manager_ = std::make_unique<SettingsManager>(this);
+
+    // Initialize settings applier
+    settings_applier_ = std::make_unique<SettingsApplier>(
+        SettingsApplier::Dependencies{ui_mutex_,
+                                      state_,
+                                      ui_components_,
+                                      buffer_data_,
+                                      channel_names_,
+                                      render_framerate_,
+                                      default_export_suffix_,
+                                      *this},
+        this);
+
+    connect_settings_signals();
+
+    // Initialize main window initializer
+    initializer_ = std::make_unique<MainWindowInitializer>(
+        MainWindowInitializer::Dependencies{state_,
+                                            ui_components_,
+                                            buffer_data_,
+                                            channel_names_,
+                                            host_settings_,
+                                            socket_,
+                                            *this,
+                                            *ac_controller_,
+                                            *event_handler_,
+                                            *settings_manager_});
 
     // Connect UIEventHandler signals to MainWindow slots
     connect(event_handler_.get(),
@@ -140,19 +173,11 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             this,
             &MainWindow::persist_settings_deferred);
 
-    initialize_settings();
-    initialize_ui_icons();
-    initialize_ui_signals();
-    initialize_timers();
-    initialize_symbol_completer();
-    initialize_left_pane();
-    initialize_auto_contrast_form();
-    initialize_toolbar();
-    initialize_status_bar();
-    initialize_visualization_pane();
-    initialize_go_to_widget();
-    initialize_shortcuts();
-    initialize_networking();
+    // Load settings (must be done before initialization)
+    settings_manager_->load_settings();
+
+    // Initialize UI components
+    initializer_->initialize();
 }
 
 
@@ -254,118 +279,64 @@ void MainWindow::request_icons_update()
 
 void MainWindow::persist_settings()
 {
-    using BufferExpiration = QPair<QString, QDateTime>;
+    SettingsManager::DataCallbacks callbacks;
 
-    auto settings = QSettings{QSettings::Format::IniFormat,
-                              QSettings::Scope::UserScope,
-                              "OpenImageDebugger"};
+    // Window geometry
+    callbacks.getWindowSize = [this]() { return size(); };
+    callbacks.getWindowPos  = [this]() { return pos(); };
 
-    auto persisted_session_buffers = QList<BufferExpiration>{};
+    // UI state
+    callbacks.getSplitterSizes = [this]() {
+        return ui_components_.ui->splitter->sizes();
+    };
+    callbacks.getMinMaxVisible = [this]() {
+        return ui_components_.ui->acEdit->isChecked();
+    };
+    callbacks.getContrastEnabled = [this]() {
+        return ui_components_.ui->acToggle->isChecked();
+    };
+    callbacks.getLinkViewsEnabled = [this]() {
+        return ui_components_.ui->linkViewsToggle->isChecked();
+    };
 
-    // Load previous session symbols
-    const auto previous_session_buffers_qlist =
-        settings.value("PreviousSession/buffers")
-            .value<QList<BufferExpiration>>();
+    // Application state
+    callbacks.getRenderFramerate     = [this]() { return render_framerate_; };
+    callbacks.getDefaultExportSuffix = [this]() {
+        return default_export_suffix_;
+    };
 
-    const auto now             = QDateTime::currentDateTime();
-    const auto next_expiration = now.addDays(1);
-
-    const auto lock = std::unique_lock{ui_mutex_};
-    // Of the buffers not currently being visualized, only keep those whose
-    // timer hasn't expired yet and is not in the set of removed names
-    for (const auto& prev_buff : previous_session_buffers_qlist) {
-        const auto& [buff_name, timestamp] = prev_buff;
-        const auto buff_name_std_str       = buff_name.toStdString();
-
-        const auto being_viewed =
-            buffer_data_.held_buffers.contains(buff_name_std_str);
-        const auto was_removed =
-            buffer_data_.removed_buffer_names.contains(buff_name_std_str);
-
-        if (was_removed) {
-            buffer_data_.previous_session_buffers.erase(buff_name_std_str);
-        } else if (!being_viewed && timestamp >= now) {
-            persisted_session_buffers.append(prev_buff);
+    // Buffer data (with mutex protection)
+    callbacks.getCurrentBufferNames = [this]() {
+        const auto lock = std::unique_lock{ui_mutex_};
+        std::set<std::string, std::less<>> names;
+        for (const auto& buffer :
+             buffer_data_.held_buffers | std::views::keys) {
+            names.insert(buffer);
         }
-    }
-
-    for (const auto& buffer : buffer_data_.held_buffers | std::views::keys) {
-        persisted_session_buffers.append(
-            BufferExpiration(buffer.c_str(), next_expiration));
-    }
-
-    // Also persist available_vars (variables that were in autocomplete but
-    // not necessarily plotted)
-    auto persisted_available_vars = QList<BufferExpiration>{};
-    const auto previous_available_vars_qlist =
-        settings.value("PreviousSession/available_vars")
-            .value<QList<BufferExpiration>>();
-
-    // Keep expired available vars that haven't been removed
-    for (const auto& prev_var : previous_available_vars_qlist) {
-        const auto& [var_name, timestamp] = prev_var;
-        const auto var_name_std_str       = var_name.toStdString();
-
-        if (buffer_data_.removed_buffer_names.contains(var_name_std_str)) {
-            buffer_data_.previous_session_available_vars.erase(
-                var_name_std_str);
-        } else if (!buffer_data_.held_buffers.contains(var_name_std_str) &&
-                   timestamp >= now) {
-            persisted_available_vars.append(prev_var);
+        return names;
+    };
+    callbacks.getPreviousSessionBuffers = [this]() {
+        const auto lock = std::unique_lock{ui_mutex_};
+        std::set<std::string, std::less<>> result;
+        for (const auto& name : buffer_data_.previous_session_buffers) {
+            result.insert(name);
         }
-    }
-
-    // Add current available_vars (use last_known_available_vars since
-    // available_vars may be cleared by decode_incoming_messages)
-    for (const auto& var : buffer_data_.last_known_available_vars) {
-        const auto var_std_str = var.toStdString();
-        if (!buffer_data_.held_buffers.contains(var_std_str)) {
-            persisted_available_vars.append(
-                BufferExpiration(var, next_expiration));
+        return result;
+    };
+    callbacks.getRemovedBufferNames = [this]() {
+        const auto lock = std::unique_lock{ui_mutex_};
+        std::set<std::string, std::less<>> result;
+        for (const auto& name : buffer_data_.removed_buffer_names) {
+            result.insert(name);
         }
-    }
+        return result;
+    };
+    callbacks.clearRemovedBufferNames = [this]() {
+        const auto lock = std::unique_lock{ui_mutex_};
+        buffer_data_.removed_buffer_names.clear();
+    };
 
-    settings.setValue("PreviousSession/available_vars",
-                      QVariant::fromValue(persisted_available_vars));
-
-    // Write default suffix for buffer export
-    settings.setValue("Export/default_export_suffix", default_export_suffix_);
-
-    // Write maximum framerate
-    settings.setValue("Rendering/maximum_framerate", render_framerate_);
-
-    // Write previous session symbols
-    settings.setValue("PreviousSession/buffers",
-                      QVariant::fromValue(persisted_session_buffers));
-
-    // Write UI geometry.
-    settings.beginGroup("UI");
-    {
-        const auto listSizesInt = ui_components_.ui->splitter->sizes();
-
-        auto listSizesVariant = QList<QVariant>{};
-        for (const int size : listSizesInt) {
-            listSizesVariant.append(size);
-        }
-
-        settings.setValue("splitter", listSizesVariant);
-    }
-    settings.setValue("minmax_visible", ui_components_.ui->acEdit->isChecked());
-    settings.setValue("contrast_enabled",
-                      ui_components_.ui->acToggle->isChecked());
-    settings.setValue("link_views_enabled",
-                      ui_components_.ui->linkViewsToggle->isChecked());
-    settings.endGroup();
-
-    // Write window position/size
-    settings.beginGroup("MainWindow");
-    settings.setValue("size", size());
-    settings.setValue("pos", pos());
-    settings.endGroup();
-
-    settings.sync();
-
-    buffer_data_.removed_buffer_names.clear();
+    settings_manager_->persist_settings(callbacks);
 }
 
 
@@ -514,7 +485,8 @@ std::string MainWindow::get_type_label(const BufferType type,
 
 void MainWindow::persist_settings_deferred()
 {
-    ui_components_.settings_persist_timer.start(100);
+    using namespace oid::SettingsConstants;
+    ui_components_.settings_persist_timer.start(SETTINGS_PERSIST_DELAY_MS);
 }
 
 
@@ -531,6 +503,61 @@ void MainWindow::set_currently_selected_stage(std::nullptr_t)
     const auto lock = std::unique_lock{ui_mutex_};
     buffer_data_.currently_selected_stage.reset();
     state_.request_render_update = true;
+}
+
+void MainWindow::connect_settings_signals() const
+{
+    const auto* manager = settings_manager_.get();
+    const auto* applier = settings_applier_.get();
+
+    connect(manager,
+            &SettingsManager::renderingSettingsLoaded,
+            applier,
+            &SettingsApplier::apply_rendering_settings);
+    connect(manager,
+            &SettingsManager::exportSettingsLoaded,
+            applier,
+            &SettingsApplier::apply_export_settings);
+    connect(manager,
+            &SettingsManager::windowGeometryLoaded,
+            applier,
+            &SettingsApplier::apply_window_geometry);
+    connect(manager,
+            &SettingsManager::windowResizeRestoreRequested,
+            applier,
+            &SettingsApplier::restore_window_resize);
+    connect(manager,
+            &SettingsManager::uiListPositionLoaded,
+            applier,
+            &SettingsApplier::apply_ui_list_position);
+    connect(manager,
+            &SettingsManager::uiSplitterSizesLoaded,
+            applier,
+            &SettingsApplier::apply_ui_splitter_sizes);
+    connect(manager,
+            &SettingsManager::uiMinMaxCompactLoaded,
+            applier,
+            &SettingsApplier::apply_ui_minmax_compact);
+    connect(manager,
+            &SettingsManager::uiColorspaceLoaded,
+            applier,
+            &SettingsApplier::apply_ui_colorspace);
+    connect(manager,
+            &SettingsManager::uiMinMaxVisibleLoaded,
+            applier,
+            &SettingsApplier::apply_ui_minmax_visible);
+    connect(manager,
+            &SettingsManager::uiContrastEnabledLoaded,
+            applier,
+            &SettingsApplier::apply_ui_contrast_enabled);
+    connect(manager,
+            &SettingsManager::uiLinkViewsEnabledLoaded,
+            applier,
+            &SettingsApplier::apply_ui_link_views_enabled);
+    connect(manager,
+            &SettingsManager::previousSessionBuffersLoaded,
+            applier,
+            &SettingsApplier::apply_previous_session_buffers);
 }
 
 } // namespace oid
