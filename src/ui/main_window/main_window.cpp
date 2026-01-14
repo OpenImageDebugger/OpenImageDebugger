@@ -35,6 +35,7 @@
 
 #include "main_window_initializer.h"
 #include "math/linear_algebra.h"
+#include "settings_applier.h"
 #include "settings_manager.h"
 #include "ui_main_window.h"
 #include "visualization/components/buffer_values.h"
@@ -90,15 +91,21 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
         this);
 
     // Initialize settings manager
-    settings_manager_ = std::make_unique<SettingsManager>(
-        SettingsManager::Dependencies{ui_mutex_,
+    settings_manager_ = std::make_unique<SettingsManager>(this);
+
+    // Initialize settings applier
+    settings_applier_ = std::make_unique<SettingsApplier>(
+        SettingsApplier::Dependencies{ui_mutex_,
                                       state_,
                                       ui_components_,
                                       buffer_data_,
                                       channel_names_,
                                       render_framerate_,
                                       default_export_suffix_,
-                                      *this});
+                                      *this},
+        this);
+
+    connect_settings_signals();
 
     // Initialize main window initializer
     initializer_ = std::make_unique<MainWindowInitializer>(
@@ -272,7 +279,64 @@ void MainWindow::request_icons_update()
 
 void MainWindow::persist_settings()
 {
-    settings_manager_->persist_settings();
+    SettingsManager::DataCallbacks callbacks;
+
+    // Window geometry
+    callbacks.getWindowSize = [this]() { return size(); };
+    callbacks.getWindowPos  = [this]() { return pos(); };
+
+    // UI state
+    callbacks.getSplitterSizes = [this]() {
+        return ui_components_.ui->splitter->sizes();
+    };
+    callbacks.getMinMaxVisible = [this]() {
+        return ui_components_.ui->acEdit->isChecked();
+    };
+    callbacks.getContrastEnabled = [this]() {
+        return ui_components_.ui->acToggle->isChecked();
+    };
+    callbacks.getLinkViewsEnabled = [this]() {
+        return ui_components_.ui->linkViewsToggle->isChecked();
+    };
+
+    // Application state
+    callbacks.getRenderFramerate     = [this]() { return render_framerate_; };
+    callbacks.getDefaultExportSuffix = [this]() {
+        return default_export_suffix_;
+    };
+
+    // Buffer data (with mutex protection)
+    callbacks.getCurrentBufferNames = [this]() {
+        const auto lock = std::unique_lock{ui_mutex_};
+        std::set<std::string, std::less<>> names;
+        for (const auto& buffer :
+             buffer_data_.held_buffers | std::views::keys) {
+            names.insert(buffer);
+        }
+        return names;
+    };
+    callbacks.getPreviousSessionBuffers = [this]() {
+        const auto lock = std::unique_lock{ui_mutex_};
+        std::set<std::string, std::less<>> result;
+        for (const auto& name : buffer_data_.previous_session_buffers) {
+            result.insert(name);
+        }
+        return result;
+    };
+    callbacks.getRemovedBufferNames = [this]() {
+        const auto lock = std::unique_lock{ui_mutex_};
+        std::set<std::string, std::less<>> result;
+        for (const auto& name : buffer_data_.removed_buffer_names) {
+            result.insert(name);
+        }
+        return result;
+    };
+    callbacks.clearRemovedBufferNames = [this]() {
+        const auto lock = std::unique_lock{ui_mutex_};
+        buffer_data_.removed_buffer_names.clear();
+    };
+
+    settings_manager_->persist_settings(callbacks);
 }
 
 
@@ -421,7 +485,8 @@ std::string MainWindow::get_type_label(const BufferType type,
 
 void MainWindow::persist_settings_deferred()
 {
-    settings_manager_->persist_settings_deferred();
+    using namespace oid::SettingsConstants;
+    ui_components_.settings_persist_timer.start(SETTINGS_PERSIST_DELAY_MS);
 }
 
 
@@ -438,6 +503,61 @@ void MainWindow::set_currently_selected_stage(std::nullptr_t)
     const auto lock = std::unique_lock{ui_mutex_};
     buffer_data_.currently_selected_stage.reset();
     state_.request_render_update = true;
+}
+
+void MainWindow::connect_settings_signals() const
+{
+    const auto* manager = settings_manager_.get();
+    const auto* applier = settings_applier_.get();
+
+    connect(manager,
+            &SettingsManager::renderingSettingsLoaded,
+            applier,
+            &SettingsApplier::apply_rendering_settings);
+    connect(manager,
+            &SettingsManager::exportSettingsLoaded,
+            applier,
+            &SettingsApplier::apply_export_settings);
+    connect(manager,
+            &SettingsManager::windowGeometryLoaded,
+            applier,
+            &SettingsApplier::apply_window_geometry);
+    connect(manager,
+            &SettingsManager::windowResizeRestoreRequested,
+            applier,
+            &SettingsApplier::restore_window_resize);
+    connect(manager,
+            &SettingsManager::uiListPositionLoaded,
+            applier,
+            &SettingsApplier::apply_ui_list_position);
+    connect(manager,
+            &SettingsManager::uiSplitterSizesLoaded,
+            applier,
+            &SettingsApplier::apply_ui_splitter_sizes);
+    connect(manager,
+            &SettingsManager::uiMinMaxCompactLoaded,
+            applier,
+            &SettingsApplier::apply_ui_minmax_compact);
+    connect(manager,
+            &SettingsManager::uiColorspaceLoaded,
+            applier,
+            &SettingsApplier::apply_ui_colorspace);
+    connect(manager,
+            &SettingsManager::uiMinMaxVisibleLoaded,
+            applier,
+            &SettingsApplier::apply_ui_minmax_visible);
+    connect(manager,
+            &SettingsManager::uiContrastEnabledLoaded,
+            applier,
+            &SettingsApplier::apply_ui_contrast_enabled);
+    connect(manager,
+            &SettingsManager::uiLinkViewsEnabledLoaded,
+            applier,
+            &SettingsApplier::apply_ui_link_views_enabled);
+    connect(manager,
+            &SettingsManager::previousSessionBuffersLoaded,
+            applier,
+            &SettingsApplier::apply_previous_session_buffers);
 }
 
 } // namespace oid

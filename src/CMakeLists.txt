@@ -46,6 +46,7 @@ set(SOURCES
     ui/go_to_widget.cpp
     ui/main_window/main_window.cpp
     ui/main_window/main_window_initializer.cpp
+    ui/main_window/settings_applier.cpp
     ui/main_window/settings_manager.cpp
     ui/main_window/ui_events.cpp
     ui/messaging/message_handler.cpp
