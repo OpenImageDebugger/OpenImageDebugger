@@ -42,6 +42,8 @@
 namespace oid
 {
 
+using BufferExpiration = QPair<QString, QDateTime>;
+
 SettingsManager::SettingsManager(Dependencies deps)
     : deps_{std::move(deps)}
 {
@@ -49,7 +51,6 @@ SettingsManager::SettingsManager(Dependencies deps)
 
 void SettingsManager::load_settings()
 {
-    using BufferExpiration = QPair<QString, QDateTime>;
 
     // Qt 6: Register the metatype for QSettings serialization
     // Including QDataStream provides the stream operators for Qt types
@@ -115,8 +116,6 @@ void SettingsManager::load_settings()
 
 void SettingsManager::persist_settings()
 {
-    using BufferExpiration = QPair<QString, QDateTime>;
-
     auto settings = QSettings{QSettings::Format::IniFormat,
                               QSettings::Scope::UserScope,
                               "OpenImageDebugger"};
@@ -261,29 +260,16 @@ void SettingsManager::initialize_settings_ui_splitter(
 void SettingsManager::initialize_settings_ui_minmax_compact(
     const QSettings& settings) const
 {
-    const auto is_minmax_compact = [&] {
-        const auto variant = settings.value("minmax_compact");
-        if (!variant.canConvert<bool>()) {
-            return false;
-        }
-
-        return variant.toBool();
-    }();
-
-    if (!is_minmax_compact) {
+    if (const auto variant_compact = settings.value("minmax_compact");
+        !variant_compact.canConvert<bool>() || !variant_compact.toBool()) {
         return;
     }
 
-    const auto is_minmax_visible = [&] {
-        const auto variant = settings.value("minmax_visible");
-        if (!variant.canConvert<bool>()) {
-            return true;
-        }
-
-        return variant.toBool();
-    }();
-
-    if (is_minmax_visible) {
+    const auto variant_visible = settings.value("minmax_visible");
+    if (const auto is_minmax_visible = variant_visible.canConvert<bool>()
+                                           ? variant_visible.toBool()
+                                           : true;
+        is_minmax_visible) {
         deps_.ui_components.ui->gridLayout_toolbar->addWidget(
             deps_.ui_components.ui->linkViewsToggle, 0, 0);
         deps_.ui_components.ui->gridLayout_toolbar->addWidget(
