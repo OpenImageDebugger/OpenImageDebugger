@@ -26,16 +26,11 @@
 #include "oid_bridge.h"
 
 #include <cstdint>
-#if defined(__unix__) || defined(__APPLE__)
-#include <dlfcn.h>
-#include <libgen.h>
-#include <limits.h>
-#include <unistd.h>
-#endif
 
 #include <bit>
 #include <chrono>
 #include <deque>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -49,6 +44,7 @@
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
 #include "ipc/message_exchange.h"
+#include "library_path.h"
 #include "system/process/process.h"
 
 #include <QDataStream>
@@ -194,27 +190,45 @@ class OidBridge
         // Python bug - __file__ not set)
         std::string oid_path_to_use = this->oid_path_;
         if (oid_path_to_use.empty()) {
+            const std::filesystem::path library_path =
+                oid::get_current_library_path();
 
-#if defined(__unix__) || defined(__APPLE__)
-            // Use dladdr to get the path of the current library
-            Dl_info info;
-            if (dladdr(reinterpret_cast<void*>(&oid_initialize), &info) != 0 &&
-                info.dli_fname != nullptr) {
-                char resolved_path[PATH_MAX];
-                if (realpath(info.dli_fname, resolved_path) != nullptr) {
-                    // Get directory of the library
-                    char* lib_dir   = dirname(resolved_path);
-                    oid_path_to_use = lib_dir;
-
-                } else {
-                    // realpath failed - continue with empty oid_path_to_use
-                    // (will use fallback or fail later if needed)
+            // Use std::filesystem for cross-platform path operations
+            if (!library_path.empty()) {
+                // Try canonical() first, fallback to absolute() if it fails
+                bool path_resolved = false;
+                try {
+                    const auto canonical_path =
+                        std::filesystem::canonical(library_path);
+                    const auto lib_dir = canonical_path.parent_path();
+                    oid_path_to_use    = lib_dir.string();
+                    path_resolved      = true;
+                } catch (const std::filesystem::filesystem_error& ex) {
+                    // canonical() failed (e.g., path doesn't exist) - try
+                    // absolute() as fallback
+                    std::cerr << "[OpenImageDebugger] Failed to get canonical "
+                                 "library path: "
+                              << ex.what() << std::endl;
                 }
-            } else {
-                // dladdr failed - continue with empty oid_path_to_use
-                // (will use fallback or fail later if needed)
+
+                if (!path_resolved) {
+                    try {
+                        const auto absolute_path =
+                            std::filesystem::absolute(library_path);
+                        const auto lib_dir = absolute_path.parent_path();
+                        oid_path_to_use    = lib_dir.string();
+                    } catch (const std::filesystem::filesystem_error& ex) {
+                        // Both canonical() and absolute() failed - continue
+                        // with empty oid_path_to_use (will use fallback or fail
+                        // later if needed)
+                        const auto error_msg = ex.what();
+                        std::cerr
+                            << "[OpenImageDebugger] Failed to get absolute "
+                               "library path: "
+                            << error_msg << std::endl;
+                    }
+                }
             }
-#endif
         }
 
         const auto windowBinaryPath = oid_path_to_use + "/oidwindow";
