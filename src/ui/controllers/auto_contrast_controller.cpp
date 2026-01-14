@@ -59,26 +59,40 @@ void disable_inputs(const std::initializer_list<QLineEdit*>& inputs)
     }
 }
 
-void update_channel_labels(const int channels,
+void update_channel_labels(const Buffer& buffer,
                            const std::span<const float> values,
                            QLineEdit* c1,
                            QLineEdit* c2,
                            QLineEdit* c3,
                            QLineEdit* c4)
 {
+    // In single-channel mode, show only one input with the selected channel's
+    // value
+    if (buffer.get_display_channel_mode() == 1) {
+        if (const auto selected_index = buffer.get_selected_channel_index();
+            selected_index < static_cast<int>(values.size())) {
+            c1->setText(QString::number(values[selected_index]));
+        } else {
+            c1->setText("0");
+        }
+        disable_inputs({c2, c3, c4});
+        return;
+    }
+
+    // Normal multi-channel mode
     c1->setText(QString::number(values[0]));
 
-    if (channels == 4) {
+    if (buffer.channels == 4) {
         enable_inputs({c2, c3, c4});
         c2->setText(QString::number(values[1]));
         c3->setText(QString::number(values[2]));
         c4->setText(QString::number(values[3]));
-    } else if (channels == 3) {
+    } else if (buffer.channels == 3) {
         enable_inputs({c2, c3});
         c4->setEnabled(false);
         c2->setText(QString::number(values[1]));
         c3->setText(QString::number(values[2]));
-    } else if (channels == 2) {
+    } else if (buffer.channels == 2) {
         c2->setEnabled(true);
         disable_inputs({c3, c4});
         c2->setText(QString::number(values[1]));
@@ -131,7 +145,7 @@ void AutoContrastController::reset_min_labels() const
     auto& buffer      = buffer_opt->get();
     const auto ac_min = buffer.min_buffer_values();
 
-    update_channel_labels(buffer.channels,
+    update_channel_labels(buffer,
                           ac_min,
                           deps_.ui_components.ui->ac_c1_min,
                           deps_.ui_components.ui->ac_c2_min,
@@ -150,7 +164,7 @@ void AutoContrastController::reset_max_labels() const
     auto& buffer      = buffer_opt->get();
     const auto ac_max = buffer.max_buffer_values();
 
-    update_channel_labels(buffer.channels,
+    update_channel_labels(buffer,
                           ac_max,
                           deps_.ui_components.ui->ac_c1_max,
                           deps_.ui_components.ui->ac_c2_max,
