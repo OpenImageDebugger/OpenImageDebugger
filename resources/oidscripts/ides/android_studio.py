@@ -32,15 +32,25 @@ def register_symbol_fetch_hook(debugger, event_handler):
     """
     Register LLDB event listener for Android Studio integration.
 
-    This function sets up a retry mechanism to register the process listener
-    when the process becomes available. The LldbBridge also has its own
-    process listener registration with retry logic via _check_frame_modification(),
-    so this serves as a backup mechanism specifically for Android Studio.
+    Note: For LLDB backends, LldbBridge already registers a process listener
+    in _check_frame_modification(). This Android Studio integration should NOT
+    register a duplicate listener when using LldbBridge, as it would cause
+    duplicate stop events. Instead, we rely on LldbBridge's listener which
+    properly uses the event queue mechanism.
     """
     import lldb
     import threading
     import time
     from oidscripts.logger import log
+
+    # Check if we're using LldbBridge - if so, skip registering our own listener
+    # since LldbBridge already handles process state changes via its own listener
+    if debugger.get_backend_name() == "lldb":
+        log.info(
+            "Android Studio: Using LldbBridge which already handles process listeners, "
+            "skipping duplicate listener registration"
+        )
+        return
 
     def retry_register_listener():
         """Retry registering the process listener until successful."""

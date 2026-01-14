@@ -69,12 +69,25 @@ class LldbBridge(BridgeInterface):
                 thread_id != self._last_thread_id or frame_idx != self._last_frame_idx
             )
 
-            # Also detect initial stop (process just stopped, wasn't stopped before)
-            # This ensures we trigger stop_handler() even if frame IDs happen to match
-            process_just_stopped = (
-                self._last_process_state is not None
-                and self._last_process_state != lldb.eStateStopped
-            )
+            # Only detect initial stop if listener is NOT registered
+            # If listener is registered, it will handle all process stop detection
+            # to avoid duplicate stop events
+            if not self._listener_registered:
+                # Also detect initial stop (process just stopped, wasn't stopped before)
+                # This ensures we trigger stop_handler() even if frame IDs happen to match
+                process_just_stopped = (
+                    self._last_process_state is not None
+                    and self._last_process_state != lldb.eStateStopped
+                )
+            else:
+                # When listener is registered, only trigger on frame changes that occur
+                # AFTER the process is already stopped (user navigating stack frames).
+                # Don't trigger on the initial stop, as the listener handles that.
+                process_just_stopped = False
+                # Only add stop event if frame changed AND process was already stopped
+                # (not just now stopped, which the listener already handled)
+                if frame_was_updated and self._last_process_state != lldb.eStateStopped:
+                    frame_was_updated = False  # Suppress this frame change event
 
             if frame_was_updated or process_just_stopped:
                 with self._lock:
@@ -101,7 +114,7 @@ class LldbBridge(BridgeInterface):
 
             pending_events = []
             with self._lock:
-                pending_events = self._event_queue
+                pending_events = self._event_queue[:]  # Make a copy of the list
                 self._event_queue = []
 
             while pending_events:
