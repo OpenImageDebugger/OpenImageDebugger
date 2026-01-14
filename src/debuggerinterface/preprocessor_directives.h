@@ -26,9 +26,9 @@
 #ifndef PREPROCESSOR_DIRECTIVES_H_
 #define PREPROCESSOR_DIRECTIVES_H_
 
-#define RAISE_PY_EXCEPTION(exception_type, msg)        \
-    do {                                               \
-        PyErr_SetString(exception_type, msg);          \
+#define RAISE_PY_EXCEPTION(exception_type, msg) \
+    do {                                        \
+        PyErr_SetString(exception_type, msg);   \
     } while (0)
 
 #define CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, ret)         \

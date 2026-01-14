@@ -589,7 +589,7 @@ AppHandler oid_initialize(int (*plot_callback)(const char*), // NOSONAR
         // will handle None gracefully.
 
         return app ? app.release() : nullptr;
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
 
         return nullptr;
     } catch (...) {
