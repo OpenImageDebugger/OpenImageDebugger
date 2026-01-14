@@ -1,11 +1,16 @@
-# CMake build directory
-build/
+#CMake build directory
+build /
 
-# Visual Studio Code project settings
-.vscode/
+#Visual Studio Code project settings
+        .vscode /
 
-# Qt Creator project settings
-CMakeLists.txt.user
+#Qt Creator project settings
+    CMakeLists.txt
+        .user
 
-# MacOS Desktop Service Store file
-.DS_Store
+#MacOS Desktop Service Store file
+        .DS_Store
+
+#Python cache files
+            __pycache__ /
+    *.pyc
