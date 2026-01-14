@@ -190,25 +190,24 @@ void MainWindowInitializer::initialize_timers()
 
 void MainWindowInitializer::initialize_shortcuts()
 {
-    auto symbol_list_focus_shortcut = std::make_unique<QShortcut>(
-        QKeySequence::fromString("Ctrl+K"), &deps_.main_window);
-    QObject::connect(
-        symbol_list_focus_shortcut.release(),
-        &QShortcut::activated,
-        deps_.ui_components.ui->symbolList,
-        [this]() { deps_.ui_components.ui->symbolList->setFocus(); });
+    // Qt parent-child ownership: parent deletes children automatically
+    auto* symbol_list_focus_shortcut =
+        new QShortcut(QKeySequence::fromString("Ctrl+K"), &deps_.main_window);
+    QObject::connect(symbol_list_focus_shortcut,
+                     &QShortcut::activated,
+                     deps_.ui_components.ui->symbolList,
+                     [this]() { deps_.ui_components.ui->symbolList->setFocus(); });
 
-    auto buffer_removal_shortcut = std::make_unique<QShortcut>(
+    auto* buffer_removal_shortcut = new QShortcut(
         QKeySequence{Qt::Key_Delete}, deps_.ui_components.ui->imageList);
-    QObject::connect(
-        buffer_removal_shortcut.release(),
-        &QShortcut::activated,
-        &deps_.main_window,
-        [this]() { deps_.event_handler.remove_selected_buffer(); });
+    QObject::connect(buffer_removal_shortcut,
+                     &QShortcut::activated,
+                     &deps_.main_window,
+                     [this]() { deps_.event_handler.remove_selected_buffer(); });
 
-    auto go_to_shortcut = std::make_unique<QShortcut>(
-        QKeySequence::fromString("Ctrl+L"), &deps_.main_window);
-    QObject::connect(go_to_shortcut.release(),
+    auto* go_to_shortcut =
+        new QShortcut(QKeySequence::fromString("Ctrl+L"), &deps_.main_window);
+    QObject::connect(go_to_shortcut,
                      &QShortcut::activated,
                      &deps_.main_window,
                      [this]() { deps_.event_handler.toggle_go_to_dialog(); });
