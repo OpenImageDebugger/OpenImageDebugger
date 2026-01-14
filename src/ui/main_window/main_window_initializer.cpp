@@ -246,7 +246,7 @@ void MainWindowInitializer::initialize_left_pane() const
     QObject::connect(deps_.ui_components.ui->imageList,
                      &QListWidget::currentItemChanged,
                      &deps_.main_window,
-                     [this](QListWidgetItem* item) {
+                     [this](const QListWidgetItem* item) {
                          deps_.event_handler.buffer_selected(item);
                      });
 
@@ -424,12 +424,12 @@ void MainWindowInitializer::setVectorIcon(QLabel* ui_element,
 {
     const auto screen_dpi_scale =
         QGuiApplication::primaryScreen()->devicePixelRatio();
+    const auto rounded_width  = static_cast<int>(std::round(width));
+    const auto rounded_height = static_cast<int>(std::round(height));
 
     ui_element->setScaledContents(true);
-    ui_element->setMinimumWidth(static_cast<int>(std::round(width)));
-    ui_element->setMaximumWidth(static_cast<int>(std::round(width)));
-    ui_element->setMinimumHeight(static_cast<int>(std::round(height)));
-    ui_element->setMaximumHeight(static_cast<int>(std::round(height)));
+    ui_element->setFixedWidth(rounded_width);
+    ui_element->setFixedHeight(rounded_height);
     ui_element->setPixmap(
         QIcon(QString(":/resources/icons/%1").arg(icon_file_name))
             .pixmap(QSize(
