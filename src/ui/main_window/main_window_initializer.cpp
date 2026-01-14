@@ -153,25 +153,25 @@ void MainWindowInitializer::initialize_ui_signals()
         deps_.ui_components.ui->splitter,
         &QSplitter::splitterMoved,
         &deps_.main_window,
-        [this]() { deps_.settings_manager.persist_settings_deferred(); });
+        [this]() { deps_.main_window.persist_settings_deferred(); });
 
     QObject::connect(
         deps_.ui_components.ui->acEdit,
         &QAbstractButton::clicked,
         &deps_.main_window,
-        [this]() { deps_.settings_manager.persist_settings_deferred(); });
+        [this]() { deps_.main_window.persist_settings_deferred(); });
 
     QObject::connect(
         deps_.ui_components.ui->acToggle,
         &QAbstractButton::clicked,
         &deps_.main_window,
-        [this]() { deps_.settings_manager.persist_settings_deferred(); });
+        [this]() { deps_.main_window.persist_settings_deferred(); });
 
     QObject::connect(
         deps_.ui_components.ui->linkViewsToggle,
         &QAbstractButton::clicked,
         &deps_.main_window,
-        [this]() { deps_.settings_manager.persist_settings_deferred(); });
+        [this]() { deps_.main_window.persist_settings_deferred(); });
 }
 
 void MainWindowInitializer::initialize_timers()
@@ -179,7 +179,7 @@ void MainWindowInitializer::initialize_timers()
     QObject::connect(&deps_.ui_components.settings_persist_timer,
                      &QTimer::timeout,
                      &deps_.main_window,
-                     [this]() { deps_.settings_manager.persist_settings(); });
+                     [this]() { deps_.main_window.persist_settings(); });
     deps_.ui_components.settings_persist_timer.setSingleShot(true);
 
     QObject::connect(&deps_.ui_components.update_timer,

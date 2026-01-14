@@ -50,6 +50,7 @@ namespace oid
 {
 
 class MainWindowInitializer;
+class SettingsApplier;
 class SettingsManager;
 
 namespace UIConstants
@@ -156,6 +157,10 @@ class MainWindow final : public QMainWindow
 
     void request_icons_update();
 
+    // Settings persistence - public for MainWindowInitializer
+    void persist_settings();
+
+    void persist_settings_deferred();
 
   private:
     WindowState state_{};
@@ -169,6 +174,7 @@ class MainWindow final : public QMainWindow
     std::unique_ptr<MessageHandler> message_handler_{};
     std::unique_ptr<UIEventHandler> event_handler_{};
     std::unique_ptr<SettingsManager> settings_manager_{};
+    std::unique_ptr<SettingsApplier> settings_applier_{};
     std::unique_ptr<MainWindowInitializer> initializer_{};
     // Thread safety: All access to buffer_data_ and state_ must be protected by
     // ui_mutex_. This mutex is recursive to allow nested locking when helper
@@ -190,15 +196,13 @@ class MainWindow final : public QMainWindow
 
     static std::string get_type_label(BufferType type, int channels);
 
-    void persist_settings();
-
-    void persist_settings_deferred();
-
     void set_currently_selected_stage(const std::shared_ptr<Stage>& stage);
     void set_currently_selected_stage(std::nullptr_t); // Overload for clearing
 
     [[nodiscard]] vec4 get_stage_coordinates(float pos_window_x,
                                              float pos_window_y) const;
+
+    void connect_settings_signals() const;
 };
 
 } // namespace oid
