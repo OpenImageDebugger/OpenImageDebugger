@@ -75,6 +75,7 @@ class MessageHandler : public QObject
 
   private:
     Dependencies deps_;
+    bool was_ever_connected_{false};  // Track if socket was ever connected
 
     void decode_set_available_symbols();
     void respond_get_observed_symbols();

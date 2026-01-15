@@ -50,6 +50,7 @@
 #include <QDataStream>
 #include <QPointer>
 #include <QTcpServer>
+#include <QProcess>
 #include <QTcpSocket>
 
 struct PlotBufferParams
@@ -177,10 +178,10 @@ class OidBridge
 
     bool start()
     {
-
         // Initialize server
-
-        if (!server_.listen(QHostAddress::Any)) {
+        // Use QHostAddress::LocalHost to match client connection to 127.0.0.1
+        // This ensures the server is listening on the same interface the client connects to
+        if (!server_.listen(QHostAddress::LocalHost)) {
             std::cerr << "[OpenImageDebugger] Could not start TCP server"
                       << std::endl;
             return false;
@@ -231,15 +232,24 @@ class OidBridge
             }
         }
 
-        const auto windowBinaryPath = oid_path_to_use + "/oidwindow";
+        // Use std::filesystem::path for cross-platform path construction
+        // On Windows, append .exe extension
+        #ifdef _WIN32
+        const auto windowBinaryPath = (std::filesystem::path{oid_path_to_use} / "oidwindow.exe").string();
+        #else
+        const auto windowBinaryPath = (std::filesystem::path{oid_path_to_use} / "oidwindow").string();
+        #endif
         const auto portStdString    = std::to_string(server_.serverPort());
 
         std::vector<std::string> command{
             windowBinaryPath, "-style", "fusion", "-p", portStdString};
 
         ui_proc_.start(command);
-
         ui_proc_.waitForStart();
+        
+        // Give the process a moment to initialize before we start waiting for connection
+        // This ensures the Qt event loop has started and the connection attempt can be made
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         wait_for_client();
 
@@ -279,12 +289,36 @@ class OidBridge
     void
     set_available_symbols(const std::deque<std::string>& available_vars) const
     {
-        assert(!client_.isNull());
+        // Don't send if client is not connected yet - this can happen during initialization
+        // Use try-catch to handle any potential race conditions or invalid state
+        try {
+            if (client_.isNull()) {
+                return;
+            }
+            
+            // Access client state safely - check if pointer is still valid
+            auto* client = client_.data();
+            if (client == nullptr) {
+                return;
+            }
+            
+            const auto socket_state = client->state();
+            if (socket_state != QAbstractSocket::ConnectedState) {
+                return;
+            }
 
-        auto message_composer = oid::MessageComposer{};
-        message_composer.push(oid::MessageType::SetAvailableSymbols)
-            .push(available_vars)
-            .send(client_);
+            // Client is connected - send the message
+            auto message_composer = oid::MessageComposer{};
+            message_composer.push(oid::MessageType::SetAvailableSymbols)
+                .push(available_vars)
+                .send(client_);
+        } catch (const std::exception&) {
+            // Catch any exceptions (e.g., from accessing deleted QPointer)
+            // Silently ignore - this is not critical, symbols can be set again later
+            return;
+        } catch (...) {
+            return;
+        }
     }
 
     void run_event_loop()
@@ -443,16 +477,26 @@ class OidBridge
 
     void wait_for_client()
     {
-
         if (client_.isNull()) {
-
-            if (!server_.waitForNewConnection(10000)) {
-
-                std::cerr << "[OpenImageDebugger] No clients connected to "
-                             "OpenImageDebugger server"
-                          << std::endl;
-            } else {
+            // First check if there's already a pending connection (client might have connected while we were waiting)
+            if (!server_.hasPendingConnections()) {
+                // No pending connection - wait for a new one
+                // Increase timeout to 30 seconds to match Qt's default waitForConnected timeout
+                // The oidwindow process needs time to initialize Qt, parse arguments, and connect
+                if (!server_.waitForNewConnection(30000)) {
+                    // Even if waitForNewConnection timed out, check for pending connections
+                    // The client might have connected but the signal wasn't processed yet
+                    if (!server_.hasPendingConnections()) {
+                        std::cerr << "[OpenImageDebugger] No clients connected to "
+                                     "OpenImageDebugger server"
+                                  << std::endl;
+                        return;
+                    }
+                    // Fall through to accept the pending connection
+                }
             }
+            
+            // Accept the pending connection
             client_ = QPointer<QTcpSocket>(server_.nextPendingConnection());
         }
     }
@@ -484,6 +528,7 @@ oid_initialize_impl(std::function<int(const char*)> plot_callback,
      */
 
     PyObject* py_oid_path = nullptr;
+    bool py_oid_path_is_strong_ref = false;  // Track if py_oid_path is a strong reference (needs DECREF)
     if (optional_parameters != nullptr) {
 
         // H1: Test PyDict_Size BEFORE logging to avoid abort during log
@@ -495,54 +540,90 @@ oid_initialize_impl(std::function<int(const char*)> plot_callback,
         // PyDict_GetItemString
         Py_ssize_t dict_size = PyDict_Size(optional_parameters);
 
-        // H7: Use PyDict_Next() to iterate through dictionary directly - this
-        // gives us existing key/value pairs without creating new objects.
-        // PyDict_Keys() creates a new list, which might abort. PyDict_Next()
-        // just iterates through existing pairs.
-
-        // Iterate through dictionary using PyDict_Next - this avoids creating
-        // new objects and uses existing key/value pairs
-        Py_ssize_t pos  = 0;
-        PyObject* key   = nullptr;
-        PyObject* value = nullptr;
-        PyObject* fallback_value =
-            nullptr; // Store value if key is empty (LLDB Python bug workaround)
-
-        while (PyDict_Next(optional_parameters, &pos, &key, &value)) {
-
-            // key and value are borrowed references from the dictionary
-            if (key != nullptr && PyUnicode_Check(key)) {
-
-                // Try to get UTF-8 string for comparison
-                // Note: PyUnicode_AsUTF8 might abort, but we'll try it
-                const char* key_str = PyUnicode_AsUTF8(key);
-
-                if (key_str != nullptr && strcmp(key_str, "oid_path") == 0) {
-                    // Found the key - value already contains the result
-                    py_oid_path = value; // Borrowed reference
-
-                    break;
-                } else if (key_str != nullptr && strlen(key_str) == 0 &&
-                           value != nullptr) {
-                    // H13: LLDB Python bug workaround - key is empty string but
-                    // value might be the path we need Store it as fallback if
-                    // dictionary has only one entry
-
-                    fallback_value = value; // Borrowed reference
+        // Python 3.13 workaround: PyDict_Next() and PyDict_GetItemString() trigger
+        // PyUnicode_CheckExact assertion in dictobject.c:439 when dictionary keys
+        // aren't exact Unicode objects (common with ctypes-passed dictionaries).
+        // Solution: Use PyObject_GetAttrString() to access via __getitem__ method,
+        // which uses a different code path that doesn't trigger the assertion.
+        // This works because __getitem__ goes through the mapping protocol rather
+        // than direct dictionary internal access.
+        if (!PyGILRAII::is_lldb_mode()) {
+            // Normal Python mode: use __getitem__ via PyObject_GetAttrString
+            // This avoids the problematic dictobject.c:439 assertion
+            PyObject* getitem_method = PyObject_GetAttrString(optional_parameters, "__getitem__");
+            if (getitem_method != nullptr) {
+                PyObject* key_str = PyUnicode_FromString("oid_path");
+                if (key_str != nullptr) {
+                    py_oid_path = PyObject_CallFunctionObjArgs(getitem_method, key_str, nullptr);
+                    Py_DECREF(key_str);
+                    // py_oid_path is a new reference (or nullptr if KeyError)
+                    if (py_oid_path == nullptr && PyErr_ExceptionMatches(PyExc_KeyError)) {
+                        // Key not found - this is fine, it's optional
+                        PyErr_Clear();
+                        py_oid_path = nullptr;
+                    } else if (py_oid_path != nullptr) {
+                        // We got a new reference - mark it for cleanup
+                        py_oid_path_is_strong_ref = true;
+                    }
                 }
+                Py_DECREF(getitem_method);
+            } else {
+                // Fallback: try PyDict_GetItemString if __getitem__ not available
+                PyErr_Clear();
+                py_oid_path = PyDict_GetItemString(optional_parameters, "oid_path");
+                // PyDict_GetItemString returns borrowed reference
+                py_oid_path_is_strong_ref = false;
+            }
+        } else {
+            // LLDB mode: must use PyDict_Next to avoid abort
+            // H7: Use PyDict_Next() to iterate through dictionary directly - this
+            // gives us existing key/value pairs without creating new objects.
+            // PyDict_Keys() creates a new list, which might abort. PyDict_Next()
+            // just iterates through existing pairs.
+
+            // Iterate through dictionary using PyDict_Next - this avoids creating
+            // new objects and uses existing key/value pairs
+            Py_ssize_t pos  = 0;
+            PyObject* key   = nullptr;
+            PyObject* value = nullptr;
+            PyObject* fallback_value =
+                nullptr; // Store value if key is empty (LLDB Python bug workaround)
+
+            while (PyDict_Next(optional_parameters, &pos, &key, &value)) {
+
+                // key and value are borrowed references from the dictionary
+                if (key != nullptr && PyUnicode_Check(key)) {
+
+                    // Try to get UTF-8 string for comparison
+                    // Note: PyUnicode_AsUTF8 might abort, but we'll try it
+                    const char* key_str = PyUnicode_AsUTF8(key);
+
+                    if (key_str != nullptr && strcmp(key_str, "oid_path") == 0) {
+                        // Found the key - value already contains the result
+                        py_oid_path = value; // Borrowed reference
+
+                        break;
+                    } else if (key_str != nullptr && strlen(key_str) == 0 &&
+                               value != nullptr) {
+                        // H13: LLDB Python bug workaround - key is empty string but
+                        // value might be the path we need Store it as fallback if
+                        // dictionary has only one entry
+
+                        fallback_value = value; // Borrowed reference
+                    }
+                }
+            }
+
+            // H13: If we didn't find "oid_path" key but found an empty key with a
+            // value and dictionary has only one entry, use the fallback value (LLDB
+            // Python bug workaround)
+            if (py_oid_path == nullptr && fallback_value != nullptr &&
+                dict_size == 1) {
+                py_oid_path = fallback_value; // Borrowed reference
             }
         }
 
-        // H13: If we didn't find "oid_path" key but found an empty key with a
-        // value and dictionary has only one entry, use the fallback value (LLDB
-        // Python bug workaround)
-        if (py_oid_path == nullptr && fallback_value != nullptr &&
-            dict_size == 1) {
-            py_oid_path = fallback_value; // Borrowed reference
-        }
-
-        // If we didn't find the key via iteration, the key doesn't exist in
-        // the dictionary. Don't fall back to PyDict_GetItemString as it aborts.
+        // If we didn't find the key, it doesn't exist in the dictionary.
         // Just leave py_oid_path as nullptr - this is a valid case (optional
         // parameter).
         if (py_oid_path == nullptr) {
@@ -562,12 +643,51 @@ oid_initialize_impl(std::function<int(const char*)> plot_callback,
         oid::copy_py_string(oid_path_str, py_oid_path);
 
         app->set_path(oid_path_str);
+        
+        // Clean up strong reference if we created one via __getitem__
+        if (py_oid_path_is_strong_ref && py_oid_path != nullptr) {
+            Py_DECREF(py_oid_path);
+            py_oid_path = nullptr;
+        }
     } else {
+        // Clean up strong reference if we got one but path is nullptr
+        if (py_oid_path_is_strong_ref && py_oid_path != nullptr) {
+            Py_DECREF(py_oid_path);
+            py_oid_path = nullptr;
+        }
+    }
+
+    return app;
+}
+
+// Safe version that takes C string directly, avoiding Python C API dictionary access
+std::unique_ptr<OidBridge>
+oid_initialize_safe_impl(std::function<int(const char*)> plot_callback,
+                         const char* oid_path)
+{
+    // No Python C API calls needed - just use the C string directly
+    auto app = std::make_unique<OidBridge>(std::move(plot_callback));
+
+    if (oid_path != nullptr && oid_path[0] != '\0') {
+        app->set_path(std::string{oid_path});
     }
 
     return app;
 }
 } // namespace
+
+// NOSONAR: C API requires function pointer (extern "C")
+AppHandler oid_initialize_safe(int (*plot_callback)(const char*), // NOSONAR
+                               const char* oid_path)
+{
+    try {
+        auto app = oid_initialize_safe_impl(
+            std::function<int(const char*)>{plot_callback}, oid_path);
+        return app.release();
+    } catch (...) {
+        return nullptr;
+    }
+}
 
 // NOSONAR: C API requires function pointer (extern "C")
 AppHandler oid_initialize(int (*plot_callback)(const char*), // NOSONAR

@@ -25,14 +25,37 @@ class OpenImageDebuggerWindow(object):
     shared library.
     """
     def __init__(self, script_path, bridge):
+        # #region agent log
+        try:
+            with open(r'c:\Users\bruno\ws\OpenImageDebugger\.cursor\debug_server.log', 'a', encoding='utf-8') as f:
+                import json
+                f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "A", "location": "oidwindow.py:27", "message": "__init__ entry", "data": {"script_path_type": str(type(script_path)), "script_path_repr": repr(script_path), "script_path_value": str(script_path) if script_path else None}, "timestamp": int(time.time() * 1000)}) + '\n')
+        except: pass
+        # #endregion
         self._bridge = bridge
-        self._script_path = script_path
+        # Normalize script_path to ensure it's a proper Unicode string for Python 3.13 compatibility
+        # os.fsdecode() properly handles both bytes and string paths on all platforms
+        self._script_path = os.fsdecode(script_path) if script_path else str(script_path)
+        # #region agent log
+        try:
+            with open(r'c:\Users\bruno\ws\OpenImageDebugger\.cursor\debug_server.log', 'a', encoding='utf-8') as f:
+                import json
+                f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "B", "location": "oidwindow.py:31", "message": "After normalization", "data": {"normalized_type": str(type(self._script_path)), "normalized_repr": repr(self._script_path), "is_str": isinstance(self._script_path, str), "is_unicode": isinstance(self._script_path, str) and hasattr(self._script_path, 'encode')}, "timestamp": int(time.time() * 1000)}) + '\n')
+        except: pass
+        # #endregion
         # Cache of observed buffer names for LLDB mode where get_observed_buffers() doesn't work
         self._observed_buffers_cache = set()
 
         if PLATFORM_NAME == 'windows':
             os.add_dll_directory(script_path)
-            os.add_dll_directory(os.getenv('Qt5_Dir') + '/' + 'bin')
+            qt6_dir = os.getenv('Qt6_DIR')
+            if qt6_dir:
+                # Strip trailing semicolons and path separators that might be in the env var
+                qt6_dir = qt6_dir.rstrip(';:')
+                if os.path.exists(qt6_dir):
+                    bin_path = os.path.join(qt6_dir, 'bin')
+                    if os.path.exists(bin_path):
+                        os.add_dll_directory(bin_path)
 
         # Request ctypes to load libGL before the native oidwindow does; this
         # fixes an issue on Ubuntu machines with nvidia drivers. For more
@@ -48,6 +71,10 @@ class OpenImageDebuggerWindow(object):
         # lib OID API
         self._lib.oid_initialize.argtypes = [FETCH_BUFFER_CBK_TYPE, ctypes.py_object]
         self._lib.oid_initialize.restype = ctypes.c_void_p
+        
+        # Safe version that takes C string instead of dictionary (Python 3.13+ compatible)
+        self._lib.oid_initialize_safe.argtypes = [FETCH_BUFFER_CBK_TYPE, ctypes.c_char_p]
+        self._lib.oid_initialize_safe.restype = ctypes.c_void_p
 
         self._lib.oid_cleanup.argtypes = [ctypes.c_void_p]
         self._lib.oid_cleanup.restype = None
@@ -248,10 +275,81 @@ class OpenImageDebuggerWindow(object):
     def initialize_window(self):
         # Initialize OID lib
         try:
-            self._native_handler = self._lib.oid_initialize(
+            # script_path is already normalized to Unicode string in __init__
+            # #region agent log
+            # Try creating a fresh string to ensure it's a proper Unicode string for Python 3.13
+            script_path_fresh = str(self._script_path)
+            # Also try creating from bytes to ensure proper encoding
+            if isinstance(self._script_path, str):
+                script_path_bytes = self._script_path.encode('utf-8')
+                script_path_from_bytes = script_path_bytes.decode('utf-8')
+            else:
+                script_path_from_bytes = str(self._script_path)
+            try:
+                with open(r'c:\Users\bruno\ws\OpenImageDebugger\.cursor\debug_server.log', 'a', encoding='utf-8') as f:
+                    import json
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "C", "location": "oidwindow.py:275", "message": "Before dict creation", "data": {"original_type": str(type(self._script_path)), "fresh_str_type": str(type(script_path_fresh)), "from_bytes_type": str(type(script_path_from_bytes)), "original_id": id(self._script_path), "fresh_id": id(script_path_fresh), "from_bytes_id": id(script_path_from_bytes)}, "timestamp": int(time.time() * 1000)}) + '\n')
+            except: pass
+            # #endregion
+            # Python 3.13 workaround: PyDict_Next() in dictobject.c:439 uses PyUnicode_CheckExact
+            # which fails if dictionary keys aren't exact Unicode objects. The issue occurs when
+            # Python 3.13's dictionary internal state isn't properly initialized.
+            # Solution: Create dictionary and copy it to ensure it's in combined-table mode
+            # and all internal structures are properly initialized for Python 3.13.
+            # #region agent log
+            try:
+                with open(r'c:\Users\bruno\ws\OpenImageDebugger\.cursor\debug_server.log', 'a', encoding='utf-8') as f:
+                    import json
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "I", "location": "oidwindow.py:292", "message": "Creating dict for Python 3.13 workaround", "data": {"python_version": list(sys.version_info[:3])}, "timestamp": int(time.time() * 1000)}) + '\n')
+            except: pass
+            # #endregion
+            # Python 3.13 fix: Use oid_initialize_safe() which takes a C string directly,
+            # avoiding Python C API dictionary access that triggers PyUnicode_CheckExact
+            # assertion in dictobject.c:439. This matches the pattern used by other
+            # _safe functions (oid_plot_buffer_safe, oid_set_available_symbols_safe).
+            # #region agent log
+            try:
+                with open(r'c:\Users\bruno\ws\OpenImageDebugger\.cursor\debug_server.log', 'a', encoding='utf-8') as f:
+                    import json
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "FIX", "location": "oidwindow.py:302", "message": "Using oid_initialize_safe with C string", "data": {"python_version": list(sys.version_info[:3]), "path": script_path_from_bytes}, "timestamp": int(time.time() * 1000)}) + '\n')
+            except: pass
+            # #endregion
+            # Use safe version: extract path in Python and pass as C string
+            # This avoids dictionary access in C++ which triggers the assertion
+            # ctypes.c_char_p accepts bytes or None (which becomes nullptr in C++)
+            path_bytes = script_path_from_bytes.encode('utf-8') if script_path_from_bytes else None
+            # #region agent log
+            try:
+                with open(r'c:\Users\bruno\ws\OpenImageDebugger\.cursor\debug_server.log', 'a', encoding='utf-8') as f:
+                    import json
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H1", "location": "oidwindow.py:319", "message": "Before oid_initialize_safe call", "data": {"script_path": script_path_from_bytes, "path_bytes": path_bytes.decode('utf-8') if path_bytes else None, "path_bytes_type": str(type(path_bytes)), "path_bytes_len": len(path_bytes) if path_bytes else 0}, "timestamp": int(time.time() * 1000)}) + '\n')
+            except: pass
+            # #endregion
+            self._native_handler = self._lib.oid_initialize_safe(
                 self._plot_variable_c_callback,
-                {'oid_path': self._script_path})
-        except Exception:
+                path_bytes if path_bytes else None)
+            # #region agent log
+            try:
+                with open(r'c:\Users\bruno\ws\OpenImageDebugger\.cursor\debug_server.log', 'a', encoding='utf-8') as f:
+                    import json
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "H2", "location": "oidwindow.py:327", "message": "After oid_initialize_safe call", "data": {"handler": str(self._native_handler) if self._native_handler else None}, "timestamp": int(time.time() * 1000)}) + '\n')
+            except: pass
+            # #endregion
+            # #region agent log
+            try:
+                with open(r'c:\Users\bruno\ws\OpenImageDebugger\.cursor\debug_server.log', 'a', encoding='utf-8') as f:
+                    import json
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "D", "location": "oidwindow.py:340", "message": "After oid_initialize call", "data": {"success": True, "handler": str(self._native_handler) if self._native_handler else None}, "timestamp": int(time.time() * 1000)}) + '\n')
+            except: pass
+            # #endregion
+        except Exception as e:
+            # #region agent log
+            try:
+                with open(r'c:\Users\bruno\ws\OpenImageDebugger\.cursor\debug_server.log', 'a', encoding='utf-8') as f:
+                    import json
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "E", "location": "oidwindow.py:347", "message": "Exception in initialize_window", "data": {"exception_type": str(type(e)), "exception_msg": str(e), "exception_repr": repr(e)}, "timestamp": int(time.time() * 1000)}) + '\n')
+            except: pass
+            # #endregion
             raise
 
         # Launch UI

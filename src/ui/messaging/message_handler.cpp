@@ -263,8 +263,21 @@ void MessageHandler::decode_plot_buffer_contents()
 
 void MessageHandler::decode_incoming_messages()
 {
-    if (deps_.socket.state() == QTcpSocket::UnconnectedState) [[unlikely]] {
+    const auto socket_state = deps_.socket.state();
+    
+    // Track if we were ever connected - only quit if we were connected and then disconnected
+    // Don't quit if we were never connected (initial state or connection failed)
+    if (socket_state == QAbstractSocket::ConnectedState) {
+        was_ever_connected_ = true;
+    } else if (socket_state == QTcpSocket::UnconnectedState && was_ever_connected_) {
+        // Socket was connected but now disconnected - server closed connection
         QApplication::quit();
+        return;
+    }
+    // If socket is UnconnectedState but we were never connected, just return (don't quit)
+    // This handles the case where connection hasn't been established yet or connection failed
+    if (socket_state == QTcpSocket::UnconnectedState) {
+        return;
     }
 
     {
