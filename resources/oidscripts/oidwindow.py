@@ -61,13 +61,7 @@ class OpenImageDebuggerWindow(object):
         self._lib.oid_get_observed_buffers.argtypes = [ctypes.c_void_p]
         self._lib.oid_get_observed_buffers.restype = ctypes.py_object
 
-        self._lib.oid_set_available_symbols.argtypes = [
-            ctypes.c_void_p,
-            ctypes.py_object
-        ]
-        self._lib.oid_set_available_symbols.restype = None
-
-        # LLDB-safe version that takes C string array instead of Python list
+        # Safe version that takes C string array instead of Python list
         self._lib.oid_set_available_symbols_safe.argtypes = [
             ctypes.c_void_p,  # handler
             ctypes.POINTER(ctypes.c_char_p),  # available_vars array
@@ -78,13 +72,7 @@ class OpenImageDebuggerWindow(object):
         self._lib.oid_run_event_loop.argtypes = [ctypes.c_void_p]
         self._lib.oid_run_event_loop.restype = None
 
-        self._lib.oid_plot_buffer.argtypes = [
-            ctypes.c_void_p,
-            ctypes.py_object
-        ]
-        self._lib.oid_plot_buffer.restype = None
-
-#H19 : LLDB - safe version that takes individual parameters
+        # Safe version that takes individual parameters
         self._lib.oid_plot_buffer_safe.argtypes = [
             ctypes.c_void_p,  # handler
             ctypes.c_char_p,  # variable_name
@@ -186,43 +174,34 @@ class OpenImageDebuggerWindow(object):
         Set the autocomplete list of symbols with the list of string
         'observable_symbols'
         """
-        import sys
-        is_lldb_mode = 'lldb' in sys.modules
-
         # Perform two-level sorting:
         # 1. By amount of nodes.
         # 2. By variable name.
         sorted_observable_symbols = sorted(observable_symbols, key=lambda symbol: (symbol.count('.'), symbol))
 
-        if is_lldb_mode:
-            # In LLDB mode, use the safe version that takes C string array
-            # instead of Python list to avoid Python C API calls from event loop thread
-            import ctypes
-            count = len(sorted_observable_symbols)
-            
-            # Encode all strings to bytes and keep references to prevent GC
-            encoded_symbols = [
-                symbol.encode('utf-8') if isinstance(symbol, str) else symbol
-                for symbol in sorted_observable_symbols
-            ]
-            
-            # Create array of C strings
-            c_string_array = (ctypes.c_char_p * count)()
-            for i, encoded in enumerate(encoded_symbols):
-                c_string_array[i] = encoded
-            
-            # Keep references to prevent garbage collection
-            if not hasattr(self, '_symbol_array_refs'):
-                self._symbol_array_refs = []
-            self._symbol_array_refs.append(c_string_array)
-            self._symbol_array_refs.append(encoded_symbols)
-            
-            self._lib.oid_set_available_symbols_safe(
-                self._native_handler, c_string_array, count)
-        else:
-            # Non-LLDB mode: use original function with Python list
-            self._lib.oid_set_available_symbols(
-                self._native_handler, sorted_observable_symbols)
+        # Always use the safe version that takes C string array
+        # instead of Python list to avoid Python C API calls from event loop thread
+        count = len(sorted_observable_symbols)
+
+        # Encode all strings to bytes and keep references to prevent GC
+        encoded_symbols = [
+            symbol.encode('utf-8') if isinstance(symbol, str) else symbol
+            for symbol in sorted_observable_symbols
+        ]
+
+        # Create array of C strings
+        c_string_array = (ctypes.c_char_p * count)()
+        for i, encoded in enumerate(encoded_symbols):
+            c_string_array[i] = encoded
+
+        # Keep references to prevent garbage collection
+        if not hasattr(self, '_symbol_array_refs'):
+            self._symbol_array_refs = []
+        self._symbol_array_refs.append(c_string_array)
+        self._symbol_array_refs.append(encoded_symbols)
+
+        self._lib.oid_set_available_symbols_safe(
+            self._native_handler, c_string_array, count)
 
     def run_event_loop(self):
         """
@@ -354,107 +333,98 @@ class DeferredVariablePlotter(object):
                         self._window._observed_buffers_cache.discard(self._variable)
                 return
 
-            # In LLDB mode, use the safe version that doesn't require
-            # Python C API calls to parse the dictionary. Extract values in
-            # Python and pass as individual arguments.
-            import sys
-            # Check if we're in LLDB mode by checking for lldb module
-            is_lldb = 'lldb' in sys.modules
+            # Always use the safe version that doesn't require Python C API calls
+            # to parse the dictionary. Extract values in Python and pass as individual arguments.
 
-            if is_lldb:
-                # Extract values from dictionary in Python (safe)
-                variable_name = buffer_metadata.get('variable_name', '')
-                display_name = buffer_metadata.get('display_name', '')
-                width = buffer_metadata.get('width', 0)
-                height = buffer_metadata.get('height', 0)
-                channels = buffer_metadata.get('channels', 0)
-                type_val = buffer_metadata.get('type', 0)
-                row_stride = buffer_metadata.get('row_stride', 0)
-                pixel_layout = buffer_metadata.get('pixel_layout', 'rgba')
-                transpose_buffer = buffer_metadata.get('transpose_buffer', False)
+            # Extract values from dictionary in Python (safe)
+            variable_name = buffer_metadata.get('variable_name', '')
+            display_name = buffer_metadata.get('display_name', '')
+            width = buffer_metadata.get('width', 0)
+            height = buffer_metadata.get('height', 0)
+            channels = buffer_metadata.get('channels', 0)
+            type_val = buffer_metadata.get('type', 0)
+            row_stride = buffer_metadata.get('row_stride', 0)
+            pixel_layout = buffer_metadata.get('pixel_layout', 'rgba')
+            transpose_buffer = buffer_metadata.get('transpose_buffer', False)
 
-                # Get pointer and size from memoryview using ctypes (safe)
-                import ctypes
-                mv = buffer_metadata.get('pointer')
-                if mv is not None:
-                    try:
-                        # For memoryview, access the underlying object
-                        # The memoryview from LLDB is created from bytes (process.ReadMemory)
-                        underlying = mv.obj if hasattr(mv, 'obj') else mv
+            # Get pointer and size from memoryview using ctypes (safe)
+            mv = buffer_metadata.get('pointer')
+            if mv is not None:
+                try:
+                    # For memoryview, access the underlying object
+                    # The memoryview from LLDB is created from bytes (process.ReadMemory)
+                    underlying = mv.obj if hasattr(mv, 'obj') else mv
 
-                        # If underlying object has buffer_info (like array.array), use it
-                        if hasattr(underlying, 'buffer_info'):
-                            buffer_info = underlying.buffer_info()
-                            buffer_ptr = buffer_info[0]
-                        else:
-                            # For bytes (read-only), we need to create a writable copy
-                            # to get a pointer. This is necessary because ctypes.from_buffer
-                            # requires writable buffers, and bytes are immutable.
-                            # Create a bytearray (writable) from the memoryview
-                            bytes_copy = bytearray(mv)
-                            # Now we can use from_buffer on the writable bytearray
-                            c_array = (ctypes.c_ubyte * len(bytes_copy)).from_buffer(bytes_copy)
-                            buffer_ptr = ctypes.addressof(c_array)
-                            # Keep reference to prevent garbage collection
-                            if not hasattr(self, '_buffer_refs'):
-                                self._buffer_refs = []
-                            self._buffer_refs.append(bytes_copy)
-                            self._buffer_refs.append(c_array)
-
-                        buffer_size = mv.nbytes
+                    # If underlying object has buffer_info (like array.array), use it
+                    if hasattr(underlying, 'buffer_info'):
+                        buffer_info = underlying.buffer_info()
+                        buffer_ptr = buffer_info[0]
+                    else:
+                        # For bytes (read-only), we need to create a writable copy
+                        # to get a pointer. This is necessary because ctypes.from_buffer
+                        # requires writable buffers, and bytes are immutable.
+                        # Create a bytearray (writable) from the memoryview
+                        bytes_copy = bytearray(mv)
+                        # Now we can use from_buffer on the writable bytearray
+                        c_array = (ctypes.c_ubyte * len(bytes_copy)).from_buffer(bytes_copy)
+                        buffer_ptr = ctypes.addressof(c_array)
                         # Keep reference to prevent garbage collection
                         if not hasattr(self, '_buffer_refs'):
                             self._buffer_refs = []
-                        self._buffer_refs.append(mv)
-                    except Exception as e:
-                        # Fallback: if we can't get pointer safely, skip plotting
-                        import logging
-                        log = logging.getLogger(__name__)
-                        log.warning(f"Could not extract buffer pointer from memoryview: {e}")
-                        # Don't remove from cache - this is a transient error, keep buffer
-                        # in cache for next attempt. The buffer is still valid.
-                        return
-                else:
-                    # Pointer is None - don't remove from cache if process is running
-                    # Only remove if process is stopped (variable doesn't exist)
-                    import sys
-                    if 'lldb' in sys.modules:
-                        import lldb
-                        try:
-                            debugger = self._bridge.get_lldb_backend()
-                            if debugger and debugger.GetSelectedTarget().IsValid():
-                                process = debugger.GetSelectedTarget().process
-                                if process.IsValid() and process.GetState() == lldb.eStateStopped:
-                                    # Process is stopped but pointer is None - variable doesn't exist
-                                    if self._window is not None:
-                                        self._window._observed_buffers_cache.discard(self._variable)
-                                # If process is running or we can't determine state, keep buffer in cache
-                        except Exception:
-                            # If we can't check process state, keep buffer in cache to be safe
-                            pass
-                    else:
-                        # Non-LLDB mode: remove from cache
-                        if self._window is not None:
-                            self._window._observed_buffers_cache.discard(self._variable)
-                    return
+                        self._buffer_refs.append(bytes_copy)
+                        self._buffer_refs.append(c_array)
 
-                # Call safe version with individual parameters
-                self._lib.oid_plot_buffer_safe(
-                    self._native_handler,
-                    variable_name.encode('utf-8') if isinstance(variable_name, str) else variable_name,
-                    display_name.encode('utf-8') if isinstance(display_name, str) else display_name,
-                    buffer_ptr,
-                    buffer_size,
-                    width,
-                    height,
-                    channels,
-                    type_val,
-                    row_stride,
-                    pixel_layout.encode('utf-8') if isinstance(pixel_layout, str) else pixel_layout,
-                    1 if transpose_buffer else 0)
+                    buffer_size = mv.nbytes
+                    # Keep reference to prevent garbage collection
+                    if not hasattr(self, '_buffer_refs'):
+                        self._buffer_refs = []
+                    self._buffer_refs.append(mv)
+                except Exception as e:
+                    # Fallback: if we can't get pointer safely, skip plotting
+                    import logging
+                    log = logging.getLogger(__name__)
+                    log.warning(f"Could not extract buffer pointer from memoryview: {e}")
+                    # Don't remove from cache - this is a transient error, keep buffer
+                    # in cache for next attempt. The buffer is still valid.
+                    return
             else:
-                # Non-LLDB mode: use original function with dictionary
-                self._lib.oid_plot_buffer(self._native_handler, buffer_metadata)
+                # Pointer is None - don't remove from cache if process is running
+                # Only remove if process is stopped (variable doesn't exist)
+                import sys
+                if 'lldb' in sys.modules:
+                    import lldb
+                    try:
+                        debugger = self._bridge.get_lldb_backend()
+                        if debugger and debugger.GetSelectedTarget().IsValid():
+                            process = debugger.GetSelectedTarget().process
+                            if process.IsValid() and process.GetState() == lldb.eStateStopped:
+                                # Process is stopped but pointer is None - variable doesn't exist
+                                if self._window is not None:
+                                    self._window._observed_buffers_cache.discard(self._variable)
+                            # If process is running or we can't determine state, keep buffer in cache
+                    except Exception:
+                        # If we can't check process state, keep buffer in cache to be safe
+                        pass
+                else:
+                    # Non-LLDB mode: remove from cache
+                    if self._window is not None:
+                        self._window._observed_buffers_cache.discard(self._variable)
+                return
+
+            # Call safe version with individual parameters
+            self._lib.oid_plot_buffer_safe(
+                self._native_handler,
+                variable_name.encode('utf-8') if isinstance(variable_name, str) else variable_name,
+                display_name.encode('utf-8') if isinstance(display_name, str) else display_name,
+                buffer_ptr,
+                buffer_size,
+                width,
+                height,
+                channels,
+                type_val,
+                row_stride,
+                pixel_layout.encode('utf-8') if isinstance(pixel_layout, str) else pixel_layout,
+                1 if transpose_buffer else 0)
 
         except Exception as err:
             import traceback
