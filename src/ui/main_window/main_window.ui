@@ -432,6 +432,42 @@ QStatusBar::item { border: 0; };</string>
            </widget>
           </item>
           <item>
+           <widget class="QLabel" name="formatLabel">
+            <property name="text">
+             <string>Format:</string>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="pixelFormatSelector">
+            <property name="minimumSize">
+             <size>
+              <width>80</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>100</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="toolTip">
+             <string>Select pixel channel layout</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacer_toolbar">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>

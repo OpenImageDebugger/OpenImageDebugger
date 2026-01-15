@@ -118,13 +118,25 @@ void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params)
     const auto& buffer_pose      = params.buffer_pose;
     const auto pos               = (y * step + x) * channels;
 
-    for (int c = 0; c < channels; ++c) {
+    // Determine channel range based on display mode
+    const bool single_channel = (buffer.get_display_channel_mode() == 1);
+    const int start_ch =
+        single_channel ? buffer.get_selected_channel_index() : 0;
+    const int end_ch = single_channel ? start_ch + 1 : channels;
+
+    for (int c = start_ch; c < end_ch; ++c) {
         constexpr auto label_length{30};
         auto pix_label = std::string{};
         pix_label.reserve(label_length);
-        const auto c_f    = static_cast<float>(c);
-        const float y_off = (0.5f * (channels_f - 1.0f) - c_f) / channels_f -
-                            recenter_factors[c];
+
+        // For single-channel mode, center the value; otherwise use original
+        // calculation
+        const float y_off =
+            single_channel
+                ? 0.0f
+                : ((0.5f * (channels_f - 1.0f) - static_cast<float>(c)) /
+                       channels_f -
+                   recenter_factors[c]);
 
         const PixelFormatParams pix_params{type,
                                            buffer.buffer_.data(),

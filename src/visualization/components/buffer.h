@@ -114,6 +114,13 @@ class Buffer final : public Component
 
     [[nodiscard]] const char* get_pixel_layout() const;
 
+    void set_display_channel_mode(int display_channels);
+
+    [[nodiscard]] int get_display_channel_mode() const;
+
+    // Returns the channel index (0=R, 1=G, 2=B) based on current pixel layout
+    [[nodiscard]] int get_selected_channel_index() const;
+
     void configure(const BufferParams& params);
 
     [[nodiscard]] float tile_coord_x(int x) const;
@@ -154,6 +161,9 @@ class Buffer final : public Component
     void update_max_color_value(float* upper, const int i, const int c) const;
 
     std::string pixel_layout_{'r', 'g', 'b', 'a'};
+
+    // Override for display mode: -1 means use actual buffer channels
+    int display_channel_mode_{-1};
 
     std::array<float, 4> min_buffer_values_{};
     std::array<float, 4> max_buffer_values_{};

@@ -25,6 +25,7 @@
 
 #include "buffer.h"
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <iostream>
@@ -58,6 +59,51 @@ bool validate_dimension(const int dimension,
         return false;
     }
     return true;
+}
+
+// Helper function to format pixel value based on buffer type
+void format_pixel_value(std::stringstream& message,
+                        const BufferType type,
+                        const std::span<const std::byte> buffer,
+                        const int pos)
+{
+    switch (type) {
+    case BufferType::Float32:
+        message << std::bit_cast<const float*>(buffer.data())[pos];
+        break;
+    case BufferType::Float64:
+        message << std::bit_cast<const double*>(buffer.data())[pos];
+        break;
+    case BufferType::UnsignedByte:
+        message << static_cast<short>(static_cast<uint8_t>(buffer[pos]));
+        break;
+    case BufferType::Short:
+        message << std::bit_cast<const short*>(buffer.data())[pos];
+        break;
+    case BufferType::UnsignedShort:
+        message << std::bit_cast<const unsigned short*>(buffer.data())[pos];
+        break;
+    case BufferType::Int32:
+        message << std::bit_cast<const int*>(buffer.data())[pos];
+        break;
+    }
+}
+
+// Helper function to get channel range based on display mode
+std::pair<int, int> get_channel_range(const int display_channel_mode,
+                                      const int channels,
+                                      const char* pixel_layout)
+{
+    if (display_channel_mode == 1) {
+        int selected_ch = 0;
+        if (pixel_layout[0] == 'g') {
+            selected_ch = 1;
+        } else if (pixel_layout[0] == 'b') {
+            selected_ch = 2;
+        }
+        return {selected_ch, selected_ch + 1};
+    }
+    return {0, channels};
 }
 
 } // namespace
@@ -107,35 +153,16 @@ void Buffer::get_pixel_info(std::stringstream& message,
         return;
     }
 
-    const auto pos = channels * (y * step + x);
+    const auto pos                = channels * (y * step + x);
+    const auto [start_ch, end_ch] = get_channel_range(
+        display_channel_mode_, channels, pixel_layout_.data());
 
     message << "[";
-
-    for (int c = 0; c < channels; ++c) {
-        if (type == BufferType::Float32 || type == BufferType::Float64) {
-            const auto fpix =
-                std::bit_cast<const float*>(buffer_.data())[pos + c];
-            message << fpix;
-        } else if (type == BufferType::UnsignedByte) {
-            const auto fpix =
-                static_cast<short>(static_cast<uint8_t>(buffer_[pos + c]));
-            message << fpix;
-        } else if (type == BufferType::Short) {
-            const auto fpix =
-                std::bit_cast<const short*>(buffer_.data())[pos + c];
-            message << fpix;
-        } else if (type == BufferType::UnsignedShort) {
-            const auto fpix =
-                std::bit_cast<const unsigned short*>(buffer_.data())[pos + c];
-            message << fpix;
-        } else if (type == BufferType::Int32) {
-            const auto fpix =
-                std::bit_cast<const int*>(buffer_.data())[pos + c];
-            message << fpix;
-        }
-        if (c < channels - 1) {
+    for (int c = start_ch; c < end_ch && c < channels; ++c) {
+        if (c > start_ch) {
             message << " ";
         }
+        format_pixel_value(message, type, buffer_, pos + c);
     }
     message << "]";
 }
@@ -396,7 +423,13 @@ void Buffer::configure(const BufferParams& params)
     buffer_height_f = static_cast<float>(params.buffer_height_i);
     step            = params.step;
     transpose       = params.transpose_buffer;
-    set_pixel_layout(params.pixel_layout);
+    // Only update pixel layout during initial setup, not on buffer updates
+    // This preserves user-selected pixel formats when buffer updates
+    if (buff_tex.empty() && !params.pixel_layout.empty() &&
+        params.pixel_layout.size() == 4) {
+        set_pixel_layout(params.pixel_layout);
+    }
+    // Otherwise, pixel_layout_ remains unchanged, preserving user selection
 }
 
 
@@ -423,15 +456,55 @@ void Buffer::set_pixel_layout(const std::string& pixel_layout)
 
     ///
     // Copy the pixel format
-    for (int i = 0; i < static_cast<int>(pixel_layout.size()); ++i) {
+    // Use std::min to ensure we never write beyond pixel_layout_.size()
+    const auto copy_size = std::min(pixel_layout.size(), pixel_layout_.size());
+    for (int i = 0; i < static_cast<int>(copy_size); ++i) {
         pixel_layout_[i] = pixel_layout[i];
     }
+
+    // Recreate shader program with new pixel layout
+    create_shader_program();
 }
 
 
 const char* Buffer::get_pixel_layout() const
 {
     return pixel_layout_.data();
+}
+
+
+void Buffer::set_display_channel_mode(const int display_channels)
+{
+    // Valid values: -1 (use actual buffer channels) or 1-4 (specific channel
+    // count) Reject 0 and values outside valid range
+    if (display_channels != -1 &&
+        (display_channels < 1 || display_channels > 4)) {
+        std::cerr << "[Error] Invalid display channel mode: "
+                  << display_channels << " (must be -1 or between 1 and 4)"
+                  << std::endl;
+        return;
+    }
+
+    display_channel_mode_ = display_channels;
+    create_shader_program();
+}
+
+
+int Buffer::get_display_channel_mode() const
+{
+    return display_channel_mode_;
+}
+
+
+int Buffer::get_selected_channel_index() const
+{
+    if (pixel_layout_[0] == 'g') {
+        return 1;
+    }
+    if (pixel_layout_[0] == 'b') {
+        return 2;
+    }
+    return 0;
 }
 
 
@@ -512,15 +585,28 @@ void Buffer::update_object_pose() const
 bool Buffer::create_shader_program()
 {
     // Buffer Shaders
+    // Use display_channel_mode_ if set, otherwise use actual buffer channels
+    const auto effective_channels =
+        (display_channel_mode_ == -1) ? channels : display_channel_mode_;
+
+    // Validate effective_channels to ensure it's within supported range
+    if (effective_channels < 1 || effective_channels > 4) {
+        std::cerr << "[Error] Invalid effective channel count: "
+                  << effective_channels
+                  << " (must be between 1 and 4). Display mode: "
+                  << display_channel_mode_ << ", buffer channels: " << channels
+                  << std::endl;
+        return false;
+    }
+
     auto channel_type = ShaderProgram::TexelChannels{};
-    if (channels == 1) {
+    if (effective_channels == 1) {
         channel_type = ShaderProgram::TexelChannels::FormatR;
-    } else if (channels == 2) {
+    } else if (effective_channels == 2) {
         channel_type = ShaderProgram::TexelChannels::FormatRG;
-    } else if (channels == 3) {
+    } else if (effective_channels == 3) {
         channel_type = ShaderProgram::TexelChannels::FormatRGB;
     } else {
-        assert(channels == 4);
         channel_type = ShaderProgram::TexelChannels::FormatRGBA;
     }
 

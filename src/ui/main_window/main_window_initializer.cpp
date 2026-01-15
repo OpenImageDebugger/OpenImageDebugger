@@ -191,7 +191,7 @@ void MainWindowInitializer::initialize_timers()
 void MainWindowInitializer::initialize_shortcuts()
 {
     // Qt parent-child ownership: parent deletes children automatically
-    auto* symbol_list_focus_shortcut =
+    const auto* symbol_list_focus_shortcut =
         new QShortcut(QKeySequence::fromString("Ctrl+K"), &deps_.main_window);
     QObject::connect(
         symbol_list_focus_shortcut,
@@ -199,7 +199,7 @@ void MainWindowInitializer::initialize_shortcuts()
         deps_.ui_components.ui->symbolList,
         [this]() { deps_.ui_components.ui->symbolList->setFocus(); });
 
-    auto* buffer_removal_shortcut = new QShortcut(
+    const auto* buffer_removal_shortcut = new QShortcut(
         QKeySequence{Qt::Key_Delete}, deps_.ui_components.ui->imageList);
     QObject::connect(
         buffer_removal_shortcut,
@@ -207,7 +207,7 @@ void MainWindowInitializer::initialize_shortcuts()
         &deps_.main_window,
         [this]() { deps_.event_handler.remove_selected_buffer(); });
 
-    auto* go_to_shortcut =
+    const auto* go_to_shortcut =
         new QShortcut(QKeySequence::fromString("Ctrl+L"), &deps_.main_window);
     QObject::connect(go_to_shortcut,
                      &QShortcut::activated,
@@ -374,6 +374,21 @@ void MainWindowInitializer::initialize_toolbar() const
                      &QAbstractButton::clicked,
                      &deps_.main_window,
                      [this]() { deps_.event_handler.toggle_go_to_dialog(); });
+
+    // Initialize pixel format selector
+    deps_.ui_components.ui->pixelFormatSelector->addItem("BGRA");
+    deps_.ui_components.ui->pixelFormatSelector->addItem("RGBA");
+    deps_.ui_components.ui->pixelFormatSelector->addItem("channel0");
+    deps_.ui_components.ui->pixelFormatSelector->addItem("channel1");
+    deps_.ui_components.ui->pixelFormatSelector->addItem("channel2");
+    deps_.ui_components.ui->pixelFormatSelector->setCurrentText("BGRA");
+
+    QObject::connect(deps_.ui_components.ui->pixelFormatSelector,
+                     &QComboBox::currentTextChanged,
+                     &deps_.main_window,
+                     [this](const QString& format) {
+                         deps_.main_window.pixel_format_changed(format);
+                     });
 
     deps_.ui_components.ui->increase_float_precision->setEnabled(false);
     deps_.ui_components.ui->decrease_float_precision->setEnabled(false);
