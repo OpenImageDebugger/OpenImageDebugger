@@ -28,7 +28,7 @@ on:
 jobs:
   commit-message:
     name: Conventional Commit compliance
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-slim
 
     steps:
       - name: Check for Conventional Commit compliance
