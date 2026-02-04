@@ -7,6 +7,9 @@ customized to work with any arbitrary data structure.
 
 ![Sample window](doc/sample_window.png)
 
+# Download (experimental) [![OID Eternal Download Count](https://img.shields.io/github/downloads/openimagedebugger/openimagedebugger/total.svg)](https://tooomm.github.io/github-release-stats/?username=OpenImageDebugger&repository=OpenImageDebugger&search=0)
+## A bit experimental, better to compile manually
+
 ## Features
 
 * GUI interactivity:
