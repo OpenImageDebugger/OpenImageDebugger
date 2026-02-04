@@ -32,7 +32,7 @@ on:
 jobs:
   bump-version:
     name: Bump version and release
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-slim
     steps:
       - name: Release version
         id: release-version
