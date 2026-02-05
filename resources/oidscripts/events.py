@@ -5,6 +5,7 @@ Implementation of handlers for events raised by the debugger
 """
 
 import time
+import sys
 
 from oidscripts.debuggers.interfaces import BridgeEventHandlerInterface
 
@@ -23,8 +24,15 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
         for autocompleting.
         """
         observable_symbols = list(self._debugger.get_available_symbols())
-        if self._window.is_ready():
-            self._window.set_available_symbols(observable_symbols)
+
+        if 'lldb' in sys.modules:
+            from oidscripts.oidwindow import DeferredSymbolListSetter
+            deferred_setter = DeferredSymbolListSetter(
+                self._window, observable_symbols)
+            self._debugger.queue_request(deferred_setter)
+        else:
+            if self._window.is_ready():
+                self._window.set_available_symbols(observable_symbols)
 
     def exit_handler(self):
         self._window.terminate()
@@ -34,16 +42,17 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
         The debugger has stopped (e.g. a breakpoint was hit). We must list all
         available buffers and pass it to the Open Image Debugger window.
         """
-        # Block until the window is up and running
         if not self._window.is_ready():
-            self._window.initialize_window()
-            while not self._window.is_ready():
+            max_wait = 50
+            waited = 0
+            while not self._window.is_ready() and waited < max_wait:
                 time.sleep(0.1)
+                waited += 1
 
-        # Update buffers being visualized
         observed_buffers = self._window.get_observed_buffers()
-        for buffer_name in observed_buffers:
-            self._window.plot_variable(buffer_name)
+        if observed_buffers:
+            for buffer_name in observed_buffers:
+                self._window.plot_variable(buffer_name)
 
         # Set list of available symbols
         self._set_symbol_complete_list()

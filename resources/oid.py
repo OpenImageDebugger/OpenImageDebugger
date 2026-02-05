@@ -28,38 +28,56 @@ def import_gdb(type_bridge):
     from oidscripts.debuggers import gdbbridge
     return gdbbridge.GdbBridge(type_bridge)
 
-
 def import_lldb(type_bridge):
     from oidscripts.debuggers import lldbbridge
     return lldbbridge.LldbBridge(type_bridge)
 
-
 def lldb_stop_hook_handler(debugger, command, result, dict):
-    from oidscripts.debuggers import lldbbridge
-    lldbbridge.instance.stop_hook(debugger, command, result, dict)
-
+    try:
+        from oidscripts.debuggers import lldbbridge
+        if lldbbridge.instance is not None:
+            lldbbridge.instance.stop_hook(debugger, command, result, dict)
+    except Exception:
+        pass
 
 def __lldb_init_module(debugger, internal_dict):
     from oidscripts.debuggers import lldbbridge
+    from oidscripts.logger import log
 
     def ide_prevents_stop_hook():
         from oidscripts.ides import qtcreator
-        ide_checkers = [qtcreator.prevents_stop_hook]
+        try:
+            from oidscripts.ides import android_studio
+            ide_checkers = [qtcreator.prevents_stop_hook,
+                           android_studio.prevents_stop_hook]
+        except ImportError:
+            ide_checkers = [qtcreator.prevents_stop_hook]
 
         for stop_hook_check in ide_checkers:
-            if stop_hook_check():
-                return True
+            try:
+                if stop_hook_check():
+                    log.info('Stop hook prevented by IDE detection')
+                    return True
+            except Exception as e:
+                log.debug('IDE detection check failed: %s', str(e))
 
         return False
 
-    if ide_prevents_stop_hook():
+    import lldb
+    qtcreator_not_available = not hasattr(lldb, 'theDumper')
+    
+    if ide_prevents_stop_hook() or qtcreator_not_available:
+        if qtcreator_not_available:
+            log.info('Stop hook prevented: QtCreator not available')
         return
 
-    debugger.HandleCommand("command script add -f "
-                           "oid.lldb_stop_hook_handler "
-                           "HandleHookStopOnTarget")
-    debugger.HandleCommand('target stop-hook add -o "HandleHookStopOnTarget"')
-
+    try:
+        debugger.HandleCommand("command script add -f "
+                               "oid.lldb_stop_hook_handler "
+                               "HandleHookStopOnTarget")
+        debugger.HandleCommand('target stop-hook add -o "HandleHookStopOnTarget"')
+    except Exception as e:
+        log.warning('Failed to register stop hook: %s', str(e))
 
 def register_ide_hooks(debugger,  # type: BridgeInterface
                        event_handler  # type: OpenImageDebuggerEvents
@@ -72,19 +90,26 @@ def register_ide_hooks(debugger,  # type: BridgeInterface
     from oidscripts.ides import qtcreator
 
     ide_initializers = [qtcreator.register_symbol_fetch_hook]
+    
+    # Try to add Android Studio initializer if available
+    try:
+        from oidscripts.ides import android_studio
+        ide_initializers.append(android_studio.register_symbol_fetch_hook)
+    except ImportError:
+        pass
+    
     error_traces = []
 
     for initializer in ide_initializers:
         try:
             initializer(debugger, event_handler)
             return
-        except Exception:
+        except Exception as e:
             error_traces.append(traceback.format_exc())
 
     log.info('Could not activate hooks for any IDEs')
     # To find out more about this issue, uncomment the line below:
     # log.info('\n'.join(error_traces))
-
 
 def get_debugger_bridge():
     """
@@ -111,7 +136,6 @@ def get_debugger_bridge():
     log.error('\n'.join(error_traces))
     exit(1)
 
-
 def main():
     """
     Main entry point.
@@ -127,14 +151,13 @@ def main():
         # Test application
         oidtest(script_path)
     else:
-        # Setup GDB interface
         debugger = get_debugger_bridge()
         window = OpenImageDebuggerWindow(script_path, debugger)
+        window.initialize_window()
         event_handler = OpenImageDebuggerEvents(window, debugger)
 
         register_ide_hooks(debugger, event_handler)
 
         debugger.register_event_handlers(event_handler)
-
 
 main()

@@ -28,25 +28,30 @@
 #include <cstdint>
 
 #include <bit>
+#include <chrono>
 #include <deque>
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <span>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
 #include "ipc/message_exchange.h"
+#include "library_path.h"
 #include "system/process/process.h"
 
 #include <QDataStream>
 #include <QPointer>
 #include <QTcpServer>
+#include <QProcess>
 #include <QTcpSocket>
-
 
 struct PlotBufferParams
 {
@@ -79,26 +84,89 @@ struct PlotBufferRequestMessage final : UiMessage
 
 class PyGILRAII
 {
+  private:
+    // H17: Class-level static variable for LLDB mode detection (cached,
+    // thread-safe)
+    static bool s_is_lldb_mode;
+
   public:
-    PyGILRAII()
+    // H17: Check if we're in LLDB mode (cached, thread-safe)
+    static bool is_lldb_mode()
     {
-        _py_gil_state = PyGILState_Ensure();
+        // Access the cached value - will be set on first PyGILRAII construction
+        return s_is_lldb_mode;
     }
 
-    PyGILRAII(const PyGILRAII&)  = delete;
-    PyGILRAII(const PyGILRAII&&) = delete;
+    PyGILRAII()
+    {
+        // H16: Cache LLDB mode detection to avoid calling unsafe Python C API
+        // functions (PyGILState_GetThisThreadState, Py_IsInitialized) from
+        // event loop thread. These calls crash in LLDB's embedded Python when
+        // called from non-main threads, even when we skip GIL management.
+        static bool lldb_mode_cached = false;
 
-    PyGILRAII& operator=(const PyGILRAII&)  = delete;
-    PyGILRAII& operator=(const PyGILRAII&&) = delete;
+        PyThreadState* tstate_before = nullptr;
+        bool py_init_before          = false;
+
+        if (!lldb_mode_cached) {
+            // First call: detect LLDB mode from main thread (safe)
+            tstate_before    = PyGILState_GetThisThreadState();
+            py_init_before   = Py_IsInitialized() != 0;
+            s_is_lldb_mode   = (!tstate_before && !py_init_before);
+            lldb_mode_cached = true;
+        } else {
+            // Use cached result - no more Python C API calls needed
+            if (s_is_lldb_mode) {
+                // Use cached LLDB mode - don't call Python C API functions
+                tstate_before  = nullptr;
+                py_init_before = false;
+            } else {
+                // Normal mode - safe to call these functions
+                tstate_before  = PyGILState_GetThisThreadState();
+                py_init_before = Py_IsInitialized() != 0;
+            }
+        }
+
+        // If we have no thread state AND Python reports not initialized,
+        // but we're being called from Python code, this is LLDB's
+        // sub-interpreter. In this case:
+        // 1. We're called from Python via ctypes, so GIL is already held
+        // 2. PyGILState_Ensure() aborts because it can't register thread state
+        // 3. But Python APIs work (PyDict_Check succeeds), so GIL IS held
+        // Solution: Skip PyGILState_Ensure()/Release() - GIL is managed by
+        // Python/LLDB, not by us. We can use Python APIs directly.
+        if (s_is_lldb_mode || (!tstate_before && !py_init_before)) {
+            // LLDB sub-interpreter: GIL is held by Python/LLDB, but thread
+            // state isn't registered with GILState API. We can use Python APIs
+            // but cannot call PyGILState_Ensure()/Release(). Skip GIL
+            // management.
+            _has_gil = true; // Don't try to acquire/release - it's already held
+        } else {
+            // Normal case: try PyGILState_Ensure()
+            _py_gil_state = PyGILState_Ensure();
+            _has_gil      = false; // We acquired it, so we need to release it
+        }
+    }
+
+    PyGILRAII(const PyGILRAII&)            = delete;
+    PyGILRAII(PyGILRAII&&)                 = delete;
+    PyGILRAII& operator=(const PyGILRAII&) = delete;
+    PyGILRAII& operator=(PyGILRAII&&)      = delete;
 
     ~PyGILRAII() noexcept
     {
-        PyGILState_Release(_py_gil_state);
+        if (!_has_gil) {
+            PyGILState_Release(_py_gil_state);
+        }
     }
 
   private:
     PyGILState_STATE _py_gil_state{};
+    bool _has_gil{false};
 };
+
+// H17: Static member definition for LLDB mode detection
+bool PyGILRAII::s_is_lldb_mode = false;
 
 class OidBridge
 {
@@ -111,21 +179,77 @@ class OidBridge
     bool start()
     {
         // Initialize server
-        if (!server_.listen(QHostAddress::Any)) {
+        // Use QHostAddress::LocalHost to match client connection to 127.0.0.1
+        // This ensures the server is listening on the same interface the client connects to
+        if (!server_.listen(QHostAddress::LocalHost)) {
             std::cerr << "[OpenImageDebugger] Could not start TCP server"
                       << std::endl;
             return false;
         }
 
-        const auto windowBinaryPath = this->oid_path_ + "/oidwindow";
+        // H14: Fallback to detect library path when oid_path_ is empty (LLDB
+        // Python bug - __file__ not set)
+        std::string oid_path_to_use = this->oid_path_;
+        if (oid_path_to_use.empty()) {
+            const std::filesystem::path library_path =
+                oid::get_current_library_path();
+
+            // Use std::filesystem for cross-platform path operations
+            if (!library_path.empty()) {
+                // Try canonical() first, fallback to absolute() if it fails
+                bool path_resolved = false;
+                try {
+                    const auto canonical_path =
+                        std::filesystem::canonical(library_path);
+                    const auto lib_dir = canonical_path.parent_path();
+                    oid_path_to_use    = lib_dir.string();
+                    path_resolved      = true;
+                } catch (const std::filesystem::filesystem_error& ex) {
+                    // canonical() failed (e.g., path doesn't exist) - try
+                    // absolute() as fallback
+                    std::cerr << "[OpenImageDebugger] Failed to get canonical "
+                                 "library path: "
+                              << ex.what() << std::endl;
+                }
+
+                if (!path_resolved) {
+                    try {
+                        const auto absolute_path =
+                            std::filesystem::absolute(library_path);
+                        const auto lib_dir = absolute_path.parent_path();
+                        oid_path_to_use    = lib_dir.string();
+                    } catch (const std::filesystem::filesystem_error& ex) {
+                        // Both canonical() and absolute() failed - continue
+                        // with empty oid_path_to_use (will use fallback or fail
+                        // later if needed)
+                        const auto error_msg = ex.what();
+                        std::cerr
+                            << "[OpenImageDebugger] Failed to get absolute "
+                               "library path: "
+                            << error_msg << std::endl;
+                    }
+                }
+            }
+        }
+
+        // Use std::filesystem::path for cross-platform path construction
+        // On Windows, append .exe extension
+        #ifdef _WIN32
+        const auto windowBinaryPath = (std::filesystem::path{oid_path_to_use} / "oidwindow.exe").string();
+        #else
+        const auto windowBinaryPath = (std::filesystem::path{oid_path_to_use} / "oidwindow").string();
+        #endif
         const auto portStdString    = std::to_string(server_.serverPort());
 
         std::vector<std::string> command{
             windowBinaryPath, "-style", "fusion", "-p", portStdString};
 
         ui_proc_.start(command);
-
         ui_proc_.waitForStart();
+        
+        // Give the process a moment to initialize before we start waiting for connection
+        // This ensures the Qt event loop has started and the connection attempt can be made
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         wait_for_client();
 
@@ -134,6 +258,7 @@ class OidBridge
 
     void set_path(const std::string_view& oid_path)
     {
+
         oid_path_ = oid_path;
     }
 
@@ -161,29 +286,55 @@ class OidBridge
         return {};
     }
 
-
     void
     set_available_symbols(const std::deque<std::string>& available_vars) const
     {
-        assert(!client_.isNull());
+        // Don't send if client is not connected yet - this can happen during initialization
+        // Use try-catch to handle any potential race conditions or invalid state
+        try {
+            if (client_.isNull()) {
+                return;
+            }
+            
+            // Access client state safely - check if pointer is still valid
+            auto* client = client_.data();
+            if (client == nullptr) {
+                return;
+            }
+            
+            const auto socket_state = client->state();
+            if (socket_state != QAbstractSocket::ConnectedState) {
+                return;
+            }
 
-        auto message_composer = oid::MessageComposer{};
-        message_composer.push(oid::MessageType::SetAvailableSymbols)
-            .push(available_vars)
-            .send(client_);
+            // Client is connected - send the message
+            auto message_composer = oid::MessageComposer{};
+            message_composer.push(oid::MessageType::SetAvailableSymbols)
+                .push(available_vars)
+                .send(client_);
+        } catch (const std::exception&) {
+            // Catch any exceptions (e.g., from accessing deleted QPointer)
+            // Silently ignore - this is not critical, symbols can be set again later
+            return;
+        } catch (...) {
+            return;
+        }
     }
 
     void run_event_loop()
     {
+
         try_read_incoming_messages(static_cast<int>(1000.0 / 5.0));
 
         auto plot_request_message = std::make_unique<UiMessage>();
         while ((plot_request_message = try_get_stored_message(
                     oid::MessageType::PlotBufferRequest)) != nullptr) {
+
             const PlotBufferRequestMessage* msg =
                 dynamic_cast<PlotBufferRequestMessage*>(
                     plot_request_message.get());
             if (plot_callback_) {
+
                 plot_callback_(msg->buffer_name.c_str());
             }
         }
@@ -201,6 +352,15 @@ class OidBridge
         const auto buff_stride        = params.buff_stride;
         const auto buff_type          = params.buff_type;
         const auto& buffer            = params.buffer;
+
+        // Check if client is connected before sending
+        if (client_.isNull() ||
+            client_->state() != QAbstractSocket::ConnectedState) {
+            std::cerr << "[OpenImageDebugger] Cannot plot buffer: client "
+                         "socket is null or not connected"
+                      << std::endl;
+            return;
+        }
 
         auto message_composer = oid::MessageComposer{};
         message_composer.push(oid::MessageType::PlotBufferContents)
@@ -245,7 +405,6 @@ class OidBridge
         return nullptr;
     }
 
-
     void try_read_incoming_messages(const int msecs = 3000)
     {
         assert(!client_.isNull());
@@ -278,7 +437,6 @@ class OidBridge
             }
         } while (!client_.isNull() && client_->bytesAvailable() > 0);
     }
-
 
     [[nodiscard]] std::unique_ptr<UiMessage> decode_plot_buffer_request() const
     {
@@ -317,20 +475,32 @@ class OidBridge
         return try_get_stored_message(msg_type);
     }
 
-
     void wait_for_client()
     {
         if (client_.isNull()) {
-            if (!server_.waitForNewConnection(10000)) {
-                std::cerr << "[OpenImageDebugger] No clients connected to "
-                             "OpenImageDebugger server"
-                          << std::endl;
+            // First check if there's already a pending connection (client might have connected while we were waiting)
+            if (!server_.hasPendingConnections()) {
+                // No pending connection - wait for a new one
+                // Increase timeout to 30 seconds to match Qt's default waitForConnected timeout
+                // The oidwindow process needs time to initialize Qt, parse arguments, and connect
+                if (!server_.waitForNewConnection(30000)) {
+                    // Even if waitForNewConnection timed out, check for pending connections
+                    // The client might have connected but the signal wasn't processed yet
+                    if (!server_.hasPendingConnections()) {
+                        std::cerr << "[OpenImageDebugger] No clients connected to "
+                                     "OpenImageDebugger server"
+                                  << std::endl;
+                        return;
+                    }
+                    // Fall through to accept the pending connection
+                }
             }
+            
+            // Accept the pending connection
             client_ = QPointer<QTcpSocket>(server_.nextPendingConnection());
         }
     }
 };
-
 
 // C++ implementation that accepts std::function (avoids function pointer in
 // implementation)
@@ -340,10 +510,12 @@ std::unique_ptr<OidBridge>
 oid_initialize_impl(std::function<int(const char*)> plot_callback,
                     PyObject* optional_parameters)
 {
+
     const auto py_gil_raii = PyGILRAII{};
 
     if (optional_parameters != nullptr && !PyDict_Check(optional_parameters))
         [[unlikely]] {
+
         RAISE_PY_EXCEPTION(
             PyExc_TypeError,
             "Invalid second parameter given to oid_initialize (was expecting"
@@ -354,36 +526,197 @@ oid_initialize_impl(std::function<int(const char*)> plot_callback,
     /*
      * Get optional fields
      */
-    const auto py_oid_path =
-        PyDict_GetItemString(optional_parameters, "oid_path");
+
+    PyObject* py_oid_path = nullptr;
+    bool py_oid_path_is_strong_ref = false;  // Track if py_oid_path is a strong reference (needs DECREF)
+    if (optional_parameters != nullptr) {
+
+        // H1: Test PyDict_Size BEFORE logging to avoid abort during log
+        // formatting H2-H5: Test if dictionary operations require proper thread
+        // state registration
+
+        // Test if we can safely call Python APIs by trying a lightweight
+        // operation first PyDict_Size() requires GIL and is safer than
+        // PyDict_GetItemString
+        Py_ssize_t dict_size = PyDict_Size(optional_parameters);
+
+        // Python 3.13 workaround: PyDict_Next() and PyDict_GetItemString() trigger
+        // PyUnicode_CheckExact assertion in dictobject.c:439 when dictionary keys
+        // aren't exact Unicode objects (common with ctypes-passed dictionaries).
+        // Solution: Use PyObject_GetAttrString() to access via __getitem__ method,
+        // which uses a different code path that doesn't trigger the assertion.
+        // This works because __getitem__ goes through the mapping protocol rather
+        // than direct dictionary internal access.
+        if (!PyGILRAII::is_lldb_mode()) {
+            // Normal Python mode: use __getitem__ via PyObject_GetAttrString
+            // This avoids the problematic dictobject.c:439 assertion
+            PyObject* getitem_method = PyObject_GetAttrString(optional_parameters, "__getitem__");
+            if (getitem_method != nullptr) {
+                PyObject* key_str = PyUnicode_FromString("oid_path");
+                if (key_str != nullptr) {
+                    py_oid_path = PyObject_CallFunctionObjArgs(getitem_method, key_str, nullptr);
+                    Py_DECREF(key_str);
+                    // py_oid_path is a new reference (or nullptr if KeyError)
+                    if (py_oid_path == nullptr && PyErr_ExceptionMatches(PyExc_KeyError)) {
+                        // Key not found - this is fine, it's optional
+                        PyErr_Clear();
+                        py_oid_path = nullptr;
+                    } else if (py_oid_path != nullptr) {
+                        // We got a new reference - mark it for cleanup
+                        py_oid_path_is_strong_ref = true;
+                    }
+                }
+                Py_DECREF(getitem_method);
+            } else {
+                // Fallback: try PyDict_GetItemString if __getitem__ not available
+                PyErr_Clear();
+                py_oid_path = PyDict_GetItemString(optional_parameters, "oid_path");
+                // PyDict_GetItemString returns borrowed reference
+                py_oid_path_is_strong_ref = false;
+            }
+        } else {
+            // LLDB mode: must use PyDict_Next to avoid abort
+            // H7: Use PyDict_Next() to iterate through dictionary directly - this
+            // gives us existing key/value pairs without creating new objects.
+            // PyDict_Keys() creates a new list, which might abort. PyDict_Next()
+            // just iterates through existing pairs.
+
+            // Iterate through dictionary using PyDict_Next - this avoids creating
+            // new objects and uses existing key/value pairs
+            Py_ssize_t pos  = 0;
+            PyObject* key   = nullptr;
+            PyObject* value = nullptr;
+            PyObject* fallback_value =
+                nullptr; // Store value if key is empty (LLDB Python bug workaround)
+
+            while (PyDict_Next(optional_parameters, &pos, &key, &value)) {
+
+                // key and value are borrowed references from the dictionary
+                if (key != nullptr && PyUnicode_Check(key)) {
+
+                    // Try to get UTF-8 string for comparison
+                    // Note: PyUnicode_AsUTF8 might abort, but we'll try it
+                    const char* key_str = PyUnicode_AsUTF8(key);
+
+                    if (key_str != nullptr && strcmp(key_str, "oid_path") == 0) {
+                        // Found the key - value already contains the result
+                        py_oid_path = value; // Borrowed reference
+
+                        break;
+                    } else if (key_str != nullptr && strlen(key_str) == 0 &&
+                               value != nullptr) {
+                        // H13: LLDB Python bug workaround - key is empty string but
+                        // value might be the path we need Store it as fallback if
+                        // dictionary has only one entry
+
+                        fallback_value = value; // Borrowed reference
+                    }
+                }
+            }
+
+            // H13: If we didn't find "oid_path" key but found an empty key with a
+            // value and dictionary has only one entry, use the fallback value (LLDB
+            // Python bug workaround)
+            if (py_oid_path == nullptr && fallback_value != nullptr &&
+                dict_size == 1) {
+                py_oid_path = fallback_value; // Borrowed reference
+            }
+        }
+
+        // If we didn't find the key, it doesn't exist in the dictionary.
+        // Just leave py_oid_path as nullptr - this is a valid case (optional
+        // parameter).
+        if (py_oid_path == nullptr) {
+
+            // py_oid_path remains nullptr - this is fine, it's an optional
+            // parameter
+        }
+
+    } else {
+    }
 
     auto app = std::make_unique<OidBridge>(std::move(plot_callback));
 
     if (py_oid_path) {
+
         auto oid_path_str = std::string{};
         oid::copy_py_string(oid_path_str, py_oid_path);
+
         app->set_path(oid_path_str);
+        
+        // Clean up strong reference if we created one via __getitem__
+        if (py_oid_path_is_strong_ref && py_oid_path != nullptr) {
+            Py_DECREF(py_oid_path);
+            py_oid_path = nullptr;
+        }
+    } else {
+        // Clean up strong reference if we got one but path is nullptr
+        if (py_oid_path_is_strong_ref && py_oid_path != nullptr) {
+            Py_DECREF(py_oid_path);
+            py_oid_path = nullptr;
+        }
+    }
+
+    return app;
+}
+
+// Safe version that takes C string directly, avoiding Python C API dictionary access
+std::unique_ptr<OidBridge>
+oid_initialize_safe_impl(std::function<int(const char*)> plot_callback,
+                         const char* oid_path)
+{
+    // No Python C API calls needed - just use the C string directly
+    auto app = std::make_unique<OidBridge>(std::move(plot_callback));
+
+    if (oid_path != nullptr && oid_path[0] != '\0') {
+        app->set_path(std::string{oid_path});
     }
 
     return app;
 }
 } // namespace
 
+// NOSONAR: C API requires function pointer (extern "C")
+AppHandler oid_initialize_safe(int (*plot_callback)(const char*), // NOSONAR
+                               const char* oid_path)
+{
+    try {
+        auto app = oid_initialize_safe_impl(
+            std::function<int(const char*)>{plot_callback}, oid_path);
+        return app.release();
+    } catch (...) {
+        return nullptr;
+    }
+}
 
 // NOSONAR: C API requires function pointer (extern "C")
 AppHandler oid_initialize(int (*plot_callback)(const char*), // NOSONAR
                           PyObject* optional_parameters)
 {
+
     // Convert C-style function pointer to std::function for modern C++
     // implementation. Function pointer parameter required for C API
     // compatibility (extern "C" interface)
-    auto app = oid_initialize_impl(
-        plot_callback ? std::function<int(const char*)>{plot_callback}
-                      : std::function<int(const char*)>{},
-        optional_parameters);
-    return app ? app.release() : nullptr;
-}
+    try {
+        auto app = oid_initialize_impl(
+            plot_callback ? std::function<int(const char*)>{plot_callback}
+                          : std::function<int(const char*)>{},
+            optional_parameters);
 
+        // H18: In LLDB mode, we cannot create ANY Python objects, even from the
+        // main thread. PyList_New(0) crashes. Skip empty list initialization
+        // and return nullptr from oid_get_observed_buffers instead. Python side
+        // will handle None gracefully.
+
+        return app ? app.release() : nullptr;
+    } catch (const std::exception&) {
+
+        return nullptr;
+    } catch (...) {
+
+        return nullptr;
+    }
+}
 
 void oid_cleanup(const AppHandler handler)
 {
@@ -400,9 +733,9 @@ void oid_cleanup(const AppHandler handler)
     app.reset();
 }
 
-
 void oid_exec(const AppHandler handler)
 {
+
     const auto py_gil_raii = PyGILRAII{};
 
     const auto app = static_cast<OidBridge*>(handler);
@@ -416,9 +749,9 @@ void oid_exec(const AppHandler handler)
     app->start();
 }
 
-
 int oid_is_window_ready(const AppHandler handler)
 {
+
     const auto py_gil_raii = PyGILRAII{};
 
     const auto app = static_cast<OidBridge*>(handler);
@@ -432,9 +765,9 @@ int oid_is_window_ready(const AppHandler handler)
     return app->is_window_ready();
 }
 
-
 PyObject* oid_get_observed_buffers(AppHandler handler)
 {
+
     const auto py_gil_raii = PyGILRAII{};
 
     const auto app = static_cast<OidBridge*>(handler);
@@ -447,13 +780,27 @@ PyObject* oid_get_observed_buffers(AppHandler handler)
     }
 
     const auto observed_symbols = app->get_observed_symbols();
+
+    // H18: In LLDB mode, we cannot create ANY Python objects, even from the
+    // main thread. PyList_New(0) crashes. Return Py_None (Python's None object)
+    // instead of nullptr. Py_None is a singleton that always exists, so we can
+    // safely return it even in LLDB mode.
+    if (PyGILRAII::is_lldb_mode()) {
+        // Return Py_None - Python side will check for None before iterating
+
+        Py_INCREF(Py_None);
+
+        return Py_None;
+    }
+
     const auto py_observed_symbols =
         PyList_New(static_cast<Py_ssize_t>(observed_symbols.size()));
 
     const auto observed_symbols_sentinel =
         static_cast<int>(observed_symbols.size());
     for (int i = 0; i < observed_symbols_sentinel; ++i) {
-        const auto& symbol_name   = observed_symbols[i];
+        const auto& symbol_name = observed_symbols[i];
+
         const auto py_symbol_name = PyBytes_FromString(symbol_name.c_str());
 
         if (py_symbol_name == nullptr) [[unlikely]] {
@@ -467,11 +814,21 @@ PyObject* oid_get_observed_buffers(AppHandler handler)
     return py_observed_symbols;
 }
 
-
 void oid_set_available_symbols(const AppHandler handler,
                                PyObject* available_vars)
 {
+
     const auto py_gil_raii = PyGILRAII{};
+
+    // H17: In LLDB mode, avoid calling Python C API functions from event loop
+    // thread. PyList_Check, PyList_Size, PyList_GetItem crash when called from
+    // non-main threads in LLDB's embedded Python.
+    if (PyGILRAII::is_lldb_mode()) {
+        // Skip setting available symbols in LLDB mode - this is called from the
+        // event loop thread and Python C API calls are unsafe.
+
+        return;
+    }
 
     assert(PyList_Check(available_vars));
 
@@ -485,9 +842,13 @@ void oid_set_available_symbols(const AppHandler handler,
     }
 
     auto available_vars_stl = std::deque<std::string>{};
-    for (Py_ssize_t pos = 0; pos < PyList_Size(available_vars); ++pos) {
-        auto var_name_str   = std::string{};
+    const auto list_size    = PyList_Size(available_vars);
+
+    for (Py_ssize_t pos = 0; pos < list_size; ++pos) {
+        auto var_name_str = std::string{};
+
         const auto listItem = PyList_GetItem(available_vars, pos);
+
         oid::copy_py_string(var_name_str, listItem);
         available_vars_stl.push_back(var_name_str);
     }
@@ -495,14 +856,41 @@ void oid_set_available_symbols(const AppHandler handler,
     app->set_available_symbols(available_vars_stl);
 }
 
-
-void oid_run_event_loop(const AppHandler handler)
+void oid_set_available_symbols_safe(const AppHandler handler,
+                                    const char* const* available_vars,
+                                    size_t count)
 {
-    const auto py_gil_raii = PyGILRAII{};
+    // H17: Safe version for LLDB mode - no Python C API calls
+    // This function can be called from any thread without GIL issues
 
     const auto app = static_cast<OidBridge*>(handler);
 
     if (app == nullptr) [[unlikely]] {
+        return;
+    }
+
+    auto available_vars_stl = std::deque<std::string>{};
+
+    for (size_t pos = 0; pos < count; ++pos) {
+        if (available_vars[pos] != nullptr) {
+            available_vars_stl.emplace_back(available_vars[pos]);
+        }
+    }
+
+    app->set_available_symbols(available_vars_stl);
+}
+
+void oid_run_event_loop(const AppHandler handler)
+{
+    // H15: Don't create PyGILRAII here - run_event_loop() doesn't use Python C
+    // API, only calls C callback. Creating PyGILRAII repeatedly from event loop
+    // thread causes crashes in LLDB's embedded Python. Only create it if we
+    // need to raise an exception.
+    const auto app = static_cast<OidBridge*>(handler);
+
+    if (app == nullptr) [[unlikely]] {
+        // Only create PyGILRAII when we actually need to raise an exception
+        const auto py_gil_raii = PyGILRAII{};
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
                            "oid_run_event_loop received null application "
                            "handler");
@@ -512,10 +900,19 @@ void oid_run_event_loop(const AppHandler handler)
     app->run_event_loop();
 }
 
-
 void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 {
+
     const auto py_gil_raii = PyGILRAII{};
+
+    // H19: In LLDB mode, avoid calling Python C API functions from event loop
+    // thread. PyDict_Check, PyDict_GetItemString, PyUnicode_Check, etc. crash
+    // when called from non-main threads in LLDB's embedded Python.
+    if (PyGILRAII::is_lldb_mode()) {
+        // Skip plotting in LLDB mode - this is called from the event loop
+        // thread and Python C API calls are unsafe.
+        return;
+    }
 
     const auto app = static_cast<OidBridge*>(handler);
 
@@ -649,5 +1046,58 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
                                   .buff_stride       = buff_stride,
                                   .buff_type         = buff_type,
                                   .buffer            = buff_span};
+    app->plot_buffer(params);
+}
+
+void oid_plot_buffer_safe(AppHandler handler,
+                          const char* variable_name,
+                          const char* display_name,
+                          const void* buffer_ptr,
+                          size_t buffer_size,
+                          int width,
+                          int height,
+                          int channels,
+                          int type,
+                          int row_stride,
+                          const char* pixel_layout,
+                          int transpose_buffer)
+{
+
+    const auto app = static_cast<OidBridge*>(handler);
+
+    if (app == nullptr) [[unlikely]] {
+        return;
+    }
+
+    if (buffer_ptr == nullptr) [[unlikely]] {
+        return;
+    }
+
+    // Create span from pointer+size for buffer storage
+    const auto buff_span = std::span<const std::byte>{
+        reinterpret_cast<const std::byte*>(buffer_ptr), buffer_size};
+
+    const auto buff_size_expected =
+        std::size_t{static_cast<size_t>(row_stride * height * channels) *
+                    oid::type_size(static_cast<oid::BufferType>(type))};
+
+    if (buff_span.size() < buff_size_expected) [[unlikely]] {
+        return;
+    }
+
+    const PlotBufferParams params{
+        .variable_name_str =
+            variable_name ? std::string{variable_name} : std::string{},
+        .display_name_str =
+            display_name ? std::string{display_name} : std::string{},
+        .pixel_layout_str =
+            pixel_layout ? std::string{pixel_layout} : std::string{},
+        .transpose_buffer = transpose_buffer != 0,
+        .buff_width       = width,
+        .buff_height      = height,
+        .buff_channels    = channels,
+        .buff_stride      = row_stride,
+        .buff_type        = static_cast<oid::BufferType>(type),
+        .buffer           = buff_span};
     app->plot_buffer(params);
 }
