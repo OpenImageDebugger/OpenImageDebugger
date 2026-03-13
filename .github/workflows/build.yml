@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2025 OpenImageDebugger contributors
+# Copyright (c) 2015-2026 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -47,9 +47,9 @@ jobs:
             container: ghcr.io/openimagedebugger/oid:22.04
           - os: ubuntu-24.04
             container: ghcr.io/openimagedebugger/oid:24.04
-          - os: windows-2022
-            ccache-variant: "sccache"
           - os: windows-2025
+            ccache-variant: "sccache"
+          - os: windows-2025-vs2026
             ccache-variant: "sccache"
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
