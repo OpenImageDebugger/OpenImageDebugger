@@ -30,9 +30,7 @@ on:
 jobs:
   check-formatting:
     name: Check formatting
-    # ugly hack: `git clang-format` has a proper return value on the
-    # default installation of macOS 26 but not on Ubuntu22.04, so mac it is
-    runs-on: [macos-26]
+    runs-on: [ubuntu-24.04]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
@@ -42,7 +40,8 @@ jobs:
       - name: Install clang-format
         shell: bash
         run: |
-          brew install clang-format
+          sudo apt update -y
+          sudo apt install -y --no-install-recommends clang-format
 
       - name: Run clang-format
         shell: bash
