@@ -87,11 +87,17 @@ target_sources(${PROJECT_NAME}
                ipc/message_exchange.h
                ipc/raw_data_decode.h
                math/linear_algebra.h
+               ui/controllers/auto_contrast_controller.h
                ui/decorated_line_edit.h
+               ui/events/event_handler.h
                ui/gl_canvas.h
                ui/gl_text_renderer.h
                ui/go_to_widget.h
                ui/main_window/main_window.h
+               ui/main_window/main_window_initializer.h
+               ui/main_window/settings_applier.h
+               ui/main_window/settings_manager.h
+               ui/messaging/message_handler.h
                ui/symbol_completer.h
                ui/symbol_search_input.h
                visualization/components/background.h
