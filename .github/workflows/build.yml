@@ -38,8 +38,8 @@ jobs:
             ubuntu-22.04,
             ubuntu-24.04,
             macos-15,
-            macos-15-intel,
             macos-26,
+            macos-26-intel,
           ]
         ccache-variant: [ccache]
         include:
@@ -93,7 +93,7 @@ jobs:
           brew install qtbase
           echo "PATH=/opt/homebrew/opt/qt@6/bin:$PATH" >> "$GITHUB_ENV"
 
-      - if: matrix.os == 'macos-15-intel'
+      - if: matrix.os == 'macos-26-intel'
         name: Install Qt (macOS - intel)
         run: |
           brew install qtbase
