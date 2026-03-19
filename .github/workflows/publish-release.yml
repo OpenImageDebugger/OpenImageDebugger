@@ -53,8 +53,8 @@ jobs:
             ubuntu-22.04,
             ubuntu-24.04,
             macos-15,
-            macos-15-intel,
             macos-26,
+            macos-26-intel,
             windows-2025,
             windows-2025-vs2026,
           ]
