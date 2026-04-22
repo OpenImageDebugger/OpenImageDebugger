@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup ${{ matrix.ccache-variant }}
-        uses: hendrikmuhs/ccache-action@33522472633dbd32578e909b315f5ee43ba878ce # 1.2.22
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # 1.2.23
         with:
           verbose: 1
           key: ${{matrix.os}}-${{github.ref_name}}
