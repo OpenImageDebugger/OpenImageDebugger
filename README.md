@@ -49,10 +49,10 @@ customized to work with any arbitrary data structure.
 ## Requirements
 
 * A C++20 compliant compiler
-* GDB **12.1+** or LLDB **14.0.0+**
-* Qt **6.2.4+**
-* CMake **3.22.1+**
-* Python **3.10.12+** development packages
+* GDB **15.0.50+** or LLDB **18.1.3+**
+* Qt **6.4.2+**
+* CMake **3.28.3+**
+* Python **3.12.3+** development packages
 * OpenGL **2.1+** support
 
 Note: this list might get out-of-date by accident. For a more accurate list of requirements, please check what is used in <https://github.com/OpenImageDebugger/OpenImageDebugger/blob/main/.github/workflows/build.yml>.

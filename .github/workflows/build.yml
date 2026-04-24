@@ -29,24 +29,26 @@ on:
 
 jobs:
   build:
-    name: Build (${{ matrix.os }})
+    name: Build (${{ matrix.name || matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os:
           [
-            ubuntu-22.04,
-            ubuntu-24.04,
             macos-15,
             macos-26,
             macos-26-intel,
           ]
         ccache-variant: [ccache]
         include:
-          - os: ubuntu-22.04
-            container: ghcr.io/openimagedebugger/oid:22.04
           - os: ubuntu-24.04
+            name: ubuntu-24.04
             container: ghcr.io/openimagedebugger/oid:24.04
+            ccache-variant: "ccache"
+          - os: ubuntu-24.04
+            name: ubuntu-26.04
+            container: ghcr.io/openimagedebugger/oid:26.04
+            ccache-variant: "ccache"
           - os: windows-2025
             ccache-variant: "sccache"
           - os: windows-2025-vs2026
@@ -66,10 +68,10 @@ jobs:
         uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # 1.2.23
         with:
           verbose: 1
-          key: ${{matrix.os}}-${{github.ref_name}}
+          key: ${{ matrix.name || matrix.os }}-${{ github.ref_name }}
           restore-keys: |
-            ${{matrix.os}}-${{github.ref_name}}
-            ${{matrix.os}}-main
+            ${{ matrix.name || matrix.os }}-${{ github.ref_name }}
+            ${{ matrix.name || matrix.os }}-main
           append-timestamp: true
           variant: ${{ matrix.ccache-variant }}
 
@@ -82,7 +84,7 @@ jobs:
         name: Install Qt (Windows)
         uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # 4.3.1
         with:
-          version: "6.2.4"
+          version: "6.4.*"
           aqtversion: "==3.3.*"
           setup-python: false
           cache: true
@@ -117,10 +119,10 @@ jobs:
 
       - name: Tar files
         shell: bash
-        run: tar --strip-components 1 -cvf build-${{ matrix.os }}.tar out
+        run: tar --strip-components 1 -cvf build-${{ matrix.name || matrix.os }}.tar out
 
       - name: Upload build
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # 7.0.1
         with:
-          name: build-${{ matrix.os }}
-          path: build-${{ matrix.os }}.tar
+          name: build-${{ matrix.name || matrix.os }}
+          path: build-${{ matrix.name || matrix.os }}.tar

@@ -54,7 +54,7 @@ jobs:
 
     # Workaround: on Ubuntu 24.04 the job gets canceled on the Perform CodeQL Analysis step. Using Ubuntu 22.04 instead
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-22.04' }}
-    container: ghcr.io/openimagedebugger/oid:22.04
+    container: ghcr.io/openimagedebugger/oid:24.04
     timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
     permissions:
       # required for all workflows

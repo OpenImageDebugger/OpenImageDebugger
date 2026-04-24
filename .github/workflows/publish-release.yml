@@ -50,8 +50,8 @@ jobs:
       matrix:
         os:
           [
-            ubuntu-22.04,
             ubuntu-24.04,
+            ubuntu-26.04,
             macos-15,
             macos-26,
             macos-26-intel,
