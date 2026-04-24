@@ -23,9 +23,8 @@
  * IN THE SOFTWARE.
  */
 
-// No <algorithm> in the global fragment: g++ 14 + libstdc++ can break under
-// -fmodules-ts; the loop is equivalent to std::transform.
 module;
+#include <algorithm>
 #include <bit>
 #include <cstddef>
 #include <vector>
@@ -42,9 +41,9 @@ std::vector<std::byte> make_float_buffer_from_double(
   std::vector<std::byte> buff_float(element_count * sizeof(float));
   const auto* const src = std::bit_cast<const double*>(buff_double.data());
   const auto dst = std::bit_cast<float*>(buff_float.data());
-  for (std::size_t i = 0; i < element_count; ++i) {
-    dst[i] = static_cast<float>(src[i]);
-  }
+  std::transform(src, src + element_count, dst, [](const double d) {
+    return static_cast<float>(d);
+  });
   return buff_float;
 }
 
