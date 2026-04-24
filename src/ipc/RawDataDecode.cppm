@@ -23,14 +23,49 @@
  * IN THE SOFTWARE.
  */
 
+// Standard library names used in the module interface (C++20; not a
+// header-unit import available without extra toolchain wiring).
 module;
-#include "raw_data_decode.h"
+#include <cstddef>
+#include <cstdint>
+#include <vector>
 
 export module RawDataDecode;
 
 export namespace oid
 {
-using ::oid::BufferType;
-using ::oid::make_float_buffer_from_double;
-using ::oid::type_size;
+
+enum class BufferType {
+  UnsignedByte  = 0,
+  UnsignedShort = 2,
+  Short         = 3,
+  Int32         = 4,
+  Float32       = 5,
+  Float64       = 6
+};
+
+std::vector<std::byte>
+make_float_buffer_from_double(const std::vector<std::byte>& buff_double);
+
+[[nodiscard]] constexpr std::size_t
+type_size(const BufferType type) noexcept
+{
+  switch (type) {
+  case BufferType::Int32:
+    return sizeof(std::int32_t);
+  case BufferType::Short:
+    [[fallthrough]];
+  case BufferType::UnsignedShort:
+    return sizeof(std::int16_t);
+  case BufferType::Float32:
+    return sizeof(float);
+  case BufferType::Float64:
+    return sizeof(double);
+  case BufferType::UnsignedByte:
+    [[fallthrough]];
+  default:
+    return sizeof(std::uint8_t);
+  }
+}
+
 } // namespace oid

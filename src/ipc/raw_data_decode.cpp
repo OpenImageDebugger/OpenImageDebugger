@@ -23,12 +23,15 @@
  * IN THE SOFTWARE.
  */
 
-import RawDataDecode;
-
-#include <algorithm>
+// Global module fragment: only lightweight standard headers. Avoid <algorithm>
+// here: g++ 14 + libstdc++ can mis-merge that header in -fmodules-ts and hit
+// bogus redefinitions in internal type traits. A manual loop is equivalent.
+module;
 #include <bit>
-#include <cassert>
+#include <cstddef>
 #include <vector>
+
+module RawDataDecode;
 
 namespace oid
 {
@@ -39,11 +42,11 @@ std::vector<std::byte> make_float_buffer_from_double(
   const auto element_count = buff_double.size() / sizeof(double);
   std::vector<std::byte> buff_float(element_count * sizeof(float));
 
-  const auto src = std::bit_cast<const double*>(buff_double.data());
+  const auto* const src = std::bit_cast<const double*>(buff_double.data());
   const auto dst = std::bit_cast<float*>(buff_float.data());
-  std::transform(src, src + element_count, dst, [](double d) {
-    return static_cast<float>(d);
-  });
+  for (std::size_t i = 0; i < element_count; ++i) {
+    dst[i] = static_cast<float>(src[i]);
+  }
 
   return buff_float;
 }
