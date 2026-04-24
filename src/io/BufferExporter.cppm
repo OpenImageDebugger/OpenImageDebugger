@@ -27,16 +27,19 @@ module;
 
 #include <string>
 
-#include "visualization/components/buffer.h"
-
 export module BufferExporter;
+
+namespace oid
+{
+class Buffer;
+}
 
 export namespace oid::BufferExporter
 {
 
 enum class OutputType { Bitmap, OctaveMatrix };
 
-void export_buffer(const Buffer& buffer,
+void export_buffer(const Buffer* buffer,
                    const std::string& path,
                    OutputType type);
 

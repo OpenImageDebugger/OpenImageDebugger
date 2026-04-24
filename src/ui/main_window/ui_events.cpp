@@ -29,8 +29,6 @@
 // This file contains Qt override methods and delegation methods for
 // compatibility.
 
-import BufferExporter;
-
 namespace oid
 {
 

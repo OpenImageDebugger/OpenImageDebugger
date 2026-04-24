@@ -463,7 +463,7 @@ void UIEventHandler::export_buffer(const QString& buffer_name)
         const auto selected_filter = file_dialog.selectedNameFilter();
 
         BufferExporter::export_buffer(
-            component, file_name, output_extensions[selected_filter]);
+            &component, file_name, output_extensions[selected_filter]);
 
         deps_.default_export_suffix = selected_filter;
 
