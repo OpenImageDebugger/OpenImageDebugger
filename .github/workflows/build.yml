@@ -113,6 +113,18 @@ jobs:
             echo "CMAKE_CXX_COMPILER=${LLVM_PREFIX}/bin/clang++"
           } >> "$GITHUB_ENV"
 
+      - if: matrix.os == 'ubuntu-24.04'
+        name: Install GCC 14
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gcc-14 g++-14
+          {
+            echo "CC=gcc-14"
+            echo "CXX=g++-14"
+            echo "CMAKE_C_COMPILER=gcc-14"
+            echo "CMAKE_CXX_COMPILER=g++-14"
+          } >> "$GITHUB_ENV"
+
       - name: Build
         shell: bash
         env:
