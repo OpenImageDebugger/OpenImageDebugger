@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2025 OpenImageDebugger contributors
+ * Copyright (c) 2015-2026 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -51,20 +51,20 @@ class GLTextRenderer
     Array_256_2 text_texture_sizes{};
     Array_256_2 text_texture_tls{};
 
-    explicit GLTextRenderer(GLCanvas* gl_canvas);
+    explicit GLTextRenderer(GLCanvas& gl_canvas);
     ~GLTextRenderer();
 
-    bool initialize();
+    [[nodiscard]] bool initialize();
 
     void generate_glyphs_texture();
 
-    ShaderProgram text_prog{nullptr};
+    ShaderProgram text_prog;
 
     float text_texture_width{0};
     float text_texture_height{0};
 
   private:
-    GLCanvas* gl_canvas_{};
+    GLCanvas& gl_canvas_;
 };
 
 } // namespace oid

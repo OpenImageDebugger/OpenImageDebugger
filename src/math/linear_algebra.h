@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2025 OpenImageDebugger contributors
+ * Copyright (c) 2015-2026 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,7 +26,7 @@
 #ifndef LINEAR_ALGEBRA_H_
 #define LINEAR_ALGEBRA_H_
 
-#include <Eigen>
+#include <Eigen/Dense>
 
 namespace oid
 {

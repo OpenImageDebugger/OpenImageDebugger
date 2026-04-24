@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2025 OpenImageDebugger contributors
+ * Copyright (c) 2015-2026 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,7 +30,6 @@
 #include <map>
 #include <ranges>
 
-#include "ui/main_window/main_window.h"
 #include "visualization/components/component.h"
 #include "visualization/stage.h"
 
@@ -43,10 +42,26 @@ GameObject::GameObject()
 }
 
 
+void GameObject::set_stage(Stage& stage)
+{
+    stage_ = std::ref(stage);
+}
+
+
+std::optional<std::reference_wrapper<Stage>> GameObject::get_stage() const
+{
+    if (!stage_.has_value()) {
+        return std::nullopt;
+    }
+    return stage_;
+}
+
+
 bool GameObject::initialize() const
 {
     return std::ranges::all_of(all_components_, [](const auto& comp) {
-        return comp.second->initialize();
+        const auto& [name, component] = comp;
+        return component->initialize();
     });
 }
 
@@ -54,7 +69,8 @@ bool GameObject::initialize() const
 bool GameObject::post_initialize() const
 {
     return std::ranges::all_of(all_components_, [](const auto& comp) {
-        return comp.second->post_initialize();
+        const auto& [name, component] = comp;
+        return component->post_initialize();
     });
 }
 
@@ -87,7 +103,9 @@ void GameObject::set_pose(const mat4& pose)
 
 void GameObject::request_render_update() const
 {
-    stage->main_window->request_render_update();
+    if (stage_.has_value()) {
+        stage().request_render_update();
+    }
 }
 
 

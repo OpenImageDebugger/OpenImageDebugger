@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2025 OpenImageDebugger contributors
+ * Copyright (c) 2015-2026 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,8 +29,10 @@
 
 #include <bit>
 #include <deque>
+#include <functional>
 #include <iostream>
 #include <memory>
+#include <span>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -41,11 +43,24 @@
 #include "system/process/process.h"
 
 #include <QDataStream>
+#include <QPointer>
 #include <QTcpServer>
 #include <QTcpSocket>
 
 
-using namespace oid;
+struct PlotBufferParams
+{
+    std::string variable_name_str;
+    std::string display_name_str;
+    std::string pixel_layout_str;
+    bool transpose_buffer;
+    int buff_width;
+    int buff_height;
+    int buff_channels;
+    int buff_stride;
+    oid::BufferType buff_type;
+    std::span<const std::byte> buffer;
+};
 
 struct UiMessage
 {
@@ -76,7 +91,7 @@ class PyGILRAII
     PyGILRAII& operator=(const PyGILRAII&)  = delete;
     PyGILRAII& operator=(const PyGILRAII&&) = delete;
 
-    ~PyGILRAII()
+    ~PyGILRAII() noexcept
     {
         PyGILState_Release(_py_gil_state);
     }
@@ -88,8 +103,8 @@ class PyGILRAII
 class OidBridge
 {
   public:
-    explicit OidBridge(int (*plot_callback)(const char*))
-        : plot_callback_{plot_callback}
+    explicit OidBridge(std::function<int(const char*)> plot_callback)
+        : plot_callback_{std::move(plot_callback)}
     {
     }
 
@@ -97,7 +112,6 @@ class OidBridge
     {
         // Initialize server
         if (!server_.listen(QHostAddress::Any)) {
-            // TODO escalate error
             std::cerr << "[OpenImageDebugger] Could not start TCP server"
                       << std::endl;
             return false;
@@ -130,13 +144,14 @@ class OidBridge
 
     std::deque<std::string> get_observed_symbols()
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
-        auto message_composer = MessageComposer{};
-        message_composer.push(MessageType::GetObservedSymbols).send(client_);
+        auto message_composer = oid::MessageComposer{};
+        message_composer.push(oid::MessageType::GetObservedSymbols)
+            .send(client_);
 
         if (const auto response =
-                fetch_message(MessageType::GetObservedSymbolsResponse);
+                fetch_message(oid::MessageType::GetObservedSymbolsResponse);
             response != nullptr) {
             return dynamic_cast<GetObservedSymbolsResponseMessage*>(
                        response.get())
@@ -150,10 +165,10 @@ class OidBridge
     void
     set_available_symbols(const std::deque<std::string>& available_vars) const
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
-        auto message_composer = MessageComposer{};
-        message_composer.push(MessageType::SetAvailableSymbols)
+        auto message_composer = oid::MessageComposer{};
+        message_composer.push(oid::MessageType::SetAvailableSymbols)
             .push(available_vars)
             .send(client_);
     }
@@ -164,28 +179,31 @@ class OidBridge
 
         auto plot_request_message = std::make_unique<UiMessage>();
         while ((plot_request_message = try_get_stored_message(
-                    MessageType::PlotBufferRequest)) != nullptr) {
+                    oid::MessageType::PlotBufferRequest)) != nullptr) {
             const PlotBufferRequestMessage* msg =
                 dynamic_cast<PlotBufferRequestMessage*>(
                     plot_request_message.get());
-            plot_callback_(msg->buffer_name.c_str());
+            if (plot_callback_) {
+                plot_callback_(msg->buffer_name.c_str());
+            }
         }
     }
 
-    void plot_buffer(const std::string& variable_name_str,
-                     const std::string& display_name_str,
-                     const std::string& pixel_layout_str,
-                     const bool transpose_buffer,
-                     const int buff_width,
-                     const int buff_height,
-                     const int buff_channels,
-                     const int buff_stride,
-                     const BufferType buff_type,
-                     const uint8_t* buff_ptr,
-                     const size_t buff_length) const
+    void plot_buffer(const PlotBufferParams& params) const
     {
-        auto message_composer = MessageComposer{};
-        message_composer.push(MessageType::PlotBufferContents)
+        const auto& variable_name_str = params.variable_name_str;
+        const auto& display_name_str  = params.display_name_str;
+        const auto& pixel_layout_str  = params.pixel_layout_str;
+        const auto transpose_buffer   = params.transpose_buffer;
+        const auto buff_width         = params.buff_width;
+        const auto buff_height        = params.buff_height;
+        const auto buff_channels      = params.buff_channels;
+        const auto buff_stride        = params.buff_stride;
+        const auto buff_type          = params.buff_type;
+        const auto& buffer            = params.buffer;
+
+        auto message_composer = oid::MessageComposer{};
+        message_composer.push(oid::MessageType::PlotBufferContents)
             .push(variable_name_str)
             .push(display_name_str)
             .push(pixel_layout_str)
@@ -195,27 +213,27 @@ class OidBridge
             .push(buff_channels)
             .push(buff_stride)
             .push(buff_type)
-            .push(buff_ptr, buff_length)
+            .push(buffer)
             .send(client_);
     }
 
-    ~OidBridge()
+    ~OidBridge() noexcept
     {
         ui_proc_.kill();
     }
 
   private:
-    Process ui_proc_{};
+    oid::Process ui_proc_{};
     QTcpServer server_{};
-    QTcpSocket* client_{nullptr};
+    QPointer<QTcpSocket> client_{}; // Qt-managed non-owning pointer
     std::string oid_path_{};
 
-    int (*plot_callback_)(const char*){};
+    std::function<int(const char*)> plot_callback_{};
 
-    std::map<MessageType, std::unique_ptr<UiMessage>> received_messages_{};
+    std::map<oid::MessageType, std::unique_ptr<UiMessage>> received_messages_{};
 
     std::unique_ptr<UiMessage>
-    try_get_stored_message(const MessageType& msg_type)
+    try_get_stored_message(const oid::MessageType& msg_type)
     {
         if (const auto find_msg_handler = received_messages_.find(msg_type);
             find_msg_handler != received_messages_.end()) {
@@ -230,24 +248,24 @@ class OidBridge
 
     void try_read_incoming_messages(const int msecs = 3000)
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         do {
             client_->waitForReadyRead(msecs);
 
-            if (client_->bytesAvailable() == 0) {
+            if (client_.isNull() || client_->bytesAvailable() == 0) {
                 break;
             }
 
-            auto header = MessageType{};
+            auto header = oid::MessageType{};
             client_->read(std::bit_cast<char*>(&header),
                           static_cast<qint64>(sizeof(header)));
 
             switch (header) {
-            case MessageType::PlotBufferRequest:
+            case oid::MessageType::PlotBufferRequest:
                 received_messages_[header] = decode_plot_buffer_request();
                 break;
-            case MessageType::GetObservedSymbolsResponse:
+            case oid::MessageType::GetObservedSymbolsResponse:
                 received_messages_[header] =
                     decode_get_observed_symbols_response();
                 break;
@@ -258,16 +276,16 @@ class OidBridge
                     << std::endl;
                 break;
             }
-        } while (client_->bytesAvailable() > 0);
+        } while (!client_.isNull() && client_->bytesAvailable() > 0);
     }
 
 
     [[nodiscard]] std::unique_ptr<UiMessage> decode_plot_buffer_request() const
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         auto response        = std::make_unique<PlotBufferRequestMessage>();
-        auto message_decoder = MessageDecoder{client_};
+        auto message_decoder = oid::MessageDecoder{client_};
         message_decoder.read(response->buffer_name);
         return response;
     }
@@ -275,18 +293,18 @@ class OidBridge
     [[nodiscard]] std::unique_ptr<UiMessage>
     decode_get_observed_symbols_response() const
     {
-        assert(client_ != nullptr);
+        assert(!client_.isNull());
 
         auto response = std::make_unique<GetObservedSymbolsResponseMessage>();
 
-        auto message_decoder = MessageDecoder{client_};
+        auto message_decoder = oid::MessageDecoder{client_};
         message_decoder.read<std::deque<std::string>, std::string>(
             response->observed_symbols);
 
         return response;
     }
 
-    std::unique_ptr<UiMessage> fetch_message(const MessageType& msg_type)
+    std::unique_ptr<UiMessage> fetch_message(const oid::MessageType& msg_type)
     {
         // Return message if it was already received before
         if (auto result = try_get_stored_message(msg_type); result != nullptr) {
@@ -302,24 +320,30 @@ class OidBridge
 
     void wait_for_client()
     {
-        if (client_ == nullptr) {
+        if (client_.isNull()) {
             if (!server_.waitForNewConnection(10000)) {
                 std::cerr << "[OpenImageDebugger] No clients connected to "
                              "OpenImageDebugger server"
                           << std::endl;
             }
-            client_ = server_.nextPendingConnection();
+            client_ = QPointer<QTcpSocket>(server_.nextPendingConnection());
         }
     }
 };
 
 
-AppHandler oid_initialize(int (*plot_callback)(const char*),
-                          PyObject* optional_parameters)
+// C++ implementation that accepts std::function (avoids function pointer in
+// implementation)
+namespace
+{
+std::unique_ptr<OidBridge>
+oid_initialize_impl(std::function<int(const char*)> plot_callback,
+                    PyObject* optional_parameters)
 {
     const auto py_gil_raii = PyGILRAII{};
 
-    if (optional_parameters != nullptr && !PyDict_Check(optional_parameters)) {
+    if (optional_parameters != nullptr && !PyDict_Check(optional_parameters))
+        [[unlikely]] {
         RAISE_PY_EXCEPTION(
             PyExc_TypeError,
             "Invalid second parameter given to oid_initialize (was expecting"
@@ -333,15 +357,31 @@ AppHandler oid_initialize(int (*plot_callback)(const char*),
     const auto py_oid_path =
         PyDict_GetItemString(optional_parameters, "oid_path");
 
-    auto app = std::make_unique<OidBridge>(plot_callback);
+    auto app = std::make_unique<OidBridge>(std::move(plot_callback));
 
     if (py_oid_path) {
         auto oid_path_str = std::string{};
-        copy_py_string(oid_path_str, py_oid_path);
+        oid::copy_py_string(oid_path_str, py_oid_path);
         app->set_path(oid_path_str);
     }
 
-    return app.release();
+    return app;
+}
+} // namespace
+
+
+// NOSONAR: C API requires function pointer (extern "C")
+AppHandler oid_initialize(int (*plot_callback)(const char*), // NOSONAR
+                          PyObject* optional_parameters)
+{
+    // Convert C-style function pointer to std::function for modern C++
+    // implementation. Function pointer parameter required for C API
+    // compatibility (extern "C" interface)
+    auto app = oid_initialize_impl(
+        plot_callback ? std::function<int(const char*)>{plot_callback}
+                      : std::function<int(const char*)>{},
+        optional_parameters);
+    return app ? app.release() : nullptr;
 }
 
 
@@ -351,7 +391,7 @@ void oid_cleanup(const AppHandler handler)
 
     auto app = std::unique_ptr<OidBridge>{static_cast<OidBridge*>(handler)};
 
-    if (!app) {
+    if (!app) [[unlikely]] {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
                            "oid_terminate received null application handler");
         return;
@@ -367,7 +407,7 @@ void oid_exec(const AppHandler handler)
 
     const auto app = static_cast<OidBridge*>(handler);
 
-    if (app == nullptr) {
+    if (app == nullptr) [[unlikely]] {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
                            "oid_exec received null application handler");
         return;
@@ -383,7 +423,7 @@ int oid_is_window_ready(const AppHandler handler)
 
     const auto app = static_cast<OidBridge*>(handler);
 
-    if (app == nullptr) {
+    if (app == nullptr) [[unlikely]] {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
                            "oid_exec received null application handler");
         return 0;
@@ -399,7 +439,7 @@ PyObject* oid_get_observed_buffers(AppHandler handler)
 
     const auto app = static_cast<OidBridge*>(handler);
 
-    if (app == nullptr) {
+    if (app == nullptr) [[unlikely]] {
         RAISE_PY_EXCEPTION(PyExc_Exception,
                            "oid_get_observed_buffers received null "
                            "application handler");
@@ -416,7 +456,7 @@ PyObject* oid_get_observed_buffers(AppHandler handler)
         const auto& symbol_name   = observed_symbols[i];
         const auto py_symbol_name = PyBytes_FromString(symbol_name.c_str());
 
-        if (py_symbol_name == nullptr) {
+        if (py_symbol_name == nullptr) [[unlikely]] {
             Py_DECREF(py_observed_symbols);
             return nullptr;
         }
@@ -437,7 +477,7 @@ void oid_set_available_symbols(const AppHandler handler,
 
     const auto app = static_cast<OidBridge*>(handler);
 
-    if (app == nullptr) {
+    if (app == nullptr) [[unlikely]] {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
                            "oid_set_available_symbols received null "
                            "application handler");
@@ -448,7 +488,7 @@ void oid_set_available_symbols(const AppHandler handler,
     for (Py_ssize_t pos = 0; pos < PyList_Size(available_vars); ++pos) {
         auto var_name_str   = std::string{};
         const auto listItem = PyList_GetItem(available_vars, pos);
-        copy_py_string(var_name_str, listItem);
+        oid::copy_py_string(var_name_str, listItem);
         available_vars_stl.push_back(var_name_str);
     }
 
@@ -462,7 +502,7 @@ void oid_run_event_loop(const AppHandler handler)
 
     const auto app = static_cast<OidBridge*>(handler);
 
-    if (app == nullptr) {
+    if (app == nullptr) [[unlikely]] {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
                            "oid_run_event_loop received null application "
                            "handler");
@@ -479,13 +519,13 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
 
     const auto app = static_cast<OidBridge*>(handler);
 
-    if (app == nullptr) {
+    if (app == nullptr) [[unlikely]] {
         RAISE_PY_EXCEPTION(PyExc_RuntimeError,
                            "oid_plot_buffer received null application handler");
         return;
     }
 
-    if (!PyDict_Check(buffer_metadata)) {
+    if (!PyDict_Check(buffer_metadata)) [[unlikely]] {
         RAISE_PY_EXCEPTION(PyExc_TypeError,
                            "Invalid object given to plot_buffer (was expecting"
                            " a dict).");
@@ -536,21 +576,21 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     /*
      * Check if expected fields have the correct types
      */
-    CHECK_FIELD_TYPE(variable_name, check_py_string_type, "plot_buffer");
-    CHECK_FIELD_TYPE(display_name, check_py_string_type, "plot_buffer");
+    CHECK_FIELD_TYPE(variable_name, oid::check_py_string_type, "plot_buffer");
+    CHECK_FIELD_TYPE(display_name, oid::check_py_string_type, "plot_buffer");
     CHECK_FIELD_TYPE(width, PY_INT_CHECK_FUNC, "plot_buffer");
     CHECK_FIELD_TYPE(height, PY_INT_CHECK_FUNC, "plot_buffer");
     CHECK_FIELD_TYPE(channels, PY_INT_CHECK_FUNC, "plot_buffer");
     CHECK_FIELD_TYPE(type, PY_INT_CHECK_FUNC, "plot_buffer");
     CHECK_FIELD_TYPE(row_stride, PY_INT_CHECK_FUNC, "plot_buffer");
-    CHECK_FIELD_TYPE(pixel_layout, check_py_string_type, "plot_buffer");
+    CHECK_FIELD_TYPE(pixel_layout, oid::check_py_string_type, "plot_buffer");
 
     // Retrieve pointer to buffer
     uint8_t* buff_ptr{nullptr};
     auto buff_size = std::size_t{0};
     if (PyMemoryView_Check(py_pointer) != 0) {
-        get_c_ptr_from_py_buffer(py_pointer, buff_ptr, buff_size);
-    } else {
+        oid::get_c_ptr_from_py_buffer(py_pointer, buff_ptr, buff_size);
+    } else [[unlikely]] {
         RAISE_PY_EXCEPTION(PyExc_TypeError,
                            "Could not retrieve C pointer to provided buffer");
         return;
@@ -563,47 +603,51 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     auto display_name_str  = std::string{};
     auto pixel_layout_str  = std::string{};
 
-    copy_py_string(variable_name_str, py_variable_name);
-    copy_py_string(display_name_str, py_display_name);
-    copy_py_string(pixel_layout_str, py_pixel_layout);
+    oid::copy_py_string(variable_name_str, py_variable_name);
+    oid::copy_py_string(display_name_str, py_display_name);
+    oid::copy_py_string(pixel_layout_str, py_pixel_layout);
 
-    const auto buff_width    = static_cast<int>(get_py_int(py_width));
-    const auto buff_height   = static_cast<int>(get_py_int(py_height));
-    const auto buff_channels = static_cast<int>(get_py_int(py_channels));
-    const auto buff_stride   = static_cast<int>(get_py_int(py_row_stride));
+    const auto buff_width    = static_cast<int>(oid::get_py_int(py_width));
+    const auto buff_height   = static_cast<int>(oid::get_py_int(py_height));
+    const auto buff_channels = static_cast<int>(oid::get_py_int(py_channels));
+    const auto buff_stride   = static_cast<int>(oid::get_py_int(py_row_stride));
 
-    const auto buff_type = static_cast<BufferType>(get_py_int(py_type));
+    const auto buff_type =
+        static_cast<oid::BufferType>(oid::get_py_int(py_type));
 
     const auto buff_size_expected = std::size_t{
         static_cast<size_t>(buff_stride * buff_height * buff_channels) *
-        type_size(buff_type)};
+        oid::type_size(buff_type)};
 
-    if (buff_ptr == nullptr) {
+    if (buff_ptr == nullptr) [[unlikely]] {
         RAISE_PY_EXCEPTION(
             PyExc_TypeError,
             "oid_plot_buffer received nullptr as buffer pointer");
         return;
     }
 
-    if (buff_size < buff_size_expected) {
+    // Create span from pointer+size for buffer storage
+    const auto buff_span = std::span<const std::byte>{
+        reinterpret_cast<const std::byte*>(buff_ptr), buff_size};
+    if (buff_span.size() < buff_size_expected) [[unlikely]] {
         auto ss = std::stringstream{};
         ss << "oid_plot_buffer received shorter buffer then expected";
         ss << ". Variable name " << variable_name_str;
         ss << ". Expected " << buff_size_expected << "bytes";
-        ss << ". Received " << buff_size << "bytes";
+        ss << ". Received " << buff_span.size() << "bytes";
         RAISE_PY_EXCEPTION(PyExc_TypeError, ss.str().c_str());
         return;
     }
 
-    app->plot_buffer(variable_name_str,
-                     display_name_str,
-                     pixel_layout_str,
-                     transpose_buffer,
-                     buff_width,
-                     buff_height,
-                     buff_channels,
-                     buff_stride,
-                     buff_type,
-                     buff_ptr,
-                     buff_size);
+    const PlotBufferParams params{.variable_name_str = variable_name_str,
+                                  .display_name_str  = display_name_str,
+                                  .pixel_layout_str  = pixel_layout_str,
+                                  .transpose_buffer  = transpose_buffer,
+                                  .buff_width        = buff_width,
+                                  .buff_height       = buff_height,
+                                  .buff_channels     = buff_channels,
+                                  .buff_stride       = buff_stride,
+                                  .buff_type         = buff_type,
+                                  .buffer            = buff_span};
+    app->plot_buffer(params);
 }

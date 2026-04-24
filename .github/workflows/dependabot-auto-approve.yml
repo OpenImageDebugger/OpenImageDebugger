@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2025 OpenImageDebugger contributors
+# Copyright (c) 2015-2026 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,12 +34,12 @@ permissions:
 
 jobs:
   dependabot:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-slim
     if: ${{ github.actor == 'dependabot[bot]' }}
     steps:
       - name: Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7 # 2.3.0
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # 3.1.0
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
       - name: Approve and enable auto-merge for a PR

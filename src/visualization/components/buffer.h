@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2025 OpenImageDebugger contributors
+ * Copyright (c) 2015-2026 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,6 +27,7 @@
 #define BUFFER_H_
 
 #include <array>
+#include <span>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -38,12 +39,38 @@
 namespace oid
 {
 
+namespace BufferConstants
+{
+constexpr int MAX_TEXTURE_SIZE        = 2048;
+constexpr float ZOOM_BORDER_THRESHOLD = 40.0f;
+constexpr int MIN_BUFFER_DIMENSION    = 1;
+constexpr int MAX_BUFFER_DIMENSION =
+    131072; // 2^17 = 128K (closest power of 2 to 100k)
+constexpr int MIN_CHANNELS = 1;
+constexpr int MAX_CHANNELS = 4;
+constexpr std::size_t MAX_BUFFER_SIZE =
+    16ULL * 1024ULL * 1024ULL * 1024ULL; // 16GB
+} // namespace BufferConstants
+
+struct BufferParams
+{
+    std::span<const std::byte> buffer;
+    int buffer_width_i;
+    int buffer_height_i;
+    int channels;
+    BufferType type;
+    int step;
+    std::string pixel_layout;
+    bool transpose_buffer;
+};
+
 class Buffer final : public Component
 {
   public:
-    Buffer(GameObject* game_object, GLCanvas* gl_canvas);
+    Buffer(std::shared_ptr<GameObject> game_object,
+           std::shared_ptr<GLCanvas> gl_canvas);
 
-    ~Buffer() override;
+    ~Buffer() noexcept override;
 
     Buffer(const Buffer&) = delete;
 
@@ -53,7 +80,7 @@ class Buffer final : public Component
 
     Buffer& operator=(Buffer&&) = delete;
 
-    static constexpr int max_texture_size = 2048;
+    static constexpr int max_texture_size = BufferConstants::MAX_TEXTURE_SIZE;
 
     std::vector<GLuint> buff_tex{};
 
@@ -67,11 +94,11 @@ class Buffer final : public Component
 
     BufferType type{BufferType::UnsignedByte};
 
-    const std::uint8_t* buffer{};
+    std::span<const std::byte> buffer_{};
 
     bool transpose{};
 
-    bool buffer_update() override;
+    [[nodiscard]] bool buffer_update() override;
 
     void recompute_min_color_values();
 
@@ -87,10 +114,19 @@ class Buffer final : public Component
 
     [[nodiscard]] const char* get_pixel_layout() const;
 
+    void set_display_channel_mode(int display_channels);
+
+    [[nodiscard]] int get_display_channel_mode() const;
+
+    // Returns the channel index (0=R, 1=G, 2=B) based on current pixel layout
+    [[nodiscard]] int get_selected_channel_index() const;
+
+    void configure(const BufferParams& params);
+
     [[nodiscard]] float tile_coord_x(int x) const;
     [[nodiscard]] float tile_coord_y(int y) const;
 
-    bool initialize() override;
+    [[nodiscard]] bool initialize() override;
 
     void update() override;
 
@@ -99,9 +135,11 @@ class Buffer final : public Component
     int num_textures_x{};
     int num_textures_y{};
 
-    float* min_buffer_values();
+    std::span<float> min_buffer_values();
 
-    float* max_buffer_values();
+    std::span<float> max_buffer_values();
+
+    [[nodiscard]] std::span<const float> max_buffer_values() const;
 
     [[nodiscard]] const float* auto_buffer_contrast_brightness() const;
 
@@ -112,7 +150,7 @@ class Buffer final : public Component
     void set_icon_drawing_mode(bool is_enabled) const;
 
   private:
-    void create_shader_program();
+    bool create_shader_program();
 
     void setup_gl_buffer();
 
@@ -123,6 +161,9 @@ class Buffer final : public Component
     void update_max_color_value(float* upper, const int i, const int c) const;
 
     std::string pixel_layout_{'r', 'g', 'b', 'a'};
+
+    // Override for display mode: -1 means use actual buffer channels
+    int display_channel_mode_{-1};
 
     std::array<float, 4> min_buffer_values_{};
     std::array<float, 4> max_buffer_values_{};
@@ -136,7 +177,7 @@ class Buffer final : public Component
                                                           0.0f};
     float angle_{0.0f};
 
-    ShaderProgram buff_prog_{nullptr};
+    ShaderProgram buff_prog_;
     GLuint vbo_{};
 };
 

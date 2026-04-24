@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2026 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -28,14 +28,15 @@
 namespace oid
 {
 
-Component::Component(GameObject* game_object, GLCanvas* gl_canvas)
+Component::Component(std::shared_ptr<GameObject> game_object,
+                     std::shared_ptr<GLCanvas> gl_canvas)
     : game_object_{game_object}
     , gl_canvas_{gl_canvas}
 {
 }
 
 
-Component::~Component() = default;
+Component::~Component() noexcept = default;
 
 
 bool Component::initialize()

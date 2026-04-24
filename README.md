@@ -24,6 +24,9 @@ customized to work with any arbitrary data structure.
 
 ![Sample window](doc/sample_window.png)
 
+# Download (experimental) [![OID Eternal Download Count](https://img.shields.io/github/downloads/openimagedebugger/openimagedebugger/total.svg)](https://tooomm.github.io/github-release-stats/?username=OpenImageDebugger&repository=OpenImageDebugger&search=0)
+## A bit experimental, better to compile manually
+
 ## Features
 
 * GUI interactivity:
@@ -63,10 +66,10 @@ customized to work with any arbitrary data structure.
 ## Requirements
 
 * A C++20 compliant compiler
-* GDB **12.1+** or LLDB **14.0.0+**
-* Qt **5.15.2+**
-* CMake **3.22.1+**
-* Python **3.10.12+** development packages
+* GDB **15.0.50+** or LLDB **18.1.3+**
+* Qt **6.4.2+**
+* CMake **3.28.3+**
+* Python **3.12.3+** development packages
 * OpenGL **2.1+** support
 
 Note: this list might get out-of-date by accident. For a more accurate list of requirements, please check what is used in <https://github.com/OpenImageDebugger/OpenImageDebugger/blob/main/.github/workflows/build.yml>.
@@ -78,7 +81,7 @@ Note: this list might get out-of-date by accident. For a more accurate list of r
 On Ubuntu, you can install most of the dependencies with the following command:
 
 ```bash
-sudo apt install build-essential libpython3-dev python3-dev cmake
+sudo apt install build-essential libgl1-mesa-dev libpython3-dev python3-dev cmake qt6-base-dev
 ```
 
 ### Building the Open Image Debugger
@@ -87,10 +90,7 @@ Clone the source code to any folder you prefer and initialize the
 submodules:
 
 ```bash
-git clone https://github.com/OpenImageDebugger/OpenImageDebugger.git
-cd OpenImageDebugger
-git submodule init
-git submodule update
+git clone https://github.com/OpenImageDebugger/OpenImageDebugger.git --recurse-submodules
 ```
 
 Now run the following commands to build it:

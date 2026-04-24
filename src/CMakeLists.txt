@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2024 OpenImageDebugger contributors
+# Copyright (c) 2015-2026 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,7 +21,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.28.3)
 
 project(oidwindow CXX)
 
@@ -32,23 +32,24 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5 5.15.1 REQUIRED COMPONENTS Core Gui OpenGL Widgets)
+find_package(Qt6 "6.4.2" REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets)
 
 set(SOURCES
     oid_window.cpp
     io/buffer_exporter.cpp
-    ipc/message_exchange.cpp
-    ipc/raw_data_decode.cpp
     math/linear_algebra.cpp
+    ui/controllers/auto_contrast_controller.cpp
     ui/decorated_line_edit.cpp
+    ui/events/event_handler.cpp
     ui/gl_canvas.cpp
     ui/gl_text_renderer.cpp
     ui/go_to_widget.cpp
-    ui/main_window/auto_contrast.cpp
-    ui/main_window/initialization.cpp
     ui/main_window/main_window.cpp
-    ui/main_window/message_processing.cpp
+    ui/main_window/main_window_initializer.cpp
+    ui/main_window/settings_applier.cpp
+    ui/main_window/settings_manager.cpp
     ui/main_window/ui_events.cpp
+    ui/messaging/message_handler.cpp
     ui/symbol_completer.cpp
     ui/symbol_search_input.cpp
     visualization/components/background.cpp
@@ -74,35 +75,39 @@ set(QT_RESOURCES resources/resources.qrc)
 add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
 
 set_target_properties(${PROJECT_NAME}
-        PROPERTIES CXX_SCAN_FOR_MODULES On
-)
+                      PROPERTIES CXX_SCAN_FOR_MODULES On
+                                 INSTALL_RPATH
+                                 "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_SOURCE_DIR}/lib/ipc")
 
 target_sources(${PROJECT_NAME}
-        PUBLIC
-        FILE_SET cxx_modules TYPE CXX_MODULES FILES
-        io/BufferExporter.cppm
-)
+               PUBLIC
+               FILE_SET cxx_modules TYPE CXX_MODULES FILES
+               io/BufferExporter.cppm)
+
+add_dependencies(${PROJECT_NAME} oidipc)
 
 target_include_directories(${PROJECT_NAME}
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ipc)
 
 # Include external dependencies as "system dependencies" so compilation errors from them are ignored
 target_include_directories(${PROJECT_NAME} SYSTEM
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen/Eigen
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Khronos)
 
-target_compile_options(${PROJECT_NAME} PRIVATE "$<$<PLATFORM_ID:Linux>:-Wl,--exclude-libs,ALL>")
+target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-fvisibility=hidden>")
+
+target_link_options(${PROJECT_NAME}
+                     PUBLIC "$<$<PLATFORM_ID:Unix>:-Wl,--exclude-libs,ALL;>")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-                      Qt5::Core
-                      Qt5::Gui
-                      Qt5::OpenGL
-                      Qt5::Network
-                      Qt5::Widgets
+                      oidipc
+                      Qt6::Gui
+                      Qt6::OpenGL
+                      Qt6::OpenGLWidgets
+                      Qt6::Widgets
                       Threads::Threads
                       ${OPENGL_gl_LIBRARY})
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)
-
-add_subdirectory(oidbridge)

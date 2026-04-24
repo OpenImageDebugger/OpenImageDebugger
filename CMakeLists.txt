@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2024 OpenImageDebugger contributors
+# Copyright (c) 2015-2026 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,10 +21,19 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.28.3)
 
 project(OpenImageDebugger)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
 
 add_subdirectory(src)
+add_subdirectory(src/ipc)
+add_subdirectory(src/oidbridge)
+
+# Add tests if enabled
+option(BUILD_TESTS "Build unit tests" ON)
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

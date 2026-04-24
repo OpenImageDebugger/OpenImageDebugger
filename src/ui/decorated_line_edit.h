@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2025 OpenImageDebugger contributors
+ * Copyright (c) 2015-2026 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,6 +26,8 @@
 #ifndef DECORATED_LINE_EDIT_H_
 #define DECORATED_LINE_EDIT_H_
 
+#include <string_view>
+
 #include <QLineEdit>
 
 namespace oid
@@ -36,8 +38,8 @@ class DecoratedLineEdit final : public QLineEdit
     Q_OBJECT
 
   public:
-    DecoratedLineEdit(const char* icon_path,
-                      const char* tooltip,
+    DecoratedLineEdit(std::string_view icon_path,
+                      std::string_view tooltip,
                       QWidget* parent = nullptr);
 };
 

@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2025 OpenImageDebugger contributors
+# Copyright (c) 2015-2026 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,11 +30,9 @@ on:
 jobs:
   check-formatting:
     name: Check formatting
-    # ugly hack: `git clang-format` has a proper return value on the
-    # default installation of macOS 14 but not on Ubuntu22.04, so mac it is
-    runs-on: [macos-14]
+    runs-on: [ubuntu-24.04]
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
           # maybe a bit of an overkill, but we need info about main
           fetch-depth: 0
@@ -42,7 +40,8 @@ jobs:
       - name: Install clang-format
         shell: bash
         run: |
-          brew install clang-format
+          sudo apt update -y
+          sudo apt install -y --no-install-recommends clang-format
 
       - name: Run clang-format
         shell: bash

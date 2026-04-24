@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-# Copyright (c) 2015-2025 OpenImageDebugger contributors
+# Copyright (c) 2015-2026 OpenImageDebugger contributors
 # (https://github.com/OpenImageDebugger/OpenImageDebugger)
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,32 +29,34 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: Build (${{ matrix.name || matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os:
           [
-            ubuntu-22.04,
-            ubuntu-24.04,
-            macos-14,
             macos-15,
-            windows-2022,
-            windows-2025,
+            macos-26,
+            macos-26-intel,
           ]
+        ccache-variant: [ccache]
         include:
-          - os: ubuntu-22.04
-            container: ghcr.io/openimagedebugger/oid:22.04
           - os: ubuntu-24.04
+            name: ubuntu-24.04
             container: ghcr.io/openimagedebugger/oid:24.04
-          - os: windows-2022
-            toolchain_file: src/thirdparty/WindowsToolchain/Windows.MSVC.toolchain.cmake
+            ccache-variant: "ccache"
+          - os: ubuntu-24.04
+            name: ubuntu-26.04
+            container: ghcr.io/openimagedebugger/oid:26.04
+            ccache-variant: "ccache"
           - os: windows-2025
-            toolchain_file: src/thirdparty/WindowsToolchain/Windows.MSVC.toolchain.cmake
+            ccache-variant: "sccache"
+          - os: windows-2025-vs2026
+            ccache-variant: "sccache"
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
           fetch-depth: 1
           fetch-tags: true
@@ -62,36 +64,65 @@ jobs:
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
 
+      - name: Setup ${{ matrix.ccache-variant }}
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # 1.2.23
+        with:
+          verbose: 1
+          key: ${{ matrix.name || matrix.os }}-${{ github.ref_name }}
+          restore-keys: |
+            ${{ matrix.name || matrix.os }}-${{ github.ref_name }}
+            ${{ matrix.name || matrix.os }}-main
+          append-timestamp: true
+          variant: ${{ matrix.ccache-variant }}
+
+      # Needed for ninja to work with msvc
+      - if: contains(matrix.os, 'windows')
+        name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
+
       - if: contains(matrix.os, 'windows')
         name: Install Qt (Windows)
-        uses: jurplel/install-qt-action@12aa0336e1e410b3c6dff5e0722547f7a37e8c60 # 4.2.1
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # 4.3.1
         with:
-          version: "5.15.2"
-          aqtversion: "==3.1.*"
+          version: "6.4.*"
+          aqtversion: "==3.3.*"
           setup-python: false
           cache: true
 
-      - if: contains(matrix.os, 'macos')
-        name: Install Qt (macOS)
+      - if: matrix.os == 'macos-15' || matrix.os == 'macos-26'
+        name: Install Qt (macOS - arm64)
         run: |
-          brew install qt@5
-          echo "PATH=/opt/homebrew/opt/qt@5/bin:$PATH" >> "$GITHUB_ENV"
+          brew install qtbase
+          echo "PATH=/opt/homebrew/opt/qt@6/bin:$PATH" >> "$GITHUB_ENV"
+
+      - if: matrix.os == 'macos-26-intel'
+        name: Install Qt (macOS - intel)
+        run: |
+          brew install qtbase
+          echo "PATH=/usr/local/opt/qt@6/bin:$PATH" >> "$GITHUB_ENV"
 
       - name: Build
         shell: bash
         env:
-          CMAKE_TOOLCHAIN_FILE: ${{ matrix.toolchain_file }}
+          CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
+          CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
           cmake --build build --config Release --target install
+
+      - name: Run Tests
+        shell: bash
+        working-directory: build
+        run: |
+          ctest --build-config Release --output-on-failure
 
       - name: Tar files
         shell: bash
-        run: tar --strip-components 1 -cvf build-${{ matrix.os }}.tar out/OpenImageDebugger
+        run: tar --strip-components 1 -cvf build-${{ matrix.name || matrix.os }}.tar out
 
       - name: Upload build
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # 4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # 7.0.1
         with:
-          name: build-${{ matrix.os }}
-          path: build-${{ matrix.os }}.tar
+          name: build-${{ matrix.name || matrix.os }}
+          path: build-${{ matrix.name || matrix.os }}.tar

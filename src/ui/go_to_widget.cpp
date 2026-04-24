@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2024 OpenImageDebugger contributors
+ * Copyright (c) 2015-2026 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -39,7 +39,7 @@ GoToWidget::GoToWidget(QWidget* parent)
     : QWidget{parent}
 {
     auto layout = std::make_unique<QHBoxLayout>(this);
-    layout->setMargin(0);
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
     x_coordinate_ = std::make_unique<DecoratedLineEdit>(

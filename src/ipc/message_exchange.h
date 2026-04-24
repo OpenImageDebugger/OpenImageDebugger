@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2025 OpenImageDebugger contributors
+ * Copyright (c) 2015-2026 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,9 +27,17 @@
 #define IPC_MESSAGE_EXCHANGE_H_
 
 #include <bit>
+#include <cstddef>
 #include <deque>
 #include <memory>
+#include <source_location>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
 
+#include <QPointer>
+#include <QString>
 #include <QTcpSocket>
 
 #include "raw_data_decode.h"
@@ -45,11 +53,43 @@ enum class MessageType {
     PlotBufferRequest          = 4
 };
 
+// C++20 concept to replace SFINAE for primitive type checking
+template <typename T>
+concept PrimitiveType =
+    std::is_same_v<T, MessageType> || std::is_same_v<T, int> ||
+    std::is_same_v<T, unsigned char> || std::is_same_v<T, BufferType> ||
+    std::is_same_v<T, bool> || std::is_same_v<T, std::size_t>;
+
+// Dedicated exception for socket timeout errors
+class SocketTimeoutError final : public std::runtime_error
+{
+  public:
+    explicit SocketTimeoutError(
+        const char* operation,
+        const std::source_location& loc = std::source_location::current())
+        : std::runtime_error(std::string{"Socket "} + operation +
+                             " timeout at " + loc.file_name() + ":" +
+                             std::to_string(loc.line()))
+    {
+    }
+};
+
+// Helper function for error reporting with source location
+[[noreturn]] inline void throw_socket_timeout_error(
+    const char* operation,
+    const std::source_location& loc = std::source_location::current())
+{
+    throw SocketTimeoutError{operation, loc};
+}
+
 struct MessageBlock
 {
-    [[nodiscard]] virtual std::size_t size() const    = 0;
-    [[nodiscard]] virtual const uint8_t* data() const = 0;
-    virtual ~MessageBlock();
+    [[nodiscard]] virtual std::size_t size() const noexcept = 0;
+    // Returns raw byte data - using std::byte* for semantic clarity that this
+    // is raw byte storage, not numeric data. Conversion to uint8_t*/char* is
+    // done at API boundaries (Qt, OpenGL, etc.)
+    [[nodiscard]] virtual const std::byte* data() const noexcept = 0;
+    virtual ~MessageBlock() noexcept;
 };
 
 template <typename Primitive>
@@ -60,14 +100,15 @@ struct PrimitiveBlock final : MessageBlock
     {
     }
 
-    [[nodiscard]] std::size_t size() const override
+    [[nodiscard]] std::size_t size() const noexcept override
     {
         return sizeof(Primitive);
     }
 
-    [[nodiscard]] const uint8_t* data() const override
+    [[nodiscard]] const std::byte* data() const noexcept override
     {
-        return std::bit_cast<const uint8_t*>(&data_);
+        // Safe byte access to object representation using std::as_bytes
+        return std::as_bytes(std::span{&data_, 1}).data();
     }
 
   private:
@@ -79,66 +120,72 @@ struct StringBlock final : MessageBlock
 {
     explicit StringBlock(std::string value);
 
-    [[nodiscard]] std::size_t size() const override;
+    [[nodiscard]] std::size_t size() const noexcept override;
 
-    [[nodiscard]] const uint8_t* data() const override;
+    [[nodiscard]] const std::byte* data() const noexcept override;
 
   private:
     std::string data_{};
 };
 
+/**
+ * @brief Message block that references an external buffer without owning it.
+ *
+ * @warning Lifetime Requirements:
+ *   - The buffer pointed to by `buffer_span` MUST remain valid for the entire
+ *     lifetime of this BufferBlock object.
+ *   - The buffer MUST NOT be deallocated or modified while this BufferBlock
+ *     exists.
+ *   - Typically, BufferBlock is used immediately in MessageComposer::send(),
+ *     ensuring the buffer lifetime is managed by the caller.
+ *
+ * @note This class uses std::span for safer buffer access. The span provides
+ *       bounds checking capabilities and does not own the buffer data.
+ */
 struct BufferBlock final : MessageBlock
 {
-    BufferBlock(const uint8_t* buffer, const std::size_t length)
-        : buffer_{buffer}
-        , length_{length}
+    /**
+     * @brief Construct a BufferBlock from a std::span.
+     *
+     * @param span Span over the buffer data (the span's underlying buffer must
+     *             remain valid for the lifetime of this BufferBlock)
+     */
+    explicit BufferBlock(std::span<const std::byte> span)
+        : buffer_span_{span}
     {
     }
 
-    [[nodiscard]] std::size_t size() const override
+    [[nodiscard]] std::size_t size() const noexcept override
     {
-        return length_;
+        return buffer_span_.size();
     }
 
-    [[nodiscard]] const uint8_t* data() const override
+    [[nodiscard]] const std::byte* data() const noexcept override
     {
-        return buffer_;
+        return buffer_span_.data();
     }
 
   private:
-    const uint8_t* buffer_{};
-    std::size_t length_{};
+    std::span<const std::byte> buffer_span_{};
 };
-
-template <typename PrimitiveType>
-void assert_primitive_type()
-{
-    static_assert(std::is_same_v<PrimitiveType, MessageType> ||
-                      std::is_same_v<PrimitiveType, int> ||
-                      std::is_same_v<PrimitiveType, unsigned char> ||
-                      std::is_same_v<PrimitiveType, BufferType> ||
-                      std::is_same_v<PrimitiveType, bool> ||
-                      std::is_same_v<PrimitiveType, std::size_t>,
-                  "this function must only be called with primitives");
-}
 
 class MessageComposer
 {
   public:
-    template <typename PrimitiveType>
-    MessageComposer& push(const PrimitiveType& value)
+    template <PrimitiveType T>
+    MessageComposer& push(const T& value)
     {
-        assert_primitive_type<PrimitiveType>();
 
-        message_blocks_.emplace_back(new PrimitiveBlock<PrimitiveType>(value));
+        message_blocks_.emplace_back(
+            std::make_unique<PrimitiveBlock<T>>(value));
 
         return *this;
     }
 
-    MessageComposer& push(const uint8_t* buffer, const std::size_t size)
+    MessageComposer& push(std::span<const std::byte> buffer)
     {
-        push(size);
-        message_blocks_.emplace_back(new BufferBlock(buffer, size));
+        push(buffer.size());
+        message_blocks_.emplace_back(std::make_unique<BufferBlock>(buffer));
 
         return *this;
     }
@@ -148,22 +195,44 @@ class MessageComposer
         for (const auto& block : message_blocks_) {
             auto offset = qint64{0};
             do {
+                // Convert std::byte* to const char* for Qt API (safe: same
+                // size/alignment)
                 offset +=
-                    socket->write(reinterpret_cast<const char*>(block->data()),
+                    socket->write(std::bit_cast<const char*>(block->data()),
                                   static_cast<qint64>(block->size()));
 
-                if (offset < static_cast<qint64>(block->size())) {
-                    socket->waitForBytesWritten();
+                if (offset < static_cast<qint64>(block->size()) &&
+                    !socket->waitForBytesWritten(5000)) [[unlikely]] {
+                    throw_socket_timeout_error("write");
                 }
             } while (offset < static_cast<qint64>(block->size()));
         }
 
-        socket->waitForBytesWritten();
+        if (!socket->waitForBytesWritten(5000)) [[unlikely]] {
+            throw_socket_timeout_error("write");
+        }
     }
 
     void clear()
     {
         message_blocks_.clear();
+    }
+
+    // Overloads for non-primitive types
+    MessageComposer& push(const std::string& value)
+    {
+        push(value.size());
+        message_blocks_.emplace_back(std::make_unique<StringBlock>(value));
+        return *this;
+    }
+
+    MessageComposer& push(const std::deque<std::string>& value)
+    {
+        push(value.size());
+        for (const auto& element : value) {
+            push(element);
+        }
+        return *this;
     }
 
   private:
@@ -178,12 +247,65 @@ class MessageDecoder
     {
     }
 
-    template <typename PrimitiveType>
-    MessageDecoder& read(PrimitiveType& value)
+    template <PrimitiveType T>
+    MessageDecoder& read(T& value)
     {
-        assert_primitive_type<PrimitiveType>();
+        // Safe mutable byte access to object representation
+        read_impl(std::as_writable_bytes(std::span{&value, 1}));
 
-        read_impl(std::bit_cast<char*>(&value), sizeof(PrimitiveType));
+        return *this;
+    }
+
+    // Overloads for non-primitive types - defined inline so templates can see
+    // them
+    MessageDecoder& read(std::vector<std::byte>& value)
+    {
+        const auto container_size = [&] {
+            auto size = std::size_t{};
+            read(size);
+            return size;
+        }();
+
+        value.resize(container_size);
+        read_impl(std::span{value.data(), container_size});
+
+        return *this;
+    }
+
+    MessageDecoder& read(std::string& value)
+    {
+        const auto symbol_length = [&] {
+            auto length = std::size_t{};
+            read(length);
+            return length;
+        }();
+
+        value.resize(symbol_length);
+        // std::string uses char* internally, convert to std::byte* for
+        // read_impl
+        read_impl(std::span{reinterpret_cast<std::byte*>(value.data()),
+                            symbol_length});
+
+        return *this;
+    }
+
+    MessageDecoder& read(QString& value)
+    {
+        const auto symbol_length = [&] {
+            auto length = std::size_t{};
+            read(length);
+            return length;
+        }();
+
+        const auto temp_string = [&] {
+            auto string = std::vector<char>{};
+            string.resize(symbol_length + 1, '\0');
+            read_impl(std::span{reinterpret_cast<std::byte*>(string.data()),
+                                symbol_length});
+            return string;
+        }();
+
+        value = QString{temp_string.data()};
 
         return *this;
     }
@@ -211,93 +333,27 @@ class MessageDecoder
     }
 
   private:
-    QTcpSocket* socket_{};
+    QPointer<QTcpSocket> socket_{};
 
-    void read_impl(char* dst, const std::size_t read_length) const
+    void read_impl(std::span<std::byte> dst) const
     {
-        auto offset = std::size_t{0};
+        assert(!socket_.isNull() && "socket_ must be valid");
+        auto offset            = std::size_t{0};
+        const auto read_length = dst.size();
         do {
-            offset += socket_->read(dst + offset,
+            // Convert std::byte* to char* for Qt API (safe: same
+            // size/alignment)
+            offset += socket_->read(std::bit_cast<char*>(dst.data() + offset),
                                     static_cast<qint64>(read_length - offset));
 
-            if (offset < read_length) {
-                socket_->waitForReadyRead();
+            if (offset < read_length && !socket_->waitForReadyRead(5000))
+                [[unlikely]] {
+                throw_socket_timeout_error("read");
             }
         } while (offset < read_length);
     }
 };
 
-template <>
-inline MessageComposer&
-MessageComposer::push<std::string>(const std::string& value)
-{
-    push(value.size());
-    message_blocks_.emplace_back(new StringBlock(value));
-    return *this;
-}
-
-template <>
-inline MessageComposer& MessageComposer::push<std::deque<std::string>>(
-    const std::deque<std::string>& value)
-{
-    push(value.size());
-    for (const auto& element : value) {
-        push(element);
-    }
-    return *this;
-}
-
-template <>
-inline MessageDecoder&
-MessageDecoder::read<std::vector<uint8_t>>(std::vector<uint8_t>& value)
-{
-    const auto container_size = [&] {
-        auto size = std::size_t{};
-        read(size);
-        return size;
-    }();
-
-    value.resize(container_size);
-    read_impl(reinterpret_cast<char*>(value.data()), container_size);
-
-    return *this;
-}
-
-template <>
-inline MessageDecoder& MessageDecoder::read<std::string>(std::string& value)
-{
-    const auto symbol_length = [&] {
-        auto length = std::size_t{};
-        read(length);
-        return length;
-    }();
-
-    value.resize(symbol_length);
-    read_impl(&value.front(), symbol_length);
-
-    return *this;
-}
-
-template <>
-inline MessageDecoder& MessageDecoder::read<QString>(QString& value)
-{
-    const auto symbol_length = [&] {
-        auto length = std::size_t{};
-        read(length);
-        return length;
-    }();
-
-    const auto temp_string = [&] {
-        auto string = std::vector<char>{};
-        string.resize(symbol_length + 1, '\0');
-        read_impl(string.data(), symbol_length);
-        return string;
-    }();
-
-    value = QString{temp_string.data()};
-
-    return *this;
-}
 
 } // namespace oid
 

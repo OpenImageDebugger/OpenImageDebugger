@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2025 OpenImageDebugger contributors
+ * Copyright (c) 2015-2026 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,6 +29,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "GL/gl.h"
@@ -43,7 +44,7 @@ class ShaderProgram
   public:
     enum class TexelChannels { FormatR, FormatRG, FormatRGB, FormatRGBA };
 
-    explicit ShaderProgram(GLCanvas* gl_canvas);
+    explicit ShaderProgram(GLCanvas& gl_canvas);
 
     ShaderProgram(const ShaderProgram&) = delete;
 
@@ -53,13 +54,13 @@ class ShaderProgram
 
     ShaderProgram& operator=(ShaderProgram&&) = delete;
 
-    ~ShaderProgram();
+    ~ShaderProgram() noexcept;
 
-    bool create(const char* v_source,
-                const char* f_source,
-                TexelChannels texel_format,
-                const std::string& pixel_layout,
-                const std::vector<std::string>& uniforms);
+    [[nodiscard]] bool create(std::string_view v_source,
+                              std::string_view f_source,
+                              TexelChannels texel_format,
+                              const std::string& pixel_layout,
+                              const std::vector<std::string>& uniforms);
 
     // Uniform handlers
     void uniform1i(const std::string& name, int value) const;
@@ -83,23 +84,26 @@ class ShaderProgram
   private:
     GLuint program_{0};
 
-    GLCanvas* gl_canvas_{};
+    GLCanvas& gl_canvas_;
 
     TexelChannels texel_format_{};
 
     std::map<std::string, GLuint, std::less<>> uniforms_{};
 
-    std::string pixel_layout_{};
+    std::string pixel_layout_{"rgba"};
 
-    GLuint compile(GLuint type, GLchar const* source) const;
+    [[nodiscard]] GLuint compile(GLuint type, GLchar const* source) const;
 
-    static std::string get_shader_type(GLuint type);
+    [[nodiscard]] static std::string get_shader_type(GLuint type);
 
-    bool is_shader_outdated(TexelChannels texel_format,
-                            const std::vector<std::string>& uniforms,
-                            const std::string& pixel_layout) const;
+    [[nodiscard]] bool
+    is_shader_outdated(TexelChannels texel_format,
+                       const std::vector<std::string>& uniforms,
+                       const std::string& pixel_layout) const;
 
-    const char* get_texel_format_define() const;
+    [[nodiscard]] const char* get_texel_format_define() const;
+
+    [[nodiscard]] const char* get_source_channel_define() const;
 };
 
 } // namespace oid

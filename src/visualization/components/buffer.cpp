@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2015-2025 OpenImageDebugger contributors
+ * Copyright (c) 2015-2026 OpenImageDebugger contributors
  * (https://github.com/OpenImageDebugger/OpenImageDebugger)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,8 +25,10 @@
 
 #include "buffer.h"
 
+#include <algorithm>
 #include <array>
 #include <bit>
+#include <iostream>
 #include <limits>
 #include <string>
 
@@ -41,32 +43,101 @@
 namespace oid
 {
 
+namespace
+{
+
+// Helper function to validate buffer dimension
+bool validate_dimension(const int dimension,
+                        const char* dimension_name,
+                        const int min_value,
+                        const int max_value)
+{
+    if (dimension < min_value || dimension > max_value) {
+        std::cerr << "[Error] Invalid buffer " << dimension_name << ": "
+                  << dimension << " (must be between " << min_value << " and "
+                  << max_value << ")" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+// Helper function to format pixel value based on buffer type
+void format_pixel_value(std::stringstream& message,
+                        const BufferType type,
+                        const std::span<const std::byte> buffer,
+                        const int pos)
+{
+    switch (type) {
+    case BufferType::Float32:
+        message << std::bit_cast<const float*>(buffer.data())[pos];
+        break;
+    case BufferType::Float64:
+        message << std::bit_cast<const double*>(buffer.data())[pos];
+        break;
+    case BufferType::UnsignedByte:
+        message << static_cast<short>(static_cast<uint8_t>(buffer[pos]));
+        break;
+    case BufferType::Short:
+        message << std::bit_cast<const short*>(buffer.data())[pos];
+        break;
+    case BufferType::UnsignedShort:
+        message << std::bit_cast<const unsigned short*>(buffer.data())[pos];
+        break;
+    case BufferType::Int32:
+        message << std::bit_cast<const int*>(buffer.data())[pos];
+        break;
+    }
+}
+
+// Helper function to get channel range based on display mode
+std::pair<int, int> get_channel_range(const int display_channel_mode,
+                                      const int channels,
+                                      const char* pixel_layout)
+{
+    if (display_channel_mode == 1) {
+        int selected_ch = 0;
+        if (pixel_layout[0] == 'g') {
+            selected_ch = 1;
+        } else if (pixel_layout[0] == 'b') {
+            selected_ch = 2;
+        }
+        return {selected_ch, selected_ch + 1};
+    }
+    return {0, channels};
+}
+
+} // namespace
+
 constexpr std::array<float, 8>
     Buffer::no_ac_params{1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
 
-Buffer::Buffer(GameObject* game_object, GLCanvas* gl_canvas)
+Buffer::Buffer(std::shared_ptr<GameObject> game_object,
+               std::shared_ptr<GLCanvas> gl_canvas)
     : Component{game_object, gl_canvas}
-    , buff_prog_{gl_canvas}
+    , buff_prog_{*gl_canvas}
 {
 }
 
 
-Buffer::~Buffer()
+Buffer::~Buffer() noexcept
 {
-    const auto num_textures = num_textures_x * num_textures_y;
-
-    gl_canvas_->glDeleteTextures(num_textures, buff_tex.data());
-    gl_canvas_->glDeleteBuffers(1, &vbo_);
+    if (const auto canvas = gl_canvas()) {
+        const auto num_textures = num_textures_x * num_textures_y;
+        canvas->glDeleteTextures(num_textures, buff_tex.data());
+        canvas->glDeleteBuffers(1, &vbo_);
+    }
 }
 
 
 bool Buffer::buffer_update()
 {
     const auto num_textures = num_textures_x * num_textures_y;
-    glDeleteTextures(num_textures, buff_tex.data());
+    gl_canvas_ref().glDeleteTextures(num_textures, buff_tex.data());
 
-    create_shader_program();
+    if (!create_shader_program()) {
+        return false;
+    }
     setup_gl_buffer();
     return true;
 }
@@ -82,31 +153,16 @@ void Buffer::get_pixel_info(std::stringstream& message,
         return;
     }
 
-    const auto pos = channels * (y * step + x);
+    const auto pos                = channels * (y * step + x);
+    const auto [start_ch, end_ch] = get_channel_range(
+        display_channel_mode_, channels, pixel_layout_.data());
 
     message << "[";
-
-    for (int c = 0; c < channels; ++c) {
-        if (type == BufferType::Float32 || type == BufferType::Float64) {
-            const auto fpix = std::bit_cast<const float*>(buffer)[pos + c];
-            message << fpix;
-        } else if (type == BufferType::UnsignedByte) {
-            const auto fpix = static_cast<short>(buffer[pos + c]);
-            message << fpix;
-        } else if (type == BufferType::Short) {
-            const auto fpix = std::bit_cast<const short*>(buffer)[pos + c];
-            message << fpix;
-        } else if (type == BufferType::UnsignedShort) {
-            const auto fpix =
-                std::bit_cast<const unsigned short*>(buffer)[pos + c];
-            message << fpix;
-        } else if (type == BufferType::Int32) {
-            const auto fpix = std::bit_cast<const int*>(buffer)[pos + c];
-            message << fpix;
-        }
-        if (c < channels - 1) {
+    for (int c = start_ch; c < end_ch && c < channels; ++c) {
+        if (c > start_ch) {
             message << " ";
         }
+        format_pixel_value(message, type, buffer_, pos + c);
     }
     message << "]";
 }
@@ -131,25 +187,26 @@ void Buffer::update_min_color_value(float* lowest,
                                     const int c) const
 {
     if (type == BufferType::Float32 || type == BufferType::Float64) {
-        lowest[c] =
-            (std::min)(lowest[c],
-                       std::bit_cast<const float*>(buffer)[channels * i + c]);
+        lowest[c] = (std::min)(lowest[c],
+                               std::bit_cast<const float*>(
+                                   buffer_.data())[channels * i + c]);
     } else if (type == BufferType::UnsignedByte) {
-        lowest[c] =
-            (std::min)(lowest[c], static_cast<float>(buffer[channels * i + c]));
+        lowest[c] = (std::min)(lowest[c],
+                               static_cast<float>(static_cast<uint8_t>(
+                                   buffer_[channels * i + c])));
     } else if (type == BufferType::Short) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(std::bit_cast<const short*>(
-                                   buffer)[channels * i + c]));
+                                   buffer_.data())[channels * i + c]));
     } else if (type == BufferType::UnsignedShort) {
         lowest[c] =
             (std::min)(lowest[c],
                        static_cast<float>(std::bit_cast<const unsigned short*>(
-                           buffer)[channels * i + c]));
+                           buffer_.data())[channels * i + c]));
     } else if (type == BufferType::Int32) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(std::bit_cast<const int*>(
-                                   buffer)[channels * i + c]));
+                                   buffer_.data())[channels * i + c]));
     }
 }
 
@@ -159,7 +216,7 @@ void Buffer::recompute_min_color_values()
     const auto buffer_width_i  = static_cast<int>(buffer_width_f);
     const auto buffer_height_i = static_cast<int>(buffer_height_f);
 
-    const auto lowest = min_buffer_values();
+    auto lowest = min_buffer_values();
 
     for (int i = 0; i < 4; ++i) {
         lowest[i] = (std::numeric_limits<float>::max)();
@@ -169,7 +226,7 @@ void Buffer::recompute_min_color_values()
         for (int x = 0; x < buffer_width_i; ++x) {
             const auto i = y * step + x;
             for (int c = 0; c < channels; ++c) {
-                update_min_color_value(lowest, i, c);
+                update_min_color_value(lowest.data(), i, c);
             }
         }
     }
@@ -186,25 +243,26 @@ void Buffer::update_max_color_value(float* upper,
                                     const int c) const
 {
     if (type == BufferType::Float32 || type == BufferType::Float64) {
-        upper[c] =
-            (std::max)(upper[c],
-                       std::bit_cast<const float*>(buffer)[channels * i + c]);
+        upper[c] = (std::max)(upper[c],
+                              std::bit_cast<const float*>(
+                                  buffer_.data())[channels * i + c]);
     } else if (type == BufferType::UnsignedByte) {
-        upper[c] =
-            (std::max)(upper[c], static_cast<float>(buffer[channels * i + c]));
+        upper[c] = (std::max)(upper[c],
+                              static_cast<float>(static_cast<uint8_t>(
+                                  buffer_[channels * i + c])));
     } else if (type == BufferType::Short) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(std::bit_cast<const short*>(
-                                  buffer)[channels * i + c]));
+                                  buffer_.data())[channels * i + c]));
     } else if (type == BufferType::UnsignedShort) {
         upper[c] =
             (std::max)(upper[c],
                        static_cast<float>(std::bit_cast<const unsigned short*>(
-                           buffer)[channels * i + c]));
+                           buffer_.data())[channels * i + c]));
     } else if (type == BufferType::Int32) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(std::bit_cast<const int*>(
-                                  buffer)[channels * i + c]));
+                                  buffer_.data())[channels * i + c]));
     }
 }
 
@@ -214,7 +272,7 @@ void Buffer::recompute_max_color_values()
     const auto buffer_width_i  = static_cast<int>(buffer_width_f);
     const auto buffer_height_i = static_cast<int>(buffer_height_f);
 
-    const auto upper = max_buffer_values();
+    auto upper = max_buffer_values();
     for (int i = 0; i < 4; ++i) {
         upper[i] = std::numeric_limits<float>::lowest();
     }
@@ -223,7 +281,7 @@ void Buffer::recompute_max_color_values()
         for (int x = 0; x < buffer_width_i; ++x) {
             const auto i = y * step + x;
             for (int c = 0; c < channels; ++c) {
-                update_max_color_value(upper, i, c);
+                update_max_color_value(upper.data(), i, c);
             }
         }
     }
@@ -295,6 +353,86 @@ int Buffer::sub_texture_id_at_coord(const int x, const int y) const
 }
 
 
+void Buffer::configure(const BufferParams& params)
+{
+    // Validate buffer span
+    if (params.buffer.data() == nullptr || params.buffer.empty()) {
+        std::cerr << "[Error] Buffer span is null or empty" << std::endl;
+        return;
+    }
+
+    // Validate dimensions
+    if (!validate_dimension(params.buffer_width_i,
+                            "width",
+                            BufferConstants::MIN_BUFFER_DIMENSION,
+                            BufferConstants::MAX_BUFFER_DIMENSION)) {
+        return;
+    }
+
+    if (!validate_dimension(params.buffer_height_i,
+                            "height",
+                            BufferConstants::MIN_BUFFER_DIMENSION,
+                            BufferConstants::MAX_BUFFER_DIMENSION)) {
+        return;
+    }
+
+    // Validate channel count
+    if (params.channels < BufferConstants::MIN_CHANNELS ||
+        params.channels > BufferConstants::MAX_CHANNELS) {
+        std::cerr << "[Error] Invalid channel count: " << params.channels
+                  << " (must be between " << BufferConstants::MIN_CHANNELS
+                  << " and " << BufferConstants::MAX_CHANNELS << ")"
+                  << std::endl;
+        return;
+    }
+
+    // Validate step (must be positive and at least as large as channels)
+    if (params.step < params.channels) {
+        std::cerr << "[Error] Invalid step: " << params.step
+                  << " (must be >= channels: " << params.channels << ")"
+                  << std::endl;
+        return;
+    }
+
+    // Validate buffer size (prevent potential DoS)
+    // Calculate: width * height * step (step is stride in bytes per row)
+    // Use checked multiplication to prevent overflow
+    const auto width_u  = static_cast<std::size_t>(params.buffer_width_i);
+    const auto height_u = static_cast<std::size_t>(params.buffer_height_i);
+    const auto step_u   = static_cast<std::size_t>(params.step);
+
+    // Check for potential overflow before multiplication
+    if (width_u > 0 && height_u > BufferConstants::MAX_BUFFER_SIZE / width_u) {
+        std::cerr << "[Error] Buffer dimensions too large (would overflow)"
+                  << std::endl;
+        return;
+    }
+
+    if (const auto buffer_size = width_u * height_u * step_u;
+        buffer_size > BufferConstants::MAX_BUFFER_SIZE) {
+        std::cerr << "[Error] Buffer size too large: " << buffer_size
+                  << " bytes (maximum: " << BufferConstants::MAX_BUFFER_SIZE
+                  << " bytes)" << std::endl;
+        return;
+    }
+
+    buffer_         = params.buffer;
+    channels        = params.channels;
+    type            = params.type;
+    buffer_width_f  = static_cast<float>(params.buffer_width_i);
+    buffer_height_f = static_cast<float>(params.buffer_height_i);
+    step            = params.step;
+    transpose       = params.transpose_buffer;
+    // Only update pixel layout during initial setup, not on buffer updates
+    // This preserves user-selected pixel formats when buffer updates
+    if (buff_tex.empty() && !params.pixel_layout.empty() &&
+        params.pixel_layout.size() == 4) {
+        set_pixel_layout(params.pixel_layout);
+    }
+    // Otherwise, pixel_layout_ remains unchanged, preserving user selection
+}
+
+
 void Buffer::set_pixel_layout(const std::string& pixel_layout)
 {
     ///
@@ -318,15 +456,55 @@ void Buffer::set_pixel_layout(const std::string& pixel_layout)
 
     ///
     // Copy the pixel format
-    for (int i = 0; i < static_cast<int>(pixel_layout.size()); ++i) {
+    // Use std::min to ensure we never write beyond pixel_layout_.size()
+    const auto copy_size = std::min(pixel_layout.size(), pixel_layout_.size());
+    for (int i = 0; i < static_cast<int>(copy_size); ++i) {
         pixel_layout_[i] = pixel_layout[i];
     }
+
+    // Recreate shader program with new pixel layout
+    create_shader_program();
 }
 
 
 const char* Buffer::get_pixel_layout() const
 {
     return pixel_layout_.data();
+}
+
+
+void Buffer::set_display_channel_mode(const int display_channels)
+{
+    // Valid values: -1 (use actual buffer channels) or 1-4 (specific channel
+    // count) Reject 0 and values outside valid range
+    if (display_channels != -1 &&
+        (display_channels < 1 || display_channels > 4)) {
+        std::cerr << "[Error] Invalid display channel mode: "
+                  << display_channels << " (must be -1 or between 1 and 4)"
+                  << std::endl;
+        return;
+    }
+
+    display_channel_mode_ = display_channels;
+    create_shader_program();
+}
+
+
+int Buffer::get_display_channel_mode() const
+{
+    return display_channel_mode_;
+}
+
+
+int Buffer::get_selected_channel_index() const
+{
+    if (pixel_layout_[0] == 'g') {
+        return 1;
+    }
+    if (pixel_layout_[0] == 'b') {
+        return 2;
+    }
+    return 0;
 }
 
 
@@ -354,12 +532,24 @@ float Buffer::tile_coord_y(int y) const
 
 void Buffer::update()
 {
-    const auto cam_obj = game_object_->stage->get_game_object("camera");
-    const auto camera  = cam_obj->get_component<Camera>("camera_component");
-    const auto zoom    = camera->compute_zoom();
+    const auto stage = game_object_ref().get_stage();
+    if (!stage.has_value()) {
+        return;
+    }
+    const auto cam_obj = stage->get().get_game_object("camera");
+    if (!cam_obj.has_value()) {
+        return;
+    }
+    const auto camera_opt =
+        cam_obj->get().get_component<Camera>("camera_component");
+    if (!camera_opt.has_value()) {
+        return;
+    }
+    const auto& camera = camera_opt->get();
+    const auto zoom    = camera.compute_zoom();
 
     buff_prog_.use();
-    if (zoom > 40.0f) {
+    if (zoom > BufferConstants::ZOOM_BORDER_THRESHOLD) {
         buff_prog_.uniform1i("enable_borders", 1);
     } else {
         buff_prog_.uniform1i("enable_borders", 0);
@@ -388,41 +578,56 @@ void Buffer::update_object_pose() const
         transposition.set_identity();
     }
 
-    game_object_->set_pose(rotation * transposition);
+    game_object_ref().set_pose(rotation * transposition);
 }
 
 
-void Buffer::create_shader_program()
+bool Buffer::create_shader_program()
 {
     // Buffer Shaders
+    // Use display_channel_mode_ if set, otherwise use actual buffer channels
+    const auto effective_channels =
+        (display_channel_mode_ == -1) ? channels : display_channel_mode_;
+
+    // Validate effective_channels to ensure it's within supported range
+    if (effective_channels < 1 || effective_channels > 4) {
+        std::cerr << "[Error] Invalid effective channel count: "
+                  << effective_channels
+                  << " (must be between 1 and 4). Display mode: "
+                  << display_channel_mode_ << ", buffer channels: " << channels
+                  << std::endl;
+        return false;
+    }
+
     auto channel_type = ShaderProgram::TexelChannels{};
-    if (channels == 1) {
+    if (effective_channels == 1) {
         channel_type = ShaderProgram::TexelChannels::FormatR;
-    } else if (channels == 2) {
+    } else if (effective_channels == 2) {
         channel_type = ShaderProgram::TexelChannels::FormatRG;
-    } else if (channels == 3) {
+    } else if (effective_channels == 3) {
         channel_type = ShaderProgram::TexelChannels::FormatRGB;
     } else {
-        assert(channels == 4);
         channel_type = ShaderProgram::TexelChannels::FormatRGBA;
     }
 
-    buff_prog_.create(shader::buff_vert_shader,
-                      shader::buff_frag_shader,
-                      channel_type,
-                      pixel_layout_,
-                      {"mvp",
-                       "sampler",
-                       "brightness_contrast",
-                       "buffer_dimension",
-                       "enable_borders",
-                       "enable_icon_mode"});
+    return buff_prog_.create(shader::buff_vert_shader,
+                             shader::buff_frag_shader,
+                             channel_type,
+                             pixel_layout_,
+                             {"mvp",
+                              "sampler",
+                              "brightness_contrast",
+                              "buffer_dimension",
+                              "enable_borders",
+                              "enable_icon_mode"});
 }
 
 
 bool Buffer::initialize()
 {
-    create_shader_program();
+    if (!create_shader_program()) {
+        return false;
+    }
 
     // Buffer VBO
     // clang-format off
@@ -436,12 +641,12 @@ bool Buffer::initialize()
     };
     // clang-format on
 
-    gl_canvas_->glGenBuffers(1, &vbo_);
-    gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    gl_canvas_->glBufferData(GL_ARRAY_BUFFER,
-                             sizeof(g_vertex_buffer_data),
-                             g_vertex_buffer_data.data(),
-                             GL_STATIC_DRAW);
+    gl_canvas_ref().glGenBuffers(1, &vbo_);
+    gl_canvas_ref().glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+    gl_canvas_ref().glBufferData(GL_ARRAY_BUFFER,
+                                 sizeof(g_vertex_buffer_data),
+                                 g_vertex_buffer_data.data(),
+                                 GL_STATIC_DRAW);
 
     setup_gl_buffer();
 
@@ -454,14 +659,15 @@ bool Buffer::initialize()
 void Buffer::draw(const mat4& projection, const mat4& viewInv)
 {
     buff_prog_.use();
-    const auto model = game_object_->get_pose();
+    const auto model = game_object_ref().get_pose();
     const auto mvp   = projection * viewInv * model;
 
-    gl_canvas_->glEnableVertexAttribArray(0);
-    gl_canvas_->glActiveTexture(GL_TEXTURE0);
+    gl_canvas_ref().glEnableVertexAttribArray(0);
+    gl_canvas_ref().glActiveTexture(GL_TEXTURE0);
 
     buff_prog_.uniform1i("sampler", 0);
-    if (game_object_->stage->contrast_enabled) {
+    if (const auto stage = game_object_ref().get_stage();
+        stage.has_value() && stage->get().get_contrast_enabled()) {
         buff_prog_.uniform4fv(
             "brightness_contrast", 2, auto_buffer_contrast_brightness_.data());
     } else {
@@ -498,7 +704,8 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
             const auto buff_w = (std::min)(remaining_w, max_texture_size);
             remaining_w -= buff_w;
 
-            glBindTexture(GL_TEXTURE_2D, buff_tex[ty * num_textures_x + tx]);
+            gl_canvas_ref().glBindTexture(GL_TEXTURE_2D,
+                                          buff_tex[ty * num_textures_x + tx]);
 
             auto tile_model = mat4{};
 
@@ -521,10 +728,10 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
 
             px += static_cast<float>(buff_w) / 2.0f;
 
-            gl_canvas_->glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-            gl_canvas_->glVertexAttribPointer(
+            gl_canvas_ref().glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+            gl_canvas_ref().glVertexAttribPointer(
                 0, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-            gl_canvas_->glDrawArrays(GL_TRIANGLES, 0, 6);
+            gl_canvas_ref().glDrawArrays(GL_TRIANGLES, 0, 6);
         }
 
         py += static_cast<float>(buff_h) / 2.0f;
@@ -532,15 +739,20 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
 }
 
 
-float* Buffer::min_buffer_values()
+std::span<float> Buffer::min_buffer_values()
 {
-    return min_buffer_values_.data();
+    return min_buffer_values_;
 }
 
 
-float* Buffer::max_buffer_values()
+std::span<float> Buffer::max_buffer_values()
 {
-    return max_buffer_values_.data();
+    return max_buffer_values_;
+}
+
+std::span<const float> Buffer::max_buffer_values() const
+{
+    return max_buffer_values_;
 }
 
 
@@ -559,14 +771,15 @@ void Buffer::setup_gl_buffer()
     reset_contrast_brightness_parameters();
 
     // Buffer texture
-    num_textures_x         = std::ceil(static_cast<float>(buffer_width_i) /
-                               static_cast<float>(max_texture_size));
-    num_textures_y         = std::ceil(static_cast<float>(buffer_height_i) /
-                               static_cast<float>(max_texture_size));
+    const auto max_texture_size_f = static_cast<float>(max_texture_size);
+    num_textures_x                = static_cast<int>(
+        std::ceil(static_cast<float>(buffer_width_i) / max_texture_size_f));
+    num_textures_y = static_cast<int>(
+        std::ceil(static_cast<float>(buffer_height_i) / max_texture_size_f));
     const int num_textures = num_textures_x * num_textures_y;
 
     buff_tex.resize(num_textures);
-    glGenTextures(num_textures, buff_tex.data());
+    gl_canvas_ref().glGenTextures(num_textures, buff_tex.data());
 
     auto tex_type   = GLuint{GL_UNSIGNED_BYTE};
     auto tex_format = GLuint{GL_RED};
@@ -595,9 +808,8 @@ void Buffer::setup_gl_buffer()
 
     auto remaining_h = buffer_height_i;
 
-    glPixelStoref(GL_UNPACK_ALIGNMENT, 1);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, step);
+    gl_canvas_ref().glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    gl_canvas_ref().glPixelStorei(GL_UNPACK_ROW_LENGTH, step);
 
     for (int ty = 0; ty < num_textures_y; ++ty) {
         const auto buff_h = (std::min)(remaining_h, max_texture_size);
@@ -609,49 +821,50 @@ void Buffer::setup_gl_buffer()
             remaining_w -= buff_w;
 
             const auto tex_id = ty * num_textures_x + tx;
-            gl_canvas_->glBindTexture(GL_TEXTURE_2D, buff_tex[tex_id]);
+            gl_canvas_ref().glBindTexture(GL_TEXTURE_2D, buff_tex[tex_id]);
 
-            gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_ROWS,
-                                      ty * max_texture_size);
-            gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_PIXELS,
-                                      tx * max_texture_size);
+            gl_canvas_ref().glPixelStorei(GL_UNPACK_SKIP_ROWS,
+                                          ty * max_texture_size);
+            gl_canvas_ref().glPixelStorei(GL_UNPACK_SKIP_PIXELS,
+                                          tx * max_texture_size);
 
-            gl_canvas_->glTexImage2D(GL_TEXTURE_2D,
-                                     0,
-                                     GL_RGBA32F,
-                                     buff_w,
-                                     buff_h,
-                                     0,
-                                     tex_format,
-                                     tex_type,
-                                     nullptr);
+            gl_canvas_ref().glTexImage2D(GL_TEXTURE_2D,
+                                         0,
+                                         GL_RGBA32F,
+                                         buff_w,
+                                         buff_h,
+                                         0,
+                                         tex_format,
+                                         tex_type,
+                                         nullptr);
 
-            gl_canvas_->glTexSubImage2D(GL_TEXTURE_2D,
-                                        0,
-                                        0,
-                                        0,
-                                        buff_w,
-                                        buff_h,
-                                        tex_format,
-                                        tex_type,
-                                        std::bit_cast<const GLvoid*>(buffer));
+            gl_canvas_ref().glTexSubImage2D(
+                GL_TEXTURE_2D,
+                0,
+                0,
+                0,
+                buff_w,
+                buff_h,
+                tex_format,
+                tex_type,
+                std::bit_cast<const GLvoid*>(buffer_.data()));
 
-            gl_canvas_->glTexParameteri(
+            gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            gl_canvas_->glTexParameteri(
+            gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            gl_canvas_->glTexParameteri(
+            gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            gl_canvas_->glTexParameteri(
+            gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            gl_canvas_->glTexParameteri(
+            gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
         }
     }
 
-    gl_canvas_->glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-    gl_canvas_->glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    gl_canvas_ref().glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    gl_canvas_ref().glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+    gl_canvas_ref().glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
 }
 
 } // namespace oid

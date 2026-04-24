@@ -2,6 +2,3 @@
 	path = src/thirdparty/Eigen
 	url = https://gitlab.com/libeigen/eigen.git
 	branch = master
-[submodule "src/thirdparty/WindowsToolchain"]
-	path = src/thirdparty/WindowsToolchain
-	url = https://github.com/MarkSchofield/WindowsToolchain.git
