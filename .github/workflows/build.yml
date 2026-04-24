@@ -102,7 +102,7 @@ jobs:
           echo "PATH=/usr/local/opt/qt@6/bin:$PATH" >> "$GITHUB_ENV"
 
       # C++20 modules: CMake’s scanner needs GCC 14+ or Clang 16+ (cmake-cxxmodules(7)).
-      - if: matrix.os == 'ubuntu-24.04'
+      - if: matrix.name == 'ubuntu-24.04'
         name: Install g++-14
         shell: bash
         run: |
