@@ -81,7 +81,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
                       "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_SOURCE_DIR}/lib/ipc")
 
 target_sources(${PROJECT_NAME}
-               PUBLIC FILE_SET HEADERS
+               PRIVATE FILE_SET HEADERS
                FILES
                io/buffer_exporter.h
                ipc/message_exchange.h
