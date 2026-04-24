@@ -27,14 +27,13 @@ include(FetchContent)
 FetchContent_Declare(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.17.0
+    GIT_TAG v1.14.0
 )
 # For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
-# gtest + Clang -Werror: gtest-printers.h -Wcharacter-conversion (v1.17 still; project flags apply here).
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
-   OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+# gtest + Clang + -Werror: gtest-printers.h -Wcharacter-conversion (inherited from common.cmake)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   foreach(_gt gtest gtest_main gmock gmock_main)
     if(TARGET ${_gt})
       target_compile_options(${_gt} PRIVATE -Wno-character-conversion)

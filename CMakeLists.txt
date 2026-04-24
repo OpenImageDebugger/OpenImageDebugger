@@ -23,13 +23,39 @@
 
 cmake_minimum_required(VERSION 3.28.3)
 
+# Non-Windows: before `project()`, set compiler cache entries when available:
+# Homebrew llvm on macOS, otherwise gcc-14 / g++-14 on Linux.
+if(NOT WIN32)
+  if(APPLE)
+    execute_process(
+      COMMAND brew --prefix llvm
+      OUTPUT_VARIABLE _oid_brew_llvm
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET
+      RESULT_VARIABLE _oid_brew_llvm_rv
+    )
+    if(_oid_brew_llvm_rv EQUAL 0
+       AND IS_DIRECTORY "${_oid_brew_llvm}/bin")
+      set(CMAKE_C_COMPILER
+          "${_oid_brew_llvm}/bin/clang"
+          CACHE FILEPATH "C compiler" FORCE)
+      set(CMAKE_CXX_COMPILER
+          "${_oid_brew_llvm}/bin/clang++"
+          CACHE FILEPATH "C++ compiler" FORCE)
+    endif()
+  else()
+    find_program(_oid_cc gcc-14)
+    find_program(_oid_cxx g++-14)
+    if(_oid_cc AND _oid_cxx)
+      set(CMAKE_C_COMPILER "${_oid_cc}" CACHE FILEPATH "C compiler" FORCE)
+      set(CMAKE_CXX_COMPILER "${_oid_cxx}" CACHE FILEPATH "C++ compiler" FORCE)
+    endif()
+  endif()
+endif()
+
 project(OpenImageDebugger)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
-# Enable module import scanning when not Xcode Apple Clang (e.g. Homebrew llvm on macOS; see README).
-if(NOT (APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
-  set(CMAKE_CXX_SCAN_FOR_MODULES ON)
-endif()
 
 add_subdirectory(src)
 add_subdirectory(src/ipc)

@@ -103,15 +103,7 @@ jobs:
 
       - if: startsWith(matrix.os, 'macos-')
         name: Install Homebrew LLVM (C and C++ toolchain)
-        run: |
-          brew install llvm
-          LLVM_PREFIX="$(brew --prefix llvm)"
-          {
-            echo "CC=${LLVM_PREFIX}/bin/clang"
-            echo "CXX=${LLVM_PREFIX}/bin/clang++"
-            echo "CMAKE_C_COMPILER=${LLVM_PREFIX}/bin/clang"
-            echo "CMAKE_CXX_COMPILER=${LLVM_PREFIX}/bin/clang++"
-          } >> "$GITHUB_ENV"
+        run: brew install llvm
 
       - if: matrix.os == 'ubuntu-24.04'
         name: Install GCC 14

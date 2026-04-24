@@ -103,17 +103,6 @@ For information on how to build the plugin on MacOS, refer to the wiki page
 [Building on
 MacOS](https://github.com/OpenImageDebugger/OpenImageDebugger/wiki/Building-on-MacOS).
 
-**C++20 named modules (optional):** CMake can only build the `oidipc` `RawDataDecode` named module (`.cppm`) with a compiler that supports import-graph scanning. The Xcode default (**Apple Clang**) does not; to compile that module on macOS, use **LLVM from Homebrew** as `CMAKE_C_COMPILER` / `CMAKE_CXX_COMPILER`:
-
-```bash
-brew install llvm
-LLVM="$(brew --prefix llvm)"
-cmake -S . -B build -DCMAKE_C_COMPILER="${LLVM}/bin/clang" \
-  -DCMAKE_CXX_COMPILER="${LLVM}/bin/clang++"
-```
-
-If you omit that, the project still builds; `raw_data_decode` is available via headers only (same API).
-
 ### Testing your installation
 
 After compiling the plugin, you can test it by running the following command:
