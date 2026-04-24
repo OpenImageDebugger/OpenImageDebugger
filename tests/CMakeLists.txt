@@ -24,20 +24,15 @@
 cmake_minimum_required(VERSION 3.28.3)
 
 include(FetchContent)
-FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.14.0
+FetchContent_Declare(googletest
+  URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
+  URL_HASH SHA256=8ad598c73ad796e0d8280b082cebd82a630d73e73cd3c70057938a6501bba5d7
 )
-# For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
-# gtest + Clang + -Werror: gtest-printers.h -Wcharacter-conversion (inherited from common.cmake)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  foreach(_gt gtest gtest_main gmock gmock_main)
-    if(TARGET ${_gt})
-      target_compile_options(${_gt} PRIVATE -Wno-character-conversion)
-    endif()
+  foreach(_t gtest gtest_main gmock gmock_main)
+    target_compile_options(${_t} PRIVATE -Wno-character-conversion)
   endforeach()
 endif()
 
@@ -84,12 +79,18 @@ target_link_libraries(test_raw_data_decode
     PRIVATE
     GTest::gtest_main
     GTest::gtest
+    oidipc
 )
 
-# Add raw_data_decode source file directly since we need the implementation
-target_sources(test_raw_data_decode PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/raw_data_decode.cpp
-)
+if(WIN32)
+  add_custom_command(
+    TARGET test_raw_data_decode
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:oidipc>
+            $<TARGET_FILE_DIR:test_raw_data_decode>
+    VERBATIM
+  )
+endif()
 
 add_test(NAME RawDataDecodeTests COMMAND test_raw_data_decode)
 

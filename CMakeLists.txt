@@ -57,6 +57,25 @@ project(OpenImageDebugger)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
 
+# oidipc always builds the RawDataDecode C++20 module. CMake and the toolchain
+# must support module scanning (Ninja/VS) and a compiler with import support
+# (not Apple/Xcode Clang; use Homebrew llvm on macOS when brew is available).
+if(NOT CMAKE_GENERATOR MATCHES "Ninja" AND NOT CMAKE_GENERATOR
+                                           MATCHES "Visual Studio")
+  message(
+    FATAL_ERROR
+    "C++20 modules require -G Ninja, \"Ninja Multi-Config\", or Visual Studio 17.4+. "
+      "This generator is not supported: ${CMAKE_GENERATOR}"
+  )
+endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+  message(
+    FATAL_ERROR
+    "C++20 modules are not available with Apple/Xcode Clang. Use Homebrew "
+      "LLVM (brew install llvm) or set CMAKE_CXX_COMPILER to its clang++."
+  )
+endif()
+
 add_subdirectory(src)
 add_subdirectory(src/ipc)
 add_subdirectory(src/oidbridge)

@@ -29,6 +29,16 @@ add_library(${PROJECT_NAME} SHARED
             message_exchange.cpp
             raw_data_decode.cpp)
 
+target_sources(
+  ${PROJECT_NAME}
+  PUBLIC
+    FILE_SET oid_RawDataDecode_module
+    TYPE CXX_MODULES
+    BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+    FILES ${CMAKE_CURRENT_SOURCE_DIR}/RawDataDecode.cppm
+)
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_SCAN_FOR_MODULES ON)
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
@@ -40,4 +50,3 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)
-
