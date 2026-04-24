@@ -101,6 +101,21 @@ jobs:
           brew install qtbase
           echo "PATH=/usr/local/opt/qt@6/bin:$PATH" >> "$GITHUB_ENV"
 
+      # CMake C++20 modules require a toolchain that provides module depfile
+      # scanning: GCC 14+ or Clang 16+ (see cmake-cxxmodules(7)). Base Ubuntu
+      # images often ship an older default GCC.
+      - if: matrix.container
+        name: Install GCC 14+ (C++20 modules for CMake)
+        shell: bash
+        run: |
+          set -eux
+          apt-get update
+          apt-get install -y --no-install-recommends g++-14
+          {
+            echo "CC=gcc-14"
+            echo "CXX=g++-14"
+          } >> "$GITHUB_ENV"
+
       - name: Build
         shell: bash
         env:
