@@ -43,6 +43,7 @@
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
 
+import oid.buffer;
 
 Q_DECLARE_METATYPE(QList<QString>) // namespace oid
 

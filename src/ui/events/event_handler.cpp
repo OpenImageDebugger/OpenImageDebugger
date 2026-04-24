@@ -38,13 +38,13 @@
 #include <QtMath>
 
 #include "ui/main_window/main_window.h"
-#include "visualization/components/buffer.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
 #include "visualization/events.h"
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
 
+import oid.buffer;
 import BufferExporter;
 
 namespace oid
@@ -463,7 +463,7 @@ void UIEventHandler::export_buffer(const QString& buffer_name)
         const auto selected_filter = file_dialog.selectedNameFilter();
 
         BufferExporter::export_buffer(
-            &component, file_name, output_extensions[selected_filter]);
+            component, file_name, output_extensions[selected_filter]);
 
         deps_.default_export_suffix = selected_filter;
 

@@ -33,9 +33,9 @@
 #include <QLineEdit>
 
 #include "ui/main_window/main_window.h"
-#include "visualization/components/buffer.h"
 #include "visualization/game_object.h"
 
+import oid.buffer;
 
 namespace oid
 {

@@ -23,19 +23,44 @@
  * IN THE SOFTWARE.
  */
 
-module;
+#ifndef BUFFER_PARAMS_H_
+#define BUFFER_PARAMS_H_
 
+#include <array>
+#include <span>
 #include <string>
+#include <vector>
 
-import oid.buffer;
+#include "ipc/raw_data_decode.h"
 
-export module BufferExporter;
-
-export namespace oid::BufferExporter
+namespace oid
 {
 
-enum class OutputType { Bitmap, OctaveMatrix };
+namespace BufferConstants
+{
+constexpr int MAX_TEXTURE_SIZE        = 2048;
+constexpr float ZOOM_BORDER_THRESHOLD = 40.0f;
+constexpr int MIN_BUFFER_DIMENSION    = 1;
+constexpr int MAX_BUFFER_DIMENSION =
+    131072; // 2^17 = 128K (closest power of 2 to 100k)
+constexpr int MIN_CHANNELS = 1;
+constexpr int MAX_CHANNELS = 4;
+constexpr std::size_t MAX_BUFFER_SIZE =
+    16ULL * 1024ULL * 1024ULL * 1024ULL; // 16GB
+} // namespace BufferConstants
 
-void export_buffer(const Buffer& buffer, const std::string& path, OutputType type);
+struct BufferParams
+{
+    std::span<const std::byte> buffer;
+    int buffer_width_i;
+    int buffer_height_i;
+    int channels;
+    BufferType type;
+    int step;
+    std::string pixel_layout;
+    bool transpose_buffer;
+};
 
-} // namespace oid::BufferExporter
+} // namespace oid
+
+#endif // BUFFER_PARAMS_H_

@@ -28,10 +28,11 @@
 #include <cmath>
 
 #include "ui/gl_canvas.h"
-#include "visualization/components/buffer.h"
 #include "visualization/events.h"
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
+
+import oid.buffer;
 
 namespace oid
 {

@@ -37,7 +37,8 @@ module;
 #include <QPixmap>
 
 #include "ipc/raw_data_decode.h"
-#include "visualization/components/buffer.h"
+
+import oid.buffer;
 
 module BufferExporter;
 
@@ -232,52 +233,48 @@ void export_binary(const std::string& fname, const Buffer& buffer)
 }
 
 
-void export_buffer(const void* buffer, const std::string& path, const OutputType type)
+void export_buffer(const Buffer& buffer, const std::string& path, const OutputType type)
 {
-    if (buffer == nullptr) {
-        return;
-    }
-    const Buffer& buffer_ref = *static_cast<const Buffer*>(buffer);
     using enum BufferType;
     if (type == OutputType::Bitmap) {
-        switch (buffer_ref.type) {
+        switch (buffer.type) {
         case UnsignedByte:
-            export_bitmap<std::uint8_t>(path, buffer_ref);
+            export_bitmap<std::uint8_t>(path, buffer);
             break;
         case UnsignedShort:
-            export_bitmap<std::uint16_t>(path, buffer_ref);
+            export_bitmap<std::uint16_t>(path, buffer);
             break;
         case Short:
-            export_bitmap<std::int16_t>(path, buffer_ref);
+            export_bitmap<std::int16_t>(path, buffer);
             break;
         case Int32:
-            export_bitmap<std::int32_t>(path, buffer_ref);
+            export_bitmap<std::int32_t>(path, buffer);
             break;
         case Float32:
             [[fallthrough]];
         case Float64:
-            export_bitmap<float>(path, buffer_ref);
+            export_bitmap<float>(path, buffer);
             break;
         }
     } else {
         // Matlab/Octave matrix (load with the oid_load.m function)
-        switch (buffer_ref.type) {
+        switch (buffer.type) {
         case UnsignedByte:
-            export_binary<std::uint8_t>(path, buffer_ref);
+            export_binary<std::uint8_t>(path, buffer);
             break;
         case UnsignedShort:
-            export_binary<std::uint16_t>(path, buffer_ref);
+            export_binary<std::uint16_t>(path, buffer);
             break;
         case Short:
-            export_binary<std::int16_t>(path, buffer_ref);
+            export_binary<std::int16_t>(path, buffer);
             break;
         case Int32:
-            export_binary<std::int32_t>(path, buffer_ref);
+            export_binary<std::int32_t>(path, buffer);
             break;
         case Float32:
             [[fallthrough]];
         case Float64:
-            export_binary<float>(path, buffer_ref);
+            export_binary<float>(path, buffer);
             break;
         }
     }

@@ -82,6 +82,7 @@ set_target_properties(${PROJECT_NAME}
 target_sources(${PROJECT_NAME}
                PUBLIC
                FILE_SET cxx_modules TYPE CXX_MODULES FILES
+               visualization/components/Buffer.cppm
                io/BufferExporter.cppm)
 
 add_dependencies(${PROJECT_NAME} oidipc)
