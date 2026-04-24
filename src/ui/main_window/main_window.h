@@ -44,10 +44,11 @@
 #include "ui/messaging/message_handler.h"
 #include "ui/symbol_completer.h"
 #include "ui_main_window.h"
-#include "visualization/stage.h"
 
 namespace oid
 {
+
+class Stage;
 
 class MainWindowInitializer;
 class SettingsApplier;
@@ -196,8 +197,6 @@ class MainWindow final : public QMainWindow
     void update_status_bar() const;
 
     static qreal get_screen_dpi_scale();
-
-    static std::string get_type_label(BufferType type, int channels);
 
     void set_currently_selected_stage(const std::shared_ptr<Stage>& stage);
     void set_currently_selected_stage(std::nullptr_t); // Overload for clearing

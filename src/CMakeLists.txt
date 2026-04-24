@@ -73,6 +73,7 @@ set(QT_FORMS ui/main_window/main_window.ui)
 set(QT_RESOURCES resources/resources.qrc)
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_SCAN_FOR_MODULES ON)
 
 add_dependencies(${PROJECT_NAME} oidipc)
 

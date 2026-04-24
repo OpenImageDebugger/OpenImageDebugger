@@ -81,6 +81,7 @@ target_link_libraries(test_raw_data_decode
     GTest::gtest
     oidipc
 )
+set_target_properties(test_raw_data_decode PROPERTIES CXX_SCAN_FOR_MODULES ON)
 
 if(WIN32)
   add_custom_command(
@@ -110,12 +111,24 @@ target_link_libraries(test_message_exchange
     Qt6::Core
     GTest::gtest_main
     GTest::gtest
+    oidipc
 )
+set_target_properties(test_message_exchange PROPERTIES CXX_SCAN_FOR_MODULES ON)
 
 # Add message_exchange source file directly for testing
 target_sources(test_message_exchange PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/message_exchange.cpp
 )
+
+if(WIN32)
+  add_custom_command(
+    TARGET test_message_exchange
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:oidipc>
+            $<TARGET_FILE_DIR:test_message_exchange>
+    VERBATIM
+  )
+endif()
 
 add_test(NAME MessageExchangeTests COMMAND test_message_exchange)
 

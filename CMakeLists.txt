@@ -53,6 +53,12 @@ if(NOT WIN32)
   endif()
 endif()
 
+# For clangd and other tools; must be set before the first top-level project().
+set(CMAKE_EXPORT_COMPILE_COMMANDS
+    ON
+    CACHE BOOL
+    "Emit compile_commands.json for IDEs and static analysis")
+
 project(OpenImageDebugger)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)

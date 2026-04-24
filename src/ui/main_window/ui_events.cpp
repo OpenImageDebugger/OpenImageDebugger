@@ -24,6 +24,7 @@
  */
 
 #include "main_window.h"
+#include "visualization/stage.h"
 
 // All UI event handling logic has been moved to UIEventHandler.
 // This file contains Qt override methods and delegation methods for

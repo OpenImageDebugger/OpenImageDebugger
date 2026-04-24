@@ -33,7 +33,7 @@
 #include <vector>
 
 #include "component.h"
-#include "ipc/raw_data_decode.h"
+import RawDataDecode;
 #include "visualization/shader.h"
 
 namespace oid

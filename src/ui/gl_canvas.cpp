@@ -28,6 +28,7 @@
 #include <iostream>
 
 #include "main_window/main_window.h"
+#include "visualization/stage.h"
 #include "ui/gl_text_renderer.h"
 #include "visualization/components/camera.h"
 // Required for GameObject::get_component<>() template method instantiation
