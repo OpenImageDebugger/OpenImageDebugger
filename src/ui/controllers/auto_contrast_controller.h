@@ -40,7 +40,7 @@ class AutoContrastController
   public:
     struct Dependencies
     {
-        std::recursive_mutex& ui_mutex;
+        std::mutex& ui_mutex;
         BufferData& buffer_data;
         WindowState& state;
         UIComponents& ui_components;
@@ -68,6 +68,9 @@ class AutoContrastController
 
   private:
     Dependencies deps_;
+
+    void reset_min_labels_unlocked() const;
+    void reset_max_labels_unlocked() const;
 
     void set_ac_min_value(int idx, float value);
     void set_ac_max_value(int idx, float value);
