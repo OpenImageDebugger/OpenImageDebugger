@@ -35,7 +35,10 @@ target_sources(
     FILE_SET oid_RawDataDecode_module
     TYPE CXX_MODULES
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-    FILES ${CMAKE_CURRENT_SOURCE_DIR}/RawDataDecode.cppm
+    FILES
+      ${CMAKE_CURRENT_SOURCE_DIR}/RawDataDecode.cppm
+      ${CMAKE_CURRENT_SOURCE_DIR}/RawDataDecode-types.cppm
+      ${CMAKE_CURRENT_SOURCE_DIR}/RawDataDecode-decode.cppm
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_SCAN_FOR_MODULES ON)
 

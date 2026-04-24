@@ -23,9 +23,8 @@
  * IN THE SOFTWARE.
  */
 
-// Global module fragment: only lightweight standard headers. Avoid <algorithm>
-// here: g++ 14 + libstdc++ can mis-merge that header in -fmodules-ts and hit
-// bogus redefinitions in internal type traits. A manual loop is equivalent.
+// No <algorithm> in the global fragment: g++ 14 + libstdc++ can break under
+// -fmodules-ts; the loop is equivalent to std::transform.
 module;
 #include <bit>
 #include <cstddef>
@@ -41,13 +40,11 @@ std::vector<std::byte> make_float_buffer_from_double(
 {
   const auto element_count = buff_double.size() / sizeof(double);
   std::vector<std::byte> buff_float(element_count * sizeof(float));
-
   const auto* const src = std::bit_cast<const double*>(buff_double.data());
   const auto dst = std::bit_cast<float*>(buff_float.data());
   for (std::size_t i = 0; i < element_count; ++i) {
     dst[i] = static_cast<float>(src[i]);
   }
-
   return buff_float;
 }
 
