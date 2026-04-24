@@ -26,6 +26,10 @@ cmake_minimum_required(VERSION 3.28.3)
 project(OpenImageDebugger)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
+# Enable module import scanning when not Xcode Apple Clang (e.g. Homebrew llvm on macOS; see README).
+if(NOT (APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
+  set(CMAKE_CXX_SCAN_FOR_MODULES ON)
+endif()
 
 add_subdirectory(src)
 add_subdirectory(src/ipc)

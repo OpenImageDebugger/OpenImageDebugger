@@ -74,13 +74,9 @@ target_include_directories(test_raw_data_decode
 
 target_link_libraries(test_raw_data_decode
     PRIVATE
+    oidipc
     GTest::gtest_main
     GTest::gtest
-)
-
-# Add raw_data_decode source file directly since we need the implementation
-target_sources(test_raw_data_decode PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/raw_data_decode.cpp
 )
 
 add_test(NAME RawDataDecodeTests COMMAND test_raw_data_decode)

@@ -32,6 +32,17 @@ add_library(${PROJECT_NAME} SHARED
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
+if(NOT (APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
+  target_sources(
+    ${PROJECT_NAME} PUBLIC
+    FILE_SET cxx_modules TYPE CXX_MODULES
+    FILES RawDataDecode.cppm)
+endif()
+if(APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+  message(STATUS
+          "oidipc: RawDataDecode module not built; use Homebrew llvm for CMAKE_CXX (see README)")
+endif()
+
 target_include_directories(${PROJECT_NAME}
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
