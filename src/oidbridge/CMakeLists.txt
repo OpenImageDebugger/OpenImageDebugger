@@ -21,11 +21,11 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.28.3)
 
 project(oidbridge CXX)
 
-find_package(Python 3.10.12 REQUIRED COMPONENTS Development)
+find_package(Python 3.12.3 REQUIRED COMPONENTS Development)
 
 add_library(${PROJECT_NAME} MODULE
             oid_bridge.cpp
