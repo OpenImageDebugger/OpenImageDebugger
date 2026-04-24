@@ -83,7 +83,7 @@ void repeat_first_channel_into_g_and_b(
 
 
 template <typename T>
-void export_bitmap(const std::string& fname, const oid::Buffer& buffer)
+void export_bitmap(const std::string& fname, const Buffer& buffer)
 {
     const auto width_i  = static_cast<std::size_t>(buffer.buffer_width_f);
     const auto height_i = static_cast<std::size_t>(buffer.buffer_height_f);
@@ -215,7 +215,7 @@ std::string get_type_descriptor<float>()
 
 
 template <typename T>
-void export_binary(const std::string& fname, const oid::Buffer& buffer)
+void export_binary(const std::string& fname, const Buffer& buffer)
 {
     const auto width_i  = static_cast<std::size_t>(buffer.buffer_width_f);
     const auto height_i = static_cast<std::size_t>(buffer.buffer_height_f);
@@ -232,12 +232,12 @@ void export_binary(const std::string& fname, const oid::Buffer& buffer)
 }
 
 
-void export_buffer(const oid::Buffer* buffer, const std::string& path, const OutputType type)
+void export_buffer(const void* buffer, const std::string& path, const OutputType type)
 {
     if (buffer == nullptr) {
         return;
     }
-    const oid::Buffer& buffer_ref = *buffer;
+    const Buffer& buffer_ref = *static_cast<const Buffer*>(buffer);
     using enum BufferType;
     if (type == OutputType::Bitmap) {
         switch (buffer_ref.type) {
