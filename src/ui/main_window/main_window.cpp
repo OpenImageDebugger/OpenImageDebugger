@@ -523,29 +523,6 @@ qreal MainWindow::get_screen_dpi_scale()
 }
 
 
-std::string MainWindow::get_type_label(const BufferType type,
-                                       const int channels)
-{
-    auto result = std::stringstream{};
-    if (type == BufferType::Float32) {
-        result << "float32";
-    } else if (type == BufferType::UnsignedByte) {
-        result << "uint8";
-    } else if (type == BufferType::Short) {
-        result << "int16";
-    } else if (type == BufferType::UnsignedShort) {
-        result << "uint16";
-    } else if (type == BufferType::Int32) {
-        result << "int32";
-    } else if (type == BufferType::Float64) {
-        result << "float64";
-    }
-    result << "x" << channels;
-
-    return result.str();
-}
-
-
 void MainWindow::persist_settings_deferred()
 {
     using namespace oid::SettingsConstants;

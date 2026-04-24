@@ -23,28 +23,8 @@
  * IN THE SOFTWARE.
  */
 
-module;
-#include <algorithm>
-#include <bit>
-#include <cstddef>
-#include <vector>
+// Primary interface: re-exports public partitions only.
+export module RawDataDecode;
 
-module RawDataDecode;
-
-namespace oid
-{
-
-std::vector<std::byte> make_float_buffer_from_double(
-    const std::vector<std::byte>& buff_double)
-{
-  const auto element_count = buff_double.size() / sizeof(double);
-  std::vector<std::byte> buff_float(element_count * sizeof(float));
-  const auto* const src = std::bit_cast<const double*>(buff_double.data());
-  const auto dst = std::bit_cast<float*>(buff_float.data());
-  std::transform(src, src + element_count, dst, [](const double d) {
-    return static_cast<float>(d);
-  });
-  return buff_float;
-}
-
-} // namespace oid
+export import :types;
+export import :decode;

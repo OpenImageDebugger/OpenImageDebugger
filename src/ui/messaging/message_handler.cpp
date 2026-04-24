@@ -39,7 +39,6 @@
 #include <QTcpSocket>
 
 #include "ipc/message_exchange.h"
-#include "ipc/raw_data_decode.h"
 #include "ui/main_window/main_window.h"
 #include "visualization/components/buffer.h"
 #include "visualization/stage.h"

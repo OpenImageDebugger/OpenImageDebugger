@@ -27,7 +27,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-#include "ipc/raw_data_decode.h"
+import RawDataDecode;
 
 using namespace oid;
 

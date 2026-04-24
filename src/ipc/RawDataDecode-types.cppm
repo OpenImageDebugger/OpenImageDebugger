@@ -15,7 +15,7 @@
  * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * IMPLIED, INCLUDING WITHOUT LIMITATION THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
@@ -24,27 +24,42 @@
  */
 
 module;
-#include <algorithm>
-#include <bit>
 #include <cstddef>
-#include <vector>
+#include <cstdint>
 
-module RawDataDecode;
+export module RawDataDecode:types;
 
-namespace oid
+export namespace oid
 {
 
-std::vector<std::byte> make_float_buffer_from_double(
-    const std::vector<std::byte>& buff_double)
+enum class BufferType {
+  UnsignedByte  = 0,
+  UnsignedShort = 2,
+  Short         = 3,
+  Int32         = 4,
+  Float32       = 5,
+  Float64       = 6
+};
+
+[[nodiscard]] constexpr std::size_t
+type_size(const BufferType type) noexcept
 {
-  const auto element_count = buff_double.size() / sizeof(double);
-  std::vector<std::byte> buff_float(element_count * sizeof(float));
-  const auto* const src = std::bit_cast<const double*>(buff_double.data());
-  const auto dst = std::bit_cast<float*>(buff_float.data());
-  std::transform(src, src + element_count, dst, [](const double d) {
-    return static_cast<float>(d);
-  });
-  return buff_float;
+  switch (type) {
+  case BufferType::Int32:
+    return sizeof(std::int32_t);
+  case BufferType::Short:
+    [[fallthrough]];
+  case BufferType::UnsignedShort:
+    return sizeof(std::int16_t);
+  case BufferType::Float32:
+    return sizeof(float);
+  case BufferType::Float64:
+    return sizeof(double);
+  case BufferType::UnsignedByte:
+    [[fallthrough]];
+  default:
+    return sizeof(std::uint8_t);
+  }
 }
 
 } // namespace oid

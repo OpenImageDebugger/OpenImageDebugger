@@ -40,7 +40,7 @@
 #include <QString>
 #include <QTcpSocket>
 
-#include "raw_data_decode.h"
+import RawDataDecode;
 
 namespace oid
 {

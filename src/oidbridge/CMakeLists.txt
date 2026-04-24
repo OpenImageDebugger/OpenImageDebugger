@@ -33,6 +33,7 @@ add_library(${PROJECT_NAME} MODULE
             ../system/process/process.cpp
             $<$<BOOL:${UNIX}>:../system/process/process_unix.cpp>
             $<$<BOOL:${WIN32}>:../system/process/process_win32.cpp>)
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_SCAN_FOR_MODULES ON)
 
 add_dependencies(${PROJECT_NAME} oidipc)
 

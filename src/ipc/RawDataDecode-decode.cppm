@@ -15,7 +15,7 @@
  * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * IMPLIED, INCLUDING WITHOUT LIMITATION THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
@@ -23,50 +23,16 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef RAW_DATA_DECODE_H_
-#define RAW_DATA_DECODE_H_
+module;
+#include <cstddef>
+#include <vector>
 
-#include <cstddef> // for std::size_t
-#include <cstdint> // for std::uint8_t
+export module RawDataDecode:decode;
 
-#include <vector> // for std::vector
-
-namespace oid
+export namespace oid
 {
 
-enum class BufferType {
-    UnsignedByte  = 0,
-    UnsignedShort = 2,
-    Short         = 3,
-    Int32         = 4,
-    Float32       = 5,
-    Float64       = 6
-};
-
-std::vector<std::byte>
-make_float_buffer_from_double(const std::vector<std::byte>& buff_double);
-
-[[nodiscard]] constexpr std::size_t type_size(const BufferType type) noexcept
-{
-    switch (type) {
-    case BufferType::Int32:
-        return sizeof(std::int32_t);
-    case BufferType::Short:
-        [[fallthrough]];
-    case BufferType::UnsignedShort:
-        return sizeof(std::int16_t);
-    case BufferType::Float32:
-        return sizeof(float);
-    case BufferType::Float64:
-        return sizeof(double);
-    case BufferType::UnsignedByte:
-        [[fallthrough]];
-    default:
-        // All enum values are handled above, this should never be reached
-        return sizeof(std::uint8_t);
-    }
-}
+std::vector<std::byte> make_float_buffer_from_double(
+    const std::vector<std::byte>& buff_double);
 
 } // namespace oid
-
-#endif // RAW_DATA_DECODE_H_
