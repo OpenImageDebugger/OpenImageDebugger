@@ -21,7 +21,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.28.3)
 
 project(oidwindow CXX)
 
@@ -32,7 +32,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 "6.2.4" REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets)
+find_package(Qt6 "6.4.2" REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets)
 
 set(SOURCES
     oid_window.cpp

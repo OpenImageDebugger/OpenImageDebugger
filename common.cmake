@@ -21,7 +21,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.28.3)
 
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type")
 set(CMAKE_INSTALL_PREFIX /usr/local CACHE PATH "Install path")
@@ -32,7 +32,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS False)
 
 find_package(Threads REQUIRED)
-find_package(Qt6 6.2.4 REQUIRED COMPONENTS Network)
+find_package(Qt6 6.4.2 REQUIRED COMPONENTS Network)
 
 add_compile_options("$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic;-Werror>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/W4;/WX>")
