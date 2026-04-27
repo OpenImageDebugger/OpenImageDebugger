@@ -25,6 +25,10 @@
 
 #include "main_window.h"
 
+#include <cerrno>
+#include <chrono>
+#include <cstdio>
+#include <fstream>
 #include <iomanip>
 #include <ranges>
 #include <utility>
@@ -117,7 +121,6 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     , host_settings_{std::move(host_settings)}
 {
     QCoreApplication::instance()->installEventFilter(this);
-
     ui_components_.ui->setupUi(this);
 
     // Must be done after setupUi() so the widget exists
