@@ -23,15 +23,17 @@
 
 cmake_minimum_required(VERSION 3.28.3)
 
-include(FetchContent)
-FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.14.0
-)
 # For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../src/thirdparty/googletest googletest SYSTEM)
+foreach(_gtest_target gtest gtest_main gmock gmock_main)
+    if(TARGET ${_gtest_target})
+        target_compile_options(${_gtest_target} PRIVATE
+            $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-w>
+            $<$<CXX_COMPILER_ID:MSVC>:/w>
+        )
+    endif()
+endforeach()
 
 enable_testing()
 
