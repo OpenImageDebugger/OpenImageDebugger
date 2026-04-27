@@ -80,6 +80,38 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
                       INSTALL_RPATH
                       "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_SOURCE_DIR}/lib/ipc")
 
+target_sources(${PROJECT_NAME}
+               PRIVATE FILE_SET HEADERS
+               FILES
+               io/buffer_exporter.h
+               ipc/message_exchange.h
+               ipc/raw_data_decode.h
+               math/linear_algebra.h
+               ui/controllers/auto_contrast_controller.h
+               ui/decorated_line_edit.h
+               ui/events/event_handler.h
+               ui/gl_canvas.h
+               ui/gl_text_renderer.h
+               ui/go_to_widget.h
+               ui/main_window/main_window.h
+               ui/main_window/main_window_initializer.h
+               ui/main_window/settings_applier.h
+               ui/main_window/settings_manager.h
+               ui/messaging/message_handler.h
+               ui/symbol_completer.h
+               ui/symbol_search_input.h
+               visualization/components/background.h
+               visualization/components/buffer.h
+               visualization/components/buffer_values.h
+               visualization/components/camera.h
+               visualization/components/component.h
+               visualization/events.h
+               visualization/game_object.h
+               visualization/shader.h
+               visualization/shaders/oid_shaders.h
+               visualization/stage.h
+)
+
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ipc)

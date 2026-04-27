@@ -53,7 +53,7 @@ class SettingsApplier : public QObject
   public:
     struct Dependencies
     {
-        std::recursive_mutex& ui_mutex;
+        std::mutex& ui_mutex;
         WindowState& state;
         UIComponents& ui_components;
         BufferData& buffer_data;

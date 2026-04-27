@@ -135,9 +135,8 @@ get_buffer_component(const BufferData& buffer_data)
 } // anonymous namespace
 
 
-void AutoContrastController::reset_min_labels() const
+void AutoContrastController::reset_min_labels_unlocked() const
 {
-    const auto lock       = std::unique_lock{deps_.ui_mutex};
     const auto buffer_opt = get_buffer_component(deps_.buffer_data);
     if (!buffer_opt.has_value()) {
         return;
@@ -154,9 +153,8 @@ void AutoContrastController::reset_min_labels() const
 }
 
 
-void AutoContrastController::reset_max_labels() const
+void AutoContrastController::reset_max_labels_unlocked() const
 {
-    const auto lock       = std::unique_lock{deps_.ui_mutex};
     const auto buffer_opt = get_buffer_component(deps_.buffer_data);
     if (!buffer_opt.has_value()) {
         return;
@@ -170,6 +168,20 @@ void AutoContrastController::reset_max_labels() const
                           deps_.ui_components.ui->ac_c2_max,
                           deps_.ui_components.ui->ac_c3_max,
                           deps_.ui_components.ui->ac_c4_max);
+}
+
+
+void AutoContrastController::reset_min_labels() const
+{
+    const auto lock = std::unique_lock{deps_.ui_mutex};
+    reset_min_labels_unlocked();
+}
+
+
+void AutoContrastController::reset_max_labels() const
+{
+    const auto lock = std::unique_lock{deps_.ui_mutex};
+    reset_max_labels_unlocked();
 }
 
 
@@ -292,10 +304,10 @@ void AutoContrastController::reset_color_values(const bool is_min)
 
     if (is_min) {
         buffer.recompute_min_color_values();
-        reset_min_labels();
+        reset_min_labels_unlocked();
     } else {
         buffer.recompute_max_color_values();
-        reset_max_labels();
+        reset_max_labels_unlocked();
     }
     buffer.compute_contrast_brightness_parameters();
 

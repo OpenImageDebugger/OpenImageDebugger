@@ -193,11 +193,13 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             this,
             [this](const std::shared_ptr<Stage>& stage) {
                 set_currently_selected_stage(stage);
-            });
+            },
+            Qt::QueuedConnection);
     connect(event_handler_.get(),
             &UIEventHandler::stageSelectionCleared,
             this,
-            [this]() { set_currently_selected_stage(nullptr); });
+            [this]() { set_currently_selected_stage(nullptr); },
+            Qt::QueuedConnection);
     connect(event_handler_.get(),
             &UIEventHandler::plotBufferRequested,
             this,
@@ -208,15 +210,18 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     connect(event_handler_.get(),
             &UIEventHandler::acMinLabelsResetRequested,
             this,
-            [this]() { ac_controller_->reset_min_labels(); });
+            [this]() { ac_controller_->reset_min_labels(); },
+            Qt::QueuedConnection);
     connect(event_handler_.get(),
             &UIEventHandler::acMaxLabelsResetRequested,
             this,
-            [this]() { ac_controller_->reset_max_labels(); });
+            [this]() { ac_controller_->reset_max_labels(); },
+            Qt::QueuedConnection);
     connect(event_handler_.get(),
             &UIEventHandler::shiftPrecisionUpdateRequested,
             this,
-            [this]() { event_handler_->update_shift_precision(); });
+            [this]() { event_handler_->update_shift_precision(); },
+            Qt::QueuedConnection);
     connect(event_handler_.get(),
             &UIEventHandler::settingsPersistenceRequested,
             this,
@@ -226,11 +231,13 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     connect(message_handler_.get(),
             &MessageHandler::acMinLabelsResetRequested,
             this,
-            [this]() { ac_controller_->reset_min_labels(); });
+            [this]() { ac_controller_->reset_min_labels(); },
+            Qt::QueuedConnection);
     connect(message_handler_.get(),
             &MessageHandler::acMaxLabelsResetRequested,
             this,
-            [this]() { ac_controller_->reset_max_labels(); });
+            [this]() { ac_controller_->reset_max_labels(); },
+            Qt::QueuedConnection);
     connect(message_handler_.get(),
             &MessageHandler::settingsPersistenceRequested,
             this,
