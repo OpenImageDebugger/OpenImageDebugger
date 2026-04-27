@@ -77,8 +77,17 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
 add_dependencies(${PROJECT_NAME} oidipc)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
+                      CXX_SCAN_FOR_MODULES ON
                       INSTALL_RPATH
                       "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_SOURCE_DIR}/lib/ipc")
+
+target_sources(${PROJECT_NAME}
+        PUBLIC
+        FILE_SET CXX_MODULES FILES
+        math/linear_algebra.ixx
+        math/mat4.ixx
+        math/vec4.ixx
+)
 
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
