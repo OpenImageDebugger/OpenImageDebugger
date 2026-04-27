@@ -64,6 +64,12 @@ jobs:
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
 
+      - if: contains(matrix.os, 'macos')
+        name: Select latest Xcode
+        run: |
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$LATEST_XCODE"
+
       - name: Setup ${{ matrix.ccache-variant }}
         uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # 1.2.23
         with:
