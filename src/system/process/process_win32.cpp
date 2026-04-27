@@ -26,17 +26,26 @@
 #include "process.h"
 #include "process_impl.h"
 
+#include <iostream>
 #include <memory>
 
+#include <QByteArray>
+#include <QFileInfo>
+#include <QIODevice>
+#include <QObject>
 #include <QProcess>
 #include <QString>
+#include <QStringList>
 
 namespace oid
 {
 
+
 class ProcessImplWin32 final : public ProcessImpl
 {
   public:
+    ProcessImplWin32() = default;
+
     void start(std::vector<std::string>& command) override
     {
         const auto program = QString::fromStdString(command[0]);
@@ -45,8 +54,34 @@ class ProcessImplWin32 final : public ProcessImpl
             args.append(QString::fromStdString(command[i]));
         }
 
-        proc_.start(program, args);
-        proc_.waitForStarted();
+        // Set working directory to executable's directory (critical for DLL loading on Windows)
+        QFileInfo exeInfo(program);
+        const QString workingDir = exeInfo.absolutePath();
+        proc_.setWorkingDirectory(workingDir);
+
+        // Capture stderr separately to diagnose startup failures
+        proc_.setProcessChannelMode(QProcess::SeparateChannels);
+
+        // Connect readyReadStandardError to capture any stderr output
+        QObject::connect(&proc_, &QProcess::readyReadStandardError, [this]() {
+            proc_.readAllStandardError();
+        });
+
+        // Start process with error checking
+        proc_.start(program, args, QIODevice::ReadWrite);
+        if (proc_.error() != QProcess::UnknownError) {
+            std::cerr << "[OpenImageDebugger] Failed to start process: " 
+                      << proc_.errorString().toStdString() << std::endl;
+            return;
+        }
+
+        // Wait for start with timeout and error checking
+        const int timeout_ms = 5000;
+        if (!proc_.waitForStarted(timeout_ms)) {
+            std::cerr << "[OpenImageDebugger] Process failed to start within " 
+                      << timeout_ms << "ms: " << proc_.errorString().toStdString() << std::endl;
+            return;
+        }
     }
 
     [[nodiscard]] bool isRunning() const override

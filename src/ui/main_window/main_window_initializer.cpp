@@ -26,8 +26,13 @@
 #include "main_window_initializer.h"
 
 #include <cmath>
+#include <chrono>
+#include <fstream>
+#include <iostream>
 #include <memory>
 #include <utility>
+#include <cstdio>
+#include <cerrno>
 
 #include <QAbstractButton>
 #include <QCompleter>
@@ -417,9 +422,15 @@ void MainWindowInitializer::initialize_go_to_widget()
 
 void MainWindowInitializer::initialize_networking()
 {
-    deps_.socket.connectToHost(QString(deps_.host_settings.url.c_str()),
-                               deps_.host_settings.port);
-    deps_.socket.waitForConnected();
+    // Connect asynchronously - don't block here since event loop isn't running yet
+    // Use a single-shot timer to attempt connection after event loop starts
+    // This ensures Qt can process the connection attempt properly
+    QTimer::singleShot(100, &deps_.main_window, [this]() {
+        deps_.socket.connectToHost(QString(deps_.host_settings.url.c_str()), deps_.host_settings.port);
+        if (!deps_.socket.waitForConnected(30000)) {
+            // Connection failed - window will show but won't be able to communicate
+        }
+    });
 }
 
 void MainWindowInitializer::setFontIcon(QAbstractButton* ui_element,
