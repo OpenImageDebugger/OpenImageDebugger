@@ -1,5 +1,17 @@
 # Open Image Debugger: Enabling visualization of in-memory buffers on GDB/LLDB
 
+## Building with C++20 modules (macOS)
+
+Apple’s default Clang may be too old for CMake’s C++20 module support; a recent **Homebrew LLVM** is usually required:
+
+```bash
+cmake -S . -B build -DCMAKE_CXX_COMPILER="$(brew --prefix llvm)/bin/clang++" \
+  -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Debug -GNinja
+cmake --build build --config Debug --target install -j
+```
+
+Use CMake 3.28 or newer, the Ninja generator, and C++20. Module wiring for `oidwindow` is in `src/CMakeLists.txt` (see the `FILE_SET` for `io/BufferExporter.cppm`).
+
 Open Image Debugger is a tool for visualizing in-memory buffers during debug
 sessions, compatible with both GDB and LLDB. It works out of the box with
 instances of the OpenCV `Mat` class and `Eigen` matrices, but can also be

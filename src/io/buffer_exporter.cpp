@@ -23,7 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "buffer_exporter.h"
+module;
 
 #include <algorithm>
 #include <array>
@@ -35,6 +35,12 @@
 #include <limits>
 
 #include <QPixmap>
+
+#include "ipc/raw_data_decode.h"
+
+import oid.buffer;
+
+module BufferExporter;
 
 namespace oid::BufferExporter
 {
@@ -227,9 +233,7 @@ void export_binary(const std::string& fname, const Buffer& buffer)
 }
 
 
-void export_buffer(const Buffer& buffer,
-                   const std::string& path,
-                   const OutputType type)
+void export_buffer(const Buffer& buffer, const std::string& path, const OutputType type)
 {
     using enum BufferType;
     if (type == OutputType::Bitmap) {

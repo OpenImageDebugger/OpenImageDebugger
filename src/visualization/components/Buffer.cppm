@@ -23,8 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef BUFFER_H_
-#define BUFFER_H_
+module;
 
 #include <array>
 #include <span>
@@ -32,37 +31,14 @@
 #include <string>
 #include <vector>
 
+#include "buffer_params.h"
 #include "component.h"
-#include "ipc/raw_data_decode.h"
 #include "visualization/shader.h"
 
-namespace oid
-{
+export module oid.buffer;
 
-namespace BufferConstants
+export namespace oid
 {
-constexpr int MAX_TEXTURE_SIZE        = 2048;
-constexpr float ZOOM_BORDER_THRESHOLD = 40.0f;
-constexpr int MIN_BUFFER_DIMENSION    = 1;
-constexpr int MAX_BUFFER_DIMENSION =
-    131072; // 2^17 = 128K (closest power of 2 to 100k)
-constexpr int MIN_CHANNELS = 1;
-constexpr int MAX_CHANNELS = 4;
-constexpr std::size_t MAX_BUFFER_SIZE =
-    16ULL * 1024ULL * 1024ULL * 1024ULL; // 16GB
-} // namespace BufferConstants
-
-struct BufferParams
-{
-    std::span<const std::byte> buffer;
-    int buffer_width_i;
-    int buffer_height_i;
-    int channels;
-    BufferType type;
-    int step;
-    std::string pixel_layout;
-    bool transpose_buffer;
-};
 
 class Buffer final : public Component
 {
@@ -182,5 +158,3 @@ class Buffer final : public Component
 };
 
 } // namespace oid
-
-#endif // BUFFER_H_

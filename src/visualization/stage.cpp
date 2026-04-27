@@ -37,6 +37,7 @@
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
 
+import oid.buffer;
 
 namespace oid
 {

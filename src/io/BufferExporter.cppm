@@ -23,30 +23,19 @@
  * IN THE SOFTWARE.
  */
 
-#include "raw_data_decode.h"
+module;
 
-#include <algorithm>
-#include <cassert>
+#include <string>
 
-#include <bit>
-#include <vector>
+import oid.buffer;
 
-namespace oid
+export module BufferExporter;
+
+export namespace oid::BufferExporter
 {
 
-std::vector<std::byte>
-make_float_buffer_from_double(const std::vector<std::byte>& buff_double)
-{
-    const auto element_count = buff_double.size() / sizeof(double);
-    std::vector<std::byte> buff_float(element_count * sizeof(float));
+enum class OutputType { Bitmap, OctaveMatrix };
 
-    const auto src = std::bit_cast<const double*>(buff_double.data());
-    const auto dst = std::bit_cast<float*>(buff_float.data());
-    std::transform(src, src + element_count, dst, [](double d) {
-        return static_cast<float>(d);
-    });
+void export_buffer(const Buffer& buffer, const std::string& path, OutputType type);
 
-    return buff_float;
-}
-
-} // namespace oid
+} // namespace oid::BufferExporter
