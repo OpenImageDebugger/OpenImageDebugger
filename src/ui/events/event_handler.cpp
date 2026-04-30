@@ -29,13 +29,9 @@
 #include <ranges>
 
 #include <QFileDialog>
-#include <QKeyEvent>
-#include <QListWidgetItem>
-#include <QMenu>
 #include <QPoint>
 #include <QString>
 #include <QWidget>
-#include <QtMath>
 
 #include "io/buffer_exporter.h"
 #include "ui/main_window/main_window.h"
@@ -94,7 +90,8 @@ void UIEventHandler::scroll_callback(const float delta)
 }
 
 
-void UIEventHandler::mouse_drag_event(const int mouse_x, const int mouse_y)
+void UIEventHandler::mouse_drag_event(const int mouse_x,
+                                      const int mouse_y) const
 {
     const auto virtual_motion = QPoint{mouse_x, mouse_y};
 
@@ -134,7 +131,7 @@ void UIEventHandler::propagate_key_press_event(
 }
 
 
-void UIEventHandler::recenter_buffer()
+void UIEventHandler::recenter_buffer() const
 {
     const auto lock                 = std::unique_lock{deps_.ui_mutex};
     const auto recenter_camera_impl = [](Stage& stage) {
@@ -167,14 +164,14 @@ void UIEventHandler::recenter_buffer()
 }
 
 
-void UIEventHandler::link_views_toggle()
+void UIEventHandler::link_views_toggle() const
 {
     const auto lock                = std::unique_lock{deps_.ui_mutex};
     deps_.state.link_views_enabled = !deps_.state.link_views_enabled;
 }
 
 
-void UIEventHandler::decrease_float_precision()
+void UIEventHandler::decrease_float_precision() const
 {
     const auto shift_precision_left_impl = [](Stage& stage) {
         const auto buffer_obj = stage.get_game_object("buffer");
@@ -205,7 +202,7 @@ void UIEventHandler::decrease_float_precision()
 }
 
 
-void UIEventHandler::increase_float_precision()
+void UIEventHandler::increase_float_precision() const
 {
     const auto shift_precision_right_impl = [](Stage& stage) {
         const auto buffer_obj = stage.get_game_object("buffer");
@@ -259,8 +256,8 @@ void UIEventHandler::update_shift_precision() const
         return;
     }
 
-    const auto& buffer = buffer_opt->get();
-    if (BufferType::Float32 == buffer.type ||
+    if (const auto& buffer = buffer_opt->get();
+        BufferType::Float32 == buffer.type ||
         BufferType::Float64 == buffer.type) {
         deps_.ui_components.ui->decrease_float_precision->setEnabled(true);
         deps_.ui_components.ui->increase_float_precision->setEnabled(true);
@@ -268,7 +265,7 @@ void UIEventHandler::update_shift_precision() const
 }
 
 
-void UIEventHandler::rotate_90_cw()
+void UIEventHandler::rotate_90_cw() const
 {
     const auto request_90_cw_rotation = [](Stage& stage) {
         const auto buffer_obj = stage.get_game_object("buffer");
@@ -299,7 +296,7 @@ void UIEventHandler::rotate_90_cw()
 }
 
 
-void UIEventHandler::rotate_90_ccw()
+void UIEventHandler::rotate_90_ccw() const
 {
     const auto request_90_ccw_rotation = [](Stage& stage) {
         const auto buffer_obj = stage.get_game_object("buffer");
@@ -482,7 +479,7 @@ void UIEventHandler::show_context_menu(const QPoint& pos)
 
         const auto buffer_name =
             deps_.ui_components.ui->imageList->itemAt(pos)->data(Qt::UserRole);
-        menu.addAction("Export buffer", [this, buffer_name]() {
+        menu.addAction("Export buffer", [this, buffer_name] {
             export_buffer(buffer_name.toString());
         });
 
@@ -520,7 +517,7 @@ void UIEventHandler::toggle_go_to_dialog() const
 }
 
 
-void UIEventHandler::go_to_pixel(const float x, const float y)
+void UIEventHandler::go_to_pixel(const float x, const float y) const
 {
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (deps_.state.link_views_enabled) {

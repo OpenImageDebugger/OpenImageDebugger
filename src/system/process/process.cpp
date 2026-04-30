@@ -38,6 +38,7 @@ Process::Process()
     createImpl();
 }
 
+
 void Process::start(std::vector<std::string>& command) const
 {
     impl_->start(command);
@@ -49,10 +50,12 @@ bool Process::isRunning() const
     return impl_->isRunning();
 }
 
+
 void Process::kill() const
 {
     impl_->kill();
 }
+
 
 void Process::waitForStart() const
 {

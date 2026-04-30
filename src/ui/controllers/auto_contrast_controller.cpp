@@ -59,6 +59,7 @@ void disable_inputs(const std::initializer_list<QLineEdit*>& inputs)
     }
 }
 
+
 void update_channel_labels(const Buffer& buffer,
                            const std::span<const float> values,
                            QLineEdit* c1,

@@ -34,8 +34,8 @@
 namespace oid
 {
 
-Background::Background(std::shared_ptr<GameObject> game_object,
-                       std::shared_ptr<GLCanvas> gl_canvas)
+Background::Background(const std::shared_ptr<GameObject>& game_object,
+                       const std::shared_ptr<GLCanvas>& gl_canvas)
     : Component{game_object, gl_canvas}
     , background_prog{*gl_canvas}
 {
@@ -94,7 +94,7 @@ void Background::draw(const mat4&, const mat4&)
 }
 
 
-int Background::render_index() const
+constexpr int Background::render_index() const
 {
     return -100;
 }

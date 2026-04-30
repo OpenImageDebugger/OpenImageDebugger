@@ -30,13 +30,12 @@
 
 #include <QAction>
 #include <QIcon>
-#include <QPainter>
 
 namespace oid
 {
 
-DecoratedLineEdit::DecoratedLineEdit(std::string_view icon_path,
-                                     std::string_view tooltip,
+DecoratedLineEdit::DecoratedLineEdit(const std::string_view icon_path,
+                                     const std::string_view tooltip,
                                      QWidget* parent)
     : QLineEdit{parent}
 {

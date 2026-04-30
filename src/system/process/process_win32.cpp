@@ -49,10 +49,12 @@ class ProcessImplWin32 final : public ProcessImpl
         proc_.waitForStarted();
     }
 
+
     [[nodiscard]] bool isRunning() const override
     {
         return proc_.state() == QProcess::Running;
     }
+
 
     void kill() override
     {

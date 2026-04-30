@@ -29,31 +29,11 @@
 #include <memory>
 #include <utility>
 
-#include <QAbstractButton>
-#include <QCompleter>
-#include <QDebug>
-#include <QDoubleValidator>
-#include <QFont>
 #include <QFontDatabase>
-#include <QGuiApplication>
-#include <QHostAddress>
-#include <QIcon>
-#include <QKeySequence>
-#include <QLabel>
-#include <QLineEdit>
-#include <QListWidget>
-#include <QObject>
-#include <QPoint>
 #include <QShortcut>
-#include <QSize>
-#include <QSplitter>
 #include <QString>
-#include <QTimer>
-#include <QToolButton>
-#include <QWidget>
 
 #include "main_window.h"
-#include "settings_manager.h"
 #include "ui/go_to_widget.h"
 #include "ui/symbol_completer.h"
 #include "ui_main_window.h"
@@ -65,6 +45,7 @@ MainWindowInitializer::MainWindowInitializer(Dependencies deps)
     : deps_{std::move(deps)}
 {
 }
+
 
 void MainWindowInitializer::initialize()
 {
@@ -81,6 +62,7 @@ void MainWindowInitializer::initialize()
     initialize_shortcuts();
     initialize_networking();
 }
+
 
 void MainWindowInitializer::initialize_ui_icons() const
 {
@@ -147,46 +129,45 @@ void MainWindowInitializer::initialize_ui_icons() const
         deps_.ui_components.ui->label_minmax, "lower_upper_bound.svg", 8, 35);
 }
 
+
 void MainWindowInitializer::initialize_ui_signals()
 {
-    QObject::connect(
-        deps_.ui_components.ui->splitter,
-        &QSplitter::splitterMoved,
-        &deps_.main_window,
-        [this]() { deps_.main_window.persist_settings_deferred(); });
+    QObject::connect(deps_.ui_components.ui->splitter,
+                     &QSplitter::splitterMoved,
+                     &deps_.main_window,
+                     [this] { deps_.main_window.persist_settings_deferred(); });
 
-    QObject::connect(
-        deps_.ui_components.ui->acEdit,
-        &QAbstractButton::clicked,
-        &deps_.main_window,
-        [this]() { deps_.main_window.persist_settings_deferred(); });
+    QObject::connect(deps_.ui_components.ui->acEdit,
+                     &QAbstractButton::clicked,
+                     &deps_.main_window,
+                     [this] { deps_.main_window.persist_settings_deferred(); });
 
-    QObject::connect(
-        deps_.ui_components.ui->acToggle,
-        &QAbstractButton::clicked,
-        &deps_.main_window,
-        [this]() { deps_.main_window.persist_settings_deferred(); });
+    QObject::connect(deps_.ui_components.ui->acToggle,
+                     &QAbstractButton::clicked,
+                     &deps_.main_window,
+                     [this] { deps_.main_window.persist_settings_deferred(); });
 
-    QObject::connect(
-        deps_.ui_components.ui->linkViewsToggle,
-        &QAbstractButton::clicked,
-        &deps_.main_window,
-        [this]() { deps_.main_window.persist_settings_deferred(); });
+    QObject::connect(deps_.ui_components.ui->linkViewsToggle,
+                     &QAbstractButton::clicked,
+                     &deps_.main_window,
+                     [this] { deps_.main_window.persist_settings_deferred(); });
 }
+
 
 void MainWindowInitializer::initialize_timers()
 {
     QObject::connect(&deps_.ui_components.settings_persist_timer,
                      &QTimer::timeout,
                      &deps_.main_window,
-                     [this]() { deps_.main_window.persist_settings(); });
+                     [this] { deps_.main_window.persist_settings(); });
     deps_.ui_components.settings_persist_timer.setSingleShot(true);
 
     QObject::connect(&deps_.ui_components.update_timer,
                      &QTimer::timeout,
                      &deps_.main_window,
-                     [this]() { deps_.main_window.loop(); });
+                     [this] { deps_.main_window.loop(); });
 }
+
 
 void MainWindowInitializer::initialize_shortcuts()
 {
@@ -197,28 +178,28 @@ void MainWindowInitializer::initialize_shortcuts()
         symbol_list_focus_shortcut,
         &QShortcut::activated,
         deps_.ui_components.ui->symbolList,
-        [this]() { deps_.ui_components.ui->symbolList->setFocus(); });
+        [this] { deps_.ui_components.ui->symbolList->setFocus(); });
 
     const auto* buffer_removal_shortcut = new QShortcut(
         QKeySequence{Qt::Key_Delete}, deps_.ui_components.ui->imageList);
-    QObject::connect(
-        buffer_removal_shortcut,
-        &QShortcut::activated,
-        &deps_.main_window,
-        [this]() { deps_.event_handler.remove_selected_buffer(); });
+    QObject::connect(buffer_removal_shortcut,
+                     &QShortcut::activated,
+                     &deps_.main_window,
+                     [this] { deps_.event_handler.remove_selected_buffer(); });
 
     const auto* go_to_shortcut =
         new QShortcut(QKeySequence::fromString("Ctrl+L"), &deps_.main_window);
     QObject::connect(go_to_shortcut,
                      &QShortcut::activated,
                      &deps_.main_window,
-                     [this]() { deps_.event_handler.toggle_go_to_dialog(); });
+                     [this] { deps_.event_handler.toggle_go_to_dialog(); });
     QObject::connect(
         deps_.ui_components.go_to_widget.get(),
         &GoToWidget::go_to_requested,
         &deps_.main_window,
         [this](float x, float y) { deps_.event_handler.go_to_pixel(x, y); });
 }
+
 
 void MainWindowInitializer::initialize_symbol_completer()
 {
@@ -242,6 +223,7 @@ void MainWindowInitializer::initialize_symbol_completer()
                      });
 }
 
+
 void MainWindowInitializer::initialize_left_pane() const
 {
     QObject::connect(deps_.ui_components.ui->imageList,
@@ -254,7 +236,7 @@ void MainWindowInitializer::initialize_left_pane() const
     QObject::connect(deps_.ui_components.ui->symbolList,
                      &QLineEdit::editingFinished,
                      &deps_.main_window,
-                     [this]() { deps_.event_handler.symbol_selected(); });
+                     [this] { deps_.event_handler.symbol_selected(); });
 
     deps_.ui_components.ui->imageList->setContextMenuPolicy(
         Qt::CustomContextMenu);
@@ -265,6 +247,7 @@ void MainWindowInitializer::initialize_left_pane() const
                          deps_.event_handler.show_context_menu(pos);
                      });
 }
+
 
 void MainWindowInitializer::initialize_auto_contrast_form() const
 {
@@ -294,45 +277,46 @@ void MainWindowInitializer::initialize_auto_contrast_form() const
     QObject::connect(deps_.ui_components.ui->ac_c1_min,
                      &QLineEdit::editingFinished,
                      &deps_.main_window,
-                     [this]() { deps_.ac_controller.ac_c1_min_update(); });
+                     [this] { deps_.ac_controller.ac_c1_min_update(); });
     QObject::connect(deps_.ui_components.ui->ac_c1_max,
                      &QLineEdit::editingFinished,
                      &deps_.main_window,
-                     [this]() { deps_.ac_controller.ac_c1_max_update(); });
+                     [this] { deps_.ac_controller.ac_c1_max_update(); });
     QObject::connect(deps_.ui_components.ui->ac_c2_min,
                      &QLineEdit::editingFinished,
                      &deps_.main_window,
-                     [this]() { deps_.ac_controller.ac_c2_min_update(); });
+                     [this] { deps_.ac_controller.ac_c2_min_update(); });
     QObject::connect(deps_.ui_components.ui->ac_c2_max,
                      &QLineEdit::editingFinished,
                      &deps_.main_window,
-                     [this]() { deps_.ac_controller.ac_c2_max_update(); });
+                     [this] { deps_.ac_controller.ac_c2_max_update(); });
     QObject::connect(deps_.ui_components.ui->ac_c3_min,
                      &QLineEdit::editingFinished,
                      &deps_.main_window,
-                     [this]() { deps_.ac_controller.ac_c3_min_update(); });
+                     [this] { deps_.ac_controller.ac_c3_min_update(); });
     QObject::connect(deps_.ui_components.ui->ac_c3_max,
                      &QLineEdit::editingFinished,
                      &deps_.main_window,
-                     [this]() { deps_.ac_controller.ac_c3_max_update(); });
+                     [this] { deps_.ac_controller.ac_c3_max_update(); });
     QObject::connect(deps_.ui_components.ui->ac_c4_min,
                      &QLineEdit::editingFinished,
                      &deps_.main_window,
-                     [this]() { deps_.ac_controller.ac_c4_min_update(); });
+                     [this] { deps_.ac_controller.ac_c4_min_update(); });
     QObject::connect(deps_.ui_components.ui->ac_c4_max,
                      &QLineEdit::editingFinished,
                      &deps_.main_window,
-                     [this]() { deps_.ac_controller.ac_c4_max_update(); });
+                     [this] { deps_.ac_controller.ac_c4_max_update(); });
 
     QObject::connect(deps_.ui_components.ui->ac_reset_min,
                      &QAbstractButton::clicked,
                      &deps_.main_window,
-                     [this]() { deps_.ac_controller.ac_min_reset(); });
+                     [this] { deps_.ac_controller.ac_min_reset(); });
     QObject::connect(deps_.ui_components.ui->ac_reset_max,
                      &QAbstractButton::clicked,
                      &deps_.main_window,
-                     [this]() { deps_.ac_controller.ac_max_reset(); });
+                     [this] { deps_.ac_controller.ac_max_reset(); });
 }
+
 
 void MainWindowInitializer::initialize_toolbar() const
 {
@@ -345,35 +329,35 @@ void MainWindowInitializer::initialize_toolbar() const
     QObject::connect(deps_.ui_components.ui->reposition_buffer,
                      &QAbstractButton::clicked,
                      &deps_.main_window,
-                     [this]() { deps_.event_handler.recenter_buffer(); });
+                     [this] { deps_.event_handler.recenter_buffer(); });
 
     QObject::connect(deps_.ui_components.ui->linkViewsToggle,
                      &QAbstractButton::clicked,
                      &deps_.main_window,
-                     [this]() { deps_.event_handler.link_views_toggle(); });
+                     [this] { deps_.event_handler.link_views_toggle(); });
 
     QObject::connect(deps_.ui_components.ui->rotate_90_cw,
                      &QAbstractButton::clicked,
                      &deps_.main_window,
-                     [this]() { deps_.event_handler.rotate_90_cw(); });
+                     [this] { deps_.event_handler.rotate_90_cw(); });
     QObject::connect(deps_.ui_components.ui->rotate_90_ccw,
                      &QAbstractButton::clicked,
                      &deps_.main_window,
-                     [this]() { deps_.event_handler.rotate_90_ccw(); });
+                     [this] { deps_.event_handler.rotate_90_ccw(); });
     QObject::connect(
         deps_.ui_components.ui->increase_float_precision,
         &QAbstractButton::clicked,
         &deps_.main_window,
-        [this]() { deps_.event_handler.increase_float_precision(); });
+        [this] { deps_.event_handler.increase_float_precision(); });
     QObject::connect(
         deps_.ui_components.ui->decrease_float_precision,
         &QAbstractButton::clicked,
         &deps_.main_window,
-        [this]() { deps_.event_handler.decrease_float_precision(); });
+        [this] { deps_.event_handler.decrease_float_precision(); });
     QObject::connect(deps_.ui_components.ui->go_to_pixel,
                      &QAbstractButton::clicked,
                      &deps_.main_window,
-                     [this]() { deps_.event_handler.toggle_go_to_dialog(); });
+                     [this] { deps_.event_handler.toggle_go_to_dialog(); });
 
     // Initialize pixel format selector
     deps_.ui_components.ui->pixelFormatSelector->addItem("BGRA");
@@ -394,12 +378,14 @@ void MainWindowInitializer::initialize_toolbar() const
     deps_.ui_components.ui->decrease_float_precision->setEnabled(false);
 }
 
-void MainWindowInitializer::initialize_visualization_pane()
+
+void MainWindowInitializer::initialize_visualization_pane() const
 {
     deps_.ui_components.ui->bufferPreview->set_main_window(deps_.main_window);
 }
 
-void MainWindowInitializer::initialize_status_bar()
+
+void MainWindowInitializer::initialize_status_bar() const
 {
     deps_.ui_components.status_bar =
         std::make_unique<QLabel>(&deps_.main_window);
@@ -409,13 +395,15 @@ void MainWindowInitializer::initialize_status_bar()
         deps_.ui_components.status_bar.get(), 1);
 }
 
-void MainWindowInitializer::initialize_go_to_widget()
+
+void MainWindowInitializer::initialize_go_to_widget() const
 {
     deps_.ui_components.go_to_widget =
         std::make_unique<GoToWidget>(deps_.ui_components.ui->bufferPreview);
 }
 
-void MainWindowInitializer::initialize_networking()
+
+void MainWindowInitializer::initialize_networking() const
 {
     deps_.socket.connectToHost(QString(deps_.host_settings.url.c_str()),
                                deps_.host_settings.port);
@@ -432,6 +420,7 @@ void MainWindowInitializer::setFontIcon(QAbstractButton* ui_element,
     ui_element->setFont(icons_font);
     ui_element->setText(QString::fromWCharArray(unicode_id));
 }
+
 
 void MainWindowInitializer::setVectorIcon(QLabel* ui_element,
                                           const QString& icon_file_name,

@@ -66,16 +66,16 @@ class UIEventHandler : public QObject
 
     void resize_callback(int w, int h) const;
     void scroll_callback(float delta);
-    void mouse_drag_event(int mouse_x, int mouse_y);
+    void mouse_drag_event(int mouse_x, int mouse_y) const;
     void mouse_move_event(int mouse_x, int mouse_y);
 
-    void recenter_buffer();
-    void link_views_toggle();
-    void decrease_float_precision();
-    void increase_float_precision();
+    void recenter_buffer() const;
+    void link_views_toggle() const;
+    void decrease_float_precision() const;
+    void increase_float_precision() const;
     void update_shift_precision() const;
-    void rotate_90_cw();
-    void rotate_90_ccw();
+    void rotate_90_cw() const;
+    void rotate_90_ccw() const;
 
     void buffer_selected(const QListWidgetItem* item);
     void remove_selected_buffer();
@@ -84,7 +84,7 @@ class UIEventHandler : public QObject
     void export_buffer(const QString& buffer_name);
     void show_context_menu(const QPoint& pos);
     void toggle_go_to_dialog() const;
-    void go_to_pixel(float x, float y);
+    void go_to_pixel(float x, float y) const;
 
     void propagate_key_press_event(const QKeyEvent* key_event,
                                    EventProcessCode& event_intercepted) const;

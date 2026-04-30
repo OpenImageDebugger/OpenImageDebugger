@@ -72,10 +72,12 @@ class ProcessImplUnix final : public ProcessImpl
                     environ);
     }
 
+
     [[nodiscard]] bool isRunning() const override
     {
         return pid_ != 0 && ::kill(pid_, 0) == 0;
     }
+
 
     void kill() override
     {

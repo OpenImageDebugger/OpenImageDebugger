@@ -26,7 +26,6 @@
 #include "raw_data_decode.h"
 
 #include <algorithm>
-#include <cassert>
 
 #include <bit>
 

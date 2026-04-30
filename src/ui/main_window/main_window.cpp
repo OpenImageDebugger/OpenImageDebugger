@@ -78,7 +78,7 @@ PixelDisplayFormat string_to_format(const QString& format_str)
 }
 
 // Apply pixel display format to buffer
-void apply_format(Buffer& buffer, PixelDisplayFormat format)
+void apply_format(Buffer& buffer, const PixelDisplayFormat format)
 {
     switch (format) {
     case PixelDisplayFormat::Channel0:
@@ -138,8 +138,8 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             state_,
             ui_components_,
             socket_,
-            [this]() { return get_icon_size(); },
-            [this]() { return std::make_shared<Stage>(*this); }},
+            [] { return get_icon_size(); },
+            [this] { return std::make_shared<Stage>(*this); }},
         this);
 
     // Initialize UI event handler
@@ -197,7 +197,7 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     connect(event_handler_.get(),
             &UIEventHandler::stageSelectionCleared,
             this,
-            [this]() { set_currently_selected_stage(nullptr); });
+            [this] { set_currently_selected_stage(nullptr); });
     connect(event_handler_.get(),
             &UIEventHandler::plotBufferRequested,
             this,
@@ -208,15 +208,15 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     connect(event_handler_.get(),
             &UIEventHandler::acMinLabelsResetRequested,
             this,
-            [this]() { ac_controller_->reset_min_labels(); });
+            [this] { ac_controller_->reset_min_labels(); });
     connect(event_handler_.get(),
             &UIEventHandler::acMaxLabelsResetRequested,
             this,
-            [this]() { ac_controller_->reset_max_labels(); });
+            [this] { ac_controller_->reset_max_labels(); });
     connect(event_handler_.get(),
             &UIEventHandler::shiftPrecisionUpdateRequested,
             this,
-            [this]() { event_handler_->update_shift_precision(); });
+            [this] { event_handler_->update_shift_precision(); });
     connect(event_handler_.get(),
             &UIEventHandler::settingsPersistenceRequested,
             this,
@@ -226,11 +226,11 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     connect(message_handler_.get(),
             &MessageHandler::acMinLabelsResetRequested,
             this,
-            [this]() { ac_controller_->reset_min_labels(); });
+            [this] { ac_controller_->reset_min_labels(); });
     connect(message_handler_.get(),
             &MessageHandler::acMaxLabelsResetRequested,
             this,
-            [this]() { ac_controller_->reset_max_labels(); });
+            [this] { ac_controller_->reset_max_labels(); });
     connect(message_handler_.get(),
             &MessageHandler::settingsPersistenceRequested,
             this,
@@ -274,7 +274,7 @@ std::shared_ptr<GLCanvas> MainWindow::gl_canvas() const
 }
 
 
-QSizeF MainWindow::get_icon_size() const
+QSizeF MainWindow::get_icon_size()
 {
     const auto screen_dpi_scale = get_screen_dpi_scale();
     return {UIConstants::ICON_WIDTH_BASE * screen_dpi_scale,
@@ -345,31 +345,31 @@ void MainWindow::persist_settings()
     SettingsManager::DataCallbacks callbacks;
 
     // Window geometry
-    callbacks.getWindowSize = [this]() { return size(); };
-    callbacks.getWindowPos  = [this]() { return pos(); };
+    callbacks.getWindowSize = [this] { return size(); };
+    callbacks.getWindowPos  = [this] { return pos(); };
 
     // UI state
-    callbacks.getSplitterSizes = [this]() {
+    callbacks.getSplitterSizes = [this] {
         return ui_components_.ui->splitter->sizes();
     };
-    callbacks.getMinMaxVisible = [this]() {
+    callbacks.getMinMaxVisible = [this] {
         return ui_components_.ui->acEdit->isChecked();
     };
-    callbacks.getContrastEnabled = [this]() {
+    callbacks.getContrastEnabled = [this] {
         return ui_components_.ui->acToggle->isChecked();
     };
-    callbacks.getLinkViewsEnabled = [this]() {
+    callbacks.getLinkViewsEnabled = [this] {
         return ui_components_.ui->linkViewsToggle->isChecked();
     };
 
     // Application state
-    callbacks.getRenderFramerate     = [this]() { return render_framerate_; };
-    callbacks.getDefaultExportSuffix = [this]() {
+    callbacks.getRenderFramerate     = [this] { return render_framerate_; };
+    callbacks.getDefaultExportSuffix = [this] {
         return default_export_suffix_;
     };
 
     // Buffer data (with mutex protection)
-    callbacks.getCurrentBufferNames = [this]() {
+    callbacks.getCurrentBufferNames = [this] {
         const auto lock = std::unique_lock{ui_mutex_};
         std::set<std::string, std::less<>> names;
         for (const auto& buffer :
@@ -378,7 +378,7 @@ void MainWindow::persist_settings()
         }
         return names;
     };
-    callbacks.getPreviousSessionBuffers = [this]() {
+    callbacks.getPreviousSessionBuffers = [this] {
         const auto lock = std::unique_lock{ui_mutex_};
         std::set<std::string, std::less<>> result;
         for (const auto& name : buffer_data_.previous_session_buffers) {
@@ -386,7 +386,7 @@ void MainWindow::persist_settings()
         }
         return result;
     };
-    callbacks.getRemovedBufferNames = [this]() {
+    callbacks.getRemovedBufferNames = [this] {
         const auto lock = std::unique_lock{ui_mutex_};
         std::set<std::string, std::less<>> result;
         for (const auto& name : buffer_data_.removed_buffer_names) {
@@ -394,7 +394,7 @@ void MainWindow::persist_settings()
         }
         return result;
     };
-    callbacks.clearRemovedBufferNames = [this]() {
+    callbacks.clearRemovedBufferNames = [this] {
         const auto lock = std::unique_lock{ui_mutex_};
         buffer_data_.removed_buffer_names.clear();
     };

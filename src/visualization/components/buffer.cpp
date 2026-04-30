@@ -89,6 +89,7 @@ void format_pixel_value(std::stringstream& message,
     }
 }
 
+
 // Helper function to get channel range based on display mode
 std::pair<int, int> get_channel_range(const int display_channel_mode,
                                       const int channels,
@@ -108,12 +109,13 @@ std::pair<int, int> get_channel_range(const int display_channel_mode,
 
 } // namespace
 
+
 constexpr std::array<float, 8>
     Buffer::no_ac_params{1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
 
-Buffer::Buffer(std::shared_ptr<GameObject> game_object,
-               std::shared_ptr<GLCanvas> gl_canvas)
+Buffer::Buffer(const std::shared_ptr<GameObject>& game_object,
+               const std::shared_ptr<GLCanvas>& gl_canvas)
     : Component{game_object, gl_canvas}
     , buff_prog_{*gl_canvas}
 {
@@ -519,7 +521,7 @@ float Buffer::tile_coord_x(const int x) const
 }
 
 
-float Buffer::tile_coord_y(int y) const
+float Buffer::tile_coord_y(const int y) const
 {
     const auto buffer_height_i = static_cast<int>(buffer_height_f);
     const auto last_height     = buffer_height_i % max_texture_size;
@@ -771,8 +773,8 @@ void Buffer::setup_gl_buffer()
     reset_contrast_brightness_parameters();
 
     // Buffer texture
-    const auto max_texture_size_f = static_cast<float>(max_texture_size);
-    num_textures_x                = static_cast<int>(
+    constexpr auto max_texture_size_f = static_cast<float>(max_texture_size);
+    num_textures_x                    = static_cast<int>(
         std::ceil(static_cast<float>(buffer_width_i) / max_texture_size_f));
     num_textures_y = static_cast<int>(
         std::ceil(static_cast<float>(buffer_height_i) / max_texture_size_f));
