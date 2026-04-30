@@ -57,6 +57,7 @@ jobs:
     container: ${{ matrix.container }}
     steps:
       - name: Collect Workflow Telemetry
+        continue-on-error: true
         uses: Makeshift/workflow-telemetry-action@2547ebdac99bbd9559cc642d2d46bf0703658793 # 2.0.4
         with:
           comment_on_pr: false
