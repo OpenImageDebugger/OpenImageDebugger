@@ -48,14 +48,14 @@ Camera::~Camera() noexcept {
     camera_pos_y_ = 0.0f;
     canvas_width_ = 0;
     canvas_height_ = 0;
-    mouse_position = vec4::zero();
-    projection.set_identity();
+    mouse_position_ = vec4::zero();
+    projection_.set_identity();
     scale_.set_identity();
 }
 
 Camera::Camera(const Camera& cam)
-    : Component{cam}, projection{cam.projection},
-      mouse_position{cam.mouse_position}, zoom_power_{cam.zoom_power_},
+    : Component{cam}, projection_{cam.projection_},
+      mouse_position_{cam.mouse_position_}, zoom_power_{cam.zoom_power_},
       camera_pos_x_{cam.camera_pos_x_}, camera_pos_y_{cam.camera_pos_y_},
       canvas_width_{cam.canvas_width_}, canvas_height_{cam.canvas_height_},
       scale_{cam.scale_} {
@@ -67,8 +67,8 @@ Camera& Camera::operator=(const Camera& cam) {
         return *this;
     }
 
-    projection = cam.projection;
-    mouse_position = cam.mouse_position;
+    projection_ = cam.projection_;
+    mouse_position_ = cam.mouse_position_;
     zoom_power_ = cam.zoom_power_;
     camera_pos_x_ = cam.camera_pos_x_;
     camera_pos_y_ = cam.camera_pos_y_;
@@ -82,10 +82,10 @@ Camera& Camera::operator=(const Camera& cam) {
 }
 
 void Camera::window_resized(const int w, const int h) {
-    projection.set_ortho_projection(static_cast<float>(w) / 2.0f,
-                                    static_cast<float>(h) / 2.0f,
-                                    -1.0f,
-                                    1.0f);
+    projection_.set_ortho_projection(static_cast<float>(w) / 2.0f,
+                                     static_cast<float>(h) / 2.0f,
+                                     -1.0f,
+                                     1.0f);
     canvas_width_ = w;
     canvas_height_ = h;
 }
@@ -274,7 +274,7 @@ void Camera::scale_at(const vec4& center_ndc, const float delta) {
         new_delta = (std::min)(new_delta, delta_greatest);
     }
 
-    const auto vp_inv = game_object_ref().get_pose() * projection.inv();
+    const auto vp_inv = game_object_ref().get_pose() * projection_.inv();
 
     const auto delta_zoom = std::pow(zoom_factor, -new_delta);
 

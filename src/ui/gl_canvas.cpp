@@ -183,10 +183,11 @@ void GLCanvas::render_buffer_icon(Stage& stage,
     // Adapt camera to the thumbnail dimensions
     cam.window_resized(icon_width, icon_height);
     // Flips the projected image along the horizontal axis
-    cam.projection.set_ortho_projection(static_cast<float>(icon_width) / 2.0f,
-                                        static_cast<float>(-icon_height) / 2.0f,
-                                        -1.0f,
-                                        1.0f);
+    cam.projection().set_ortho_projection(static_cast<float>(icon_width) / 2.0f,
+                                          static_cast<float>(-icon_height) /
+                                              2.0f,
+                                          -1.0f,
+                                          1.0f);
     // Reposition buffer in the center of the canvas
     cam.recenter_camera();
 
