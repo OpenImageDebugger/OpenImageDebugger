@@ -25,7 +25,10 @@
 
 #include "process.h"
 
+#include <chrono>
+#include <iostream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "process_impl.h"
@@ -43,7 +46,6 @@ void Process::start(std::vector<std::string>& command) const
     impl_->start(command);
 }
 
-
 bool Process::isRunning() const
 {
     return impl_->isRunning();
@@ -56,7 +58,24 @@ void Process::kill() const
 
 void Process::waitForStart() const
 {
-    while (!impl_->isRunning());
+    const int timeout_ms  = 5000;
+    const auto start_time = std::chrono::steady_clock::now();
+
+    while (!impl_->isRunning()) {
+        const auto elapsed = std::chrono::steady_clock::now() - start_time;
+        const auto elapsed_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(elapsed)
+                .count();
+
+        if (elapsed_ms > timeout_ms) {
+            std::cerr
+                << "[OpenImageDebugger] Warning: Process start timeout after "
+                << timeout_ms << "ms. Continuing anyway." << std::endl;
+            break;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 }
 
 } // namespace oid

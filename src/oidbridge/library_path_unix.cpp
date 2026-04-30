@@ -23,50 +23,25 @@
  * IN THE SOFTWARE.
  */
 
-#include "python_native_interface.h"
+#include "library_path.h"
+#include "oid_bridge.h"
+
+#include <dlfcn.h>
+#include <filesystem>
+#include <string>
 
 namespace oid
 {
 
-long get_py_int(PyObject* obj)
+std::filesystem::path get_current_library_path()
 {
-#if PY_MAJOR_VERSION == 3
-    return PyLong_AS_LONG(obj);
-#else
-#error "Unsupported Python version"
-#endif
-}
-
-uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, const int tuple_index)
-{
-    PyObject* tuple_item = PyTuple_GetItem(obj, tuple_index);
-    return static_cast<uint8_t*>(PyLong_AsVoidPtr(tuple_item));
-}
-
-void copy_py_string(std::string& dst, PyObject* src)
-{
-    if (PyUnicode_Check(src)) {
-        const char* utf8_str = PyUnicode_AsUTF8(src);
-        dst                  = utf8_str != nullptr ? utf8_str : "";
-    } else {
-        assert(PyBytes_Check(src));
-        dst = PyBytes_AS_STRING(src);
+    // Use dladdr to get the path of the current library
+    if (Dl_info info;
+        dladdr(reinterpret_cast<void*>(&oid_initialize), &info) != 0 &&
+        info.dli_fname != nullptr) {
+        return std::filesystem::path{info.dli_fname};
     }
-}
-
-int check_py_string_type(PyObject* obj)
-{
-    return PyUnicode_Check(obj) == 1 ? 1 : PyBytes_Check(obj);
-}
-
-void get_c_ptr_from_py_buffer(PyObject* obj,
-                              uint8_t*& buffer_ptr,
-                              size_t& buffer_size)
-{
-    assert(PyMemoryView_Check(obj));
-    const auto py_buff = PyMemoryView_GET_BUFFER(obj);
-    buffer_ptr         = static_cast<uint8_t*>(py_buff->buf);
-    buffer_size        = static_cast<size_t>(py_buff->len);
+    return std::filesystem::path{};
 }
 
 } // namespace oid

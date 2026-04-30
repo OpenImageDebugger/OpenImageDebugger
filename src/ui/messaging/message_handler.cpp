@@ -54,7 +54,6 @@ MessageHandler::MessageHandler(Dependencies deps, QObject* parent)
 {
 }
 
-
 void MessageHandler::decode_set_available_symbols()
 {
     const auto lock      = std::unique_lock{deps_.ui_mutex};
@@ -63,6 +62,7 @@ void MessageHandler::decode_set_available_symbols()
         deps_.buffer_data.available_vars);
 
     for (const auto& symbol_value : deps_.buffer_data.available_vars) {
+        // Plot buffer if it was available in the previous session
         const auto symbol_std_str = symbol_value.toStdString();
         if (deps_.buffer_data.previous_session_buffers.contains(
                 symbol_std_str)) {
@@ -263,8 +263,21 @@ void MessageHandler::decode_plot_buffer_contents()
 
 void MessageHandler::decode_incoming_messages()
 {
-    if (deps_.socket.state() == QTcpSocket::UnconnectedState) [[unlikely]] {
+    const auto socket_state = deps_.socket.state();
+    
+    // Track if we were ever connected - only quit if we were connected and then disconnected
+    // Don't quit if we were never connected (initial state or connection failed)
+    if (socket_state == QAbstractSocket::ConnectedState) {
+        was_ever_connected_ = true;
+    } else if (socket_state == QTcpSocket::UnconnectedState && was_ever_connected_) {
+        // Socket was connected but now disconnected - server closed connection
         QApplication::quit();
+        return;
+    }
+    // If socket is UnconnectedState but we were never connected, just return (don't quit)
+    // This handles the case where connection hasn't been established yet or connection failed
+    if (socket_state == QTcpSocket::UnconnectedState) {
+        return;
     }
 
     {
@@ -272,43 +285,47 @@ void MessageHandler::decode_incoming_messages()
         deps_.buffer_data.available_vars.clear();
     }
 
-    if (deps_.socket.bytesAvailable() == 0) [[unlikely]] {
-        return;
-    }
+    // Process all available messages in a loop
+    while (deps_.socket.bytesAvailable() > 0) {
+        auto header = MessageType{};
+        if (!deps_.socket.read(std::bit_cast<char*>(&header),
+                               static_cast<qint64>(sizeof(header))))
+            [[unlikely]] {
+            const auto error = deps_.socket.error();
+            std::cerr << "[Error] Failed to read message header: "
+                      << deps_.socket.errorString().toStdString() << std::endl;
 
-    auto header = MessageType{};
-    if (!deps_.socket.read(std::bit_cast<char*>(&header),
-                           static_cast<qint64>(sizeof(header)))) [[unlikely]] {
-        const auto error = deps_.socket.error();
-        std::cerr << "[Error] Failed to read message header: "
-                  << deps_.socket.errorString().toStdString() << std::endl;
-
-        if (error == QAbstractSocket::RemoteHostClosedError ||
-            error == QAbstractSocket::NetworkError ||
-            error == QAbstractSocket::ConnectionRefusedError ||
-            error == QAbstractSocket::SocketTimeoutError) [[unlikely]] {
-            std::cerr
-                << "[Error] Critical socket error detected. Closing connection."
-                << std::endl;
-            deps_.socket.close();
+            // Handle critical errors that indicate connection is broken
+            if (error == QAbstractSocket::RemoteHostClosedError ||
+                error == QAbstractSocket::NetworkError ||
+                error == QAbstractSocket::ConnectionRefusedError ||
+                error == QAbstractSocket::SocketTimeoutError) [[unlikely]] {
+                std::cerr << "[Error] Critical socket error detected. Closing "
+                             "connection."
+                          << std::endl;
+                deps_.socket.close();
+                // Next call will detect UnconnectedState and quit
+            }
+            // For other errors (e.g., temporary read errors), just return and
+            // retry next time
+            return;
         }
-        return;
-    }
 
-    deps_.socket.waitForReadyRead(100);
+        deps_.socket.waitForReadyRead(100);
 
-    switch (header) {
-    case MessageType::SetAvailableSymbols:
-        decode_set_available_symbols();
-        break;
-    case MessageType::GetObservedSymbols:
-        respond_get_observed_symbols();
-        break;
-    case MessageType::PlotBufferContents:
-        decode_plot_buffer_contents();
-        break;
-    default:
-        break;
+        switch (header) {
+        case MessageType::SetAvailableSymbols:
+            decode_set_available_symbols();
+            break;
+        case MessageType::GetObservedSymbols:
+            respond_get_observed_symbols();
+            break;
+        case MessageType::PlotBufferContents:
+            decode_plot_buffer_contents();
+            break;
+        default:
+            break;
+        }
     }
 }
 
