@@ -107,6 +107,17 @@ jobs:
           brew install qtbase
           echo "PATH=/usr/local/opt/qt@6/bin:$PATH" >> "$GITHUB_ENV"
 
+      # C++20 modules: CMake’s scanner needs GCC 14+ or Clang 16+ (cmake-cxxmodules(7)).
+      - if: matrix.name == 'ubuntu-24.04'
+        name: Install g++-14
+        shell: bash
+        run: |
+          set -eux
+          apt-get update
+          apt-get install -y --no-install-recommends g++-14
+          echo "CC=gcc-14" >> "$GITHUB_ENV"
+          echo "CXX=g++-14" >> "$GITHUB_ENV"
+
       - name: Build
         shell: bash
         env:
@@ -114,8 +125,8 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
         run: |
-          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
-          cmake --build build --config Release --target install
+          cmake -S . -B build -G "Ninja" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+          cmake --build build --target install
 
       - name: Run Tests
         shell: bash

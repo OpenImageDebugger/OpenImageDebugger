@@ -35,7 +35,8 @@
 
 #include <GL/glcorearb.h>
 
-#include "buffer.h"
+import oid.buffer;
+
 #include "camera.h"
 #include "ui/gl_text_renderer.h"
 #include "visualization/game_object.h"
@@ -103,7 +104,7 @@ inline void pix2str(const PixelFormatParams& params)
 
 void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params)
 {
-    const auto& buffer           = params.buffer;
+    const auto& buffer = params.buffer;
     const auto step              = buffer.step;
     const auto channels          = buffer.channels;
     const auto channels_f        = static_cast<float>(channels);

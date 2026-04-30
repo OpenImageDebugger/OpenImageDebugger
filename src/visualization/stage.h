@@ -33,7 +33,7 @@
 #include <optional>
 #include <string>
 
-#include "visualization/components/buffer.h"
+#include "visualization/components/buffer_params.h"
 #include "visualization/events.h"
 
 

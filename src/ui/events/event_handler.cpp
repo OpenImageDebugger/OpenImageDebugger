@@ -37,15 +37,15 @@
 #include <QWidget>
 #include <QtMath>
 
-#include "io/buffer_exporter.h"
 #include "ui/main_window/main_window.h"
-#include "visualization/components/buffer.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
 #include "visualization/events.h"
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
 
+import oid.buffer;
+import BufferExporter;
 
 namespace oid
 {

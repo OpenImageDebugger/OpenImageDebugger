@@ -23,7 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "buffer.h"
+module;
 
 #include <algorithm>
 #include <array>
@@ -39,6 +39,8 @@
 #include "visualization/game_object.h"
 #include "visualization/shaders/oid_shaders.h"
 #include "visualization/stage.h"
+
+module oid.buffer;
 
 namespace oid
 {
