@@ -32,7 +32,9 @@ add_library(${PROJECT_NAME} MODULE
             ../debuggerinterface/python_native_interface.cpp
             ../system/process/process.cpp
             $<$<BOOL:${UNIX}>:../system/process/process_unix.cpp>
-            $<$<BOOL:${WIN32}>:../system/process/process_win32.cpp>)
+            $<$<BOOL:${UNIX}>:library_path_unix.cpp>
+            $<$<BOOL:${WIN32}>:../system/process/process_win32.cpp>
+            $<$<BOOL:${WIN32}>:library_path_win32.cpp>)
 
 add_dependencies(${PROJECT_NAME} oidipc)
 

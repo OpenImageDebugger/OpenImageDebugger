@@ -27,24 +27,33 @@
 
 #include <QApplication>
 #include <QCommandLineParser>
-
+#include <exception>
+#include <stdexcept>
 
 int main(int argc, char* argv[])
 {
-    auto app = QApplication{argc, argv};
+    try {
+        auto app = QApplication{argc, argv};
 
-    auto parser = QCommandLineParser{};
-    parser.addOptions({
-        {"h", "hostname", "hostname", "127.0.0.1"},
-        {"p", "port", "port", "9588"},
-    });
-    parser.parse(QCoreApplication::arguments());
+        auto parser = QCommandLineParser{};
+        parser.addOptions({
+            {"h", "hostname", "hostname", "127.0.0.1"},
+            {"p", "port", "port", "9588"},
+        });
+        parser.parse(QCoreApplication::arguments());
 
-    auto host_settings = oid::ConnectionSettings{};
-    host_settings.url  = parser.value("h").toStdString();
-    host_settings.port = static_cast<uint16_t>(parser.value("p").toUInt());
+        auto host_settings = oid::ConnectionSettings{};
+        host_settings.url  = parser.value("h").toStdString();
+        host_settings.port = static_cast<uint16_t>(parser.value("p").toUInt());
 
-    auto window = oid::MainWindow{host_settings};
-    window.showWindow();
-    return QApplication::exec();
+        auto window = oid::MainWindow{host_settings};
+        window.showWindow();
+
+        return QApplication::exec();
+
+    } catch (const std::exception&) {
+        return 1;
+    } catch (...) {
+        return 1;
+    }
 }
