@@ -65,7 +65,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
           fetch-depth: 1
-          fetch-tags: true
+          fetch-tags: false
           submodules: "recursive"
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
