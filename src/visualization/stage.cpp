@@ -228,7 +228,7 @@ void Stage::draw() {
     }
 
     for (const auto& component : ordered_components) {
-        component->draw(camera_component.projection, view_inv);
+        component->draw(camera_component.projection(), view_inv);
     }
 }
 

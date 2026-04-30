@@ -42,15 +42,19 @@ class Camera final : public Component {
 
     Camera& operator=(const Camera& cam);
 
-    Camera(Camera&&) = default;
+    Camera(Camera&&) = delete;
 
-    Camera& operator=(Camera&&) = default;
+    Camera& operator=(Camera&&) = delete;
 
     static constexpr float zoom_factor{1.1f};
 
-    mat4 projection{};
+    [[nodiscard]] mat4& projection() noexcept {
+        return projection_;
+    }
 
-    vec4 mouse_position{vec4::zero()};
+    [[nodiscard]] const mat4& projection() const noexcept {
+        return projection_;
+    }
 
     void update() override;
 
@@ -93,6 +97,8 @@ class Camera final : public Component {
 
     void handle_key_events();
 
+    mat4 projection_{};
+    vec4 mouse_position_{vec4::zero()};
     float zoom_power_{0.0f};
     float camera_pos_x_{0.0f};
     float camera_pos_y_{0.0f};

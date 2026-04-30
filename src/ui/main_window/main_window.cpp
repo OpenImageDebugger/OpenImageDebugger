@@ -413,7 +413,7 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
                                     1.0f};
     const auto view = cam_obj->get().get_pose().inv();
     const auto buff_pose = buffer_obj->get().get_pose();
-    const auto vp_inv = (cam.projection * view * buff_pose).inv();
+    const auto vp_inv = (cam.projection() * view * buff_pose).inv();
 
     auto mouse_pos = vp_inv * mouse_pos_ndc;
     mouse_pos += vec4(
