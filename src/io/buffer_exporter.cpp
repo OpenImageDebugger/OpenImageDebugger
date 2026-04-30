@@ -34,8 +34,6 @@
 #include <iostream>
 #include <limits>
 
-#include <QPixmap>
-
 namespace oid::BufferExporter
 {
 

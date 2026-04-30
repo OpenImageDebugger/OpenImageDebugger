@@ -32,11 +32,7 @@
 #include <span>
 #include <sstream>
 
-#include <QApplication>
-#include <QListWidgetItem>
-#include <QPixmap>
 #include <QSizeF>
-#include <QTcpSocket>
 
 #include "ipc/message_exchange.h"
 #include "ipc/raw_data_decode.h"
@@ -55,7 +51,7 @@ MessageHandler::MessageHandler(Dependencies deps, QObject* parent)
 }
 
 
-void MessageHandler::decode_set_available_symbols()
+void MessageHandler::decode_set_available_symbols() const
 {
     const auto lock      = std::unique_lock{deps_.ui_mutex};
     auto message_decoder = MessageDecoder{&deps_.socket};
@@ -74,7 +70,7 @@ void MessageHandler::decode_set_available_symbols()
 }
 
 
-void MessageHandler::respond_get_observed_symbols()
+void MessageHandler::respond_get_observed_symbols() const
 {
     const auto lock       = std::unique_lock{deps_.ui_mutex};
     auto message_composer = MessageComposer{};
@@ -102,7 +98,7 @@ MessageHandler::find_image_list_item(const std::string& variable_name_str) const
 
 
 void MessageHandler::repaint_image_list_icon(
-    const std::string& variable_name_str)
+    const std::string& variable_name_str) const
 {
     const auto lock    = std::unique_lock{deps_.ui_mutex};
     const auto itStage = deps_.buffer_data.stages.find(variable_name_str);
@@ -231,8 +227,8 @@ void MessageHandler::decode_plot_buffer_contents()
                                   .step             = buff_stride,
                                   .pixel_layout     = pixel_layout_str,
                                   .transpose_buffer = transpose_buffer};
-        const auto& [buffer_name, buffer_stage_ptr] = *buffer_stage;
-        if (!buffer_stage_ptr->buffer_update(params)) [[unlikely]] {
+        if (const auto& [buffer_name, buffer_stage_ptr] = *buffer_stage;
+            !buffer_stage_ptr->buffer_update(params)) [[unlikely]] {
             std::cerr << "[Error] Buffer update failed for: "
                       << variable_name_str << std::endl;
         }
@@ -277,8 +273,8 @@ void MessageHandler::decode_incoming_messages()
     }
 
     auto header = MessageType{};
-    if (!deps_.socket.read(std::bit_cast<char*>(&header),
-                           static_cast<qint64>(sizeof(header)))) [[unlikely]] {
+    if (!deps_.socket.read(std::bit_cast<char*>(&header), sizeof(header)))
+        [[unlikely]] {
         const auto error = deps_.socket.error();
         std::cerr << "[Error] Failed to read message header: "
                   << deps_.socket.errorString().toStdString() << std::endl;
@@ -313,7 +309,8 @@ void MessageHandler::decode_incoming_messages()
 }
 
 
-void MessageHandler::request_plot_buffer(std::string_view buffer_name)
+void MessageHandler::request_plot_buffer(
+    const std::string_view buffer_name) const
 {
     auto message_composer = MessageComposer{};
     message_composer.push(MessageType::PlotBufferRequest)

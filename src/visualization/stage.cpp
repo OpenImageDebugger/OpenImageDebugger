@@ -69,6 +69,7 @@ std::optional<std::reference_wrapper<Camera>> get_camera_component(
 
 } // namespace
 
+
 struct CompareRenderOrder
 {
     bool operator()(const Component* a, const Component* b) const

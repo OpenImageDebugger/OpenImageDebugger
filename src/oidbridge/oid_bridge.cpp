@@ -42,7 +42,6 @@
 #include "ipc/message_exchange.h"
 #include "system/process/process.h"
 
-#include <QDataStream>
 #include <QPointer>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -184,7 +183,8 @@ class OidBridge
                 dynamic_cast<PlotBufferRequestMessage*>(
                     plot_request_message.get());
             if (plot_callback_) {
-                plot_callback_(msg->buffer_name.c_str());
+                // TODO: log error when callback fails
+                (void)plot_callback_(msg->buffer_name.c_str());
             }
         }
     }
@@ -258,8 +258,7 @@ class OidBridge
             }
 
             auto header = oid::MessageType{};
-            client_->read(std::bit_cast<char*>(&header),
-                          static_cast<qint64>(sizeof(header)));
+            client_->read(std::bit_cast<char*>(&header), sizeof(header));
 
             switch (header) {
             case oid::MessageType::PlotBufferRequest:
@@ -326,7 +325,7 @@ class OidBridge
                              "OpenImageDebugger server"
                           << std::endl;
             }
-            client_ = QPointer<QTcpSocket>(server_.nextPendingConnection());
+            client_ = QPointer(server_.nextPendingConnection());
         }
     }
 };
@@ -377,10 +376,10 @@ AppHandler oid_initialize(int (*plot_callback)(const char*), // NOSONAR
     // Convert C-style function pointer to std::function for modern C++
     // implementation. Function pointer parameter required for C API
     // compatibility (extern "C" interface)
-    auto app = oid_initialize_impl(
-        plot_callback ? std::function<int(const char*)>{plot_callback}
-                      : std::function<int(const char*)>{},
-        optional_parameters);
+    auto app =
+        oid_initialize_impl(plot_callback ? std::function{plot_callback}
+                                          : std::function<int(const char*)>{},
+                            optional_parameters);
     return app ? app.release() : nullptr;
 }
 
@@ -627,8 +626,8 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata)
     }
 
     // Create span from pointer+size for buffer storage
-    const auto buff_span = std::span<const std::byte>{
-        reinterpret_cast<const std::byte*>(buff_ptr), buff_size};
+    const auto buff_span =
+        std::span{reinterpret_cast<const std::byte*>(buff_ptr), buff_size};
     if (buff_span.size() < buff_size_expected) [[unlikely]] {
         auto ss = std::stringstream{};
         ss << "oid_plot_buffer received shorter buffer then expected";

@@ -27,10 +27,8 @@
 
 #include <iostream>
 
-
 namespace oid
 {
-
 
 vec4::vec4(const float x, const float y, const float z, const float w)
     : vec_{x, y, z, w}
@@ -122,7 +120,7 @@ vec4 operator-(const vec4& vector)
 void mat4::set_identity()
 {
     // clang-format off
-    *this << std::initializer_list<float>{
+    *this << std::initializer_list{
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f,

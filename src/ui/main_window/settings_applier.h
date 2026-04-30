@@ -28,14 +28,11 @@
 
 #include <mutex>
 #include <set>
-#include <string>
 
 #include <QList>
 #include <QObject>
-#include <QPoint>
 #include <QSize>
 #include <QString>
-#include <QStringList>
 
 namespace oid
 {
@@ -66,19 +63,21 @@ class SettingsApplier : public QObject
     explicit SettingsApplier(Dependencies deps, QObject* parent = nullptr);
 
   public slots:
-    void apply_rendering_settings(double framerate);
-    void apply_export_settings(QString defaultSuffix);
-    void apply_window_geometry(QSize size, QPoint pos);
-    void restore_window_resize();
-    void apply_ui_list_position(QString position);
-    void apply_ui_splitter_sizes(QList<int> sizes);
-    void apply_ui_minmax_compact(bool compact, bool visible);
-    void
-    apply_ui_colorspace(QString ch1, QString ch2, QString ch3, QString ch4);
-    void apply_ui_minmax_visible(bool visible);
-    void apply_ui_contrast_enabled(bool enabled);
-    void apply_ui_link_views_enabled(bool enabled);
-    void apply_previous_session_buffers(QStringList buffers);
+    void apply_rendering_settings(double framerate) const;
+    void apply_export_settings(const QString& defaultSuffix) const;
+    void apply_window_geometry(QSize size, QPoint pos) const;
+    void restore_window_resize() const;
+    void apply_ui_list_position(const QString& position) const;
+    void apply_ui_splitter_sizes(const QList<int>& sizes) const;
+    void apply_ui_minmax_compact(bool compact, bool visible) const;
+    void apply_ui_colorspace(const QString& ch1,
+                             const QString& ch2,
+                             const QString& ch3,
+                             const QString& ch4) const;
+    void apply_ui_minmax_visible(bool visible) const;
+    void apply_ui_contrast_enabled(bool enabled) const;
+    void apply_ui_link_views_enabled(bool enabled) const;
+    void apply_previous_session_buffers(QStringList buffers) const;
 
   private:
     Dependencies deps_;

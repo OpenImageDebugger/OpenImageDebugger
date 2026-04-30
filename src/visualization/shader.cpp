@@ -25,7 +25,6 @@
 
 #include "shader.h"
 
-#include <cstring>
 
 #include <iostream>
 
@@ -72,8 +71,8 @@ bool ShaderProgram::is_shader_outdated(const TexelChannels texel_format,
     return false;
 }
 
-bool ShaderProgram::create(std::string_view v_source,
-                           std::string_view f_source,
+bool ShaderProgram::create(const std::string_view v_source,
+                           const std::string_view f_source,
                            const TexelChannels texel_format,
                            const std::string& pixel_layout,
                            const std::vector<std::string>& uniforms)

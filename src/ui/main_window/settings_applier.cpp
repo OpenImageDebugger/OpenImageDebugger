@@ -27,8 +27,6 @@
 
 #include <utility>
 
-#include <QWidget>
-
 #include "main_window.h"
 
 namespace oid
@@ -40,17 +38,21 @@ SettingsApplier::SettingsApplier(Dependencies deps, QObject* parent)
 {
 }
 
-void SettingsApplier::apply_rendering_settings(double framerate)
+
+void SettingsApplier::apply_rendering_settings(const double framerate) const
 {
     deps_.render_framerate = framerate;
 }
 
-void SettingsApplier::apply_export_settings(QString defaultSuffix)
+
+void SettingsApplier::apply_export_settings(const QString& defaultSuffix) const
 {
     deps_.default_export_suffix = defaultSuffix;
 }
 
-void SettingsApplier::apply_window_geometry(QSize size, QPoint pos)
+
+void SettingsApplier::apply_window_geometry(const QSize size,
+                                            const QPoint pos) const
 {
     // Window is loaded with a fixed size and restored in timer.
     // This is needed to give application some time to run event loop
@@ -63,7 +65,8 @@ void SettingsApplier::apply_window_geometry(QSize size, QPoint pos)
     }
 }
 
-void SettingsApplier::restore_window_resize()
+
+void SettingsApplier::restore_window_resize() const
 {
     // Restore possibility to resize application in timer.
     // This is needed to give application some time to run event loop
@@ -72,7 +75,8 @@ void SettingsApplier::restore_window_resize()
     deps_.main_window.setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
 }
 
-void SettingsApplier::apply_ui_list_position(QString position)
+
+void SettingsApplier::apply_ui_list_position(const QString& position) const
 {
     if (position == "top" || position == "bottom") {
         deps_.ui_components.ui->splitter->setOrientation(Qt::Vertical);
@@ -86,14 +90,17 @@ void SettingsApplier::apply_ui_list_position(QString position)
     deps_.ui_components.ui->splitter->repaint();
 }
 
-void SettingsApplier::apply_ui_splitter_sizes(QList<int> sizes)
+
+void SettingsApplier::apply_ui_splitter_sizes(const QList<int>& sizes) const
 {
     if (!sizes.isEmpty()) {
         deps_.ui_components.ui->splitter->setSizes(sizes);
     }
 }
 
-void SettingsApplier::apply_ui_minmax_compact(bool compact, bool visible)
+
+void SettingsApplier::apply_ui_minmax_compact(const bool compact,
+                                              const bool visible) const
 {
     if (!compact) {
         return;
@@ -131,10 +138,11 @@ void SettingsApplier::apply_ui_minmax_compact(bool compact, bool visible)
     deps_.ui_components.ui->acEdit->hide();
 }
 
-void SettingsApplier::apply_ui_colorspace(QString ch1,
-                                          QString ch2,
-                                          QString ch3,
-                                          QString ch4)
+
+void SettingsApplier::apply_ui_colorspace(const QString& ch1,
+                                          const QString& ch2,
+                                          const QString& ch3,
+                                          const QString& ch4) const
 {
     if (!ch1.isEmpty()) {
         deps_.channel_names.name_channel_1 = ch1;
@@ -150,26 +158,30 @@ void SettingsApplier::apply_ui_colorspace(QString ch1,
     }
 }
 
-void SettingsApplier::apply_ui_minmax_visible(bool visible)
+
+void SettingsApplier::apply_ui_minmax_visible(const bool visible) const
 {
     deps_.ui_components.ui->acEdit->setChecked(visible);
     deps_.ui_components.ui->minMaxEditor->setVisible(visible);
 }
 
-void SettingsApplier::apply_ui_contrast_enabled(bool enabled)
+
+void SettingsApplier::apply_ui_contrast_enabled(const bool enabled) const
 {
     deps_.state.ac_enabled = enabled;
     deps_.ui_components.ui->acToggle->setChecked(enabled);
     deps_.ui_components.ui->minMaxEditor->setEnabled(enabled);
 }
 
-void SettingsApplier::apply_ui_link_views_enabled(bool enabled)
+
+void SettingsApplier::apply_ui_link_views_enabled(const bool enabled) const
 {
     deps_.state.link_views_enabled = enabled;
     deps_.ui_components.ui->linkViewsToggle->setChecked(enabled);
 }
 
-void SettingsApplier::apply_previous_session_buffers(QStringList buffers)
+
+void SettingsApplier::apply_previous_session_buffers(QStringList buffers) const
 {
     const auto lock = std::unique_lock{deps_.ui_mutex};
     deps_.buffer_data.previous_session_buffers.clear();

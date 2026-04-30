@@ -41,8 +41,8 @@ class GameObject;
 class Component
 {
   public:
-    Component(std::shared_ptr<GameObject> game_object,
-              std::shared_ptr<GLCanvas> gl_canvas);
+    Component(const std::shared_ptr<GameObject>& game_object,
+              const std::shared_ptr<GLCanvas>& gl_canvas);
 
     [[nodiscard]] virtual bool initialize();
 
@@ -97,7 +97,7 @@ class Component
 
     [[nodiscard]] GLCanvas& gl_canvas_ref() const
     {
-        auto canvas = gl_canvas_.lock();
+        const auto canvas = gl_canvas_.lock();
         assert(canvas && "GLCanvas has been destroyed");
         return *canvas;
     }

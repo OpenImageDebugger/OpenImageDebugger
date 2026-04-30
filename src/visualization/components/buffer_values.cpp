@@ -28,9 +28,7 @@
 #include <algorithm>
 #include <array>
 #include <bit>
-#include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <string>
 
 #include <GL/glcorearb.h>
@@ -49,8 +47,8 @@ template <typename T>
 using Array_4_4 = const std::array<const std::array<T, 4>, 4>;
 
 
-BufferValues::BufferValues(std::shared_ptr<GameObject> game_object,
-                           std::shared_ptr<GLCanvas> gl_canvas)
+BufferValues::BufferValues(const std::shared_ptr<GameObject>& game_object,
+                           const std::shared_ptr<GLCanvas>& gl_canvas)
     : Component{game_object, gl_canvas}
 {
 }
@@ -175,9 +173,9 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
         return;
     }
     const auto& camera = camera_opt->get();
-    const auto zoom    = camera.compute_zoom();
 
-    if (zoom > BufferConstants::ZOOM_BORDER_THRESHOLD) {
+    if (const auto zoom = camera.compute_zoom();
+        zoom > BufferConstants::ZOOM_BORDER_THRESHOLD) {
         const auto buffer_pose = game_object_ref().get_pose();
 
         const auto buffer_component_opt =
@@ -416,6 +414,7 @@ void BufferValues::draw_text(const DrawTextParams& params)
     }
 }
 
+
 void BufferValues::decrease_float_precision()
 {
     if (min_float_precision_ < float_precision_) {
@@ -425,6 +424,7 @@ void BufferValues::decrease_float_precision()
     }
 }
 
+
 void BufferValues::increase_float_precision()
 {
     if (max_float_precision_ > float_precision_) {
@@ -433,6 +433,7 @@ void BufferValues::increase_float_precision()
         text_pixel_scale_ = default_text_scale_;
     }
 }
+
 
 int BufferValues::get_float_precision() const
 {

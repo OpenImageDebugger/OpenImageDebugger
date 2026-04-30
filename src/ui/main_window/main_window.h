@@ -125,7 +125,7 @@ class MainWindow final : public QMainWindow
 
     [[nodiscard]] std::shared_ptr<GLCanvas> gl_canvas() const;
 
-    [[nodiscard]] QSizeF get_icon_size() const;
+    [[nodiscard]] static QSizeF get_icon_size();
 
     // External interface
     [[nodiscard]] bool is_window_ready() const;
@@ -134,9 +134,9 @@ class MainWindow final : public QMainWindow
     // General UI Events - implemented in ui_events.cpp
     void resize_callback(int w, int h) const;
 
-    void scroll_callback(float delta);
+    void scroll_callback(float delta) const;
 
-    void mouse_drag_event(int mouse_x, int mouse_y);
+    void mouse_drag_event(int mouse_x, int mouse_y) const;
 
     void mouse_move_event(int mouse_x, int mouse_y) const;
 

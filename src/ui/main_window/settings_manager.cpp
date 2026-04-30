@@ -25,14 +25,11 @@
 
 #include "settings_manager.h"
 
-#include <ranges>
 #include <utility>
 
-#include <QDataStream>
 #include <QDateTime>
 #include <QList>
 #include <QMetaType>
-#include <QPair>
 #include <QTimer>
 #include <QVariant>
 
@@ -45,6 +42,7 @@ SettingsManager::SettingsManager(QObject* parent)
     : QObject{parent}
 {
 }
+
 
 void SettingsManager::load_settings()
 {
@@ -64,6 +62,7 @@ void SettingsManager::load_settings()
     load_previous_session_buffers(settings);
 }
 
+
 void SettingsManager::load_rendering_settings(const QSettings& settings)
 {
     const auto framerate_key =
@@ -77,6 +76,7 @@ void SettingsManager::load_rendering_settings(const QSettings& settings)
     }
     emit renderingSettingsLoaded(framerate);
 }
+
 
 void SettingsManager::load_export_settings(QSettings& settings)
 {
@@ -95,6 +95,7 @@ void SettingsManager::load_export_settings(QSettings& settings)
     emit exportSettingsLoaded(default_suffix);
 }
 
+
 void SettingsManager::load_window_geometry(QSettings& settings)
 {
     settings.beginGroup(SettingsConstants::SETTINGS_GROUP_MAINWINDOW);
@@ -108,6 +109,7 @@ void SettingsManager::load_window_geometry(QSettings& settings)
                        this,
                        &SettingsManager::windowResizeRestoreRequested);
 }
+
 
 void SettingsManager::load_ui_settings(const QSettings& settings)
 {
@@ -188,6 +190,7 @@ void SettingsManager::load_ui_settings(const QSettings& settings)
     }
 }
 
+
 void SettingsManager::load_previous_session_buffers(const QSettings& settings)
 {
     const auto now = QDateTime::currentDateTime();
@@ -205,7 +208,8 @@ void SettingsManager::load_previous_session_buffers(const QSettings& settings)
     emit previousSessionBuffersLoaded(valid_buffers);
 }
 
-void SettingsManager::persist_settings(const DataCallbacks& callbacks) const
+
+void SettingsManager::persist_settings(const DataCallbacks& callbacks)
 {
     auto settings = QSettings{QSettings::Format::IniFormat,
                               QSettings::Scope::UserScope,

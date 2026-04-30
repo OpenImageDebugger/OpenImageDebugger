@@ -28,8 +28,8 @@
 namespace oid
 {
 
-Component::Component(std::shared_ptr<GameObject> game_object,
-                     std::shared_ptr<GLCanvas> gl_canvas)
+Component::Component(const std::shared_ptr<GameObject>& game_object,
+                     const std::shared_ptr<GLCanvas>& gl_canvas)
     : game_object_{game_object}
     , gl_canvas_{gl_canvas}
 {

@@ -36,8 +36,8 @@
 namespace oid
 {
 
-Camera::Camera(std::shared_ptr<GameObject> game_object,
-               std::shared_ptr<GLCanvas> gl_canvas)
+Camera::Camera(const std::shared_ptr<GameObject>& game_object,
+               const std::shared_ptr<GLCanvas>& gl_canvas)
     : Component{game_object, gl_canvas}
 {
 }
@@ -136,6 +136,7 @@ std::pair<float, float> Camera::get_buffer_initial_dimensions() const
 
     return std::make_pair(x, y);
 }
+
 
 void Camera::update_object_pose() const
 {

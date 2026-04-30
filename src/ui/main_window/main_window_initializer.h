@@ -26,7 +26,6 @@
 #ifndef MAIN_WINDOW_INITIALIZER_H_
 #define MAIN_WINDOW_INITIALIZER_H_
 
-#include <memory>
 
 #include <QString>
 
@@ -88,13 +87,13 @@ class MainWindowInitializer
 
     void initialize_left_pane() const;
 
-    void initialize_status_bar();
+    void initialize_status_bar() const;
 
-    void initialize_visualization_pane();
+    void initialize_visualization_pane() const;
 
-    void initialize_go_to_widget();
+    void initialize_go_to_widget() const;
 
-    void initialize_networking();
+    void initialize_networking() const;
 
     static void setFontIcon(QAbstractButton* ui_element,
                             const wchar_t unicode_id[]);

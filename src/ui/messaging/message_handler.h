@@ -65,8 +65,8 @@ class MessageHandler : public QObject
     explicit MessageHandler(Dependencies deps, QObject* parent = nullptr);
 
     void decode_incoming_messages();
-    void request_plot_buffer(std::string_view buffer_name);
-    void repaint_image_list_icon(const std::string& variable_name_str);
+    void request_plot_buffer(std::string_view buffer_name) const;
+    void repaint_image_list_icon(const std::string& variable_name_str) const;
 
   signals:
     void acMinLabelsResetRequested();
@@ -76,8 +76,8 @@ class MessageHandler : public QObject
   private:
     Dependencies deps_;
 
-    void decode_set_available_symbols();
-    void respond_get_observed_symbols();
+    void decode_set_available_symbols() const;
+    void respond_get_observed_symbols() const;
     void decode_plot_buffer_contents();
 
     QListWidgetItem*

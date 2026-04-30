@@ -31,13 +31,10 @@
 #include <string>
 
 #include <QChar>
-#include <QList>
-#include <QObject>
 #include <QPoint>
 #include <QSettings>
 #include <QSize>
 #include <QString>
-#include <QStringList>
 
 namespace oid
 {
@@ -50,15 +47,15 @@ constexpr double DEFAULT_FRAMERATE           = 60.0;
 constexpr double MIN_FRAMERATE               = 1.0;
 constexpr int BUFFER_EXPIRATION_DAYS         = 1;
 
-constexpr const char* ORGANIZATION_NAME             = "OpenImageDebugger";
-constexpr const char* DEFAULT_EXPORT_SUFFIX         = "Image File (*.png)";
-constexpr const char* SETTINGS_GROUP_EXPORT         = "Export";
-constexpr const char* SETTINGS_GROUP_RENDERING      = "Rendering";
-constexpr const char* SETTINGS_GROUP_UI             = "UI";
-constexpr const char* SETTINGS_GROUP_MAINWINDOW     = "MainWindow";
-constexpr const char* SETTINGS_KEY_FRAMERATE        = "maximum_framerate";
-constexpr const char* SETTINGS_KEY_EXPORT_SUFFIX    = "default_export_suffix";
-constexpr const char* SETTINGS_KEY_PREVIOUS_BUFFERS = "PreviousSession/buffers";
+constexpr auto ORGANIZATION_NAME             = "OpenImageDebugger";
+constexpr auto DEFAULT_EXPORT_SUFFIX         = "Image File (*.png)";
+constexpr auto SETTINGS_GROUP_EXPORT         = "Export";
+constexpr auto SETTINGS_GROUP_RENDERING      = "Rendering";
+constexpr auto SETTINGS_GROUP_UI             = "UI";
+constexpr auto SETTINGS_GROUP_MAINWINDOW     = "MainWindow";
+constexpr auto SETTINGS_KEY_FRAMERATE        = "maximum_framerate";
+constexpr auto SETTINGS_KEY_EXPORT_SUFFIX    = "default_export_suffix";
+constexpr auto SETTINGS_KEY_PREVIOUS_BUFFERS = "PreviousSession/buffers";
 } // namespace SettingsConstants
 
 class SettingsManager : public QObject
@@ -97,7 +94,7 @@ class SettingsManager : public QObject
 
     void load_settings();
 
-    void persist_settings(const DataCallbacks& callbacks) const;
+    static void persist_settings(const DataCallbacks& callbacks);
 
   signals:
     // Rendering settings

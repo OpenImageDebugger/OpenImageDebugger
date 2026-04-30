@@ -35,8 +35,8 @@ namespace oid
 class Background final : public Component
 {
   public:
-    Background(std::shared_ptr<GameObject> game_object,
-               std::shared_ptr<GLCanvas> gl_canvas);
+    Background(const std::shared_ptr<GameObject>& game_object,
+               const std::shared_ptr<GLCanvas>& gl_canvas);
 
     ~Background() noexcept override;
 
@@ -57,7 +57,7 @@ class Background final : public Component
 
     void draw(const mat4& projection, const mat4& view_inv) override;
 
-    [[nodiscard]] int render_index() const override;
+    [[nodiscard]] constexpr int render_index() const override;
 
   private:
     ShaderProgram background_prog;
