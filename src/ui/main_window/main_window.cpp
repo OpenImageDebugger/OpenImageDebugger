@@ -43,20 +43,16 @@
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
 
-
 Q_DECLARE_METATYPE(QList<QString>) // namespace oid
 
-namespace oid
-{
+namespace oid {
 
-namespace
-{
+namespace {
 
 enum class PixelDisplayFormat { BGRA, RGBA, Channel0, Channel1, Channel2 };
 
 // Convert QString to PixelDisplayFormat enum
-PixelDisplayFormat string_to_format(const QString& format_str)
-{
+PixelDisplayFormat string_to_format(const QString& format_str) {
     const auto format_lower = format_str.toLower().toStdString();
     if (format_lower == "bgra") {
         return PixelDisplayFormat::BGRA;
@@ -78,8 +74,7 @@ PixelDisplayFormat string_to_format(const QString& format_str)
 }
 
 // Apply pixel display format to buffer
-void apply_format(Buffer& buffer, const PixelDisplayFormat format)
-{
+void apply_format(Buffer& buffer, const PixelDisplayFormat format) {
     switch (format) {
     case PixelDisplayFormat::Channel0:
         if (buffer.channels > 0) {
@@ -113,9 +108,7 @@ void apply_format(Buffer& buffer, const PixelDisplayFormat format)
 } // namespace
 
 MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
-    : QMainWindow{parent}
-    , host_settings_{std::move(host_settings)}
-{
+    : QMainWindow{parent}, host_settings_{std::move(host_settings)} {
     QCoreApplication::instance()->installEventFilter(this);
 
     ui_components_.ui->setupUi(this);
@@ -243,55 +236,41 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     initializer_->initialize();
 }
 
-
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
     buffer_data_.held_buffers.clear();
     state_.is_window_ready = false;
 }
 
-
-void MainWindow::showWindow()
-{
+void MainWindow::showWindow() {
     ui_components_.update_timer.start(
         static_cast<int>(1000.0 / render_framerate_));
     show();
 }
 
-
-void MainWindow::draw() const
-{
+void MainWindow::draw() const {
     const auto lock = std::unique_lock{ui_mutex_};
     if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
         stage->draw();
     }
 }
 
-
-std::shared_ptr<GLCanvas> MainWindow::gl_canvas() const
-{
+std::shared_ptr<GLCanvas> MainWindow::gl_canvas() const {
     return gl_canvas_ptr_;
 }
 
-
-QSizeF MainWindow::get_icon_size()
-{
+QSizeF MainWindow::get_icon_size() {
     const auto screen_dpi_scale = get_screen_dpi_scale();
     return {UIConstants::ICON_WIDTH_BASE * screen_dpi_scale,
             UIConstants::ICON_HEIGHT_BASE * screen_dpi_scale};
 }
 
-
-bool MainWindow::is_window_ready() const
-{
+bool MainWindow::is_window_ready() const {
     const auto lock = std::unique_lock{ui_mutex_};
     return ui_components_.ui->bufferPreview->is_ready() &&
            state_.is_window_ready;
 }
 
-
-void MainWindow::loop()
-{
+void MainWindow::loop() {
     message_handler_->decode_incoming_messages();
 
     const auto lock = std::unique_lock{ui_mutex_};
@@ -325,28 +304,22 @@ void MainWindow::loop()
     }
 }
 
-
-void MainWindow::request_render_update()
-{
-    const auto lock              = std::unique_lock{ui_mutex_};
+void MainWindow::request_render_update() {
+    const auto lock = std::unique_lock{ui_mutex_};
     state_.request_render_update = true;
 }
 
-
-void MainWindow::request_icons_update()
-{
-    const auto lock             = std::unique_lock{ui_mutex_};
+void MainWindow::request_icons_update() {
+    const auto lock = std::unique_lock{ui_mutex_};
     state_.request_icons_update = true;
 }
 
-
-void MainWindow::persist_settings()
-{
+void MainWindow::persist_settings() {
     SettingsManager::DataCallbacks callbacks;
 
     // Window geometry
     callbacks.getWindowSize = [this] { return size(); };
-    callbacks.getWindowPos  = [this] { return pos(); };
+    callbacks.getWindowPos = [this] { return pos(); };
 
     // UI state
     callbacks.getSplitterSizes = [this] {
@@ -363,7 +336,7 @@ void MainWindow::persist_settings()
     };
 
     // Application state
-    callbacks.getRenderFramerate     = [this] { return render_framerate_; };
+    callbacks.getRenderFramerate = [this] { return render_framerate_; };
     callbacks.getDefaultExportSuffix = [this] {
         return default_export_suffix_;
     };
@@ -399,13 +372,11 @@ void MainWindow::persist_settings()
         buffer_data_.removed_buffer_names.clear();
     };
 
-    settings_manager_->persist_settings(callbacks);
+    SettingsManager::persist_settings(callbacks);
 }
 
-
 vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
-                                       const float pos_window_y) const
-{
+                                       const float pos_window_y) const {
     const auto stage = buffer_data_.currently_selected_stage.lock();
     if (!stage) {
         return {};
@@ -440,9 +411,9 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
                                     -2.0f * (pos_window_y - win_h / 2) / win_h,
                                     0.0f,
                                     1.0f};
-    const auto view          = cam_obj->get().get_pose().inv();
-    const auto buff_pose     = buffer_obj->get().get_pose();
-    const auto vp_inv        = (cam.projection * view * buff_pose).inv();
+    const auto view = cam_obj->get().get_pose().inv();
+    const auto buff_pose = buffer_obj->get().get_pose();
+    const auto vp_inv = (cam.projection * view * buff_pose).inv();
 
     auto mouse_pos = vp_inv * mouse_pos_ndc;
     mouse_pos += vec4(
@@ -451,9 +422,7 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
     return mouse_pos;
 }
 
-
-void MainWindow::update_status_bar() const
-{
+void MainWindow::update_status_bar() const {
     if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
         auto message = std::stringstream{};
 
@@ -516,16 +485,12 @@ void MainWindow::update_status_bar() const
     }
 }
 
-
-qreal MainWindow::get_screen_dpi_scale()
-{
+qreal MainWindow::get_screen_dpi_scale() {
     return QGuiApplication::primaryScreen()->devicePixelRatio();
 }
 
-
 std::string MainWindow::get_type_label(const BufferType type,
-                                       const int channels)
-{
+                                       const int channels) {
     auto result = std::stringstream{};
     if (type == BufferType::Float32) {
         result << "float32";
@@ -545,16 +510,12 @@ std::string MainWindow::get_type_label(const BufferType type,
     return result.str();
 }
 
-
-void MainWindow::persist_settings_deferred()
-{
+void MainWindow::persist_settings_deferred() {
     using namespace oid::SettingsConstants;
     ui_components_.settings_persist_timer.start(SETTINGS_PERSIST_DELAY_MS);
 }
 
-
-void MainWindow::pixel_format_changed(const QString& format)
-{
+void MainWindow::pixel_format_changed(const QString& format) {
     const auto lock = std::unique_lock{ui_mutex_};
 
     const auto stage = buffer_data_.currently_selected_stage.lock();
@@ -582,11 +543,9 @@ void MainWindow::pixel_format_changed(const QString& format)
     state_.request_render_update = true;
 }
 
-
 void MainWindow::set_currently_selected_stage(
-    const std::shared_ptr<Stage>& stage)
-{
-    const auto lock                       = std::unique_lock{ui_mutex_};
+    const std::shared_ptr<Stage>& stage) {
+    const auto lock = std::unique_lock{ui_mutex_};
     buffer_data_.currently_selected_stage = stage;
 
     // Enable pixel format dropdown only if channels >= 3
@@ -606,16 +565,14 @@ void MainWindow::set_currently_selected_stage(
     state_.request_render_update = true;
 }
 
-void MainWindow::set_currently_selected_stage(std::nullptr_t)
-{
+void MainWindow::set_currently_selected_stage(std::nullptr_t) {
     const auto lock = std::unique_lock{ui_mutex_};
     buffer_data_.currently_selected_stage.reset();
     ui_components_.ui->pixelFormatSelector->setEnabled(false);
     state_.request_render_update = true;
 }
 
-void MainWindow::connect_settings_signals() const
-{
+void MainWindow::connect_settings_signals() const {
     const auto* manager = settings_manager_.get();
     const auto* applier = settings_applier_.get();
 

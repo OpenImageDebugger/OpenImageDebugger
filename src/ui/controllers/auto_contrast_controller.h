@@ -28,18 +28,15 @@
 
 #include <mutex>
 
-namespace oid
-{
+namespace oid {
 
 struct BufferData;
 struct UIComponents;
 struct WindowState;
 
-class AutoContrastController
-{
+class AutoContrastController {
   public:
-    struct Dependencies
-    {
+    struct Dependencies {
         std::recursive_mutex& ui_mutex;
         BufferData& buffer_data;
         WindowState& state;

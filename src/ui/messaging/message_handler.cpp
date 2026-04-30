@@ -40,20 +40,13 @@
 #include "visualization/components/buffer.h"
 #include "visualization/stage.h"
 
-
-namespace oid
-{
+namespace oid {
 
 MessageHandler::MessageHandler(Dependencies deps, QObject* parent)
-    : QObject{parent}
-    , deps_{std::move(deps)}
-{
-}
+    : QObject{parent}, deps_{std::move(deps)} {}
 
-
-void MessageHandler::decode_set_available_symbols() const
-{
-    const auto lock      = std::unique_lock{deps_.ui_mutex};
+void MessageHandler::decode_set_available_symbols() const {
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     auto message_decoder = MessageDecoder{&deps_.socket};
     message_decoder.read<QStringList, QString>(
         deps_.buffer_data.available_vars);
@@ -69,10 +62,8 @@ void MessageHandler::decode_set_available_symbols() const
     deps_.state.completer_updated = true;
 }
 
-
-void MessageHandler::respond_get_observed_symbols() const
-{
-    const auto lock       = std::unique_lock{deps_.ui_mutex};
+void MessageHandler::respond_get_observed_symbols() const {
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     auto message_composer = MessageComposer{};
     message_composer.push(MessageType::GetObservedSymbolsResponse)
         .push(deps_.buffer_data.held_buffers.size());
@@ -82,10 +73,8 @@ void MessageHandler::respond_get_observed_symbols() const
     message_composer.send(&deps_.socket);
 }
 
-
-QListWidgetItem*
-MessageHandler::find_image_list_item(const std::string& variable_name_str) const
-{
+QListWidgetItem* MessageHandler::find_image_list_item(
+    const std::string& variable_name_str) const {
     for (int i = 0; i < deps_.ui_components.ui->imageList->count(); ++i) {
         const auto item = deps_.ui_components.ui->imageList->item(i);
         if (item->data(Qt::UserRole) != variable_name_str.c_str()) {
@@ -96,11 +85,9 @@ MessageHandler::find_image_list_item(const std::string& variable_name_str) const
     return nullptr;
 }
 
-
 void MessageHandler::repaint_image_list_icon(
-    const std::string& variable_name_str) const
-{
-    const auto lock    = std::unique_lock{deps_.ui_mutex};
+    const std::string& variable_name_str) const {
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto itStage = deps_.buffer_data.stages.find(variable_name_str);
     if (itStage == deps_.buffer_data.stages.end()) [[unlikely]] {
         return;
@@ -108,9 +95,9 @@ void MessageHandler::repaint_image_list_icon(
 
     const auto& [name, stage] = *itStage;
 
-    const auto icon_size      = deps_.get_icon_size();
-    const auto icon_width     = static_cast<int>(icon_size.width());
-    const auto icon_height    = static_cast<int>(icon_size.height());
+    const auto icon_size = deps_.get_icon_size();
+    const auto icon_width = static_cast<int>(icon_size.width());
+    const auto icon_height = static_cast<int>(icon_size.height());
     const auto bytes_per_line = icon_width * 3;
 
     deps_.ui_components.ui->bufferPreview->render_buffer_icon(
@@ -128,30 +115,25 @@ void MessageHandler::repaint_image_list_icon(
     }
 }
 
-
 void MessageHandler::update_image_list_label(
-    const std::string& variable_name_str,
-    const std::string& label_str) const
-{
+    const std::string& variable_name_str, const std::string& label_str) const {
     if (const auto item = find_image_list_item(variable_name_str);
         item != nullptr) {
         item->setText(label_str.c_str());
     }
 }
 
-
-void MessageHandler::decode_plot_buffer_contents()
-{
+void MessageHandler::decode_plot_buffer_contents() {
     auto variable_name_str = std::string{};
-    auto display_name_str  = std::string{};
-    auto pixel_layout_str  = std::string{};
-    auto transpose_buffer  = bool{};
-    auto buff_width        = int{};
-    auto buff_height       = int{};
-    auto buff_channels     = int{};
-    auto buff_stride       = int{};
-    auto buff_type         = BufferType{};
-    auto buff_contents     = std::vector<std::byte>{};
+    auto display_name_str = std::string{};
+    auto pixel_layout_str = std::string{};
+    auto transpose_buffer = bool{};
+    auto buff_width = int{};
+    auto buff_height = int{};
+    auto buff_channels = int{};
+    auto buff_stride = int{};
+    auto buff_type = BufferType{};
+    auto buff_contents = std::vector<std::byte>{};
 
     auto message_decoder = MessageDecoder{&deps_.socket};
     message_decoder.read(variable_name_str)
@@ -175,15 +157,15 @@ void MessageHandler::decode_plot_buffer_contents()
             std::move(buff_contents);
     }
     const auto& held_buffer = deps_.buffer_data.held_buffers[variable_name_str];
-    const auto buff_span    = std::span<const std::byte>(held_buffer);
+    const auto buff_span = std::span<const std::byte>(held_buffer);
 
-    auto visualized_width  = int{};
+    auto visualized_width = int{};
     auto visualized_height = int{};
     if (!transpose_buffer) {
-        visualized_width  = buff_width;
+        visualized_width = buff_width;
         visualized_height = buff_height;
     } else {
-        visualized_width  = buff_height;
+        visualized_width = buff_height;
         visualized_height = buff_width;
     }
 
@@ -201,13 +183,13 @@ void MessageHandler::decode_plot_buffer_contents()
         buffer_stage == deps_.buffer_data.stages.end()) {
 
         auto stage = deps_.create_stage();
-        if (const BufferParams params{.buffer           = buff_span,
-                                      .buffer_width_i   = buff_width,
-                                      .buffer_height_i  = buff_height,
-                                      .channels         = buff_channels,
-                                      .type             = buff_type,
-                                      .step             = buff_stride,
-                                      .pixel_layout     = pixel_layout_str,
+        if (const BufferParams params{.buffer = buff_span,
+                                      .buffer_width_i = buff_width,
+                                      .buffer_height_i = buff_height,
+                                      .channels = buff_channels,
+                                      .type = buff_type,
+                                      .step = buff_stride,
+                                      .pixel_layout = pixel_layout_str,
                                       .transpose_buffer = transpose_buffer};
             !stage->initialize(params)) [[unlikely]] {
             std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
@@ -219,13 +201,13 @@ void MessageHandler::decode_plot_buffer_contents()
             deps_.buffer_data.stages.try_emplace(variable_name_str, stage)
                 .first;
     } else {
-        const BufferParams params{.buffer           = buff_span,
-                                  .buffer_width_i   = buff_width,
-                                  .buffer_height_i  = buff_height,
-                                  .channels         = buff_channels,
-                                  .type             = buff_type,
-                                  .step             = buff_stride,
-                                  .pixel_layout     = pixel_layout_str,
+        const BufferParams params{.buffer = buff_span,
+                                  .buffer_width_i = buff_width,
+                                  .buffer_height_i = buff_height,
+                                  .channels = buff_channels,
+                                  .type = buff_type,
+                                  .step = buff_stride,
+                                  .pixel_layout = pixel_layout_str,
                                   .transpose_buffer = transpose_buffer};
         if (const auto& [buffer_name, buffer_stage_ptr] = *buffer_stage;
             !buffer_stage_ptr->buffer_update(params)) [[unlikely]] {
@@ -256,9 +238,7 @@ void MessageHandler::decode_plot_buffer_contents()
     deps_.state.request_render_update = true;
 }
 
-
-void MessageHandler::decode_incoming_messages()
-{
+void MessageHandler::decode_incoming_messages() {
     if (deps_.socket.state() == QTcpSocket::UnconnectedState) [[unlikely]] {
         QApplication::quit();
     }
@@ -308,19 +288,15 @@ void MessageHandler::decode_incoming_messages()
     }
 }
 
-
 void MessageHandler::request_plot_buffer(
-    const std::string_view buffer_name) const
-{
+    const std::string_view buffer_name) const {
     auto message_composer = MessageComposer{};
     message_composer.push(MessageType::PlotBufferRequest)
         .push(std::string(buffer_name))
         .send(&deps_.socket);
 }
 
-
-std::string MessageHandler::get_type_label(const int type, const int channels)
-{
+std::string MessageHandler::get_type_label(const int type, const int channels) {
     auto result = std::stringstream{};
     switch (static_cast<BufferType>(type)) {
     case BufferType::Float32:

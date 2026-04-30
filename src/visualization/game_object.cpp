@@ -33,100 +33,75 @@
 #include "visualization/components/component.h"
 #include "visualization/stage.h"
 
-namespace oid
-{
+namespace oid {
 
-GameObject::GameObject()
-{
+GameObject::GameObject() {
     pose_.set_identity();
 }
 
-
-void GameObject::set_stage(Stage& stage)
-{
+void GameObject::set_stage(Stage& stage) {
     stage_ = std::ref(stage);
 }
 
-
-std::optional<std::reference_wrapper<Stage>> GameObject::get_stage() const
-{
+std::optional<std::reference_wrapper<Stage>> GameObject::get_stage() const {
     if (!stage_.has_value()) {
         return std::nullopt;
     }
     return stage_;
 }
 
-
-bool GameObject::initialize() const
-{
+bool GameObject::initialize() const {
     return std::ranges::all_of(all_components_, [](const auto& comp) {
         const auto& [name, component] = comp;
         return component->initialize();
     });
 }
 
-
-bool GameObject::post_initialize() const
-{
+bool GameObject::post_initialize() const {
     return std::ranges::all_of(all_components_, [](const auto& comp) {
         const auto& [name, component] = comp;
         return component->post_initialize();
     });
 }
 
-
-void GameObject::update() const
-{
+void GameObject::update() const {
     for (const auto& comp : all_components_ | std::views::values) {
         comp->update();
     }
 }
 
 void GameObject::add_component(const std::string& component_name,
-                               const std::shared_ptr<Component>& component)
-{
+                               const std::shared_ptr<Component>& component) {
     all_components_[component_name] = component;
 }
 
-
-mat4 GameObject::get_pose()
-{
+mat4 GameObject::get_pose() {
     return pose_;
 }
 
-
-void GameObject::set_pose(const mat4& pose)
-{
+void GameObject::set_pose(const mat4& pose) {
     pose_ = pose;
 }
 
-
-void GameObject::request_render_update() const
-{
+void GameObject::request_render_update() const {
     if (stage_.has_value()) {
         stage().request_render_update();
     }
 }
 
-
-void GameObject::mouse_drag_event(const int mouse_x, const int mouse_y) const
-{
+void GameObject::mouse_drag_event(const int mouse_x, const int mouse_y) const {
     for (const auto& comp : all_components_ | std::views::values) {
         comp->mouse_drag_event(mouse_x, mouse_y);
     }
 }
 
-
-void GameObject::mouse_move_event(const int mouse_x, const int mouse_y) const
-{
+void GameObject::mouse_move_event(const int mouse_x, const int mouse_y) const {
     for (const auto& comp : all_components_ | std::views::values) {
         comp->mouse_move_event(mouse_x, mouse_y);
     }
 }
 
-
-EventProcessCode GameObject::key_press_event(int key_code) const
-{
+EventProcessCode GameObject::key_press_event(int key_code) const {
     auto event_intercepted = EventProcessCode::IGNORED;
 
     for (const auto& comp : all_components_ | std::views::values) {
@@ -141,10 +116,8 @@ EventProcessCode GameObject::key_press_event(int key_code) const
     return event_intercepted;
 }
 
-
 const std::map<std::string, std::shared_ptr<Component>, std::less<>>&
-GameObject::get_components() const
-{
+GameObject::get_components() const {
     return all_components_;
 }
 

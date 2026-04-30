@@ -38,17 +38,12 @@
 #include "ui/symbol_completer.h"
 #include "ui_main_window.h"
 
-namespace oid
-{
+namespace oid {
 
 MainWindowInitializer::MainWindowInitializer(Dependencies deps)
-    : deps_{std::move(deps)}
-{
-}
+    : deps_{std::move(deps)} {}
 
-
-void MainWindowInitializer::initialize()
-{
+void MainWindowInitializer::initialize() {
     initialize_ui_icons();
     initialize_ui_signals();
     initialize_timers();
@@ -63,9 +58,7 @@ void MainWindowInitializer::initialize()
     initialize_networking();
 }
 
-
-void MainWindowInitializer::initialize_ui_icons() const
-{
+void MainWindowInitializer::initialize_ui_icons() const {
     if (QFontDatabase::addApplicationFont(":/resources/icons/fontello.ttf") <
         0) {
         qWarning() << "Could not load ionicons font file!";
@@ -129,9 +122,7 @@ void MainWindowInitializer::initialize_ui_icons() const
         deps_.ui_components.ui->label_minmax, "lower_upper_bound.svg", 8, 35);
 }
 
-
-void MainWindowInitializer::initialize_ui_signals()
-{
+void MainWindowInitializer::initialize_ui_signals() {
     QObject::connect(deps_.ui_components.ui->splitter,
                      &QSplitter::splitterMoved,
                      &deps_.main_window,
@@ -153,9 +144,7 @@ void MainWindowInitializer::initialize_ui_signals()
                      [this] { deps_.main_window.persist_settings_deferred(); });
 }
 
-
-void MainWindowInitializer::initialize_timers()
-{
+void MainWindowInitializer::initialize_timers() {
     QObject::connect(&deps_.ui_components.settings_persist_timer,
                      &QTimer::timeout,
                      &deps_.main_window,
@@ -168,9 +157,7 @@ void MainWindowInitializer::initialize_timers()
                      [this] { deps_.main_window.loop(); });
 }
 
-
-void MainWindowInitializer::initialize_shortcuts()
-{
+void MainWindowInitializer::initialize_shortcuts() {
     // Qt parent-child ownership: parent deletes children automatically
     const auto* symbol_list_focus_shortcut =
         new QShortcut(QKeySequence::fromString("Ctrl+K"), &deps_.main_window);
@@ -200,9 +187,7 @@ void MainWindowInitializer::initialize_shortcuts()
         [this](float x, float y) { deps_.event_handler.go_to_pixel(x, y); });
 }
 
-
-void MainWindowInitializer::initialize_symbol_completer()
-{
+void MainWindowInitializer::initialize_symbol_completer() {
     deps_.ui_components.symbol_completer =
         std::make_unique<SymbolCompleter>(&deps_.main_window);
 
@@ -223,9 +208,7 @@ void MainWindowInitializer::initialize_symbol_completer()
                      });
 }
 
-
-void MainWindowInitializer::initialize_left_pane() const
-{
+void MainWindowInitializer::initialize_left_pane() const {
     QObject::connect(deps_.ui_components.ui->imageList,
                      &QListWidget::currentItemChanged,
                      &deps_.main_window,
@@ -248,9 +231,7 @@ void MainWindowInitializer::initialize_left_pane() const
                      });
 }
 
-
-void MainWindowInitializer::initialize_auto_contrast_form() const
-{
+void MainWindowInitializer::initialize_auto_contrast_form() const {
     // Configure auto contrast inputs
     // Note: Qt's setValidator takes ownership, so we use make_unique and
     // release
@@ -317,9 +298,7 @@ void MainWindowInitializer::initialize_auto_contrast_form() const
                      [this] { deps_.ac_controller.ac_max_reset(); });
 }
 
-
-void MainWindowInitializer::initialize_toolbar() const
-{
+void MainWindowInitializer::initialize_toolbar() const {
     QObject::connect(
         deps_.ui_components.ui->acToggle,
         &QToolButton::toggled,
@@ -378,15 +357,11 @@ void MainWindowInitializer::initialize_toolbar() const
     deps_.ui_components.ui->decrease_float_precision->setEnabled(false);
 }
 
-
-void MainWindowInitializer::initialize_visualization_pane() const
-{
+void MainWindowInitializer::initialize_visualization_pane() const {
     deps_.ui_components.ui->bufferPreview->set_main_window(deps_.main_window);
 }
 
-
-void MainWindowInitializer::initialize_status_bar() const
-{
+void MainWindowInitializer::initialize_status_bar() const {
     deps_.ui_components.status_bar =
         std::make_unique<QLabel>(&deps_.main_window);
     deps_.ui_components.status_bar->setAlignment(Qt::AlignRight);
@@ -395,24 +370,19 @@ void MainWindowInitializer::initialize_status_bar() const
         deps_.ui_components.status_bar.get(), 1);
 }
 
-
-void MainWindowInitializer::initialize_go_to_widget() const
-{
+void MainWindowInitializer::initialize_go_to_widget() const {
     deps_.ui_components.go_to_widget =
         std::make_unique<GoToWidget>(deps_.ui_components.ui->bufferPreview);
 }
 
-
-void MainWindowInitializer::initialize_networking() const
-{
+void MainWindowInitializer::initialize_networking() const {
     deps_.socket.connectToHost(QString(deps_.host_settings.url.c_str()),
                                deps_.host_settings.port);
     deps_.socket.waitForConnected();
 }
 
 void MainWindowInitializer::setFontIcon(QAbstractButton* ui_element,
-                                        const wchar_t unicode_id[])
-{
+                                        const wchar_t unicode_id[]) {
     auto icons_font = QFont{};
     icons_font.setFamily("fontello");
     icons_font.setPointSizeF(10.f);
@@ -421,15 +391,13 @@ void MainWindowInitializer::setFontIcon(QAbstractButton* ui_element,
     ui_element->setText(QString::fromWCharArray(unicode_id));
 }
 
-
 void MainWindowInitializer::setVectorIcon(QLabel* ui_element,
                                           const QString& icon_file_name,
                                           const int width,
-                                          const int height)
-{
+                                          const int height) {
     const auto screen_dpi_scale =
         QGuiApplication::primaryScreen()->devicePixelRatio();
-    const auto rounded_width  = static_cast<int>(std::round(width));
+    const auto rounded_width = static_cast<int>(std::round(width));
     const auto rounded_height = static_cast<int>(std::round(height));
 
     ui_element->setScaledContents(true);

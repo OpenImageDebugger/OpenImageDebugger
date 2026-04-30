@@ -32,14 +32,11 @@
 #include "ui/gl_canvas.h"
 #include "visualization/events.h"
 
-
-namespace oid
-{
+namespace oid {
 
 class GameObject;
 
-class Component
-{
+class Component {
   public:
     Component(const std::shared_ptr<GameObject>& game_object,
               const std::shared_ptr<GLCanvas>& gl_canvas);
@@ -61,42 +58,35 @@ class Component
 
     ///
     // Events
-    virtual EventProcessCode key_press_event(int /* key_code */)
-    {
+    virtual EventProcessCode key_press_event(int /* key_code */) {
         return EventProcessCode::IGNORED;
     }
 
-    virtual void mouse_drag_event(int /* mouse_x */, int /* mouse_y */)
-    {
+    virtual void mouse_drag_event(int /* mouse_x */, int /* mouse_y */) {
         // Do nothing
     }
 
-    virtual void mouse_move_event(int /* mouse_x */, int /* mouse_y */)
-    {
+    virtual void mouse_move_event(int /* mouse_x */, int /* mouse_y */) {
         // Do nothing
     }
 
     virtual ~Component() noexcept;
 
-    [[nodiscard]] std::shared_ptr<GameObject> game_object() const noexcept
-    {
+    [[nodiscard]] std::shared_ptr<GameObject> game_object() const noexcept {
         return game_object_.lock();
     }
 
-    [[nodiscard]] GameObject& game_object_ref() const
-    {
+    [[nodiscard]] GameObject& game_object_ref() const {
         auto obj = game_object_.lock();
         assert(obj && "GameObject has been destroyed");
         return *obj;
     }
 
-    [[nodiscard]] std::shared_ptr<GLCanvas> gl_canvas() const noexcept
-    {
+    [[nodiscard]] std::shared_ptr<GLCanvas> gl_canvas() const noexcept {
         return gl_canvas_.lock();
     }
 
-    [[nodiscard]] GLCanvas& gl_canvas_ref() const
-    {
+    [[nodiscard]] GLCanvas& gl_canvas_ref() const {
         const auto canvas = gl_canvas_.lock();
         assert(canvas && "GLCanvas has been destroyed");
         return *canvas;

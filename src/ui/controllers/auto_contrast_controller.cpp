@@ -36,37 +36,29 @@
 #include "visualization/components/buffer.h"
 #include "visualization/game_object.h"
 
+namespace oid {
 
-namespace oid
-{
+namespace {
 
-namespace
-{
-
-void enable_inputs(const std::initializer_list<QLineEdit*>& inputs)
-{
+void enable_inputs(const std::initializer_list<QLineEdit*>& inputs) {
     for (auto& input : inputs) {
         input->setEnabled(true);
     }
 }
 
-
-void disable_inputs(const std::initializer_list<QLineEdit*>& inputs)
-{
+void disable_inputs(const std::initializer_list<QLineEdit*>& inputs) {
     for (auto& input : inputs) {
         input->setEnabled(false);
         input->setText("");
     }
 }
 
-
 void update_channel_labels(const Buffer& buffer,
                            const std::span<const float> values,
                            QLineEdit* c1,
                            QLineEdit* c2,
                            QLineEdit* c3,
-                           QLineEdit* c4)
-{
+                           QLineEdit* c4) {
     // In single-channel mode, show only one input with the selected channel's
     // value
     if (buffer.get_display_channel_mode() == 1) {
@@ -104,19 +96,13 @@ void update_channel_labels(const Buffer& buffer,
 
 } // anonymous namespace
 
-
 AutoContrastController::AutoContrastController(const Dependencies& deps)
-    : deps_{deps}
-{
-}
+    : deps_{deps} {}
 
-
-namespace
-{
+namespace {
 
 std::optional<std::reference_wrapper<Buffer>>
-get_buffer_component(const BufferData& buffer_data)
-{
+get_buffer_component(const BufferData& buffer_data) {
     const auto stage = buffer_data.currently_selected_stage.lock();
     if (!stage) {
         return std::nullopt;
@@ -135,15 +121,13 @@ get_buffer_component(const BufferData& buffer_data)
 
 } // anonymous namespace
 
-
-void AutoContrastController::reset_min_labels() const
-{
-    const auto lock       = std::unique_lock{deps_.ui_mutex};
+void AutoContrastController::reset_min_labels() const {
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto buffer_opt = get_buffer_component(deps_.buffer_data);
     if (!buffer_opt.has_value()) {
         return;
     }
-    auto& buffer      = buffer_opt->get();
+    auto& buffer = buffer_opt->get();
     const auto ac_min = buffer.min_buffer_values();
 
     update_channel_labels(buffer,
@@ -154,15 +138,13 @@ void AutoContrastController::reset_min_labels() const
                           deps_.ui_components.ui->ac_c4_min);
 }
 
-
-void AutoContrastController::reset_max_labels() const
-{
-    const auto lock       = std::unique_lock{deps_.ui_mutex};
+void AutoContrastController::reset_max_labels() const {
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto buffer_opt = get_buffer_component(deps_.buffer_data);
     if (!buffer_opt.has_value()) {
         return;
     }
-    auto& buffer      = buffer_opt->get();
+    auto& buffer = buffer_opt->get();
     const auto ac_max = buffer.max_buffer_values();
 
     update_channel_labels(buffer,
@@ -173,97 +155,71 @@ void AutoContrastController::reset_max_labels() const
                           deps_.ui_components.ui->ac_c4_max);
 }
 
-
-void AutoContrastController::ac_c1_min_update()
-{
+void AutoContrastController::ac_c1_min_update() {
     set_ac_min_value(0, deps_.ui_components.ui->ac_c1_min->text().toFloat());
 }
 
-
-void AutoContrastController::ac_c2_min_update()
-{
+void AutoContrastController::ac_c2_min_update() {
     set_ac_min_value(1, deps_.ui_components.ui->ac_c2_min->text().toFloat());
 }
 
-
-void AutoContrastController::ac_c3_min_update()
-{
+void AutoContrastController::ac_c3_min_update() {
     set_ac_min_value(2, deps_.ui_components.ui->ac_c3_min->text().toFloat());
 }
 
-
-void AutoContrastController::ac_c4_min_update()
-{
+void AutoContrastController::ac_c4_min_update() {
     set_ac_min_value(3, deps_.ui_components.ui->ac_c4_min->text().toFloat());
 }
 
-
-void AutoContrastController::ac_c1_max_update()
-{
+void AutoContrastController::ac_c1_max_update() {
     set_ac_max_value(0, deps_.ui_components.ui->ac_c1_max->text().toFloat());
 }
 
-
-void AutoContrastController::ac_c2_max_update()
-{
+void AutoContrastController::ac_c2_max_update() {
     set_ac_max_value(1, deps_.ui_components.ui->ac_c2_max->text().toFloat());
 }
 
-
-void AutoContrastController::ac_c3_max_update()
-{
+void AutoContrastController::ac_c3_max_update() {
     set_ac_max_value(2, deps_.ui_components.ui->ac_c3_max->text().toFloat());
 }
 
-
-void AutoContrastController::ac_c4_max_update()
-{
+void AutoContrastController::ac_c4_max_update() {
     set_ac_max_value(3, deps_.ui_components.ui->ac_c4_max->text().toFloat());
 }
 
-
-void AutoContrastController::ac_min_reset()
-{
+void AutoContrastController::ac_min_reset() {
     reset_color_values(true);
 }
 
-
-void AutoContrastController::ac_max_reset()
-{
+void AutoContrastController::ac_max_reset() {
     reset_color_values(false);
 }
 
-
-void AutoContrastController::ac_toggle(const bool is_checked)
-{
-    const auto lock        = std::unique_lock{deps_.ui_mutex};
+void AutoContrastController::ac_toggle(const bool is_checked) {
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     deps_.state.ac_enabled = is_checked;
     for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
         stage->set_contrast_enabled(deps_.state.ac_enabled);
     }
 
     deps_.state.request_render_update = true;
-    deps_.state.request_icons_update  = true;
+    deps_.state.request_icons_update = true;
 }
 
-
-void AutoContrastController::set_ac_min_value(const int idx, const float value)
-{
+void AutoContrastController::set_ac_min_value(const int idx,
+                                              const float value) {
     set_ac_value(idx, value, true);
 }
 
-
-void AutoContrastController::set_ac_max_value(const int idx, const float value)
-{
+void AutoContrastController::set_ac_max_value(const int idx,
+                                              const float value) {
     set_ac_value(idx, value, false);
 }
 
-
 void AutoContrastController::set_ac_value(const int idx,
                                           const float value,
-                                          const bool is_min)
-{
-    const auto lock       = std::unique_lock{deps_.ui_mutex};
+                                          const bool is_min) {
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto buffer_opt = get_buffer_component(deps_.buffer_data);
     if (!buffer_opt.has_value()) {
         return;
@@ -278,13 +234,11 @@ void AutoContrastController::set_ac_value(const int idx,
     buffer.compute_contrast_brightness_parameters();
 
     deps_.state.request_render_update = true;
-    deps_.state.request_icons_update  = true;
+    deps_.state.request_icons_update = true;
 }
 
-
-void AutoContrastController::reset_color_values(const bool is_min)
-{
-    const auto lock       = std::unique_lock{deps_.ui_mutex};
+void AutoContrastController::reset_color_values(const bool is_min) {
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto buffer_opt = get_buffer_component(deps_.buffer_data);
     if (!buffer_opt.has_value()) {
         return;
@@ -301,7 +255,7 @@ void AutoContrastController::reset_color_values(const bool is_min)
     buffer.compute_contrast_brightness_parameters();
 
     deps_.state.request_render_update = true;
-    deps_.state.request_icons_update  = true;
+    deps_.state.request_icons_update = true;
 }
 
 } // namespace oid

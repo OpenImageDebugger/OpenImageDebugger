@@ -37,12 +37,9 @@
 
 class Stage;
 
+namespace oid {
 
-namespace oid
-{
-
-class GameObject
-{
+class GameObject {
   public:
     GameObject();
 
@@ -53,8 +50,7 @@ class GameObject
 
     template <typename T>
     [[nodiscard]] std::optional<std::reference_wrapper<T>>
-    get_component(const std::string& tag)
-    {
+    get_component(const std::string& tag) {
         if (!all_components_.contains(tag)) {
             return std::nullopt;
         }
@@ -93,8 +89,7 @@ class GameObject
     std::optional<std::reference_wrapper<Stage>>
         stage_{}; // Set via set_stage() before use
 
-    [[nodiscard]] Stage& stage() const
-    {
+    [[nodiscard]] Stage& stage() const {
         assert(stage_.has_value() &&
                "stage_ must be set via set_stage() before use");
         return stage_->get();

@@ -26,7 +26,6 @@
 #ifndef MAIN_WINDOW_INITIALIZER_H_
 #define MAIN_WINDOW_INITIALIZER_H_
 
-
 #include <QString>
 
 class QAbstractButton;
@@ -34,8 +33,7 @@ class QChar;
 class QLabel;
 class QTcpSocket;
 
-namespace oid
-{
+namespace oid {
 
 struct BufferData;
 struct ChannelNames;
@@ -47,11 +45,9 @@ class UIEventHandler;
 class MainWindow;
 class SettingsManager;
 
-class MainWindowInitializer
-{
+class MainWindowInitializer {
   public:
-    struct Dependencies
-    {
+    struct Dependencies {
         WindowState& state;
         UIComponents& ui_components;
         BufferData& buffer_data;

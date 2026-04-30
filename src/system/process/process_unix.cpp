@@ -32,11 +32,9 @@
 
 extern char** environ;
 
-namespace oid
-{
+namespace oid {
 
-class ProcessImplUnix final : public ProcessImpl
-{
+class ProcessImplUnix final : public ProcessImpl {
   public:
     ProcessImplUnix() = default;
 
@@ -48,13 +46,11 @@ class ProcessImplUnix final : public ProcessImpl
 
     ProcessImplUnix& operator=(ProcessImplUnix&& other) noexcept = delete;
 
-    ~ProcessImplUnix() noexcept override
-    {
+    ~ProcessImplUnix() noexcept override {
         kill();
     }
 
-    void start(std::vector<std::string>& command) override
-    {
+    void start(std::vector<std::string>& command) override {
         const auto& windowBinaryPath = command[0];
 
         auto argv = std::vector<char*>{};
@@ -72,15 +68,11 @@ class ProcessImplUnix final : public ProcessImpl
                     environ);
     }
 
-
-    [[nodiscard]] bool isRunning() const override
-    {
+    [[nodiscard]] bool isRunning() const override {
         return pid_ != 0 && ::kill(pid_, 0) == 0;
     }
 
-
-    void kill() override
-    {
+    void kill() override {
         ::kill(pid_, SIGTERM);
     }
 
@@ -88,8 +80,7 @@ class ProcessImplUnix final : public ProcessImpl
     pid_t pid_{0};
 };
 
-void Process::createImpl()
-{
+void Process::createImpl() {
     impl_ = std::make_shared<ProcessImplUnix>();
 }
 

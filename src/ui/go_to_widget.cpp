@@ -32,12 +32,9 @@
 #include <QIntValidator>
 #include <QKeyEvent>
 
-namespace oid
-{
+namespace oid {
 
-GoToWidget::GoToWidget(QWidget* parent)
-    : QWidget{parent}
-{
+GoToWidget::GoToWidget(QWidget* parent) : QWidget{parent} {
     auto layout = std::make_unique<QHBoxLayout>(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
@@ -60,9 +57,7 @@ GoToWidget::GoToWidget(QWidget* parent)
     QWidget::setVisible(false);
 }
 
-
-void GoToWidget::keyPressEvent(QKeyEvent* e)
-{
+void GoToWidget::keyPressEvent(QKeyEvent* e) {
     switch (e->key()) {
     case Qt::Key_Escape:
         toggle_visible();
@@ -82,9 +77,7 @@ void GoToWidget::keyPressEvent(QKeyEvent* e)
     }
 }
 
-
-void GoToWidget::toggle_visible()
-{
+void GoToWidget::toggle_visible() {
     const auto parent_widget = dynamic_cast<QWidget*>(parent());
 
     if (isVisible()) {
@@ -102,10 +95,8 @@ void GoToWidget::toggle_visible()
     }
 }
 
-
 void GoToWidget::set_defaults(const float default_x,
-                              const float default_y) const
-{
+                              const float default_y) const {
     x_coordinate_->setText(QString::number(std::round(default_x - 0.5f)));
     y_coordinate_->setText(QString::number(std::round(default_y - 0.5f)));
 }

@@ -25,33 +25,24 @@
 
 #include "symbol_completer.h"
 
-namespace oid
-{
+namespace oid {
 
-SymbolCompleter::SymbolCompleter(QObject* parent)
-    : QCompleter{parent}
-{
+SymbolCompleter::SymbolCompleter(QObject* parent) : QCompleter{parent} {
     setModel(&model_);
 }
 
-
-void SymbolCompleter::update(const QString& word)
-{
+void SymbolCompleter::update(const QString& word) {
     const auto filtered = list_.filter(word, caseSensitivity());
     model_.setStringList(filtered);
     word_ = word;
     complete();
 }
 
-
-void SymbolCompleter::update_symbol_list(const QStringList& symbols)
-{
+void SymbolCompleter::update_symbol_list(const QStringList& symbols) {
     list_ = symbols;
 }
 
-
-const QString& SymbolCompleter::word() const
-{
+const QString& SymbolCompleter::word() const {
     return word_;
 }
 

@@ -23,8 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-namespace oid::shader
-{
+namespace oid::shader {
 extern auto const text_vert_shader{R"glsl(
 
 attribute vec4 input_position;

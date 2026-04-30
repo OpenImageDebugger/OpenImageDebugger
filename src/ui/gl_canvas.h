@@ -38,16 +38,13 @@
 #include <QOpenGLFunctions>
 #include <QOpenGLWidget>
 
-
-namespace oid
-{
+namespace oid {
 
 class GLTextRenderer;
 class MainWindow;
 class Stage;
 
-class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions
-{
+class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
     Q_OBJECT
   public:
     explicit GLCanvas(QWidget* parent = nullptr);
@@ -68,23 +65,19 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions
 
     void wheelEvent(QWheelEvent* ev) override;
 
-    [[nodiscard]] int mouse_x() const
-    {
+    [[nodiscard]] int mouse_x() const {
         return mouse_x_;
     }
 
-    [[nodiscard]] int mouse_y() const
-    {
+    [[nodiscard]] int mouse_y() const {
         return mouse_y_;
     }
 
-    [[nodiscard]] bool is_mouse_down() const
-    {
+    [[nodiscard]] bool is_mouse_down() const {
         return mouse_down_[0];
     }
 
-    [[nodiscard]] bool is_ready() const
-    {
+    [[nodiscard]] bool is_ready() const {
         return initialized_;
     }
 
@@ -103,8 +96,7 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions
     std::optional<std::reference_wrapper<MainWindow>>
         main_window_{}; // Always set via set_main_window() before use
 
-    [[nodiscard]] MainWindow& main_window() const
-    {
+    [[nodiscard]] MainWindow& main_window() const {
         assert(main_window_.has_value() &&
                "main_window_ must be set via set_main_window() before use");
         return main_window_->get();

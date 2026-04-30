@@ -25,28 +25,19 @@
 
 #include "shader.h"
 
-
 #include <iostream>
 
-namespace oid
-{
+namespace oid {
 
-ShaderProgram::ShaderProgram(GLCanvas& gl_canvas)
-    : gl_canvas_{gl_canvas}
-{
-}
+ShaderProgram::ShaderProgram(GLCanvas& gl_canvas) : gl_canvas_{gl_canvas} {}
 
-
-ShaderProgram::~ShaderProgram() noexcept
-{
+ShaderProgram::~ShaderProgram() noexcept {
     gl_canvas_.glDeleteProgram(program_);
 }
 
-
 bool ShaderProgram::is_shader_outdated(const TexelChannels texel_format,
                                        const std::vector<std::string>& uniforms,
-                                       const std::string& pixel_layout) const
-{
+                                       const std::string& pixel_layout) const {
     // If the texel format or the uniform container size changed,
     // the program must be created again
     if (texel_format != texel_format_ || uniforms.size() != uniforms_.size()) {
@@ -75,8 +66,7 @@ bool ShaderProgram::create(const std::string_view v_source,
                            const std::string_view f_source,
                            const TexelChannels texel_format,
                            const std::string& pixel_layout,
-                           const std::vector<std::string>& uniforms)
-{
+                           const std::vector<std::string>& uniforms) {
     if (program_ != 0) {
         // Check if the program needs to be recompiled
         if (!is_shader_outdated(texel_format, uniforms, pixel_layout)) {
@@ -133,57 +123,43 @@ bool ShaderProgram::create(const std::string_view v_source,
     return true;
 }
 
-
-void ShaderProgram::uniform1i(const std::string& name, const int value) const
-{
+void ShaderProgram::uniform1i(const std::string& name, const int value) const {
     gl_canvas_.glUniform1i(static_cast<GLint>(uniforms_.at(name)), value);
 }
 
-
 void ShaderProgram::uniform2f(const std::string& name,
                               const float x,
-                              const float y) const
-{
+                              const float y) const {
     gl_canvas_.glUniform2f(static_cast<GLint>(uniforms_.at(name)), x, y);
 }
 
-
 void ShaderProgram::uniform3fv(const std::string& name,
                                const int count,
-                               const float* data) const
-{
+                               const float* data) const {
     gl_canvas_.glUniform3fv(
         static_cast<GLint>(uniforms_.at(name)), count, data);
 }
 
-
 void ShaderProgram::uniform4fv(const std::string& name,
                                const int count,
-                               const float* data) const
-{
+                               const float* data) const {
     gl_canvas_.glUniform4fv(
         static_cast<GLint>(uniforms_.at(name)), count, data);
 }
 
-
 void ShaderProgram::uniform_matrix4fv(const std::string& name,
                                       const int count,
                                       const GLboolean transpose,
-                                      const float* value) const
-{
+                                      const float* value) const {
     gl_canvas_.glUniformMatrix4fv(
         static_cast<GLint>(uniforms_.at(name)), count, transpose, value);
 }
 
-
-void ShaderProgram::use() const
-{
+void ShaderProgram::use() const {
     gl_canvas_.glUseProgram(program_);
 }
 
-
-const char* ShaderProgram::get_texel_format_define() const
-{
+const char* ShaderProgram::get_texel_format_define() const {
     switch (texel_format_) {
     case TexelChannels::FormatR:
         return "#define FORMAT_R\n";
@@ -198,9 +174,7 @@ const char* ShaderProgram::get_texel_format_define() const
     }
 }
 
-
-const char* ShaderProgram::get_source_channel_define() const
-{
+const char* ShaderProgram::get_source_channel_define() const {
     // Determine which channel to read from the texture based on
     // pixel_layout_[0] This is used in single-channel display mode (FORMAT_R)
     if (!pixel_layout_.empty()) {
@@ -218,9 +192,7 @@ const char* ShaderProgram::get_source_channel_define() const
     return "#define SOURCE_CHANNEL rrra\n";
 }
 
-
-GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const
-{
+GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const {
     const auto shader = gl_canvas_.glCreateShader(type);
 
     auto src = std::array{"#version 120\n",
@@ -249,9 +221,7 @@ GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const
     return shader;
 }
 
-
-std::string ShaderProgram::get_shader_type(const GLuint type)
-{
+std::string ShaderProgram::get_shader_type(const GLuint type) {
     auto name = std::string{};
     switch (type) {
     case GL_VERTEX_SHADER:

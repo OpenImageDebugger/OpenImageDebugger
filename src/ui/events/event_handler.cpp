@@ -42,19 +42,12 @@
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
 
-
-namespace oid
-{
+namespace oid {
 
 UIEventHandler::UIEventHandler(Dependencies deps, QObject* parent)
-    : QObject{parent}
-    , deps_{std::move(deps)}
-{
-}
+    : QObject{parent}, deps_{std::move(deps)} {}
 
-
-void UIEventHandler::resize_callback(const int w, const int h) const
-{
+void UIEventHandler::resize_callback(const int w, const int h) const {
     const auto lock = std::unique_lock{deps_.ui_mutex};
     for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
         stage->resize_callback(w, h);
@@ -67,9 +60,7 @@ void UIEventHandler::resize_callback(const int w, const int h) const
             deps_.ui_components.go_to_widget->height());
 }
 
-
-void UIEventHandler::scroll_callback(const float delta)
-{
+void UIEventHandler::scroll_callback(const float delta) {
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (deps_.state.link_views_enabled) {
         for (const auto& stage :
@@ -89,10 +80,8 @@ void UIEventHandler::scroll_callback(const float delta)
     deps_.state.request_render_update = true;
 }
 
-
 void UIEventHandler::mouse_drag_event(const int mouse_x,
-                                      const int mouse_y) const
-{
+                                      const int mouse_y) const {
     const auto virtual_motion = QPoint{mouse_x, mouse_y};
 
     const auto lock = std::unique_lock{deps_.ui_mutex};
@@ -109,18 +98,13 @@ void UIEventHandler::mouse_drag_event(const int mouse_x,
     deps_.state.request_render_update = true;
 }
 
-
 void UIEventHandler::mouse_move_event([[maybe_unused]] int mouse_x,
-                                      [[maybe_unused]] int mouse_y)
-{
+                                      [[maybe_unused]] int mouse_y) {
     emit statusBarUpdateRequested();
 }
 
-
 void UIEventHandler::propagate_key_press_event(
-    const QKeyEvent* key_event,
-    EventProcessCode& event_intercepted) const
-{
+    const QKeyEvent* key_event, EventProcessCode& event_intercepted) const {
     const auto lock = std::unique_lock{deps_.ui_mutex};
     for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
         if (stage->key_press_event(key_event->key()) ==
@@ -130,10 +114,8 @@ void UIEventHandler::propagate_key_press_event(
     }
 }
 
-
-void UIEventHandler::recenter_buffer() const
-{
-    const auto lock                 = std::unique_lock{deps_.ui_mutex};
+void UIEventHandler::recenter_buffer() const {
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto recenter_camera_impl = [](Stage& stage) {
         const auto cam_obj = stage.get_game_object("camera");
         if (!cam_obj.has_value()) {
@@ -163,16 +145,12 @@ void UIEventHandler::recenter_buffer() const
     deps_.state.request_render_update = true;
 }
 
-
-void UIEventHandler::link_views_toggle() const
-{
-    const auto lock                = std::unique_lock{deps_.ui_mutex};
+void UIEventHandler::link_views_toggle() const {
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     deps_.state.link_views_enabled = !deps_.state.link_views_enabled;
 }
 
-
-void UIEventHandler::decrease_float_precision() const
-{
+void UIEventHandler::decrease_float_precision() const {
     const auto shift_precision_left_impl = [](Stage& stage) {
         const auto buffer_obj = stage.get_game_object("buffer");
         if (buffer_obj.has_value()) {
@@ -201,9 +179,7 @@ void UIEventHandler::decrease_float_precision() const
     deps_.state.request_render_update = true;
 }
 
-
-void UIEventHandler::increase_float_precision() const
-{
+void UIEventHandler::increase_float_precision() const {
     const auto shift_precision_right_impl = [](Stage& stage) {
         const auto buffer_obj = stage.get_game_object("buffer");
         if (buffer_obj.has_value()) {
@@ -232,9 +208,7 @@ void UIEventHandler::increase_float_precision() const
     deps_.state.request_render_update = true;
 }
 
-
-void UIEventHandler::update_shift_precision() const
-{
+void UIEventHandler::update_shift_precision() const {
     const auto lock = std::unique_lock{deps_.ui_mutex};
 
     deps_.ui_components.ui->decrease_float_precision->setEnabled(false);
@@ -264,9 +238,7 @@ void UIEventHandler::update_shift_precision() const
     }
 }
 
-
-void UIEventHandler::rotate_90_cw() const
-{
+void UIEventHandler::rotate_90_cw() const {
     const auto request_90_cw_rotation = [](Stage& stage) {
         const auto buffer_obj = stage.get_game_object("buffer");
         if (buffer_obj.has_value()) {
@@ -295,9 +267,7 @@ void UIEventHandler::rotate_90_cw() const
     deps_.state.request_render_update = true;
 }
 
-
-void UIEventHandler::rotate_90_ccw() const
-{
+void UIEventHandler::rotate_90_ccw() const {
     const auto request_90_ccw_rotation = [](Stage& stage) {
         const auto buffer_obj = stage.get_game_object("buffer");
         if (buffer_obj.has_value()) {
@@ -326,14 +296,12 @@ void UIEventHandler::rotate_90_ccw() const
     deps_.state.request_render_update = true;
 }
 
-
-void UIEventHandler::buffer_selected(const QListWidgetItem* item)
-{
+void UIEventHandler::buffer_selected(const QListWidgetItem* item) {
     if (item == nullptr) {
         return;
     }
 
-    const auto lock  = std::unique_lock{deps_.ui_mutex};
+    const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto stage = deps_.buffer_data.stages.find(
         item->data(Qt::UserRole).toString().toStdString());
     if (stage == deps_.buffer_data.stages.end()) {
@@ -348,9 +316,7 @@ void UIEventHandler::buffer_selected(const QListWidgetItem* item)
     deps_.state.request_render_update = true;
 }
 
-
-void UIEventHandler::remove_selected_buffer()
-{
+void UIEventHandler::remove_selected_buffer() {
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (deps_.ui_components.ui->imageList->count() > 0 &&
         !deps_.buffer_data.currently_selected_stage.expired()) {
@@ -384,9 +350,7 @@ void UIEventHandler::remove_selected_buffer()
     }
 }
 
-
-void UIEventHandler::symbol_selected()
-{
+void UIEventHandler::symbol_selected() {
     if (deps_.ui_components.ui->symbolList->text().isEmpty()) {
         return;
     }
@@ -396,9 +360,7 @@ void UIEventHandler::symbol_selected()
     deps_.ui_components.ui->symbolList->setText("");
 }
 
-
-void UIEventHandler::symbol_completed(const QString& str)
-{
+void UIEventHandler::symbol_completed(const QString& str) {
     if (str.isEmpty()) {
         return;
     }
@@ -408,9 +370,7 @@ void UIEventHandler::symbol_completed(const QString& str)
     deps_.ui_components.ui->symbolList->clearFocus();
 }
 
-
-void UIEventHandler::export_buffer(const QString& buffer_name)
-{
+void UIEventHandler::export_buffer(const QString& buffer_name) {
     const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto stage_it =
         deps_.buffer_data.stages.find(buffer_name.toStdString());
@@ -418,7 +378,7 @@ void UIEventHandler::export_buffer(const QString& buffer_name)
         return;
     }
 
-    const auto stage      = stage_it->second;
+    const auto stage = stage_it->second;
     const auto buffer_obj = stage->get_game_object("buffer");
     if (!buffer_obj.has_value()) {
         return;
@@ -468,9 +428,7 @@ void UIEventHandler::export_buffer(const QString& buffer_name)
     }
 }
 
-
-void UIEventHandler::show_context_menu(const QPoint& pos)
-{
+void UIEventHandler::show_context_menu(const QPoint& pos) {
     if (deps_.ui_components.ui->imageList->itemAt(pos) != nullptr) {
         const auto globalPos =
             deps_.ui_components.ui->imageList->mapToGlobal(pos);
@@ -487,9 +445,7 @@ void UIEventHandler::show_context_menu(const QPoint& pos)
     }
 }
 
-
-void UIEventHandler::toggle_go_to_dialog() const
-{
+void UIEventHandler::toggle_go_to_dialog() const {
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (!deps_.ui_components.go_to_widget->isVisible()) {
         auto default_goal = vec4{0.0f, 0.0f, 0.0f, 0.0f};
@@ -506,7 +462,7 @@ void UIEventHandler::toggle_go_to_dialog() const
                 return;
             }
             const auto& cam = cam_opt->get();
-            default_goal    = cam.get_position();
+            default_goal = cam.get_position();
         }
 
         deps_.ui_components.go_to_widget->set_defaults(default_goal.x(),
@@ -516,9 +472,7 @@ void UIEventHandler::toggle_go_to_dialog() const
     deps_.ui_components.go_to_widget->toggle_visible();
 }
 
-
-void UIEventHandler::go_to_pixel(const float x, const float y) const
-{
+void UIEventHandler::go_to_pixel(const float x, const float y) const {
     const auto lock = std::unique_lock{deps_.ui_mutex};
     if (deps_.state.link_views_enabled) {
         for (const auto& stage :

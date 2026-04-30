@@ -36,11 +36,9 @@
 
 #include "ui/gl_canvas.h"
 
-namespace oid
-{
+namespace oid {
 
-class ShaderProgram
-{
+class ShaderProgram {
   public:
     enum class TexelChannels { FormatR, FormatRG, FormatRGB, FormatRGBA };
 

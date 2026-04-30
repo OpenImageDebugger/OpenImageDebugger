@@ -29,11 +29,9 @@
 #include "component.h"
 #include "visualization/shader.h"
 
-namespace oid
-{
+namespace oid {
 
-class Background final : public Component
-{
+class Background final : public Component {
   public:
     Background(const std::shared_ptr<GameObject>& game_object,
                const std::shared_ptr<GLCanvas>& gl_canvas);
@@ -50,8 +48,7 @@ class Background final : public Component
 
     [[nodiscard]] bool initialize() override;
 
-    void update() override
-    {
+    void update() override {
         // Do nothing
     }
 

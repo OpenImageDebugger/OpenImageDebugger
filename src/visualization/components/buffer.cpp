@@ -40,18 +40,15 @@
 #include "visualization/shaders/oid_shaders.h"
 #include "visualization/stage.h"
 
-namespace oid
-{
+namespace oid {
 
-namespace
-{
+namespace {
 
 // Helper function to validate buffer dimension
 bool validate_dimension(const int dimension,
                         const char* dimension_name,
                         const int min_value,
-                        const int max_value)
-{
+                        const int max_value) {
     if (dimension < min_value || dimension > max_value) {
         std::cerr << "[Error] Invalid buffer " << dimension_name << ": "
                   << dimension << " (must be between " << min_value << " and "
@@ -65,8 +62,7 @@ bool validate_dimension(const int dimension,
 void format_pixel_value(std::stringstream& message,
                         const BufferType type,
                         const std::span<const std::byte> buffer,
-                        const int pos)
-{
+                        const int pos) {
     switch (type) {
     case BufferType::Float32:
         message << std::bit_cast<const float*>(buffer.data())[pos];
@@ -89,12 +85,10 @@ void format_pixel_value(std::stringstream& message,
     }
 }
 
-
 // Helper function to get channel range based on display mode
 std::pair<int, int> get_channel_range(const int display_channel_mode,
                                       const int channels,
-                                      const char* pixel_layout)
-{
+                                      const char* pixel_layout) {
     if (display_channel_mode == 1) {
         int selected_ch = 0;
         if (pixel_layout[0] == 'g') {
@@ -109,21 +103,14 @@ std::pair<int, int> get_channel_range(const int display_channel_mode,
 
 } // namespace
 
-
-constexpr std::array<float, 8>
-    Buffer::no_ac_params{1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-
+constexpr std::array<float, 8> Buffer::no_ac_params{
+    1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
 Buffer::Buffer(const std::shared_ptr<GameObject>& game_object,
                const std::shared_ptr<GLCanvas>& gl_canvas)
-    : Component{game_object, gl_canvas}
-    , buff_prog_{*gl_canvas}
-{
-}
+    : Component{game_object, gl_canvas}, buff_prog_{*gl_canvas} {}
 
-
-Buffer::~Buffer() noexcept
-{
+Buffer::~Buffer() noexcept {
     if (const auto canvas = gl_canvas()) {
         const auto num_textures = num_textures_x * num_textures_y;
         canvas->glDeleteTextures(num_textures, buff_tex.data());
@@ -131,9 +118,7 @@ Buffer::~Buffer() noexcept
     }
 }
 
-
-bool Buffer::buffer_update()
-{
+bool Buffer::buffer_update() {
     const auto num_textures = num_textures_x * num_textures_y;
     gl_canvas_ref().glDeleteTextures(num_textures, buff_tex.data());
 
@@ -144,18 +129,16 @@ bool Buffer::buffer_update()
     return true;
 }
 
-
 void Buffer::get_pixel_info(std::stringstream& message,
                             const int x,
-                            const int y) const
-{
+                            const int y) const {
     if (x < 0 || static_cast<float>(x) >= buffer_width_f || y < 0 ||
         static_cast<float>(y) >= buffer_height_f) {
         message << "[out of bounds]";
         return;
     }
 
-    const auto pos                = channels * (y * step + x);
+    const auto pos = channels * (y * step + x);
     const auto [start_ch, end_ch] = get_channel_range(
         display_channel_mode_, channels, pixel_layout_.data());
 
@@ -169,25 +152,19 @@ void Buffer::get_pixel_info(std::stringstream& message,
     message << "]";
 }
 
-
-void Buffer::rotate(const float angle)
-{
+void Buffer::rotate(const float angle) {
     angle_ += angle;
 }
 
-
-void Buffer::set_icon_drawing_mode(const bool is_enabled) const
-{
+void Buffer::set_icon_drawing_mode(const bool is_enabled) const {
     buff_prog_.use();
 
     buff_prog_.uniform1i("enable_icon_mode", is_enabled ? 1 : 0);
 }
 
-
 void Buffer::update_min_color_value(float* lowest,
                                     const int i,
-                                    const int c) const
-{
+                                    const int c) const {
     if (type == BufferType::Float32 || type == BufferType::Float64) {
         lowest[c] = (std::min)(lowest[c],
                                std::bit_cast<const float*>(
@@ -212,10 +189,8 @@ void Buffer::update_min_color_value(float* lowest,
     }
 }
 
-
-void Buffer::recompute_min_color_values()
-{
-    const auto buffer_width_i  = static_cast<int>(buffer_width_f);
+void Buffer::recompute_min_color_values() {
+    const auto buffer_width_i = static_cast<int>(buffer_width_f);
     const auto buffer_height_i = static_cast<int>(buffer_height_f);
 
     auto lowest = min_buffer_values();
@@ -239,11 +214,9 @@ void Buffer::recompute_min_color_values()
     }
 }
 
-
 void Buffer::update_max_color_value(float* upper,
                                     const int i,
-                                    const int c) const
-{
+                                    const int c) const {
     if (type == BufferType::Float32 || type == BufferType::Float64) {
         upper[c] = (std::max)(upper[c],
                               std::bit_cast<const float*>(
@@ -268,10 +241,8 @@ void Buffer::update_max_color_value(float* upper,
     }
 }
 
-
-void Buffer::recompute_max_color_values()
-{
-    const auto buffer_width_i  = static_cast<int>(buffer_width_f);
+void Buffer::recompute_max_color_values() {
+    const auto buffer_width_i = static_cast<int>(buffer_width_f);
     const auto buffer_height_i = static_cast<int>(buffer_height_f);
 
     auto upper = max_buffer_values();
@@ -294,20 +265,16 @@ void Buffer::recompute_max_color_values()
     }
 }
 
-
-void Buffer::reset_contrast_brightness_parameters()
-{
+void Buffer::reset_contrast_brightness_parameters() {
     recompute_min_color_values();
     recompute_max_color_values();
 
     compute_contrast_brightness_parameters();
 }
 
-
-void Buffer::compute_contrast_brightness_parameters()
-{
+void Buffer::compute_contrast_brightness_parameters() {
     const auto lowest = min_buffer_values();
-    const auto upper  = max_buffer_values();
+    const auto upper = max_buffer_values();
 
     const auto auto_buffer_contrast = auto_buffer_contrast_brightness_.data();
     const auto auto_buffer_brightness =
@@ -341,22 +308,18 @@ void Buffer::compute_contrast_brightness_parameters()
             -lowest[c] / maxIntensity * auto_buffer_contrast[c];
     }
     for (int c = channels; c < 4; ++c) {
-        auto_buffer_contrast[c]   = auto_buffer_contrast[0];
+        auto_buffer_contrast[c] = auto_buffer_contrast[0];
         auto_buffer_brightness[c] = auto_buffer_brightness[0];
     }
 }
 
-
-int Buffer::sub_texture_id_at_coord(const int x, const int y) const
-{
+int Buffer::sub_texture_id_at_coord(const int x, const int y) const {
     const auto tx = x / max_texture_size;
     const auto ty = y / max_texture_size;
     return static_cast<int>(buff_tex[ty * num_textures_x + tx]);
 }
 
-
-void Buffer::configure(const BufferParams& params)
-{
+void Buffer::configure(const BufferParams& params) {
     // Validate buffer span
     if (params.buffer.data() == nullptr || params.buffer.empty()) {
         std::cerr << "[Error] Buffer span is null or empty" << std::endl;
@@ -399,9 +362,9 @@ void Buffer::configure(const BufferParams& params)
     // Validate buffer size (prevent potential DoS)
     // Calculate: width * height * step (step is stride in bytes per row)
     // Use checked multiplication to prevent overflow
-    const auto width_u  = static_cast<std::size_t>(params.buffer_width_i);
+    const auto width_u = static_cast<std::size_t>(params.buffer_width_i);
     const auto height_u = static_cast<std::size_t>(params.buffer_height_i);
-    const auto step_u   = static_cast<std::size_t>(params.step);
+    const auto step_u = static_cast<std::size_t>(params.step);
 
     // Check for potential overflow before multiplication
     if (width_u > 0 && height_u > BufferConstants::MAX_BUFFER_SIZE / width_u) {
@@ -418,13 +381,13 @@ void Buffer::configure(const BufferParams& params)
         return;
     }
 
-    buffer_         = params.buffer;
-    channels        = params.channels;
-    type            = params.type;
-    buffer_width_f  = static_cast<float>(params.buffer_width_i);
+    buffer_ = params.buffer;
+    channels = params.channels;
+    type = params.type;
+    buffer_width_f = static_cast<float>(params.buffer_width_i);
     buffer_height_f = static_cast<float>(params.buffer_height_i);
-    step            = params.step;
-    transpose       = params.transpose_buffer;
+    step = params.step;
+    transpose = params.transpose_buffer;
     // Only update pixel layout during initial setup, not on buffer updates
     // This preserves user-selected pixel formats when buffer updates
     if (buff_tex.empty() && !params.pixel_layout.empty() &&
@@ -434,9 +397,7 @@ void Buffer::configure(const BufferParams& params)
     // Otherwise, pixel_layout_ remains unchanged, preserving user selection
 }
 
-
-void Buffer::set_pixel_layout(const std::string& pixel_layout)
-{
+void Buffer::set_pixel_layout(const std::string& pixel_layout) {
     ///
     // Make sure the provided pixel_layout is valid
     if (pixel_layout.size() != 4) {
@@ -468,15 +429,11 @@ void Buffer::set_pixel_layout(const std::string& pixel_layout)
     create_shader_program();
 }
 
-
-const char* Buffer::get_pixel_layout() const
-{
+const char* Buffer::get_pixel_layout() const {
     return pixel_layout_.data();
 }
 
-
-void Buffer::set_display_channel_mode(const int display_channels)
-{
+void Buffer::set_display_channel_mode(const int display_channels) {
     // Valid values: -1 (use actual buffer channels) or 1-4 (specific channel
     // count) Reject 0 and values outside valid range
     if (display_channels != -1 &&
@@ -491,15 +448,11 @@ void Buffer::set_display_channel_mode(const int display_channels)
     create_shader_program();
 }
 
-
-int Buffer::get_display_channel_mode() const
-{
+int Buffer::get_display_channel_mode() const {
     return display_channel_mode_;
 }
 
-
-int Buffer::get_selected_channel_index() const
-{
+int Buffer::get_selected_channel_index() const {
     if (pixel_layout_[0] == 'g') {
         return 1;
     }
@@ -509,31 +462,25 @@ int Buffer::get_selected_channel_index() const
     return 0;
 }
 
-
-float Buffer::tile_coord_x(const int x) const
-{
+float Buffer::tile_coord_x(const int x) const {
     const auto buffer_width_i = static_cast<int>(buffer_width_f);
-    const auto last_width     = buffer_width_i % max_texture_size;
+    const auto last_width = buffer_width_i % max_texture_size;
     const auto tile_width =
         x > buffer_width_i - last_width ? last_width : max_texture_size;
     return static_cast<float>(x % max_texture_size) /
            static_cast<float>(tile_width - 1);
 }
 
-
-float Buffer::tile_coord_y(const int y) const
-{
+float Buffer::tile_coord_y(const int y) const {
     const auto buffer_height_i = static_cast<int>(buffer_height_f);
-    const auto last_height     = buffer_height_i % max_texture_size;
+    const auto last_height = buffer_height_i % max_texture_size;
     const auto tile_height =
         y > buffer_height_i - last_height ? last_height : max_texture_size;
     return static_cast<float>(y % max_texture_size) /
            static_cast<float>(tile_height - 1);
 }
 
-
-void Buffer::update()
-{
+void Buffer::update() {
     const auto stage = game_object_ref().get_stage();
     if (!stage.has_value()) {
         return;
@@ -548,7 +495,7 @@ void Buffer::update()
         return;
     }
     const auto& camera = camera_opt->get();
-    const auto zoom    = camera.compute_zoom();
+    const auto zoom = camera.compute_zoom();
 
     buff_prog_.use();
     if (zoom > BufferConstants::ZOOM_BORDER_THRESHOLD) {
@@ -560,9 +507,7 @@ void Buffer::update()
     update_object_pose();
 }
 
-
-void Buffer::update_object_pose() const
-{
+void Buffer::update_object_pose() const {
     const auto rotation = mat4::rotation(angle_);
 
     auto transposition = mat4{};
@@ -583,9 +528,7 @@ void Buffer::update_object_pose() const
     game_object_ref().set_pose(rotation * transposition);
 }
 
-
-bool Buffer::create_shader_program()
-{
+bool Buffer::create_shader_program() {
     // Buffer Shaders
     // Use display_channel_mode_ if set, otherwise use actual buffer channels
     const auto effective_channels =
@@ -624,9 +567,7 @@ bool Buffer::create_shader_program()
                               "enable_icon_mode"});
 }
 
-
-bool Buffer::initialize()
-{
+bool Buffer::initialize() {
     if (!create_shader_program()) {
         return false;
     }
@@ -657,12 +598,10 @@ bool Buffer::initialize()
     return true;
 }
 
-
-void Buffer::draw(const mat4& projection, const mat4& viewInv)
-{
+void Buffer::draw(const mat4& projection, const mat4& viewInv) {
     buff_prog_.use();
     const auto model = game_object_ref().get_pose();
-    const auto mvp   = projection * viewInv * model;
+    const auto mvp = projection * viewInv * model;
 
     gl_canvas_ref().glEnableVertexAttribArray(0);
     gl_canvas_ref().glActiveTexture(GL_TEXTURE0);
@@ -676,7 +615,7 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
         buff_prog_.uniform4fv("brightness_contrast", 2, no_ac_params.data());
     }
 
-    const auto buffer_width_i  = static_cast<int>(buffer_width_f);
+    const auto buffer_width_i = static_cast<int>(buffer_width_f);
     const auto buffer_height_i = static_cast<int>(buffer_height_f);
 
     auto remaining_h = buffer_height_i;
@@ -740,33 +679,24 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv)
     }
 }
 
-
-std::span<float> Buffer::min_buffer_values()
-{
+std::span<float> Buffer::min_buffer_values() {
     return min_buffer_values_;
 }
 
-
-std::span<float> Buffer::max_buffer_values()
-{
+std::span<float> Buffer::max_buffer_values() {
     return max_buffer_values_;
 }
 
-std::span<const float> Buffer::max_buffer_values() const
-{
+std::span<const float> Buffer::max_buffer_values() const {
     return max_buffer_values_;
 }
 
-
-const float* Buffer::auto_buffer_contrast_brightness() const
-{
+const float* Buffer::auto_buffer_contrast_brightness() const {
     return auto_buffer_contrast_brightness_.data();
 }
 
-
-void Buffer::setup_gl_buffer()
-{
-    const auto buffer_width_i  = static_cast<int>(buffer_width_f);
+void Buffer::setup_gl_buffer() {
+    const auto buffer_width_i = static_cast<int>(buffer_width_f);
     const auto buffer_height_i = static_cast<int>(buffer_height_f);
 
     // Initialize contrast parameters
@@ -774,7 +704,7 @@ void Buffer::setup_gl_buffer()
 
     // Buffer texture
     constexpr auto max_texture_size_f = static_cast<float>(max_texture_size);
-    num_textures_x                    = static_cast<int>(
+    num_textures_x = static_cast<int>(
         std::ceil(static_cast<float>(buffer_width_i) / max_texture_size_f));
     num_textures_y = static_cast<int>(
         std::ceil(static_cast<float>(buffer_height_i) / max_texture_size_f));
@@ -783,7 +713,7 @@ void Buffer::setup_gl_buffer()
     buff_tex.resize(num_textures);
     gl_canvas_ref().glGenTextures(num_textures, buff_tex.data());
 
-    auto tex_type   = GLuint{GL_UNSIGNED_BYTE};
+    auto tex_type = GLuint{GL_UNSIGNED_BYTE};
     auto tex_format = GLuint{GL_RED};
 
     if (type == BufferType::Float32 || type == BufferType::Float64) {

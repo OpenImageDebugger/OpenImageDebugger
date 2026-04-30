@@ -29,55 +29,39 @@
 // This file contains Qt override methods and delegation methods for
 // compatibility.
 
-namespace oid
-{
+namespace oid {
 
-void MainWindow::resize_callback(const int w, const int h) const
-{
+void MainWindow::resize_callback(const int w, const int h) const {
     event_handler_->resize_callback(w, h);
 }
 
-
-void MainWindow::scroll_callback(const float delta) const
-{
+void MainWindow::scroll_callback(const float delta) const {
     event_handler_->scroll_callback(delta);
 }
 
-
-void MainWindow::mouse_drag_event(const int mouse_x, const int mouse_y) const
-{
+void MainWindow::mouse_drag_event(const int mouse_x, const int mouse_y) const {
     event_handler_->mouse_drag_event(mouse_x, mouse_y);
 }
 
-
-void MainWindow::mouse_move_event(const int mouse_x, const int mouse_y) const
-{
+void MainWindow::mouse_move_event(const int mouse_x, const int mouse_y) const {
     event_handler_->mouse_move_event(mouse_x, mouse_y);
 }
 
-
-void MainWindow::resizeEvent(QResizeEvent*)
-{
+void MainWindow::resizeEvent(QResizeEvent*) {
     persist_settings_deferred();
 }
 
-
-void MainWindow::moveEvent(QMoveEvent*)
-{
+void MainWindow::moveEvent(QMoveEvent*) {
     persist_settings_deferred();
 }
 
-
-void MainWindow::closeEvent(QCloseEvent*)
-{
-    const auto lock        = std::unique_lock{ui_mutex_};
+void MainWindow::closeEvent(QCloseEvent*) {
+    const auto lock = std::unique_lock{ui_mutex_};
     state_.is_window_ready = false;
     persist_settings_deferred();
 }
 
-
-bool MainWindow::eventFilter(QObject* target, QEvent* event)
-{
+bool MainWindow::eventFilter(QObject* target, QEvent* event) {
     KeyboardState::update_keyboard_state(event);
 
     if (event->type() == QEvent::KeyPress) {

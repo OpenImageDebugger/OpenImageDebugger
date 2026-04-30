@@ -36,14 +36,12 @@
 #include "ipc/raw_data_decode.h"
 #include "visualization/shader.h"
 
-namespace oid
-{
+namespace oid {
 
-namespace BufferConstants
-{
-constexpr int MAX_TEXTURE_SIZE        = 2048;
+namespace BufferConstants {
+constexpr int MAX_TEXTURE_SIZE = 2048;
 constexpr float ZOOM_BORDER_THRESHOLD = 40.0f;
-constexpr int MIN_BUFFER_DIMENSION    = 1;
+constexpr int MIN_BUFFER_DIMENSION = 1;
 constexpr int MAX_BUFFER_DIMENSION =
     131072; // 2^17 = 128K (closest power of 2 to 100k)
 constexpr int MIN_CHANNELS = 1;
@@ -52,8 +50,7 @@ constexpr std::size_t MAX_BUFFER_SIZE =
     16ULL * 1024ULL * 1024ULL * 1024ULL; // 16GB
 } // namespace BufferConstants
 
-struct BufferParams
-{
+struct BufferParams {
     std::span<const std::byte> buffer;
     int buffer_width_i;
     int buffer_height_i;
@@ -64,8 +61,7 @@ struct BufferParams
     bool transpose_buffer;
 };
 
-class Buffer final : public Component
-{
+class Buffer final : public Component {
   public:
     Buffer(const std::shared_ptr<GameObject>& game_object,
            const std::shared_ptr<GLCanvas>& gl_canvas);
@@ -167,14 +163,8 @@ class Buffer final : public Component
 
     std::array<float, 4> min_buffer_values_{};
     std::array<float, 4> max_buffer_values_{};
-    std::array<float, 8> auto_buffer_contrast_brightness_{1.0f,
-                                                          1.0f,
-                                                          1.0f,
-                                                          1.0f,
-                                                          0.0f,
-                                                          0.0f,
-                                                          0.0f,
-                                                          0.0f};
+    std::array<float, 8> auto_buffer_contrast_brightness_{
+        1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
     float angle_{0.0f};
 
     ShaderProgram buff_prog_;

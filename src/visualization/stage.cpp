@@ -37,18 +37,14 @@
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
 
+namespace oid {
 
-namespace oid
-{
-
-namespace
-{
+namespace {
 
 // Helper function to safely get the camera component
 std::optional<std::reference_wrapper<Camera>> get_camera_component(
     const std::map<std::string, std::shared_ptr<GameObject>, std::less<>>&
-        game_objects)
-{
+        game_objects) {
     const auto camera_it = game_objects.find("camera");
     if (camera_it == game_objects.end() || !camera_it->second) [[unlikely]] {
         std::cerr << "[Error] Camera game object not found" << std::endl;
@@ -69,54 +65,35 @@ std::optional<std::reference_wrapper<Camera>> get_camera_component(
 
 } // namespace
 
-
-struct CompareRenderOrder
-{
-    bool operator()(const Component* a, const Component* b) const
-    {
+struct CompareRenderOrder {
+    bool operator()(const Component* a, const Component* b) const {
         return a->render_index() < b->render_index();
     }
 };
 
+Stage::Stage(MainWindow& main_window) : main_window_{main_window} {}
 
-Stage::Stage(MainWindow& main_window)
-    : main_window_{main_window}
-{
-}
-
-
-bool Stage::get_contrast_enabled() const
-{
+bool Stage::get_contrast_enabled() const {
     return contrast_enabled_;
 }
 
-
-void Stage::set_contrast_enabled(const bool enabled)
-{
+void Stage::set_contrast_enabled(const bool enabled) {
     contrast_enabled_ = enabled;
 }
 
-
-std::vector<uint8_t>& Stage::get_buffer_icon()
-{
+std::vector<uint8_t>& Stage::get_buffer_icon() {
     return buffer_icon_;
 }
 
-
-const std::vector<uint8_t>& Stage::get_buffer_icon() const
-{
+const std::vector<uint8_t>& Stage::get_buffer_icon() const {
     return buffer_icon_;
 }
 
-
-MainWindow& Stage::get_main_window() const
-{
+MainWindow& Stage::get_main_window() const {
     return main_window_;
 }
 
-
-bool Stage::initialize(const BufferParams& params)
-{
+bool Stage::initialize(const BufferParams& params) {
     const auto camera_obj = std::make_shared<GameObject>();
 
     camera_obj->set_stage(*this);
@@ -158,9 +135,7 @@ bool Stage::initialize(const BufferParams& params)
     });
 }
 
-
-bool Stage::buffer_update(const BufferParams& params)
-{
+bool Stage::buffer_update(const BufferParams& params) {
     const auto buffer_it = all_game_objects.find("buffer");
     if (buffer_it == all_game_objects.end() || !buffer_it->second)
         [[unlikely]] {
@@ -169,7 +144,7 @@ bool Stage::buffer_update(const BufferParams& params)
     }
 
     const auto& [buffer_name, buffer_shared_ptr] = *buffer_it;
-    const auto buffer_obj                        = buffer_shared_ptr.get();
+    const auto buffer_obj = buffer_shared_ptr.get();
     const auto buffer_component_opt =
         buffer_obj->get_component<Buffer>("buffer_component");
 
@@ -204,10 +179,8 @@ bool Stage::buffer_update(const BufferParams& params)
     return true;
 }
 
-
 std::optional<std::reference_wrapper<GameObject>>
-Stage::get_game_object(const std::string& tag)
-{
+Stage::get_game_object(const std::string& tag) {
     if (!all_game_objects.contains(tag)) {
         return std::nullopt;
     }
@@ -215,17 +188,13 @@ Stage::get_game_object(const std::string& tag)
     return std::ref(*all_game_objects[tag]);
 }
 
-
-void Stage::update() const
-{
+void Stage::update() const {
     for (const auto& game_obj : all_game_objects | std::views::values) {
         game_obj->update();
     }
 }
 
-
-void Stage::draw()
-{
+void Stage::draw() {
     auto ordered_components = std::set<Component*, CompareRenderOrder>{};
 
     // TODO: use camera tags so I can have multiple cameras (useful for drawing
@@ -239,7 +208,7 @@ void Stage::draw()
     }
 
     const auto& [camera_name, camera_shared_ptr] = *camera_it;
-    const auto camera_obj                        = camera_shared_ptr.get();
+    const auto camera_obj = camera_shared_ptr.get();
     const auto camera_component_opt =
         camera_obj->get_component<Camera>("camera_component");
 
@@ -249,7 +218,7 @@ void Stage::draw()
     }
 
     const auto& camera_component = camera_component_opt->get();
-    const auto view_inv          = camera_obj->get_pose().inv();
+    const auto view_inv = camera_obj->get_pose().inv();
 
     for (const auto& game_obj : all_game_objects | std::views::values) {
         for (const auto& component :
@@ -263,9 +232,7 @@ void Stage::draw()
     }
 }
 
-
-void Stage::scroll_callback(const float delta) const
-{
+void Stage::scroll_callback(const float delta) const {
     const auto camera_component_opt = get_camera_component(all_game_objects);
     if (!camera_component_opt.has_value()) {
         return;
@@ -275,9 +242,7 @@ void Stage::scroll_callback(const float delta) const
     camera_component.scroll_callback(delta);
 }
 
-
-void Stage::resize_callback(const int w, const int h) const
-{
+void Stage::resize_callback(const int w, const int h) const {
     const auto camera_component_opt = get_camera_component(all_game_objects);
     if (!camera_component_opt.has_value()) {
         return;
@@ -287,25 +252,19 @@ void Stage::resize_callback(const int w, const int h) const
     camera_component.window_resized(w, h);
 }
 
-
-void Stage::mouse_drag_event(const int mouse_x, const int mouse_y) const
-{
+void Stage::mouse_drag_event(const int mouse_x, const int mouse_y) const {
     for (const auto& game_obj : all_game_objects | std::views::values) {
         game_obj->mouse_drag_event(mouse_x, mouse_y);
     }
 }
 
-
-void Stage::mouse_move_event(const int mouse_x, const int mouse_y) const
-{
+void Stage::mouse_move_event(const int mouse_x, const int mouse_y) const {
     for (const auto& game_obj : all_game_objects | std::views::values) {
         game_obj->mouse_move_event(mouse_x, mouse_y);
     }
 }
 
-
-EventProcessCode Stage::key_press_event(const int key_code) const
-{
+EventProcessCode Stage::key_press_event(const int key_code) const {
     auto event_intercepted = EventProcessCode::IGNORED;
 
     for (const auto& game_obj : all_game_objects | std::views::values) {
@@ -320,15 +279,11 @@ EventProcessCode Stage::key_press_event(const int key_code) const
     return event_intercepted;
 }
 
-
-void Stage::request_render_update() const
-{
+void Stage::request_render_update() const {
     main_window_.request_render_update();
 }
 
-
-void Stage::go_to_pixel(const float x, const float y) const
-{
+void Stage::go_to_pixel(const float x, const float y) const {
     const auto camera_component_opt = get_camera_component(all_game_objects);
     if (!camera_component_opt.has_value()) {
         return;
@@ -338,9 +293,7 @@ void Stage::go_to_pixel(const float x, const float y) const
     camera_component.move_to(x, y);
 }
 
-
-void Stage::set_icon_drawing_mode(const bool is_enabled)
-{
+void Stage::set_icon_drawing_mode(const bool is_enabled) {
     const auto buffer_obj = all_game_objects["buffer"].get();
     if (buffer_obj == nullptr) {
         return;

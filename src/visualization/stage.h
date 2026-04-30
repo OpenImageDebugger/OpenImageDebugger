@@ -36,15 +36,12 @@
 #include "visualization/components/buffer.h"
 #include "visualization/events.h"
 
-
-namespace oid
-{
+namespace oid {
 
 class MainWindow;
 class GameObject;
 
-class Stage
-{
+class Stage {
   public:
     explicit Stage(MainWindow& main_window);
 

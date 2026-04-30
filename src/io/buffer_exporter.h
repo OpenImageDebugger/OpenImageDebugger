@@ -30,8 +30,7 @@
 
 #include "visualization/components/buffer.h"
 
-namespace oid::BufferExporter
-{
+namespace oid::BufferExporter {
 
 enum class OutputType { Bitmap, OctaveMatrix };
 

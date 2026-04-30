@@ -33,23 +33,17 @@
 // Required for GameObject::get_component<>() template method instantiation
 #include "visualization/game_object.h"
 
-
-namespace oid
-{
+namespace oid {
 
 GLCanvas::GLCanvas(QWidget* parent)
-    : QOpenGLWidget{parent}
-    , text_renderer_{std::make_unique<GLTextRenderer>(*this)}
-{
+    : QOpenGLWidget{parent},
+      text_renderer_{std::make_unique<GLTextRenderer>(*this)} {
     mouse_down_[0] = mouse_down_[1] = false;
 }
 
-
 GLCanvas::~GLCanvas() = default;
 
-
-void GLCanvas::mouseMoveEvent(QMouseEvent* ev)
-{
+void GLCanvas::mouseMoveEvent(QMouseEvent* ev) {
     const auto last_mouse_x = mouse_x_;
     const auto last_mouse_y = mouse_y_;
 
@@ -65,9 +59,7 @@ void GLCanvas::mouseMoveEvent(QMouseEvent* ev)
     }
 }
 
-
-void GLCanvas::mousePressEvent(QMouseEvent* ev)
-{
+void GLCanvas::mousePressEvent(QMouseEvent* ev) {
     if (ev->button() == Qt::LeftButton) {
         mouse_down_[0] = true;
     }
@@ -77,9 +69,7 @@ void GLCanvas::mousePressEvent(QMouseEvent* ev)
     }
 }
 
-
-void GLCanvas::mouseReleaseEvent(QMouseEvent* ev)
-{
+void GLCanvas::mouseReleaseEvent(QMouseEvent* ev) {
     if (ev->button() == Qt::LeftButton) {
         mouse_down_[0] = false;
     }
@@ -89,9 +79,7 @@ void GLCanvas::mouseReleaseEvent(QMouseEvent* ev)
     }
 }
 
-
-void GLCanvas::initializeGL()
-{
+void GLCanvas::initializeGL() {
     this->makeCurrent();
     if (const auto context = this->context();
         context == nullptr || !context->isValid()) [[unlikely]] {
@@ -109,8 +97,8 @@ void GLCanvas::initializeGL()
 
     ///
     // Texture for generating icons
-    const auto icon_size   = main_window().get_icon_size();
-    const auto icon_width  = static_cast<int>(icon_size.width());
+    const auto icon_size = MainWindow::get_icon_size();
+    const auto icon_width = static_cast<int>(icon_size.width());
     const auto icon_height = static_cast<int>(icon_size.height());
     glGenTextures(1, &icon_texture_);
     glBindTexture(GL_TEXTURE_2D, icon_texture_);
@@ -157,31 +145,23 @@ void GLCanvas::initializeGL()
     initialized_ = true;
 }
 
-
-void GLCanvas::paintGL()
-{
+void GLCanvas::paintGL() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     main_window().draw();
 }
 
-
-void GLCanvas::wheelEvent(QWheelEvent* ev)
-{
+void GLCanvas::wheelEvent(QWheelEvent* ev) {
     main_window().scroll_callback(static_cast<float>(ev->angleDelta().y()) /
                                   120.0f);
 }
 
-
-const GLTextRenderer* GLCanvas::get_text_renderer() const
-{
+const GLTextRenderer* GLCanvas::get_text_renderer() const {
     return text_renderer_.get();
 }
 
-
 void GLCanvas::render_buffer_icon(Stage& stage,
                                   const int icon_width,
-                                  const int icon_height)
-{
+                                  const int icon_height) {
     glBindFramebuffer(GL_FRAMEBUFFER_EXT, icon_fbo_);
 
     glViewport(0, 0, icon_width, icon_height);
@@ -233,22 +213,16 @@ void GLCanvas::render_buffer_icon(Stage& stage,
     cam.window_resized(width(), height());
 }
 
-
-void GLCanvas::resizeGL(const int w, const int h)
-{
+void GLCanvas::resizeGL(const int w, const int h) {
     glViewport(0, 0, w, h);
     main_window().resize_callback(w, h);
 }
 
-
-void GLCanvas::set_main_window(MainWindow& mw)
-{
+void GLCanvas::set_main_window(MainWindow& mw) {
     main_window_ = std::ref(mw);
 }
 
-
-void list_gl_extensions()
-{
+void list_gl_extensions() {
     auto num_exts = GLint{0};
     glGetIntegerv(GL_NUM_EXTENSIONS, &num_exts);
 

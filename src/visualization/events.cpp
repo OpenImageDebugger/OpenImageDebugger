@@ -30,14 +30,11 @@
 #include <QApplication>
 #include <QKeyEvent>
 
-namespace oid
-{
+namespace oid {
 
 std::set<int> KeyboardState::pressed_keys_{};
 
-
-bool KeyboardState::is_modifier_key_pressed(const ModifierKey key)
-{
+bool KeyboardState::is_modifier_key_pressed(const ModifierKey key) {
     switch (key) {
     case ModifierKey::Alt:
         return (QApplication::keyboardModifiers() & Qt::AltModifier) != 0;
@@ -51,9 +48,7 @@ bool KeyboardState::is_modifier_key_pressed(const ModifierKey key)
     }
 }
 
-
-bool KeyboardState::is_key_pressed(const Key key)
-{
+bool KeyboardState::is_key_pressed(const Key key) {
     switch (key) {
     case Key::Left:
         return pressed_keys_.contains(Qt::Key_Left);
@@ -73,9 +68,7 @@ bool KeyboardState::is_key_pressed(const Key key)
     }
 }
 
-
-void KeyboardState::update_keyboard_state(const QEvent* event)
-{
+void KeyboardState::update_keyboard_state(const QEvent* event) {
     if (event->type() == QEvent::KeyPress) {
         pressed_keys_.insert(dynamic_cast<const QKeyEvent*>(event)->key());
     } else if (event->type() == QEvent::KeyRelease) {

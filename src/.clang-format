@@ -1,28 +1,13 @@
-BinPackParameters: false
-AllowAllParametersOfDeclarationOnNextLine: false
+BasedOnStyle: LLVM
 ColumnLimit: 80
 IndentWidth: 4
 UseTab: Never
-AlignConsecutiveAssignments: true
-PointerBindsToType: true
-Cpp11BracedListStyle: true
-AlignAfterOpenBracket: Align
-AlignEscapedNewlinesLeft: true
+DerivePointerAlignment: false
+PointerAlignment: Left
 AllowShortBlocksOnASingleLine: Never
-AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: None
+AllowShortFunctionsOnASingleLine: Empty
 BinPackArguments: false
-AlwaysBreakTemplateDeclarations: Yes
-AlignOperands: true
-BraceWrapping:
-  AfterFunction: true
-  AfterNamespace: true
-  AfterClass: true
-  AfterStruct: true
-  AfterUnion: true
-BreakBeforeBraces: Custom
-MaxEmptyLinesToKeep: 2
+BinPackParameters: false
+PackConstructorInitializers: BinPack
 SortIncludes: CaseSensitive
-SpaceBeforeAssignmentOperators: true
-BreakConstructorInitializers: BeforeComma
-InsertBraces: true
+InsertNewlineAtEOF: true

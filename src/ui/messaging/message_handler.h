@@ -38,21 +38,18 @@
 class QListWidgetItem;
 class QTcpSocket;
 
-namespace oid
-{
+namespace oid {
 
 struct BufferData;
 struct UIComponents;
 struct WindowState;
 class Stage;
 
-class MessageHandler : public QObject
-{
+class MessageHandler : public QObject {
     Q_OBJECT
 
   public:
-    struct Dependencies
-    {
+    struct Dependencies {
         std::recursive_mutex& ui_mutex;
         BufferData& buffer_data;
         WindowState& state;

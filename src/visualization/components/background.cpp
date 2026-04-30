@@ -31,27 +31,19 @@
 #include "visualization/shaders/oid_shaders.h"
 #include "visualization/stage.h"
 
-namespace oid
-{
+namespace oid {
 
 Background::Background(const std::shared_ptr<GameObject>& game_object,
                        const std::shared_ptr<GLCanvas>& gl_canvas)
-    : Component{game_object, gl_canvas}
-    , background_prog{*gl_canvas}
-{
-}
+    : Component{game_object, gl_canvas}, background_prog{*gl_canvas} {}
 
-
-Background::~Background() noexcept
-{
+Background::~Background() noexcept {
     if (const auto canvas = gl_canvas()) {
         canvas->glDeleteBuffers(1, &background_vbo);
     }
 }
 
-
-bool Background::initialize()
-{
+bool Background::initialize() {
     if (!background_prog.create(shader::background_vert_shader,
                                 shader::background_frag_shader,
                                 ShaderProgram::TexelChannels::FormatR,
@@ -82,9 +74,7 @@ bool Background::initialize()
     return true;
 }
 
-
-void Background::draw(const mat4&, const mat4&)
-{
+void Background::draw(const mat4&, const mat4&) {
     background_prog.use();
 
     gl_canvas_ref().glEnableVertexAttribArray(0);
@@ -93,9 +83,7 @@ void Background::draw(const mat4&, const mat4&)
     gl_canvas_ref().glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-
-constexpr int Background::render_index() const
-{
+constexpr int Background::render_index() const {
     return -100;
 }
 

@@ -26,9 +26,7 @@
 #ifndef OID_SHADERS_H_
 #define OID_SHADERS_H_
 
-
-namespace oid::shader
-{
+namespace oid::shader {
 
 extern const char* const buff_frag_shader;
 extern const char* const buff_vert_shader;

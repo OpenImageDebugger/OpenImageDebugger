@@ -32,21 +32,13 @@
 #include <QAbstractItemView>
 #include <QKeyEvent>
 
+namespace oid {
 
-namespace oid
-{
-
-SymbolSearchInput::SymbolSearchInput(QWidget* parent)
-    : QLineEdit{parent}
-{
-}
-
+SymbolSearchInput::SymbolSearchInput(QWidget* parent) : QLineEdit{parent} {}
 
 SymbolSearchInput::~SymbolSearchInput() = default;
 
-
-void SymbolSearchInput::set_completer(SymbolCompleter& completer)
-{
+void SymbolSearchInput::set_completer(SymbolCompleter& completer) {
     if (completer_.has_value()) {
         disconnect(&completer_->get(), nullptr, this, nullptr);
     }
@@ -60,25 +52,19 @@ void SymbolSearchInput::set_completer(SymbolCompleter& completer)
             &SymbolSearchInput::insert_completion);
 }
 
-
-SymbolCompleter* SymbolSearchInput::symbolCompleter() const
-{
+SymbolCompleter* SymbolSearchInput::symbolCompleter() const {
     if (!completer_.has_value()) {
         return nullptr;
     }
     return &completer_->get();
 }
 
-
-void SymbolSearchInput::insert_completion(const QString& completion)
-{
+void SymbolSearchInput::insert_completion(const QString& completion) {
     setText(completion);
     selectAll();
 }
 
-
-void SymbolSearchInput::keyPressEvent(QKeyEvent* e)
-{
+void SymbolSearchInput::keyPressEvent(QKeyEvent* e) {
     // The following keys are forwarded by the completer to the widget
     switch (e->key()) {
     case Qt::Key_Escape:

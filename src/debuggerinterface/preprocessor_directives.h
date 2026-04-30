@@ -26,33 +26,33 @@
 #ifndef PREPROCESSOR_DIRECTIVES_H_
 #define PREPROCESSOR_DIRECTIVES_H_
 
-#define RAISE_PY_EXCEPTION(exception_type, msg)        \
-    do {                                               \
-        PyGILState_STATE gstate = PyGILState_Ensure(); \
-        PyErr_SetString(exception_type, msg);          \
-        PyGILState_Release(gstate);                    \
+#define RAISE_PY_EXCEPTION(exception_type, msg)                                \
+    do {                                                                       \
+        PyGILState_STATE gstate = PyGILState_Ensure();                         \
+        PyErr_SetString(exception_type, msg);                                  \
+        PyGILState_Release(gstate);                                            \
     } while (0)
 
-#define CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, ret)         \
-    if (py_##name == nullptr) {                                       \
-        RAISE_PY_EXCEPTION(                                           \
-            PyExc_KeyError,                                           \
-            "Missing key in dictionary provided to " current_ctx_name \
-            ": Was expecting <" #name "> key");                       \
-        return ret;                                                   \
+#define CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, ret)                  \
+    if (py_##name == nullptr) {                                                \
+        RAISE_PY_EXCEPTION(                                                    \
+            PyExc_KeyError,                                                    \
+            "Missing key in dictionary provided to " current_ctx_name          \
+            ": Was expecting <" #name "> key");                                \
+        return ret;                                                            \
     }
 
 #define OID_EMPTY_PARAMETER
-#define CHECK_FIELD_PROVIDED(name, current_ctx_name) \
+#define CHECK_FIELD_PROVIDED(name, current_ctx_name)                           \
     CHECK_FIELD_PROVIDED_RET(name, current_ctx_name, OID_EMPTY_PARAMETER)
 
-#define CHECK_FIELD_TYPE(name, type_checker_funct, current_ctx_name)    \
-    if (type_checker_funct(py_##name) == 0) {                           \
-        RAISE_PY_EXCEPTION(                                             \
-            PyExc_TypeError,                                            \
-            "Key " #name " provided to " current_ctx_name " does not "  \
-            "have the expected type (" #type_checker_funct " failed)"); \
-        return;                                                         \
+#define CHECK_FIELD_TYPE(name, type_checker_funct, current_ctx_name)           \
+    if (type_checker_funct(py_##name) == 0) {                                  \
+        RAISE_PY_EXCEPTION(                                                    \
+            PyExc_TypeError,                                                   \
+            "Key " #name " provided to " current_ctx_name " does not "         \
+            "have the expected type (" #type_checker_funct " failed)");        \
+        return;                                                                \
     }
 
 #endif // PREPROCESSOR_DIRECTIVES_H_

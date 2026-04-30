@@ -23,8 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-namespace oid::shader
-{
+namespace oid::shader {
 extern auto const buff_vert_shader{R"glsl(
 
 attribute vec2 input_position;
