@@ -42,10 +42,6 @@ class Camera final : public Component {
 
     Camera& operator=(const Camera& cam);
 
-    Camera(Camera&&) = delete;
-
-    Camera& operator=(Camera&&) = delete;
-
     static constexpr float zoom_factor{1.1f};
 
     [[nodiscard]] mat4& projection() noexcept {
