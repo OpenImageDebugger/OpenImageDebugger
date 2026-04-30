@@ -36,8 +36,7 @@ class QKeyEvent;
 class QListWidgetItem;
 class QPoint;
 
-namespace oid
-{
+namespace oid {
 
 struct BufferData;
 struct ChannelNames;
@@ -46,13 +45,11 @@ struct WindowState;
 class Stage;
 enum class EventProcessCode;
 
-class UIEventHandler : public QObject
-{
+class UIEventHandler : public QObject {
     Q_OBJECT
 
   public:
-    struct Dependencies
-    {
+    struct Dependencies {
         std::recursive_mutex& ui_mutex;
         BufferData& buffer_data;
         WindowState& state;

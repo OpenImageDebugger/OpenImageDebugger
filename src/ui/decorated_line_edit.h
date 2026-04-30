@@ -30,11 +30,9 @@
 
 #include <QLineEdit>
 
-namespace oid
-{
+namespace oid {
 
-class DecoratedLineEdit final : public QLineEdit
-{
+class DecoratedLineEdit final : public QLineEdit {
     Q_OBJECT
 
   public:

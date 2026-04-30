@@ -34,8 +34,7 @@
 #include <QSize>
 #include <QString>
 
-namespace oid
-{
+namespace oid {
 
 struct BufferData;
 struct ChannelNames;
@@ -43,13 +42,11 @@ struct UIComponents;
 struct WindowState;
 class MainWindow;
 
-class SettingsApplier : public QObject
-{
+class SettingsApplier : public QObject {
     Q_OBJECT
 
   public:
-    struct Dependencies
-    {
+    struct Dependencies {
         std::recursive_mutex& ui_mutex;
         WindowState& state;
         UIComponents& ui_components;

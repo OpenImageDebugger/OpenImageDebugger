@@ -28,17 +28,13 @@
 
 #include <memory>
 
-
 #include <qwidget.h>
-
 
 #include "decorated_line_edit.h"
 
-namespace oid
-{
+namespace oid {
 
-class GoToWidget final : public QWidget
-{
+class GoToWidget final : public QWidget {
     Q_OBJECT
 
   public:
@@ -51,7 +47,6 @@ class GoToWidget final : public QWidget
 
   protected:
     void keyPressEvent(QKeyEvent* e) override;
-
 
   private:
     std::unique_ptr<DecoratedLineEdit> x_coordinate_{};

@@ -28,13 +28,11 @@
 
 #include <Eigen/Dense>
 
-namespace oid
-{
+namespace oid {
 
 class mat4;
 
-class vec4
-{
+class vec4 {
     friend class mat4;
 
   public:
@@ -44,24 +42,21 @@ class vec4
 
     vec4& operator+=(const vec4& b);
 
-    friend vec4 operator+(const vec4& a, const vec4& b)
-    {
+    friend vec4 operator+(const vec4& a, const vec4& b) {
         return {a.vec_[0] + b.vec_[0],
                 a.vec_[1] + b.vec_[1],
                 a.vec_[2] + b.vec_[2],
                 a.vec_[3] + b.vec_[3]};
     }
 
-    friend vec4 operator-(const vec4& a, const vec4& b)
-    {
+    friend vec4 operator-(const vec4& a, const vec4& b) {
         return {a.vec_[0] - b.vec_[0],
                 a.vec_[1] - b.vec_[1],
                 a.vec_[2] - b.vec_[2],
                 a.vec_[3] - b.vec_[3]};
     }
 
-    friend vec4 operator*(const vec4& vec, const float scalar)
-    {
+    friend vec4 operator*(const vec4& vec, const float scalar) {
         auto result = vec4{vec};
         result.vec_ *= scalar;
 
@@ -90,9 +85,7 @@ class vec4
 
 vec4 operator-(const vec4& vector);
 
-
-class mat4
-{
+class mat4 {
   public:
     void set_identity();
 
@@ -104,12 +97,8 @@ class mat4
                       float y,
                       float z);
 
-    void set_from_st(float scaleX,
-                     float scaleY,
-                     float scaleZ,
-                     float x,
-                     float y,
-                     float z);
+    void set_from_st(
+        float scaleX, float scaleY, float scaleZ, float x, float y, float z);
 
     float* data();
 
@@ -121,8 +110,7 @@ class mat4
 
     [[nodiscard]] mat4 inv() const;
 
-    friend mat4 operator*(const mat4& a, const mat4& b)
-    {
+    friend mat4 operator*(const mat4& a, const mat4& b) {
         auto res = mat4{};
 
         res.mat_ = a.mat_ * b.mat_;

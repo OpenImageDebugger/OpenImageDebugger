@@ -29,17 +29,14 @@
 #include "component.h"
 #include "math/linear_algebra.h"
 
-namespace oid
-{
+namespace oid {
 
-
-class Camera final : public Component
-{
+class Camera final : public Component {
   public:
     Camera(const std::shared_ptr<GameObject>& game_object,
            const std::shared_ptr<GLCanvas>& gl_canvas);
 
-    ~Camera() override = default;
+    ~Camera() noexcept override;
 
     Camera(const Camera& cam);
 
@@ -57,8 +54,7 @@ class Camera final : public Component
 
     void update() override;
 
-    void draw(const mat4&, const mat4&) override
-    {
+    void draw(const mat4&, const mat4&) override {
         // Do nothing
     }
 

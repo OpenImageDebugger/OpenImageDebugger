@@ -29,12 +29,10 @@
 
 #include <bit>
 
-namespace oid
-{
+namespace oid {
 
 std::vector<std::byte>
-make_float_buffer_from_double(const std::vector<std::byte>& buff_double)
-{
+make_float_buffer_from_double(const std::vector<std::byte>& buff_double) {
     const auto element_count = buff_double.size() / sizeof(double);
     std::vector<std::byte> buff_float(element_count * sizeof(float));
 

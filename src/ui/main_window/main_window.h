@@ -46,27 +46,23 @@
 #include "ui_main_window.h"
 #include "visualization/stage.h"
 
-namespace oid
-{
+namespace oid {
 
 class MainWindowInitializer;
 class SettingsApplier;
 class SettingsManager;
 
-namespace UIConstants
-{
-constexpr int ICON_WIDTH_BASE  = 100;
+namespace UIConstants {
+constexpr int ICON_WIDTH_BASE = 100;
 constexpr int ICON_HEIGHT_BASE = 75;
 } // namespace UIConstants
 
-struct ConnectionSettings
-{
+struct ConnectionSettings {
     std::string url{};
     uint16_t port{};
 };
 
-struct WindowState
-{
+struct WindowState {
     bool is_window_ready{true};
     bool request_render_update{true};
     bool request_icons_update{true};
@@ -75,8 +71,7 @@ struct WindowState
     bool link_views_enabled{false};
 };
 
-struct UIComponents
-{
+struct UIComponents {
     std::unique_ptr<SymbolCompleter> symbol_completer{};
     std::unique_ptr<Ui::MainWindowUi> ui{std::make_unique<Ui::MainWindowUi>()};
     std::unique_ptr<QLabel> status_bar{};
@@ -85,8 +80,7 @@ struct UIComponents
     QTimer update_timer{};
 };
 
-struct BufferData
-{
+struct BufferData {
     std::map<std::string, std::vector<std::byte>, std::less<>> held_buffers{};
     std::map<std::string, std::shared_ptr<Stage>, std::less<>> stages{};
     std::set<std::string, std::less<>> previous_session_buffers{};
@@ -96,17 +90,14 @@ struct BufferData
         currently_selected_stage{}; // Non-owning reference to selected stage
 };
 
-struct ChannelNames
-{
+struct ChannelNames {
     QString name_channel_1{"red"};
     QString name_channel_2{"green"};
     QString name_channel_3{"blue"};
     QString name_channel_4{"alpha"};
 };
 
-
-class MainWindow final : public QMainWindow
-{
+class MainWindow final : public QMainWindow {
     Q_OBJECT
 
   public:

@@ -31,14 +31,11 @@
 #include <QProcess>
 #include <QString>
 
-namespace oid
-{
+namespace oid {
 
-class ProcessImplWin32 final : public ProcessImpl
-{
+class ProcessImplWin32 final : public ProcessImpl {
   public:
-    void start(std::vector<std::string>& command) override
-    {
+    void start(std::vector<std::string>& command) override {
         const auto program = QString::fromStdString(command[0]);
         QStringList args;
         for (size_t i = 1; i < command.size(); i++) {
@@ -49,15 +46,11 @@ class ProcessImplWin32 final : public ProcessImpl
         proc_.waitForStarted();
     }
 
-
-    [[nodiscard]] bool isRunning() const override
-    {
+    [[nodiscard]] bool isRunning() const override {
         return proc_.state() == QProcess::Running;
     }
 
-
-    void kill() override
-    {
+    void kill() override {
         proc_.kill();
     }
 
@@ -65,8 +58,7 @@ class ProcessImplWin32 final : public ProcessImpl
     QProcess proc_{};
 };
 
-void Process::createImpl()
-{
+void Process::createImpl() {
     impl_ = std::make_shared<ProcessImplWin32>();
 }
 

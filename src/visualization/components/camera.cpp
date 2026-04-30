@@ -33,69 +33,68 @@
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
 
-namespace oid
-{
+namespace oid {
 
 Camera::Camera(const std::shared_ptr<GameObject>& game_object,
                const std::shared_ptr<GLCanvas>& gl_canvas)
-    : Component{game_object, gl_canvas}
-{
+    : Component{game_object, gl_canvas} {}
+
+Camera::~Camera() noexcept {
+    // Clear local transform state only. Do not reset the owning GameObject's
+    // pose here: temporary Camera copies (e.g. icon rendering) share the
+    // same GameObject and must not clobber its matrix on destruction.
+    zoom_power_ = 0.0f;
+    camera_pos_x_ = 0.0f;
+    camera_pos_y_ = 0.0f;
+    canvas_width_ = 0;
+    canvas_height_ = 0;
+    mouse_position = vec4::zero();
+    projection.set_identity();
+    scale_.set_identity();
 }
 
-
 Camera::Camera(const Camera& cam)
-    : Component{cam}
-    , projection{cam.projection}
-    , mouse_position{cam.mouse_position}
-    , zoom_power_{cam.zoom_power_}
-    , camera_pos_x_{cam.camera_pos_x_}
-    , camera_pos_y_{cam.camera_pos_y_}
-    , canvas_width_{cam.canvas_width_}
-    , canvas_height_{cam.canvas_height_}
-    , scale_{cam.scale_}
-{
+    : Component{cam}, projection{cam.projection},
+      mouse_position{cam.mouse_position}, zoom_power_{cam.zoom_power_},
+      camera_pos_x_{cam.camera_pos_x_}, camera_pos_y_{cam.camera_pos_y_},
+      canvas_width_{cam.canvas_width_}, canvas_height_{cam.canvas_height_},
+      scale_{cam.scale_} {
     update_object_pose();
 }
 
-
-Camera& Camera::operator=(const Camera& cam)
-{
+Camera& Camera::operator=(const Camera& cam) {
     if (this == &cam) {
         return *this;
     }
 
-    projection     = cam.projection;
+    projection = cam.projection;
     mouse_position = cam.mouse_position;
-    zoom_power_    = cam.zoom_power_;
-    camera_pos_x_  = cam.camera_pos_x_;
-    camera_pos_y_  = cam.camera_pos_y_;
-    canvas_width_  = cam.canvas_width_;
+    zoom_power_ = cam.zoom_power_;
+    camera_pos_x_ = cam.camera_pos_x_;
+    camera_pos_y_ = cam.camera_pos_y_;
+    canvas_width_ = cam.canvas_width_;
     canvas_height_ = cam.canvas_height_;
-    scale_         = cam.scale_;
+    scale_ = cam.scale_;
 
     update_object_pose();
 
     return *this;
 }
 
-
-void Camera::window_resized(const int w, const int h)
-{
+void Camera::window_resized(const int w, const int h) {
     projection.set_ortho_projection(static_cast<float>(w) / 2.0f,
                                     static_cast<float>(h) / 2.0f,
                                     -1.0f,
                                     1.0f);
-    canvas_width_  = w;
+    canvas_width_ = w;
     canvas_height_ = h;
 }
 
-
-void Camera::scroll_callback(const float delta)
-{
+void Camera::scroll_callback(const float delta) {
     const auto mouse_x = static_cast<float>(gl_canvas_ref().mouse_x());
     const auto mouse_y = static_cast<float>(gl_canvas_ref().mouse_y());
-    const auto win_w   = static_cast<float>(gl_canvas_ref().width());
-    const auto win_h   = static_cast<float>(gl_canvas_ref().height());
+    const auto win_w = static_cast<float>(gl_canvas_ref().width());
+    const auto win_h = static_cast<float>(gl_canvas_ref().height());
 
     const auto mouse_pos_ndc = vec4{2.0f * (mouse_x - win_w / 2.0f) / win_w,
                                     -2.0f * (mouse_y - win_h / 2.0f) / win_h,
@@ -105,14 +104,11 @@ void Camera::scroll_callback(const float delta)
     scale_at(mouse_pos_ndc, delta);
 }
 
-
-void Camera::update()
-{
+void Camera::update() {
     handle_key_events();
 }
 
-std::pair<float, float> Camera::get_buffer_initial_dimensions() const
-{
+std::pair<float, float> Camera::get_buffer_initial_dimensions() const {
     const auto stage = game_object_ref().get_stage();
     if (!stage.has_value()) [[unlikely]] {
         return {0.0f, 0.0f};
@@ -137,9 +133,7 @@ std::pair<float, float> Camera::get_buffer_initial_dimensions() const
     return std::make_pair(x, y);
 }
 
-
-void Camera::update_object_pose() const
-{
+void Camera::update_object_pose() const {
     const vec4 position{-camera_pos_x_, -camera_pos_y_, 0.0f, 1.0f};
 
     // Since the view matrix of the camera is inverted before being applied
@@ -150,9 +144,7 @@ void Camera::update_object_pose() const
     game_object_ref().set_pose(pose);
 }
 
-
-bool Camera::post_initialize()
-{
+bool Camera::post_initialize() {
     window_resized(gl_canvas_ref().width(), gl_canvas_ref().height());
     set_initial_zoom();
     update_object_pose();
@@ -160,10 +152,8 @@ bool Camera::post_initialize()
     return true;
 }
 
-
 // Handle keyboard events at the update loop
-void Camera::handle_key_events()
-{
+void Camera::handle_key_events() {
     using Key = KeyboardState::Key;
 
     auto event_intercepted = EventProcessCode::IGNORED;
@@ -173,18 +163,18 @@ void Camera::handle_key_events()
         auto delta_pos = vec4{0.0f, 0.0f, 0.0f, 0.0f};
 
         if (KeyboardState::is_key_pressed(Key::Up)) {
-            delta_pos.y()     = -1.0f;
+            delta_pos.y() = -1.0f;
             event_intercepted = EventProcessCode::INTERCEPTED;
         } else if (KeyboardState::is_key_pressed(Key::Down)) {
-            delta_pos.y()     = 1.0f;
+            delta_pos.y() = 1.0f;
             event_intercepted = EventProcessCode::INTERCEPTED;
         }
 
         if (KeyboardState::is_key_pressed(Key::Left)) {
-            delta_pos.x()     = -1.0f;
+            delta_pos.x() = -1.0f;
             event_intercepted = EventProcessCode::INTERCEPTED;
         } else if (KeyboardState::is_key_pressed(Key::Right)) {
-            delta_pos.x()     = 1.0f;
+            delta_pos.x() = 1.0f;
             event_intercepted = EventProcessCode::INTERCEPTED;
         }
 
@@ -194,7 +184,7 @@ void Camera::handle_key_events()
             camera_pos_y_ -= delta_pos.y() + scale_(1, 3);
 
             const auto zoom = 1.0f / compute_zoom();
-            scale_          = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
+            scale_ = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
 
             update_object_pose();
 
@@ -203,13 +193,11 @@ void Camera::handle_key_events()
     }
 }
 
-
-EventProcessCode Camera::key_press_event(int)
-{
+EventProcessCode Camera::key_press_event(int) {
     using Key = KeyboardState::Key;
 
     const auto screen_center = vec4{0.0f, 0.0f, 0.0f, 1.0f};
-    auto event_intercepted   = EventProcessCode::IGNORED;
+    auto event_intercepted = EventProcessCode::IGNORED;
 
     if (KeyboardState::is_modifier_key_pressed(
             KeyboardState::ModifierKey::Control)) {
@@ -233,9 +221,7 @@ EventProcessCode Camera::key_press_event(int)
     return event_intercepted;
 }
 
-
-void Camera::scale_at(const vec4& center_ndc, const float delta)
-{
+void Camera::scale_at(const vec4& center_ndc, const float delta) {
     // Check if lowest zoom value has been reached.
     auto new_delta{delta};
     if (new_delta < 0) {
@@ -320,9 +306,7 @@ void Camera::scale_at(const vec4& center_ndc, const float delta)
     update_object_pose();
 }
 
-
-void Camera::set_initial_zoom()
-{
+void Camera::set_initial_zoom() {
     static constexpr auto zoom_power_step{0.1f};
 
     // Get initial dimensions of buffer (without zoom).
@@ -366,21 +350,15 @@ void Camera::set_initial_zoom()
     scale_ = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
 }
 
-
-float Camera::compute_zoom() const
-{
+float Camera::compute_zoom() const {
     return std::pow(zoom_factor, zoom_power_);
 }
 
-
-float Camera::get_zoom_power() const
-{
+float Camera::get_zoom_power() const {
     return zoom_power_;
 }
 
-
-void Camera::set_zoom_power(const float zoom_power)
-{
+void Camera::set_zoom_power(const float zoom_power) {
     zoom_power_ = zoom_power;
 
     const auto zoom{1.0f / compute_zoom()};
@@ -389,9 +367,7 @@ void Camera::set_zoom_power(const float zoom_power)
     update_object_pose();
 }
 
-
-void Camera::move_to(const float x, const float y)
-{
+void Camera::move_to(const float x, const float y) {
     const auto stage = game_object_ref().get_stage();
     if (!stage.has_value()) {
         return;
@@ -424,9 +400,7 @@ void Camera::move_to(const float x, const float y)
     update_object_pose();
 }
 
-
-vec4 Camera::get_position() const
-{
+vec4 Camera::get_position() const {
     const auto stage = game_object_ref().get_stage();
     if (!stage.has_value()) {
         return vec4{0.0f, 0.0f, 0.0f, 1.0f};
@@ -450,18 +424,14 @@ vec4 Camera::get_position() const
            buffer_obj->get().get_pose().inv() * scale_ * pos_vec;
 }
 
-
-void Camera::recenter_camera()
-{
+void Camera::recenter_camera() {
     camera_pos_x_ = camera_pos_y_ = 0.0f;
 
     set_initial_zoom();
     update_object_pose();
 }
 
-
-void Camera::mouse_drag_event(const int mouse_x, const int mouse_y)
-{
+void Camera::mouse_drag_event(const int mouse_x, const int mouse_y) {
     // Mouse is down. Update camera_pos_x_/camera_pos_y_
     camera_pos_x_ += static_cast<float>(mouse_x);
     camera_pos_y_ += static_cast<float>(mouse_y);
@@ -469,9 +439,7 @@ void Camera::mouse_drag_event(const int mouse_x, const int mouse_y)
     update_object_pose();
 }
 
-
-bool Camera::post_buffer_update()
-{
+bool Camera::post_buffer_update() {
     return true;
 }
 

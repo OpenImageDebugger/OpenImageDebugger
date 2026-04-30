@@ -32,11 +32,9 @@
 #include "ipc/raw_data_decode.h"
 #include "visualization/components/buffer.h"
 
-namespace oid
-{
+namespace oid {
 
-struct PixelFormatParams
-{
+struct PixelFormatParams {
     BufferType type;
     const std::byte* buffer;
     int pos;
@@ -46,8 +44,7 @@ struct PixelFormatParams
     char* pix_label;
 };
 
-struct DrawPixelValuesParams
-{
+struct DrawPixelValuesParams {
     int x;
     int y;
     const Buffer& buffer;
@@ -59,8 +56,7 @@ struct DrawPixelValuesParams
     const mat4& buffer_pose;
 };
 
-struct DrawTextParams
-{
+struct DrawTextParams {
     const mat4& projection;
     const mat4& view_inv;
     const mat4& buffer_pose;
@@ -71,16 +67,14 @@ struct DrawTextParams
     float channels;
 };
 
-class BufferValues final : public Component
-{
+class BufferValues final : public Component {
   public:
     BufferValues(const std::shared_ptr<GameObject>& game_object,
                  const std::shared_ptr<GLCanvas>& gl_canvas);
 
     ~BufferValues() override;
 
-    void update() override
-    {
+    void update() override {
         // Do nothing
     }
 

@@ -31,23 +31,21 @@
 
 #include <vector> // for std::vector
 
-namespace oid
-{
+namespace oid {
 
 enum class BufferType {
-    UnsignedByte  = 0,
+    UnsignedByte = 0,
     UnsignedShort = 2,
-    Short         = 3,
-    Int32         = 4,
-    Float32       = 5,
-    Float64       = 6
+    Short = 3,
+    Int32 = 4,
+    Float32 = 5,
+    Float64 = 6
 };
 
 std::vector<std::byte>
 make_float_buffer_from_double(const std::vector<std::byte>& buff_double);
 
-[[nodiscard]] constexpr std::size_t type_size(const BufferType type) noexcept
-{
+[[nodiscard]] constexpr std::size_t type_size(const BufferType type) noexcept {
     switch (type) {
     case BufferType::Int32:
         return sizeof(std::int32_t);

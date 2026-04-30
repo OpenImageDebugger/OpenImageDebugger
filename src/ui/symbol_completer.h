@@ -30,11 +30,9 @@
 #include <QStringList>
 #include <QStringListModel>
 
-namespace oid
-{
+namespace oid {
 
-class SymbolCompleter final : public QCompleter
-{
+class SymbolCompleter final : public QCompleter {
     Q_OBJECT
 
   public:

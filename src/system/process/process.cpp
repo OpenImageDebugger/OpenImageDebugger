@@ -30,36 +30,27 @@
 
 #include "process_impl.h"
 
-namespace oid
-{
+namespace oid {
 
-Process::Process()
-{
+Process::Process() {
     createImpl();
 }
 
-
-void Process::start(std::vector<std::string>& command) const
-{
+void Process::start(std::vector<std::string>& command) const {
     impl_->start(command);
 }
 
-
-bool Process::isRunning() const
-{
+bool Process::isRunning() const {
     return impl_->isRunning();
 }
 
-
-void Process::kill() const
-{
+void Process::kill() const {
     impl_->kill();
 }
 
-
-void Process::waitForStart() const
-{
-    while (!impl_->isRunning());
+void Process::waitForStart() const {
+    while (!impl_->isRunning())
+        ;
 }
 
 } // namespace oid

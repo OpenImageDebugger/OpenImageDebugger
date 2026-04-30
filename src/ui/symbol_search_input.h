@@ -39,11 +39,9 @@
 
 #include "ui/symbol_completer.h"
 
-namespace oid
-{
+namespace oid {
 
-class SymbolSearchInput final : public QLineEdit
-{
+class SymbolSearchInput final : public QLineEdit {
     Q_OBJECT
 
   public:
@@ -62,8 +60,7 @@ class SymbolSearchInput final : public QLineEdit
     std::optional<std::reference_wrapper<SymbolCompleter>>
         completer_{}; // Always set via set_completer() before use
 
-    [[nodiscard]] SymbolCompleter& completer() const
-    {
+    [[nodiscard]] SymbolCompleter& completer() const {
         assert(completer_.has_value() &&
                "completer_ must be set via set_completer() before use");
         return completer_->get();

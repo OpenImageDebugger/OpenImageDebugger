@@ -39,40 +39,30 @@
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
 
-
-namespace oid
-{
+namespace oid {
 
 template <typename T>
 using Array_4_4 = const std::array<const std::array<T, 4>, 4>;
 
-
 BufferValues::BufferValues(const std::shared_ptr<GameObject>& game_object,
                            const std::shared_ptr<GLCanvas>& gl_canvas)
-    : Component{game_object, gl_canvas}
-{
-}
-
+    : Component{game_object, gl_canvas} {}
 
 BufferValues::~BufferValues() = default;
 
-
-int BufferValues::render_index() const
-{
+int BufferValues::render_index() const {
     return 50;
 }
 
-
-inline void pix2str(const PixelFormatParams& params)
-{
-    const auto type            = params.type;
-    const auto buffer          = params.buffer;
-    const auto pos             = params.pos;
-    const auto channel         = params.channel;
-    const auto pix_label       = params.pix_label;
-    const auto label_length    = params.label_length;
+inline void pix2str(const PixelFormatParams& params) {
+    const auto type = params.type;
+    const auto buffer = params.buffer;
+    const auto pos = params.pos;
+    const auto channel = params.channel;
+    const auto pix_label = params.pix_label;
+    const auto label_length = params.label_length;
     const auto float_precision = params.float_precision;
-    const auto pixel_pos       = pos + channel;
+    const auto pixel_pos = pos + channel;
 
     if (type == BufferType::Float32 || type == BufferType::Float64) {
         const float fpix = std::bit_cast<const float*>(buffer)[pixel_pos];
@@ -90,7 +80,7 @@ inline void pix2str(const PixelFormatParams& params)
             std::bit_cast<const unsigned short*>(buffer)[pixel_pos];
         snprintf(pix_label, label_length, "%d", fpix);
     } else if (type == BufferType::Int32) {
-        const int fpix     = std::bit_cast<const int*>(buffer)[pixel_pos];
+        const int fpix = std::bit_cast<const int*>(buffer)[pixel_pos];
         const auto written = snprintf(pix_label, label_length, "%d", fpix);
         if (written > 0 && static_cast<size_t>(written) > 7) {
             snprintf(pix_label, label_length, "%.3e", static_cast<float>(fpix));
@@ -98,23 +88,21 @@ inline void pix2str(const PixelFormatParams& params)
     }
 }
 
-
-void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params)
-{
-    const auto& buffer           = params.buffer;
-    const auto step              = buffer.step;
-    const auto channels          = buffer.channels;
-    const auto channels_f        = static_cast<float>(channels);
-    const auto type              = buffer.type;
-    const auto x                 = params.x;
-    const auto y                 = params.y;
-    const auto pos_center_x      = params.pos_center_x;
-    const auto pos_center_y      = params.pos_center_y;
+void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params) {
+    const auto& buffer = params.buffer;
+    const auto step = buffer.step;
+    const auto channels = buffer.channels;
+    const auto channels_f = static_cast<float>(channels);
+    const auto type = buffer.type;
+    const auto x = params.x;
+    const auto y = params.y;
+    const auto pos_center_x = params.pos_center_x;
+    const auto pos_center_y = params.pos_center_y;
     const auto& recenter_factors = params.recenter_factors;
-    const auto& projection       = params.projection;
-    const auto& view_inv         = params.view_inv;
-    const auto& buffer_pose      = params.buffer_pose;
-    const auto pos               = (y * step + x) * channels;
+    const auto& projection = params.projection;
+    const auto& view_inv = params.view_inv;
+    const auto& buffer_pose = params.buffer_pose;
+    const auto pos = (y * step + x) * channels;
 
     // Determine channel range based on display mode
     const bool single_channel = (buffer.get_display_channel_mode() == 1);
@@ -156,9 +144,7 @@ void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params)
     }
 }
 
-
-void BufferValues::draw(const mat4& projection, const mat4& view_inv)
-{
+void BufferValues::draw(const mat4& projection, const mat4& view_inv) {
     const auto stage = game_object_ref().get_stage();
     if (!stage.has_value()) {
         return;
@@ -184,16 +170,16 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
             return;
         }
         const auto& buffer_component = buffer_component_opt->get();
-        const auto buffer_width_f    = buffer_component.buffer_width_f;
-        const auto buffer_height_f   = buffer_component.buffer_height_f;
-        const auto channels          = buffer_component.channels;
-        const auto channels_f        = static_cast<float>(channels);
+        const auto buffer_width_f = buffer_component.buffer_width_f;
+        const auto buffer_height_f = buffer_component.buffer_height_f;
+        const auto channels = buffer_component.channels;
+        const auto channels_f = static_cast<float>(channels);
 
         const auto tl_ndc = vec4{-1.0f, 1.0f, 0.0f, 1.0f};
         const auto br_ndc = vec4{1.0f, -1.0f, 0.0f, 1.0f};
         const auto vp_inv = (projection * view_inv * buffer_pose).inv();
-        auto tl           = vp_inv * tl_ndc;
-        auto br           = vp_inv * br_ndc;
+        auto tl = vp_inv * tl_ndc;
+        auto br = vp_inv * br_ndc;
 
         // Since the clip ROI may be rotated, we need to re-compute TL and BR
         // from their Xs and Ys
@@ -201,11 +187,10 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
         const auto tl_y = (std::min)(tl.y(), br.y());
         const auto br_x = (std::max)(tl.x(), br.x());
         const auto br_y = (std::max)(tl.y(), br.y());
-        tl.x()          = tl_x;
-        tl.y()          = tl_y;
-        br.x()          = br_x;
-        br.y()          = br_y;
-
+        tl.x() = tl_x;
+        tl.y() = tl_y;
+        br.x() = br_x;
+        br.y() = br_y;
 
         const auto lower_x =
             static_cast<int>(std::clamp(truncf(tl.x()) - 1.0f,
@@ -234,15 +219,15 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
         if (channels == 1) {
             recenter_factors = {0.0f, 0.0f, 0.0f, 0.0f};
         } else if (channels == 2) {
-            const auto rfUp  = padding_ / 3.0f / channels_f;
+            const auto rfUp = padding_ / 3.0f / channels_f;
             recenter_factors = {rfUp, -rfUp, 0.0f, 0.0f};
         } else if (channels == 3) {
-            const auto rfUp  = padding_ / 2.0f / channels_f;
+            const auto rfUp = padding_ / 2.0f / channels_f;
             recenter_factors = {rfUp, 0.0f, -rfUp, 0.0f};
         } else if (channels == 4) {
-            const auto rfUp   = 3.0f * padding_ / 5.0f / channels_f;
+            const auto rfUp = 3.0f * padding_ / 5.0f / channels_f;
             const auto rfDown = padding_ / 5.0f / channels_f;
-            recenter_factors  = {rfUp, rfDown, -rfDown, -rfUp};
+            recenter_factors = {rfUp, rfDown, -rfDown, -rfUp};
         }
 
         for (int y = lower_y - pos_center_y; y < upper_y - pos_center_y; ++y) {
@@ -263,17 +248,15 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv)
     }
 }
 
-
-void BufferValues::draw_text(const DrawTextParams& params)
-{
-    const auto x            = params.x;
-    const auto y            = params.y;
-    const auto& text        = params.text;
-    const auto& projection  = params.projection;
-    const auto& view_inv    = params.view_inv;
+void BufferValues::draw_text(const DrawTextParams& params) {
+    const auto x = params.x;
+    const auto y = params.y;
+    const auto& text = params.text;
+    const auto& projection = params.projection;
+    const auto& view_inv = params.view_inv;
     const auto& buffer_pose = params.buffer_pose;
-    const auto channels     = params.channels;
-    const auto y_offset     = params.y_offset;
+    const auto channels = params.channels;
+    const auto y_offset = params.y_offset;
 
     const auto text_renderer = gl_canvas_ref().get_text_renderer();
 
@@ -414,9 +397,7 @@ void BufferValues::draw_text(const DrawTextParams& params)
     }
 }
 
-
-void BufferValues::decrease_float_precision()
-{
+void BufferValues::decrease_float_precision() {
     if (min_float_precision_ < float_precision_) {
         float_precision_--;
         // reset text scaling
@@ -424,9 +405,7 @@ void BufferValues::decrease_float_precision()
     }
 }
 
-
-void BufferValues::increase_float_precision()
-{
+void BufferValues::increase_float_precision() {
     if (max_float_precision_ > float_precision_) {
         float_precision_++;
         // reset text scaling
@@ -434,9 +413,7 @@ void BufferValues::increase_float_precision()
     }
 }
 
-
-int BufferValues::get_float_precision() const
-{
+int BufferValues::get_float_precision() const {
     return float_precision_;
 }
 

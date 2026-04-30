@@ -23,8 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-namespace oid::shader
-{
+namespace oid::shader {
 extern auto const background_frag_shader{R"glsl(
 
 void main()

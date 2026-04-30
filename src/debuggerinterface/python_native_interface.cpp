@@ -25,11 +25,9 @@
 
 #include "python_native_interface.h"
 
-namespace oid
-{
+namespace oid {
 
-long get_py_int(PyObject* obj)
-{
+long get_py_int(PyObject* obj) {
 #if PY_MAJOR_VERSION == 3
     return PyLong_AS_LONG(obj);
 #else
@@ -37,20 +35,16 @@ long get_py_int(PyObject* obj)
 #endif
 }
 
-
-uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, const int tuple_index)
-{
+uint8_t* get_c_ptr_from_py_tuple(PyObject* obj, const int tuple_index) {
     PyObject* tuple_item = PyTuple_GetItem(obj, tuple_index);
     return static_cast<uint8_t*>(PyLong_AsVoidPtr(tuple_item));
 }
 
-
-void copy_py_string(std::string& dst, PyObject* src)
-{
+void copy_py_string(std::string& dst, PyObject* src) {
     if (PyUnicode_Check(src)) {
         // Unicode string
         PyObject* src_bytes = PyUnicode_AsEncodedString(src, "ASCII", "strict");
-        dst                 = PyBytes_AS_STRING(src_bytes);
+        dst = PyBytes_AS_STRING(src_bytes);
         Py_DECREF(src_bytes);
     } else {
         assert(PyBytes_Check(src));
@@ -58,20 +52,17 @@ void copy_py_string(std::string& dst, PyObject* src)
     }
 }
 
-
-int check_py_string_type(PyObject* obj)
-{
+int check_py_string_type(PyObject* obj) {
     return PyUnicode_Check(obj) == 1 ? 1 : PyBytes_Check(obj);
 }
 
 void get_c_ptr_from_py_buffer(PyObject* obj,
                               uint8_t*& buffer_ptr,
-                              size_t& buffer_size)
-{
+                              size_t& buffer_size) {
     assert(PyMemoryView_Check(obj));
     const auto py_buff = PyMemoryView_GET_BUFFER(obj);
-    buffer_ptr         = static_cast<uint8_t*>(py_buff->buf);
-    buffer_size        = static_cast<size_t>(py_buff->len);
+    buffer_ptr = static_cast<uint8_t*>(py_buff->buf);
+    buffer_size = static_cast<size_t>(py_buff->len);
 }
 
 } // namespace oid

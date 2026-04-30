@@ -25,46 +25,31 @@
 
 #include "component.h"
 
-namespace oid
-{
+namespace oid {
 
 Component::Component(const std::shared_ptr<GameObject>& game_object,
                      const std::shared_ptr<GLCanvas>& gl_canvas)
-    : game_object_{game_object}
-    , gl_canvas_{gl_canvas}
-{
-}
-
+    : game_object_{game_object}, gl_canvas_{gl_canvas} {}
 
 Component::~Component() noexcept = default;
 
-
-bool Component::initialize()
-{
+bool Component::initialize() {
     return true;
 }
 
-
-bool Component::buffer_update()
-{
+bool Component::buffer_update() {
     return true;
 }
 
-
-bool Component::post_buffer_update()
-{
+bool Component::post_buffer_update() {
     return true;
 }
 
-
-int Component::render_index() const
-{
+int Component::render_index() const {
     return 0;
 }
 
-
-bool Component::post_initialize()
-{
+bool Component::post_initialize() {
     return true;
 }
 

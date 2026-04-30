@@ -29,25 +29,17 @@
 
 #include "visualization/shaders/oid_shaders.h"
 
-namespace oid
-{
+namespace oid {
 
 GLTextRenderer::GLTextRenderer(GLCanvas& gl_canvas)
-    : text_prog{gl_canvas}
-    , gl_canvas_{gl_canvas}
-{
-}
+    : text_prog{gl_canvas}, gl_canvas_{gl_canvas} {}
 
-
-GLTextRenderer::~GLTextRenderer()
-{
+GLTextRenderer::~GLTextRenderer() {
     gl_canvas_.glDeleteTextures(1, &text_tex);
     gl_canvas_.glDeleteBuffers(1, &text_vbo);
 }
 
-
-bool GLTextRenderer::initialize()
-{
+bool GLTextRenderer::initialize() {
     if (!text_prog.create(shader::text_vert_shader,
                           shader::text_frag_shader,
                           ShaderProgram::TexelChannels::FormatR,
@@ -70,9 +62,7 @@ bool GLTextRenderer::initialize()
     return true;
 }
 
-
-void GLTextRenderer::generate_glyphs_texture()
-{
+void GLTextRenderer::generate_glyphs_texture() {
     // Required characters for numbers, scientific notation (e), nan, inf
     constexpr auto text = "0123456789., -+enaif";
     const unsigned char* p{};
@@ -96,8 +86,8 @@ void GLTextRenderer::generate_glyphs_texture()
 
     {
         constexpr auto mipmap_levels = 5;
-        auto tex_level_width         = static_cast<int>(text_texture_width);
-        auto tex_level_height        = static_cast<int>(text_texture_height);
+        auto tex_level_width = static_cast<int>(text_texture_width);
+        auto tex_level_height = static_cast<int>(text_texture_height);
 
         for (int i = 0; i < mipmap_levels; ++i) {
             gl_canvas_.glTexImage2D(GL_TEXTURE_2D,
@@ -110,7 +100,7 @@ void GLTextRenderer::generate_glyphs_texture()
                                     GL_UNSIGNED_BYTE,
                                     nullptr);
 
-            tex_level_width  = (std::max)(1, tex_level_width / 2);
+            tex_level_width = (std::max)(1, tex_level_width / 2);
             tex_level_height = (std::max)(1, tex_level_height / 2);
         }
     }
@@ -128,15 +118,15 @@ void GLTextRenderer::generate_glyphs_texture()
                                         text_texture_height);
     auto packed_texture_ptr = packed_texture.data();
 
-    auto real_ascent  = texture_size.height() - 1;
+    auto real_ascent = texture_size.height() - 1;
     auto real_descent = 0;
 
     auto found_real_descent = false;
-    auto found_real_ascent  = false;
+    auto found_real_ascent = false;
     // Pack bitmap and compute real ascent and descent lines
     for (int y = 0; y < texture_size.height(); ++y) {
         const auto img_ptr = img.scanLine(y);
-        auto x             = 0;
+        auto x = 0;
 
         auto found_filled_pixel = false;
         for (; x < texture_size.width(); ++x) {
@@ -150,7 +140,7 @@ void GLTextRenderer::generate_glyphs_texture()
             if (!found_real_descent) {
                 real_descent = y;
             } else if (!found_real_ascent) {
-                real_ascent       = y;
+                real_ascent = y;
                 found_real_ascent = true;
             }
         } else {
@@ -163,22 +153,21 @@ void GLTextRenderer::generate_glyphs_texture()
         packed_texture_ptr += static_cast<int>(text_texture_width);
     }
 
-
     // Compute text box size
     auto box_h = 0.0f;
 
     const auto cropped_bitmap_height = real_ascent - real_descent;
 
     for (p = reinterpret_cast<const unsigned char*>(text); *p; p++) {
-        const auto advance_x     = g.horizontalAdvance(QChar(*p));
+        const auto advance_x = g.horizontalAdvance(QChar(*p));
         const auto bitmap_height = g.height();
 
         text_texture_advances[*p][0] = advance_x;
         text_texture_advances[*p][1] = 0;
-        text_texture_sizes[*p][0]    = advance_x;
-        text_texture_sizes[*p][1]    = cropped_bitmap_height;
-        text_texture_tls[*p][0]      = 0;
-        text_texture_tls[*p][1]      = cropped_bitmap_height;
+        text_texture_sizes[*p][0] = advance_x;
+        text_texture_sizes[*p][1] = cropped_bitmap_height;
+        text_texture_tls[*p][0] = 0;
+        text_texture_tls[*p][1] = cropped_bitmap_height;
 
         box_h = (std::max)(box_h,
                            static_cast<float>(bitmap_height) + 2 * border_size);

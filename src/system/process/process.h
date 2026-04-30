@@ -30,13 +30,11 @@
 #include <string>
 #include <vector>
 
-namespace oid
-{
+namespace oid {
 
 class ProcessImpl;
 
-class Process final
-{
+class Process final {
   public:
     Process();
 

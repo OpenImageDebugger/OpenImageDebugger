@@ -36,36 +36,32 @@
 #include <QSize>
 #include <QString>
 
-namespace oid
-{
+namespace oid {
 
-namespace SettingsConstants
-{
+namespace SettingsConstants {
 constexpr int WINDOW_RESIZE_RESTORE_DELAY_MS = 100;
-constexpr int SETTINGS_PERSIST_DELAY_MS      = 100;
-constexpr double DEFAULT_FRAMERATE           = 60.0;
-constexpr double MIN_FRAMERATE               = 1.0;
-constexpr int BUFFER_EXPIRATION_DAYS         = 1;
+constexpr int SETTINGS_PERSIST_DELAY_MS = 100;
+constexpr double DEFAULT_FRAMERATE = 60.0;
+constexpr double MIN_FRAMERATE = 1.0;
+constexpr int BUFFER_EXPIRATION_DAYS = 1;
 
-constexpr auto ORGANIZATION_NAME             = "OpenImageDebugger";
-constexpr auto DEFAULT_EXPORT_SUFFIX         = "Image File (*.png)";
-constexpr auto SETTINGS_GROUP_EXPORT         = "Export";
-constexpr auto SETTINGS_GROUP_RENDERING      = "Rendering";
-constexpr auto SETTINGS_GROUP_UI             = "UI";
-constexpr auto SETTINGS_GROUP_MAINWINDOW     = "MainWindow";
-constexpr auto SETTINGS_KEY_FRAMERATE        = "maximum_framerate";
-constexpr auto SETTINGS_KEY_EXPORT_SUFFIX    = "default_export_suffix";
+constexpr auto ORGANIZATION_NAME = "OpenImageDebugger";
+constexpr auto DEFAULT_EXPORT_SUFFIX = "Image File (*.png)";
+constexpr auto SETTINGS_GROUP_EXPORT = "Export";
+constexpr auto SETTINGS_GROUP_RENDERING = "Rendering";
+constexpr auto SETTINGS_GROUP_UI = "UI";
+constexpr auto SETTINGS_GROUP_MAINWINDOW = "MainWindow";
+constexpr auto SETTINGS_KEY_FRAMERATE = "maximum_framerate";
+constexpr auto SETTINGS_KEY_EXPORT_SUFFIX = "default_export_suffix";
 constexpr auto SETTINGS_KEY_PREVIOUS_BUFFERS = "PreviousSession/buffers";
 } // namespace SettingsConstants
 
-class SettingsManager : public QObject
-{
+class SettingsManager : public QObject {
     Q_OBJECT
 
   public:
     // Data provider callbacks for persistence
-    struct DataCallbacks
-    {
+    struct DataCallbacks {
         // Window geometry
         std::function<QSize()> getWindowSize;
         std::function<QPoint()> getWindowPos;

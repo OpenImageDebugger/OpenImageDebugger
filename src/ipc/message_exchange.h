@@ -42,15 +42,14 @@
 
 #include "raw_data_decode.h"
 
-namespace oid
-{
+namespace oid {
 
 enum class MessageType {
-    GetObservedSymbols         = 0,
+    GetObservedSymbols = 0,
     GetObservedSymbolsResponse = 1,
-    SetAvailableSymbols        = 2,
-    PlotBufferContents         = 3,
-    PlotBufferRequest          = 4
+    SetAvailableSymbols = 2,
+    PlotBufferContents = 3,
+    PlotBufferRequest = 4
 };
 
 // C++20 concept to replace SFINAE for primitive type checking
@@ -61,29 +60,24 @@ concept PrimitiveType =
     std::is_same_v<T, bool> || std::is_same_v<T, std::size_t>;
 
 // Dedicated exception for socket timeout errors
-class SocketTimeoutError final : public std::runtime_error
-{
+class SocketTimeoutError final : public std::runtime_error {
   public:
     explicit SocketTimeoutError(
         const char* operation,
         const std::source_location& loc = std::source_location::current())
         : std::runtime_error(std::string{"Socket "} + operation +
                              " timeout at " + loc.file_name() + ":" +
-                             std::to_string(loc.line()))
-    {
-    }
+                             std::to_string(loc.line())) {}
 };
 
 // Helper function for error reporting with source location
 [[noreturn]] inline void throw_socket_timeout_error(
     const char* operation,
-    const std::source_location& loc = std::source_location::current())
-{
+    const std::source_location& loc = std::source_location::current()) {
     throw SocketTimeoutError{operation, loc};
 }
 
-struct MessageBlock
-{
+struct MessageBlock {
     [[nodiscard]] virtual std::size_t size() const noexcept = 0;
     // Returns raw byte data - using std::byte* for semantic clarity that this
     // is raw byte storage, not numeric data. Conversion to uint8_t*/char* is
@@ -92,21 +86,14 @@ struct MessageBlock
     virtual ~MessageBlock() noexcept;
 };
 
-template <typename Primitive>
-struct PrimitiveBlock final : MessageBlock
-{
-    explicit PrimitiveBlock(Primitive value)
-        : data_{value}
-    {
-    }
+template <typename Primitive> struct PrimitiveBlock final : MessageBlock {
+    explicit PrimitiveBlock(Primitive value) : data_{value} {}
 
-    [[nodiscard]] std::size_t size() const noexcept override
-    {
+    [[nodiscard]] std::size_t size() const noexcept override {
         return sizeof(Primitive);
     }
 
-    [[nodiscard]] const std::byte* data() const noexcept override
-    {
+    [[nodiscard]] const std::byte* data() const noexcept override {
         // Safe byte access to object representation using std::as_bytes
         return std::as_bytes(std::span{&data_, 1}).data();
     }
@@ -115,9 +102,7 @@ struct PrimitiveBlock final : MessageBlock
     Primitive data_{};
 };
 
-
-struct StringBlock final : MessageBlock
-{
+struct StringBlock final : MessageBlock {
     explicit StringBlock(std::string value);
 
     [[nodiscard]] std::size_t size() const noexcept override;
@@ -142,8 +127,7 @@ struct StringBlock final : MessageBlock
  * @note This class uses std::span for safer buffer access. The span provides
  *       bounds checking capabilities and does not own the buffer data.
  */
-struct BufferBlock final : MessageBlock
-{
+struct BufferBlock final : MessageBlock {
     /**
      * @brief Construct a BufferBlock from a std::span.
      *
@@ -151,17 +135,13 @@ struct BufferBlock final : MessageBlock
      *             remain valid for the lifetime of this BufferBlock)
      */
     explicit BufferBlock(std::span<const std::byte> span)
-        : buffer_span_{span}
-    {
-    }
+        : buffer_span_{span} {}
 
-    [[nodiscard]] std::size_t size() const noexcept override
-    {
+    [[nodiscard]] std::size_t size() const noexcept override {
         return buffer_span_.size();
     }
 
-    [[nodiscard]] const std::byte* data() const noexcept override
-    {
+    [[nodiscard]] const std::byte* data() const noexcept override {
         return buffer_span_.data();
     }
 
@@ -169,12 +149,9 @@ struct BufferBlock final : MessageBlock
     std::span<const std::byte> buffer_span_{};
 };
 
-class MessageComposer
-{
+class MessageComposer {
   public:
-    template <PrimitiveType T>
-    MessageComposer& push(const T& value)
-    {
+    template <PrimitiveType T> MessageComposer& push(const T& value) {
 
         message_blocks_.emplace_back(
             std::make_unique<PrimitiveBlock<T>>(value));
@@ -182,16 +159,14 @@ class MessageComposer
         return *this;
     }
 
-    MessageComposer& push(std::span<const std::byte> buffer)
-    {
+    MessageComposer& push(std::span<const std::byte> buffer) {
         push(buffer.size());
         message_blocks_.emplace_back(std::make_unique<BufferBlock>(buffer));
 
         return *this;
     }
 
-    void send(QTcpSocket* socket) const
-    {
+    void send(QTcpSocket* socket) const {
         for (const auto& block : message_blocks_) {
             auto offset = qint64{0};
             do {
@@ -213,21 +188,18 @@ class MessageComposer
         }
     }
 
-    void clear()
-    {
+    void clear() {
         message_blocks_.clear();
     }
 
     // Overloads for non-primitive types
-    MessageComposer& push(const std::string& value)
-    {
+    MessageComposer& push(const std::string& value) {
         push(value.size());
         message_blocks_.emplace_back(std::make_unique<StringBlock>(value));
         return *this;
     }
 
-    MessageComposer& push(const std::deque<std::string>& value)
-    {
+    MessageComposer& push(const std::deque<std::string>& value) {
         push(value.size());
         for (const auto& element : value) {
             push(element);
@@ -239,17 +211,11 @@ class MessageComposer
     std::deque<std::unique_ptr<MessageBlock>> message_blocks_{};
 };
 
-class MessageDecoder
-{
+class MessageDecoder {
   public:
-    explicit MessageDecoder(QTcpSocket* socket)
-        : socket_{socket}
-    {
-    }
+    explicit MessageDecoder(QTcpSocket* socket) : socket_{socket} {}
 
-    template <PrimitiveType T>
-    MessageDecoder& read(T& value)
-    {
+    template <PrimitiveType T> MessageDecoder& read(T& value) {
         // Safe mutable byte access to object representation
         read_impl(std::as_writable_bytes(std::span{&value, 1}));
 
@@ -258,8 +224,7 @@ class MessageDecoder
 
     // Overloads for non-primitive types - defined inline so templates can see
     // them
-    MessageDecoder& read(std::vector<std::byte>& value)
-    {
+    MessageDecoder& read(std::vector<std::byte>& value) {
         const auto container_size = [&] {
             auto size = std::size_t{};
             read(size);
@@ -272,8 +237,7 @@ class MessageDecoder
         return *this;
     }
 
-    MessageDecoder& read(std::string& value)
-    {
+    MessageDecoder& read(std::string& value) {
         const auto symbol_length = [&] {
             auto length = std::size_t{};
             read(length);
@@ -289,8 +253,7 @@ class MessageDecoder
         return *this;
     }
 
-    MessageDecoder& read(QString& value)
-    {
+    MessageDecoder& read(QString& value) {
         const auto symbol_length = [&] {
             auto length = std::size_t{};
             read(length);
@@ -311,8 +274,7 @@ class MessageDecoder
     }
 
     template <typename StringContainer, typename StringType>
-    MessageDecoder& read(StringContainer& symbol_container)
-    {
+    MessageDecoder& read(StringContainer& symbol_container) {
         const auto number_symbols = [&] {
             auto num{std::size_t{}};
             read(num);
@@ -335,10 +297,9 @@ class MessageDecoder
   private:
     QPointer<QTcpSocket> socket_{};
 
-    void read_impl(std::span<std::byte> dst) const
-    {
+    void read_impl(std::span<std::byte> dst) const {
         assert(!socket_.isNull() && "socket_ must be valid");
-        auto offset            = std::size_t{0};
+        auto offset = std::size_t{0};
         const auto read_length = dst.size();
         do {
             // Convert std::byte* to char* for Qt API (safe: same
@@ -353,7 +314,6 @@ class MessageDecoder
         } while (offset < read_length);
     }
 };
-
 
 } // namespace oid
 

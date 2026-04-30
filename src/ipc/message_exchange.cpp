@@ -27,23 +27,17 @@
 
 #include <utility>
 
-namespace oid
-{
+namespace oid {
 
 MessageBlock::~MessageBlock() noexcept = default;
 
-StringBlock::StringBlock(std::string value)
-    : data_{std::move(value)}
-{
-}
+StringBlock::StringBlock(std::string value) : data_{std::move(value)} {}
 
-size_t StringBlock::size() const noexcept
-{
+size_t StringBlock::size() const noexcept {
     return data_.size();
 }
 
-[[nodiscard]] const std::byte* StringBlock::data() const noexcept
-{
+[[nodiscard]] const std::byte* StringBlock::data() const noexcept {
     // Note: reinterpret_cast is necessary here for pointer conversion from
     // const char* (std::string::data()) to const std::byte*. std::bit_cast
     // cannot be used for pointer-to-pointer conversions, only for value

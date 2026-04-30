@@ -34,58 +34,41 @@
 #include <iostream>
 #include <limits>
 
-namespace oid::BufferExporter
-{
+namespace oid::BufferExporter {
 
-template <typename T>
-float get_multiplier()
-{
+template <typename T> float get_multiplier() {
     return 255.0f / static_cast<float>((std::numeric_limits<T>::max)());
 }
 
-
-template <>
-float get_multiplier<float>()
-{
+template <> float get_multiplier<float>() {
     return 255.0f;
 }
 
-
-template <typename T>
-T get_max_intensity()
-{
+template <typename T> T get_max_intensity() {
     return (std::numeric_limits<T>::max)();
 }
 
-
-template <>
-float get_max_intensity<float>()
-{
+template <> float get_max_intensity<float>() {
     return 1.0f;
 }
 
-
 void repeat_first_channel_into_g_and_b(
-    std::array<std::uint8_t, 4>& unformatted_pixel,
-    std::size_t& c)
-{
+    std::array<std::uint8_t, 4>& unformatted_pixel, std::size_t& c) {
     for (; c < 3; ++c) {
         unformatted_pixel[c] = unformatted_pixel[0];
     }
 }
 
-
 template <typename T>
-void export_bitmap(const std::string& fname, const Buffer& buffer)
-{
-    const auto width_i  = static_cast<std::size_t>(buffer.buffer_width_f);
+void export_bitmap(const std::string& fname, const Buffer& buffer) {
+    const auto width_i = static_cast<std::size_t>(buffer.buffer_width_f);
     const auto height_i = static_cast<std::size_t>(buffer.buffer_height_f);
 
     auto processed_buffer = std::vector<std::uint8_t>(4 * width_i * height_i);
 
     auto out_ptr = processed_buffer.data();
 
-    const auto bc_comp     = buffer.auto_buffer_contrast_brightness();
+    const auto bc_comp = buffer.auto_buffer_contrast_brightness();
     const auto color_scale = get_multiplier<T>();
 
     const auto max_intensity = get_max_intensity<T>();
@@ -111,15 +94,15 @@ void export_bitmap(const std::string& fname, const Buffer& buffer)
         }
     }
 
-    auto in_ptr             = std::bit_cast<const T*>(buffer.buffer_.data());
+    auto in_ptr = std::bit_cast<const T*>(buffer.buffer_.data());
     const auto input_stride = buffer.channels * buffer.step;
-    auto unformatted_pixel  = std::array<std::uint8_t, 4>{};
-    const auto channels     = static_cast<std::size_t>(buffer.channels);
+    auto unformatted_pixel = std::array<std::uint8_t, 4>{};
+    const auto channels = static_cast<std::size_t>(buffer.channels);
 
     for (std::size_t y = 0; y < height_i; ++y) {
         for (std::size_t x = 0; x < width_i; ++x) {
             const auto col_offset = x * buffer.channels;
-            auto c                = std::size_t{0};
+            auto c = std::size_t{0};
 
             // Perform contrast normalization
             for (; c < channels; ++c) {
@@ -157,7 +140,7 @@ void export_bitmap(const std::string& fname, const Buffer& buffer)
     }
 
     const auto bytes_per_line = static_cast<int>(width_i * 4);
-    const auto output_image   = QImage{processed_buffer.data(),
+    const auto output_image = QImage{processed_buffer.data(),
                                      static_cast<int>(width_i),
                                      static_cast<int>(height_i),
                                      bytes_per_line,
@@ -167,56 +150,37 @@ void export_bitmap(const std::string& fname, const Buffer& buffer)
     }
 }
 
+template <typename T> std::string get_type_descriptor();
 
-template <typename T>
-std::string get_type_descriptor();
-
-
-template <>
-std::string get_type_descriptor<std::uint8_t>()
-{
+template <> std::string get_type_descriptor<std::uint8_t>() {
     return "uint8";
 }
 
-
-template <>
-std::string get_type_descriptor<std::uint16_t>()
-{
+template <> std::string get_type_descriptor<std::uint16_t>() {
     return "uint16";
 }
 
-
-template <>
-std::string get_type_descriptor<std::int16_t>()
-{
+template <> std::string get_type_descriptor<std::int16_t>() {
     return "int16";
 }
 
-
-template <>
-std::string get_type_descriptor<std::int32_t>()
-{
+template <> std::string get_type_descriptor<std::int32_t>() {
     return "int32";
 }
 
-
-template <>
-std::string get_type_descriptor<float>()
-{
+template <> std::string get_type_descriptor<float>() {
     return "float";
 }
 
-
 template <typename T>
-void export_binary(const std::string& fname, const Buffer& buffer)
-{
-    const auto width_i  = static_cast<std::size_t>(buffer.buffer_width_f);
+void export_binary(const std::string& fname, const Buffer& buffer) {
+    const auto width_i = static_cast<std::size_t>(buffer.buffer_width_f);
     const auto height_i = static_cast<std::size_t>(buffer.buffer_height_f);
 
     const auto in_ptr = std::bit_cast<const T*>(buffer.buffer_.data());
 
     const auto output_path = std::filesystem::path{fname};
-    auto ofs               = std::ofstream{output_path};
+    auto ofs = std::ofstream{output_path};
 
     ofs << get_type_descriptor<T>() << height_i << width_i << buffer.channels;
     for (std::size_t y = 0; y < height_i; ++y) {
@@ -224,11 +188,9 @@ void export_binary(const std::string& fname, const Buffer& buffer)
     }
 }
 
-
 void export_buffer(const Buffer& buffer,
                    const std::string& path,
-                   const OutputType type)
-{
+                   const OutputType type) {
     using enum BufferType;
     if (type == OutputType::Bitmap) {
         switch (buffer.type) {

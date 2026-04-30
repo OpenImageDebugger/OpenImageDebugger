@@ -29,14 +29,12 @@
 #include <string>
 #include <vector>
 
-namespace oid
-{
+namespace oid {
 
 /**
  * Interface to process calling classes
  */
-class ProcessImpl
-{
+class ProcessImpl {
   public:
     virtual ~ProcessImpl() noexcept = default;
 

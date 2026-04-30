@@ -40,9 +40,7 @@
 extern "C" {
 #endif
 
-
 typedef void* AppHandler;
-
 
 /**
  * Initialize OID application
@@ -86,7 +84,6 @@ void oid_exec(AppHandler handler);
 OID_API
 int oid_is_window_ready(AppHandler handler);
 
-
 /**
  * Get a list of the names of all buffers being visualized
  *
@@ -114,7 +111,6 @@ PyObject* oid_get_observed_buffers(AppHandler handler);
 OID_API
 void oid_set_available_symbols(AppHandler handler, PyObject* available_vars);
 
-
 /**
  * Process pending events related to communication with UI
  *
@@ -125,7 +121,6 @@ void oid_set_available_symbols(AppHandler handler, PyObject* available_vars);
  */
 OID_API
 void oid_run_event_loop(AppHandler handler);
-
 
 /**
  * Add a buffer to the plot list

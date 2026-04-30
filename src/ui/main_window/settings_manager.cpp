@@ -33,19 +33,13 @@
 #include <QTimer>
 #include <QVariant>
 
-namespace oid
-{
+namespace oid {
 
 using BufferExpiration = QPair<QString, QDateTime>;
 
-SettingsManager::SettingsManager(QObject* parent)
-    : QObject{parent}
-{
-}
+SettingsManager::SettingsManager(QObject* parent) : QObject{parent} {}
 
-
-void SettingsManager::load_settings()
-{
+void SettingsManager::load_settings() {
     // Qt 6: Register the metatype for QSettings serialization
     qRegisterMetaType<QList<BufferExpiration>>();
 
@@ -62,9 +56,7 @@ void SettingsManager::load_settings()
     load_previous_session_buffers(settings);
 }
 
-
-void SettingsManager::load_rendering_settings(const QSettings& settings)
-{
+void SettingsManager::load_rendering_settings(const QSettings& settings) {
     const auto framerate_key =
         QString::fromUtf8(SettingsConstants::SETTINGS_GROUP_RENDERING) + "/" +
         QString::fromUtf8(SettingsConstants::SETTINGS_KEY_FRAMERATE);
@@ -77,9 +69,7 @@ void SettingsManager::load_rendering_settings(const QSettings& settings)
     emit renderingSettingsLoaded(framerate);
 }
 
-
-void SettingsManager::load_export_settings(QSettings& settings)
-{
+void SettingsManager::load_export_settings(QSettings& settings) {
     settings.beginGroup(SettingsConstants::SETTINGS_GROUP_EXPORT);
     QString default_suffix =
         QString::fromUtf8(SettingsConstants::DEFAULT_EXPORT_SUFFIX);
@@ -95,12 +85,10 @@ void SettingsManager::load_export_settings(QSettings& settings)
     emit exportSettingsLoaded(default_suffix);
 }
 
-
-void SettingsManager::load_window_geometry(QSettings& settings)
-{
+void SettingsManager::load_window_geometry(QSettings& settings) {
     settings.beginGroup(SettingsConstants::SETTINGS_GROUP_MAINWINDOW);
     const auto size = settings.value("size").toSize();
-    const auto pos  = settings.value("pos").toPoint();
+    const auto pos = settings.value("pos").toPoint();
     settings.endGroup();
 
     emit windowGeometryLoaded(size, pos);
@@ -110,9 +98,7 @@ void SettingsManager::load_window_geometry(QSettings& settings)
                        &SettingsManager::windowResizeRestoreRequested);
 }
 
-
-void SettingsManager::load_ui_settings(const QSettings& settings)
-{
+void SettingsManager::load_ui_settings(const QSettings& settings) {
     const QString ui_group_prefix =
         QString::fromUtf8(SettingsConstants::SETTINGS_GROUP_UI) + "/";
 
@@ -190,9 +176,7 @@ void SettingsManager::load_ui_settings(const QSettings& settings)
     }
 }
 
-
-void SettingsManager::load_previous_session_buffers(const QSettings& settings)
-{
+void SettingsManager::load_previous_session_buffers(const QSettings& settings) {
     const auto now = QDateTime::currentDateTime();
     const auto previous_buffers =
         settings.value(SettingsConstants::SETTINGS_KEY_PREVIOUS_BUFFERS)
@@ -208,9 +192,7 @@ void SettingsManager::load_previous_session_buffers(const QSettings& settings)
     emit previousSessionBuffersLoaded(valid_buffers);
 }
 
-
-void SettingsManager::persist_settings(const DataCallbacks& callbacks)
-{
+void SettingsManager::persist_settings(const DataCallbacks& callbacks) {
     auto settings = QSettings{QSettings::Format::IniFormat,
                               QSettings::Scope::UserScope,
                               SettingsConstants::ORGANIZATION_NAME};
@@ -227,18 +209,18 @@ void SettingsManager::persist_settings(const DataCallbacks& callbacks)
         now.addDays(SettingsConstants::BUFFER_EXPIRATION_DAYS);
 
     // Get current state through callbacks
-    const auto current_buffers  = callbacks.getCurrentBufferNames();
+    const auto current_buffers = callbacks.getCurrentBufferNames();
     const auto previous_buffers = callbacks.getPreviousSessionBuffers();
-    const auto removed_buffers  = callbacks.getRemovedBufferNames();
+    const auto removed_buffers = callbacks.getRemovedBufferNames();
 
     // Of the buffers not currently being visualized, only keep those whose
     // timer hasn't expired yet and is not in the set of removed names
     for (const auto& prev_buff : previous_session_buffers_qlist) {
         const auto& [buff_name, timestamp] = prev_buff;
-        const auto buff_name_std_str       = buff_name.toStdString();
+        const auto buff_name_std_str = buff_name.toStdString();
 
         const auto being_viewed = current_buffers.contains(buff_name_std_str);
-        const auto was_removed  = removed_buffers.contains(buff_name_std_str);
+        const auto was_removed = removed_buffers.contains(buff_name_std_str);
 
         if (!was_removed && !being_viewed && timestamp >= now) {
             persisted_session_buffers.append(prev_buff);
@@ -271,7 +253,7 @@ void SettingsManager::persist_settings(const DataCallbacks& callbacks)
     settings.beginGroup(SettingsConstants::SETTINGS_GROUP_UI);
     {
         const auto splitterSizes = callbacks.getSplitterSizes();
-        auto listSizesVariant    = QList<QVariant>{};
+        auto listSizesVariant = QList<QVariant>{};
         for (const int size : splitterSizes) {
             listSizesVariant.append(size);
         }
@@ -296,9 +278,7 @@ void SettingsManager::persist_settings(const DataCallbacks& callbacks)
     }
 }
 
-
-QString SettingsManager::colorspace_channel_from_char(const QChar& character)
-{
+QString SettingsManager::colorspace_channel_from_char(const QChar& character) {
     switch (character.toLatin1()) {
     case 'b':
         return "blue";

@@ -30,13 +30,11 @@
 
 #include <QEvent>
 
-namespace oid
-{
+namespace oid {
 
 enum class EventProcessCode { IGNORED, INTERCEPTED };
 
-class KeyboardState
-{
+class KeyboardState {
   public:
     friend class MainWindow;
 

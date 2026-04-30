@@ -33,14 +33,12 @@
 #include "ui/gl_canvas.h"
 #include "visualization/shader.h"
 
-namespace oid
-{
+namespace oid {
 
 // std::array<std::array<int, 2>, 256> is int[256][2]
 using Array_256_2 = std::array<std::array<int, 2>, 256>;
 
-class GLTextRenderer
-{
+class GLTextRenderer {
   public:
     QFont font{"Times New Roman", 96};
     GLuint text_vbo{0};
