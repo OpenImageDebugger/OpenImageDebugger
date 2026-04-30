@@ -53,7 +53,7 @@ class MessageHandler : public QObject
   public:
     struct Dependencies
     {
-        std::recursive_mutex& ui_mutex;
+        std::mutex& ui_mutex;
         BufferData& buffer_data;
         WindowState& state;
         UIComponents& ui_components;

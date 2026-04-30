@@ -42,6 +42,19 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
                       INSTALL_RPATH
                       "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_SOURCE_DIR}/lib/ipc")
 
+target_sources(${PROJECT_NAME}
+                PRIVATE FILE_SET HEADERS
+                BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/..
+                FILES
+                ../debuggerinterface/preprocessor_directives.h
+                ../debuggerinterface/python_native_interface.h
+                ../ipc/message_exchange.h
+                ../ipc/raw_data_decode.h
+                ../system/process/process.h
+                ../system/process/process_impl.h
+                oid_bridge.h
+)
+
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-fvisibility=hidden>")
 
 target_link_options(${PROJECT_NAME}

@@ -32,6 +32,13 @@ add_library(${PROJECT_NAME} SHARED
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
+target_sources(${PROJECT_NAME}
+               PRIVATE FILE_SET HEADERS
+               FILES
+               message_exchange.h
+               raw_data_decode.h
+)
+
 target_include_directories(${PROJECT_NAME}
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

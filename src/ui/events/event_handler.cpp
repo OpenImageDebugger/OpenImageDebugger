@@ -124,7 +124,7 @@ void UIEventHandler::propagate_key_press_event(
     const QKeyEvent* key_event,
     EventProcessCode& event_intercepted) const
 {
-    const auto lock = std::unique_lock{deps_.ui_mutex};
+    // Caller must hold deps_.ui_mutex (MainWindow::eventFilter).
     for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
         if (stage->key_press_event(key_event->key()) ==
             EventProcessCode::INTERCEPTED) {

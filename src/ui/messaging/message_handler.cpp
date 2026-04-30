@@ -104,7 +104,8 @@ MessageHandler::find_image_list_item(const std::string& variable_name_str) const
 void MessageHandler::repaint_image_list_icon(
     const std::string& variable_name_str)
 {
-    const auto lock    = std::unique_lock{deps_.ui_mutex};
+    // Caller must hold deps_.ui_mutex (e.g. decode_plot_buffer_contents,
+    // MainWindow::loop).
     const auto itStage = deps_.buffer_data.stages.find(variable_name_str);
     if (itStage == deps_.buffer_data.stages.end()) [[unlikely]] {
         return;
