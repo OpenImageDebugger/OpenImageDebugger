@@ -238,24 +238,31 @@ void AutoContrastController::set_ac_value(const int idx,
 }
 
 void AutoContrastController::reset_color_values(const bool is_min) {
-    const auto lock = std::unique_lock{deps_.ui_mutex};
-    const auto buffer_opt = get_buffer_component(deps_.buffer_data);
-    if (!buffer_opt.has_value()) {
-        return;
-    }
-    auto& buffer = buffer_opt->get();
+    {
+        const auto lock = std::unique_lock{deps_.ui_mutex};
+        const auto buffer_opt = get_buffer_component(deps_.buffer_data);
+        if (!buffer_opt.has_value()) {
+            return;
+        }
+        auto& buffer = buffer_opt->get();
 
+        if (is_min) {
+            buffer.recompute_min_color_values();
+        } else {
+            buffer.recompute_max_color_values();
+        }
+        buffer.compute_contrast_brightness_parameters();
+
+        deps_.state.request_render_update = true;
+        deps_.state.request_icons_update = true;
+    }
+
+    // reset_min_labels / reset_max_labels acquire ui_mutex themselves.
     if (is_min) {
-        buffer.recompute_min_color_values();
         reset_min_labels();
     } else {
-        buffer.recompute_max_color_values();
         reset_max_labels();
     }
-    buffer.compute_contrast_brightness_parameters();
-
-    deps_.state.request_render_update = true;
-    deps_.state.request_icons_update = true;
 }
 
 } // namespace oid

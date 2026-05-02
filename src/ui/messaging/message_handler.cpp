@@ -87,7 +87,7 @@ QListWidgetItem* MessageHandler::find_image_list_item(
 
 void MessageHandler::repaint_image_list_icon(
     const std::string& variable_name_str) const {
-    const auto lock = std::unique_lock{deps_.ui_mutex};
+    // Precondition: caller must hold deps_.ui_mutex.
     const auto itStage = deps_.buffer_data.stages.find(variable_name_str);
     if (itStage == deps_.buffer_data.stages.end()) [[unlikely]] {
         return;
@@ -147,43 +147,67 @@ void MessageHandler::decode_plot_buffer_contents() {
         .read(buff_type)
         .read(buff_contents);
 
-    const auto lock = std::unique_lock{deps_.ui_mutex};
+    auto emit_label_resets = false;
+    {
+        const auto lock = std::unique_lock{deps_.ui_mutex};
 
-    if (buff_type == BufferType::Float64) {
-        deps_.buffer_data.held_buffers[variable_name_str] =
-            make_float_buffer_from_double(buff_contents);
-    } else {
-        deps_.buffer_data.held_buffers[variable_name_str] =
-            std::move(buff_contents);
-    }
-    const auto& held_buffer = deps_.buffer_data.held_buffers[variable_name_str];
-    const auto buff_span = std::span<const std::byte>(held_buffer);
+        if (buff_type == BufferType::Float64) {
+            deps_.buffer_data.held_buffers[variable_name_str] =
+                make_float_buffer_from_double(buff_contents);
+        } else {
+            deps_.buffer_data.held_buffers[variable_name_str] =
+                std::move(buff_contents);
+        }
+        const auto& held_buffer =
+            deps_.buffer_data.held_buffers[variable_name_str];
+        const auto buff_span = std::span<const std::byte>(held_buffer);
 
-    auto visualized_width = int{};
-    auto visualized_height = int{};
-    if (!transpose_buffer) {
-        visualized_width = buff_width;
-        visualized_height = buff_height;
-    } else {
-        visualized_width = buff_height;
-        visualized_height = buff_width;
-    }
+        auto visualized_width = int{};
+        auto visualized_height = int{};
+        if (!transpose_buffer) {
+            visualized_width = buff_width;
+            visualized_height = buff_height;
+        } else {
+            visualized_width = buff_height;
+            visualized_height = buff_width;
+        }
 
-    const auto label_str = [&] {
-        std::stringstream label_ss;
-        label_ss << display_name_str;
-        label_ss << "\n[" << visualized_width << "x" << visualized_height
-                 << "]";
-        label_ss << "\n"
-                 << get_type_label(static_cast<int>(buff_type), buff_channels);
-        return label_ss.str();
-    }();
+        const auto label_str = [&] {
+            std::stringstream label_ss;
+            label_ss << display_name_str;
+            label_ss << "\n[" << visualized_width << "x" << visualized_height
+                     << "]";
+            label_ss << "\n"
+                     << get_type_label(static_cast<int>(buff_type),
+                                       buff_channels);
+            return label_ss.str();
+        }();
 
-    if (auto buffer_stage = deps_.buffer_data.stages.find(variable_name_str);
-        buffer_stage == deps_.buffer_data.stages.end()) {
+        if (auto buffer_stage =
+                deps_.buffer_data.stages.find(variable_name_str);
+            buffer_stage == deps_.buffer_data.stages.end()) {
 
-        auto stage = deps_.create_stage();
-        if (const BufferParams params{.buffer = buff_span,
+            auto stage = deps_.create_stage();
+            if (const BufferParams params{.buffer = buff_span,
+                                          .buffer_width_i = buff_width,
+                                          .buffer_height_i = buff_height,
+                                          .channels = buff_channels,
+                                          .type = buff_type,
+                                          .step = buff_stride,
+                                          .pixel_layout = pixel_layout_str,
+                                          .transpose_buffer = transpose_buffer};
+                !stage->initialize(params)) [[unlikely]] {
+                std::cerr
+                    << "[Error] Could not initialize OpenGL canvas. Stage "
+                       "initialization failed."
+                    << std::endl;
+            }
+            stage->set_contrast_enabled(deps_.state.ac_enabled);
+            buffer_stage =
+                deps_.buffer_data.stages.try_emplace(variable_name_str, stage)
+                    .first;
+        } else {
+            const BufferParams params{.buffer = buff_span,
                                       .buffer_width_i = buff_width,
                                       .buffer_height_i = buff_height,
                                       .channels = buff_channels,
@@ -191,51 +215,39 @@ void MessageHandler::decode_plot_buffer_contents() {
                                       .step = buff_stride,
                                       .pixel_layout = pixel_layout_str,
                                       .transpose_buffer = transpose_buffer};
-            !stage->initialize(params)) [[unlikely]] {
-            std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
-                         "initialization failed."
-                      << std::endl;
+            if (const auto& [buffer_name, buffer_stage_ptr] = *buffer_stage;
+                !buffer_stage_ptr->buffer_update(params)) [[unlikely]] {
+                std::cerr << "[Error] Buffer update failed for: "
+                          << variable_name_str << std::endl;
+            }
         }
-        stage->set_contrast_enabled(deps_.state.ac_enabled);
-        buffer_stage =
-            deps_.buffer_data.stages.try_emplace(variable_name_str, stage)
-                .first;
-    } else {
-        const BufferParams params{.buffer = buff_span,
-                                  .buffer_width_i = buff_width,
-                                  .buffer_height_i = buff_height,
-                                  .channels = buff_channels,
-                                  .type = buff_type,
-                                  .step = buff_stride,
-                                  .pixel_layout = pixel_layout_str,
-                                  .transpose_buffer = transpose_buffer};
-        if (const auto& [buffer_name, buffer_stage_ptr] = *buffer_stage;
-            !buffer_stage_ptr->buffer_update(params)) [[unlikely]] {
-            std::cerr << "[Error] Buffer update failed for: "
-                      << variable_name_str << std::endl;
+
+        if (auto item = find_image_list_item(variable_name_str);
+            item == nullptr) {
+            auto new_item = std::make_unique<QListWidgetItem>(
+                label_str.c_str(), deps_.ui_components.ui->imageList);
+            new_item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
+            new_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
+                               Qt::ItemIsDragEnabled);
+            deps_.ui_components.ui->imageList->addItem(new_item.release());
         }
+
+        repaint_image_list_icon(variable_name_str);
+        update_image_list_label(variable_name_str, label_str);
+
+        emit_label_resets =
+            !deps_.buffer_data.currently_selected_stage.expired();
+
+        deps_.state.request_render_update = true;
     }
 
-    if (auto item = find_image_list_item(variable_name_str); item == nullptr) {
-        auto new_item = std::make_unique<QListWidgetItem>(
-            label_str.c_str(), deps_.ui_components.ui->imageList);
-        new_item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
-        new_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
-                           Qt::ItemIsDragEnabled);
-        deps_.ui_components.ui->imageList->addItem(new_item.release());
-    }
-
-    repaint_image_list_icon(variable_name_str);
-    update_image_list_label(variable_name_str, label_str);
-
-    if (!deps_.buffer_data.currently_selected_stage.expired()) {
+    // Emit outside the lock: connected slots acquire ui_mutex.
+    if (emit_label_resets) {
         emit acMinLabelsResetRequested();
         emit acMaxLabelsResetRequested();
     }
 
     emit settingsPersistenceRequested();
-
-    deps_.state.request_render_update = true;
 }
 
 void MessageHandler::decode_incoming_messages() {

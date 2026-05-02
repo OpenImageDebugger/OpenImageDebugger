@@ -105,7 +105,7 @@ void UIEventHandler::mouse_move_event([[maybe_unused]] int mouse_x,
 
 void UIEventHandler::propagate_key_press_event(
     const QKeyEvent* key_event, EventProcessCode& event_intercepted) const {
-    const auto lock = std::unique_lock{deps_.ui_mutex};
+    // Precondition: caller must hold deps_.ui_mutex.
     for (const auto& stage : deps_.buffer_data.stages | std::views::values) {
         if (stage->key_press_event(key_event->key()) ==
             EventProcessCode::INTERCEPTED) {
@@ -301,39 +301,52 @@ void UIEventHandler::buffer_selected(const QListWidgetItem* item) {
         return;
     }
 
-    const auto lock = std::unique_lock{deps_.ui_mutex};
-    const auto stage = deps_.buffer_data.stages.find(
-        item->data(Qt::UserRole).toString().toStdString());
-    if (stage == deps_.buffer_data.stages.end()) {
-        return;
+    auto selected_stage = std::shared_ptr<Stage>{};
+    {
+        const auto lock = std::unique_lock{deps_.ui_mutex};
+        const auto stage_it = deps_.buffer_data.stages.find(
+            item->data(Qt::UserRole).toString().toStdString());
+        if (stage_it == deps_.buffer_data.stages.end()) {
+            return;
+        }
+        selected_stage = stage_it->second;
+        deps_.state.request_render_update = true;
     }
 
-    emit stageSelectionRequested(stage->second);
+    // Emit outside the lock: connected slots acquire ui_mutex.
+    emit stageSelectionRequested(selected_stage);
     emit acMinLabelsResetRequested();
     emit acMaxLabelsResetRequested();
     emit shiftPrecisionUpdateRequested();
     emit statusBarUpdateRequested();
-    deps_.state.request_render_update = true;
 }
 
 void UIEventHandler::remove_selected_buffer() {
-    const auto lock = std::unique_lock{deps_.ui_mutex};
-    if (deps_.ui_components.ui->imageList->count() > 0 &&
-        !deps_.buffer_data.currently_selected_stage.expired()) {
+    auto clear_selection = false;
+    auto stages_now_empty = false;
+    auto removed_a_buffer = false;
+    {
+        const auto lock = std::unique_lock{deps_.ui_mutex};
+        if (deps_.ui_components.ui->imageList->count() == 0 ||
+            deps_.buffer_data.currently_selected_stage.expired()) {
+            return;
+        }
+
         auto removed_item = std::unique_ptr<QListWidgetItem>{
             deps_.ui_components.ui->imageList->takeItem(
                 deps_.ui_components.ui->imageList->currentRow())};
         const auto buffer_name =
             removed_item->data(Qt::UserRole).toString().toStdString();
 
-        // Check if the currently selected stage is the one being removed
-        // and clear it BEFORE erasing from the map to prevent use-after-free
+        // Check if the currently selected stage is the one being removed and
+        // clear it (via signal) AFTER releasing the lock to avoid recursive
+        // locking.
         const auto stage_it = deps_.buffer_data.stages.find(buffer_name);
         if (const auto selected_stage =
                 deps_.buffer_data.currently_selected_stage.lock();
             stage_it != deps_.buffer_data.stages.end() && selected_stage &&
             selected_stage == stage_it->second) {
-            emit stageSelectionCleared();
+            clear_selection = true;
         }
 
         deps_.buffer_data.stages.erase(buffer_name);
@@ -342,10 +355,18 @@ void UIEventHandler::remove_selected_buffer() {
 
         deps_.buffer_data.removed_buffer_names.insert(buffer_name);
 
-        if (deps_.buffer_data.stages.empty()) {
-            emit shiftPrecisionUpdateRequested();
-        }
+        stages_now_empty = deps_.buffer_data.stages.empty();
+        removed_a_buffer = true;
+    }
 
+    // Emit outside the lock: connected slots acquire ui_mutex.
+    if (clear_selection) {
+        emit stageSelectionCleared();
+    }
+    if (stages_now_empty) {
+        emit shiftPrecisionUpdateRequested();
+    }
+    if (removed_a_buffer) {
         emit settingsPersistenceRequested();
     }
 }
@@ -371,14 +392,20 @@ void UIEventHandler::symbol_completed(const QString& str) {
 }
 
 void UIEventHandler::export_buffer(const QString& buffer_name) {
-    const auto lock = std::unique_lock{deps_.ui_mutex};
-    const auto stage_it =
-        deps_.buffer_data.stages.find(buffer_name.toStdString());
-    if (stage_it == deps_.buffer_data.stages.end()) {
-        return;
+    // Resolve the stage under the lock, then drop the lock before opening the
+    // dialog. The shared_ptr keeps the stage (and its Buffer) alive even if
+    // the user removes it via another action while the dialog is open.
+    auto stage = std::shared_ptr<Stage>{};
+    {
+        const auto lock = std::unique_lock{deps_.ui_mutex};
+        const auto stage_it =
+            deps_.buffer_data.stages.find(buffer_name.toStdString());
+        if (stage_it == deps_.buffer_data.stages.end()) {
+            return;
+        }
+        stage = stage_it->second;
     }
 
-    const auto stage = stage_it->second;
     const auto buffer_obj = stage->get_game_object("buffer");
     if (!buffer_obj.has_value()) {
         return;
