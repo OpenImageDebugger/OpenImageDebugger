@@ -59,7 +59,12 @@ bool KeyboardState::is_key_pressed(const Key key) {
     case Key::Down:
         return pressed_keys_.contains(Qt::Key_Down);
     case Key::Plus:
-        return pressed_keys_.contains(Qt::Key_Plus);
+        // Accept Qt::Key_Equal too: on layouts where '+' is Shift+'=' (e.g.
+        // US/macOS), Qt may report the physical key Qt::Key_Equal even when
+        // the user types '+'. Matches the Cmd/Ctrl+= zoom-in shortcut common
+        // to browsers and terminals.
+        return pressed_keys_.contains(Qt::Key_Plus) ||
+               pressed_keys_.contains(Qt::Key_Equal);
     case Key::Minus:
         return pressed_keys_.contains(Qt::Key_Minus);
     default:
