@@ -56,10 +56,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
+      - name: Collect Workflow Telemetry
+        continue-on-error: true
+        uses: Makeshift/workflow-telemetry-action@2547ebdac99bbd9559cc642d2d46bf0703658793 # 2.0.4
+        with:
+          comment_on_pr: false
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
         with:
           fetch-depth: 1
-          fetch-tags: true
+          fetch-tags: false
           submodules: "recursive"
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
