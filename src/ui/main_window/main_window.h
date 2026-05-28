@@ -26,6 +26,7 @@
 #ifndef MAIN_WINDOW_H_
 #define MAIN_WINDOW_H_
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -64,8 +65,12 @@ struct ConnectionSettings {
 
 struct WindowState {
     bool is_window_ready{true};
-    bool request_render_update{true};
-    bool request_icons_update{true};
+    // Flags set by callbacks that may run while ui_mutex_ is already held by
+    // the same thread (e.g. Stage::update -> Camera::handle_key_events ->
+    // MainWindow::request_render_update during loop()). Atomic so they can be
+    // toggled without re-entering the mutex.
+    std::atomic<bool> request_render_update{true};
+    std::atomic<bool> request_icons_update{true};
     bool completer_updated{false};
     bool ac_enabled{false};
     bool link_views_enabled{false};
@@ -171,14 +176,16 @@ class MainWindow final : public QMainWindow {
     std::unique_ptr<SettingsApplier> settings_applier_{};
     std::unique_ptr<MainWindowInitializer> initializer_{};
     // Thread safety: All access to buffer_data_ and state_ must be protected by
-    // ui_mutex_. This mutex is recursive to allow nested locking when helper
-    // methods are called from already-locked contexts (e.g.,
-    // repaint_image_list_icon called from loop). All UI operations must run on
-    // the main thread (Qt requirement), and this mutex protects against
-    // concurrent access from message decoding, event handlers, and timer
-    // callbacks. Mutable to allow locking in const member functions - locking
+    // ui_mutex_. All UI operations must run on the main thread (Qt
+    // requirement), and this mutex guards against re-entrant access from
+    // message decoding, event handlers, and timer callbacks dispatched by Qt's
+    // event loop. Helpers that are only ever invoked from already-locked
+    // contexts (e.g. repaint_image_list_icon, propagate_key_press_event)
+    // document that precondition and do not re-lock; signal emissions that
+    // would otherwise re-enter via slot dispatch are moved outside the locked
+    // region. Mutable to allow locking in const member functions - locking
     // doesn't change logical state.
-    mutable std::recursive_mutex ui_mutex_{};
+    mutable std::mutex ui_mutex_{};
     ConnectionSettings host_settings_{};
     QTcpSocket socket_{};
 
