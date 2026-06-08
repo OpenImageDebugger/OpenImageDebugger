@@ -305,12 +305,14 @@ void MainWindow::loop() {
 }
 
 void MainWindow::request_render_update() {
-    const auto lock = std::unique_lock{ui_mutex_};
+    // No lock: state_.request_render_update is atomic. Callers may invoke this
+    // from contexts that already hold ui_mutex_ (e.g. Stage::update during
+    // loop()), so re-locking would deadlock.
     state_.request_render_update = true;
 }
 
 void MainWindow::request_icons_update() {
-    const auto lock = std::unique_lock{ui_mutex_};
+    // No lock: see request_render_update.
     state_.request_icons_update = true;
 }
 
