@@ -104,7 +104,12 @@ class OidBridge {
             return false;
         }
 
-        const auto windowBinaryPath = this->oid_path_ + "/oidwindow";
+        // Honor a custom UI binary (OID_UI_BINARY, passed as the "ui_binary"
+        // init param) so an external window such as OidCompose can replace the
+        // bundled Qt oidwindow. The extra Qt args (-style fusion) are harmless to
+        // a non-Qt binary that ignores unknown flags.
+        const auto windowBinaryPath =
+            ui_binary_.empty() ? (this->oid_path_ + "/oidwindow") : ui_binary_;
         const auto portStdString = std::to_string(server_.serverPort());
 
         std::vector<std::string> command{
@@ -121,6 +126,10 @@ class OidBridge {
 
     void set_path(const std::string_view& oid_path) {
         oid_path_ = oid_path;
+    }
+
+    void set_ui_binary(const std::string_view& ui_binary) {
+        ui_binary_ = ui_binary;
     }
 
     [[nodiscard]] bool is_window_ready() const {
@@ -207,6 +216,7 @@ class OidBridge {
     QTcpServer server_{};
     QPointer<QTcpSocket> client_{}; // Qt-managed non-owning pointer
     std::string oid_path_{};
+    std::string ui_binary_{};
 
     std::function<int(const char*)> plot_callback_{};
 
@@ -324,6 +334,8 @@ oid_initialize_impl(std::function<int(const char*)> plot_callback,
      */
     const auto py_oid_path =
         PyDict_GetItemString(optional_parameters, "oid_path");
+    const auto py_ui_binary =
+        PyDict_GetItemString(optional_parameters, "ui_binary");
 
     auto app = std::make_unique<OidBridge>(std::move(plot_callback));
 
@@ -331,6 +343,12 @@ oid_initialize_impl(std::function<int(const char*)> plot_callback,
         auto oid_path_str = std::string{};
         oid::copy_py_string(oid_path_str, py_oid_path);
         app->set_path(oid_path_str);
+    }
+
+    if (py_ui_binary) {
+        auto ui_binary_str = std::string{};
+        oid::copy_py_string(ui_binary_str, py_ui_binary);
+        app->set_ui_binary(ui_binary_str);
     }
 
     return app;
