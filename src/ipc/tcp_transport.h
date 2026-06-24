@@ -26,7 +26,7 @@
 #ifndef IPC_TCP_TRANSPORT_H_
 #define IPC_TCP_TRANSPORT_H_
 
-#include "ipc/transport.h"
+#include "transport.h"
 
 class QTcpSocket;
 

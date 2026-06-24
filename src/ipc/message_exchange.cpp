@@ -27,6 +27,10 @@
 
 #include <utility>
 
+#include <QTcpSocket>
+
+#include "tcp_transport.h"
+
 namespace oid {
 
 MessageBlock::~MessageBlock() noexcept = default;
@@ -45,5 +49,17 @@ size_t StringBlock::size() const noexcept {
     // that this is raw byte storage.
     return reinterpret_cast<const std::byte*>(data_.data());
 }
+
+void MessageComposer::send(QTcpSocket* socket) const {
+    TcpTransport transport{*socket};
+    send(transport);
+}
+
+MessageDecoder::MessageDecoder(ITransport& transport)
+    : transport_{transport} {}
+
+MessageDecoder::MessageDecoder(QTcpSocket* socket)
+    : owned_tcp_transport_{std::make_unique<TcpTransport>(*socket)},
+      transport_{*owned_tcp_transport_} {}
 
 } // namespace oid

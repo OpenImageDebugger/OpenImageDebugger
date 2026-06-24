@@ -108,6 +108,7 @@ target_link_libraries(test_message_exchange
 # Add message_exchange source file directly for testing
 target_sources(test_message_exchange PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/message_exchange.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/tcp_transport.cpp
 )
 
 add_test(NAME MessageExchangeTests COMMAND test_message_exchange)

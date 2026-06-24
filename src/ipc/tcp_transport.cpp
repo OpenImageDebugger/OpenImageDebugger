@@ -23,13 +23,13 @@
  * IN THE SOFTWARE.
  */
 
-#include "ipc/tcp_transport.h"
+#include "tcp_transport.h"
 
 #include <bit>
 
 #include <QTcpSocket>
 
-#include "ipc/message_exchange.h"
+#include "message_exchange.h"
 
 namespace oid {
 
