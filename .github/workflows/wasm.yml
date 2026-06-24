@@ -6,6 +6,9 @@
 name: WASM Build
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
 
@@ -51,6 +54,9 @@ jobs:
           QT_HOST_PATH: ${{ env.QT_ROOT_DIR }}/6.11.0/gcc_64
         run: bash wasm/scripts/build-wasm.sh --reconfigure
 
+      - name: Test demo buffers
+        run: npm test --prefix wasm
+
       - name: Pack artifact
         run: bash wasm/scripts/pack-viewer-wasm.sh
 
@@ -59,3 +65,24 @@ jobs:
         with:
           name: viewer-wasm
           path: wasm/dist
+
+  deploy-pages:
+    needs: wasm
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: viewer-wasm
+          path: wasm/dist
+
+      - name: Deploy to openimagedebugger.github.io
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          deploy_key: ${{ secrets.OID_PAGES_DEPLOY_KEY }}
+          external_repository: OpenImageDebugger/openimagedebugger.github.io
+          publish_dir: wasm/dist
+          publish_branch: main
+          commit_message: "deploy: OID WASM demo (${{ github.sha }})"

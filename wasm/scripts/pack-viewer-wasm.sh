@@ -18,6 +18,8 @@ mkdir -p "$DIST"
 
 cp "$BUILD_SRC/oidwindow.wasm" "$BUILD_SRC/oidwindow.js" "$DIST/"
 cp "$ROOT/wasm/loader.html" "$DIST/"
+cp "$ROOT/wasm/demo.html" "$DIST/index.html"
+cp "$ROOT/wasm/demo-buffers.js" "$DIST/"
 cp "$ROOT/wasm/test-harness.html" "$DIST/"
 cp "$BUILD_SRC/qtloader.js" "$DIST/"
 

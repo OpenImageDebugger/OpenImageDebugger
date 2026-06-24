@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open Image Debugger — WASM demo</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; font-family: system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; }
+    #bar { flex: 0 0 auto; padding: 0.5rem 1rem; background: #1e1e1e; color: #ccc; font-size: 0.85rem; }
+    #bar.ok { color: #8f8; }
+    #bar.err { color: #f88; }
+    iframe { flex: 1 1 auto; width: 100%; border: none; display: block; min-height: 0; }
+  </style>
+</head>
+<body>
+  <div id="bar">Loading viewer… — close other OID WASM tabs first</div>
+  <iframe id="viewer" src="loader.html"></iframe>
+  <script type="module">
+    import { genBuffers } from './demo-buffers.js';
+
+    const READY_TIMEOUT_MS = 60_000;
+    const SEND_DELAY_MS = 300;
+    const DEMO_WIDTH = 400;
+    const DEMO_HEIGHT = 200;
+
+    const bar = document.getElementById('bar');
+    const viewer = document.getElementById('viewer');
+    let readyTimeoutId = 0;
+
+    function setStatus(text, className = '') {
+      bar.textContent = text;
+      bar.className = className;
+    }
+
+    function pushU32(buf, v) {
+      buf.push(v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >> 24) & 0xff);
+    }
+
+    function pushI32(buf, v) {
+      pushU32(buf, v | 0);
+    }
+
+    function pushString(buf, s) {
+      const bytes = new TextEncoder().encode(s);
+      pushU32(buf, bytes.length);
+      for (const b of bytes) buf.push(b);
+    }
+
+    function buildSetAvailableSymbols(names) {
+      const parts = [];
+      pushU32(parts, 2);
+      pushU32(parts, names.length);
+      for (const name of names) pushString(parts, name);
+      return new Uint8Array(parts);
+    }
+
+    function buildPlotBufferContents(p) {
+      const parts = [];
+      pushU32(parts, 3);
+      pushString(parts, p.variableName);
+      pushString(parts, p.displayName);
+      pushString(parts, p.pixelLayout);
+      parts.push(p.transpose ? 1 : 0);
+      pushI32(parts, p.width);
+      pushI32(parts, p.height);
+      pushI32(parts, p.channels);
+      pushI32(parts, p.stride);
+      pushI32(parts, p.bufferType);
+      pushU32(parts, p.pixels.length);
+      for (const b of p.pixels) parts.push(b);
+      return new Uint8Array(parts);
+    }
+
+    function sendPayload(payload) {
+      viewer.contentWindow.postMessage({ type: 'oid-ipc', payload }, '*');
+    }
+
+    function sendDemoBuffers() {
+      const buffers = genBuffers(DEMO_WIDTH, DEMO_HEIGHT);
+      const names = ['sample_buffer_1', 'sample_buffer_2'];
+
+      setStatus('Sending demo buffers…');
+      sendPayload(buildSetAvailableSymbols(names));
+      for (const name of names) {
+        const buffer = buffers[name];
+        sendPayload(buildPlotBufferContents(buffer));
+      }
+      setStatus('Demo loaded — sample_buffer_1 (RGB) and sample_buffer_2 (Mandelbrot)', 'ok');
+    }
+
+    window.addEventListener('message', (ev) => {
+      if (ev.source !== viewer.contentWindow) return;
+      const msg = ev.data;
+      if (msg?.type !== 'oid-control' || msg.event !== 'viewer-ready') return;
+
+      window.clearTimeout(readyTimeoutId);
+      setTimeout(() => {
+        try {
+          sendDemoBuffers();
+        } catch (err) {
+          setStatus(`Failed to generate demo buffers: ${err}`, 'err');
+        }
+      }, SEND_DELAY_MS);
+    });
+
+    readyTimeoutId = window.setTimeout(() => {
+      setStatus('Viewer did not become ready', 'err');
+    }, READY_TIMEOUT_MS);
+
+    viewer.addEventListener('error', () => {
+      setStatus('Failed to load viewer', 'err');
+    });
+  </script>
+</body>
+</html>

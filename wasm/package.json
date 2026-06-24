@@ -3,10 +3,12 @@
   "version": "0.0.0-dev",
   "description": "Qt 6.11 WASM build of oidwindow",
   "files": ["dist"],
+  "type": "module",
   "license": "MIT",
   "scripts": {
     "build": "bash scripts/build-wasm.sh",
     "pack": "bash scripts/pack.sh",
-    "serve": "bash scripts/serve-wasm.sh"
+    "serve": "bash scripts/serve-wasm.sh",
+    "test": "node --test test/*.test.mjs"
   }
 }

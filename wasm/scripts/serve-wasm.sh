@@ -17,7 +17,9 @@ if pids=$(lsof -ti ":${PORT}" 2>/dev/null); then
   sleep 0.5
 fi
 
-echo "Serving $DIST at http://localhost:${PORT}/test-harness.html"
+echo "Serving $DIST at http://localhost:${PORT}/"
+echo "  demo:         http://localhost:${PORT}/"
+echo "  smoke test:   http://localhost:${PORT}/test-harness.html"
 echo "Close all other OID WASM browser tabs before testing."
 cd "$DIST"
 exec python3 -m http.server "$PORT"
