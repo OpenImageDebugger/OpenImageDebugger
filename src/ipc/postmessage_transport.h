@@ -32,6 +32,7 @@
 
 #ifdef __EMSCRIPTEN__
 #include <cstdint>
+#include <emscripten.h>
 #endif
 
 #include "transport.h"
@@ -54,7 +55,7 @@ class PostMessageTransport final : public ITransport {
 #ifdef __EMSCRIPTEN__
 extern "C" {
 void oid_set_postmessage_transport(PostMessageTransport* transport);
-void oidEnqueueInbound(std::uintptr_t ptr, int len);
+EMSCRIPTEN_KEEPALIVE void oidEnqueueInbound(std::uintptr_t ptr, int len);
 }
 #endif
 

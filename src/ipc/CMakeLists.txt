@@ -25,7 +25,11 @@ cmake_minimum_required(VERSION 3.28.3)
 
 project(oidipc CXX)
 
-add_library(${PROJECT_NAME} SHARED
+if(NOT DEFINED OID_IPC_LIBRARY_TYPE)
+  set(OID_IPC_LIBRARY_TYPE SHARED)
+endif()
+
+add_library(${PROJECT_NAME} ${OID_IPC_LIBRARY_TYPE}
             message_exchange.cpp
             raw_data_decode.cpp
             tcp_transport.cpp

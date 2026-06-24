@@ -76,7 +76,7 @@ set(SOURCES
 set(QT_FORMS ui/main_window/main_window.ui)
 set(QT_RESOURCES resources/resources.qrc)
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
+qt_add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
 
 add_dependencies(${PROJECT_NAME} oidipc)
 
@@ -96,7 +96,7 @@ target_include_directories(${PROJECT_NAME} SYSTEM
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-fvisibility=hidden>")
 
 target_link_options(${PROJECT_NAME}
-                     PUBLIC "$<$<PLATFORM_ID:Unix>:-Wl,--exclude-libs,ALL;>")
+                     PUBLIC "$<$<AND:$<PLATFORM_ID:Unix>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_NAME},Emscripten>>>:-Wl,--exclude-libs,ALL;>")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
                       oidipc
@@ -108,6 +108,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENGL_gl_LIBRARY})
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  target_link_options(${PROJECT_NAME} PRIVATE
+    "SHELL:-s EXPORTED_FUNCTIONS=['_main','_oidEnqueueInbound','_oid_set_postmessage_transport','__embind_initialize_bindings']")
 endif()
 
 install(TARGETS ${PROJECT_NAME}

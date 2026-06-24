@@ -27,15 +27,17 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+
+EM_JS(void, oid_send_to_js, (const void* ptr, int len), {
+  window.oidSend(HEAPU8.slice(ptr, ptr + len));
+});
 #endif
 
 namespace oid {
 
 void PostMessageTransport::send(std::span<const std::byte> data) {
 #ifdef __EMSCRIPTEN__
-    EM_ASM({ window.oidSend(HEAPU8.slice($0, $0 + $1)); },
-           data.data(),
-           data.size());
+    oid_send_to_js(data.data(), static_cast<int>(data.size()));
 #else
     (void)data;
 #endif
