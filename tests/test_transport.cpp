@@ -35,6 +35,7 @@
 #include <vector>
 
 #include "ipc/tcp_transport.h"
+#include "ipc/postmessage_transport.h"
 
 namespace {
 
@@ -83,4 +84,25 @@ TEST(TcpTransport, RoundTripBytes) {
     EXPECT_EQ(server_received, sent);
 
     server_thread.join();
+}
+
+TEST(PostMessageTransport, QueuesInboundAndReceive) {
+    oid::PostMessageTransport transport;
+    const std::vector<std::byte> msg{std::byte{0x03}, std::byte{0xAA}};
+    transport.enqueue_inbound(msg);
+
+    EXPECT_TRUE(transport.has_data());
+
+    std::array<std::byte, 2> out{};
+    EXPECT_EQ(transport.receive(out), 2u);
+    EXPECT_EQ(out[0], std::byte{0x03});
+    EXPECT_EQ(out[1], std::byte{0xAA});
+    EXPECT_FALSE(transport.has_data());
+}
+
+TEST(PostMessageTransport, SendIsNoOpOnDesktop) {
+    oid::PostMessageTransport transport;
+    const std::vector<std::byte> msg{std::byte{0x01}};
+    transport.send(msg);
+    EXPECT_FALSE(transport.has_data());
 }
