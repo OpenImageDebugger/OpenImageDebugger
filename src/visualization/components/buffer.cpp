@@ -741,7 +741,15 @@ void Buffer::setup_gl_buffer() {
     auto internal_format = GLuint{GL_RGBA32F};
 #ifdef __EMSCRIPTEN__
     if (tex_type == GL_FLOAT) {
-        internal_format = GL_RGBA32F;
+        if (tex_format == GL_RED) {
+            internal_format = GL_R32F;
+        } else if (tex_format == GL_RG) {
+            internal_format = GL_RG32F;
+        } else if (tex_format == GL_RGB) {
+            internal_format = GL_RGB32F;
+        } else {
+            internal_format = GL_RGBA32F;
+        }
     } else if (tex_format == GL_RED) {
         internal_format = GL_R8;
     } else if (tex_format == GL_RG) {
