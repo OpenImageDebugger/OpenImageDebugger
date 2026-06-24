@@ -88,7 +88,7 @@ byteCount = rows * step0
 pixels    = readMemory(dataRef, byteCount)   // base64 → Uint8Array
 ```
 
-OID buffer-type values (`symbols.py`): `UINT8=0, FLOAT32=1, UINT16=2, INT16=3, INT32=4, FLOAT64=6`. The resulting `PlotBufferParams` is `{ variableName, displayName, pixelLayout, transpose:false, width:cols, height:rows, channels, stride:row_stride, bufferType:type_value, pixels }`.
+OID buffer-type values (`symbols.py`, mirroring OpenCV depth codes): `UINT8=0, UINT16=2, INT16=3, INT32=4, FLOAT32=5, FLOAT64=6`. The resulting `PlotBufferParams` is `{ variableName, displayName, pixelLayout, transpose:false, width:cols, height:rows, channels, stride:row_stride, bufferType:type_value, pixels }`.
 
 The testbench (`testbench/main.cpp`) defines a faithful `cv::Mat` shape — `data`, `cols`, `rows`, `flags`, `step.buf[2]` with `step.buf[0] = cols*channels*sizeof(T)`, `step.buf[1] = channels` — so these expressions resolve against it.
 
