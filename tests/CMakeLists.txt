@@ -112,3 +112,25 @@ target_sources(test_message_exchange PRIVATE
 
 add_test(NAME MessageExchangeTests COMMAND test_message_exchange)
 
+# Test for ITransport / TcpTransport
+add_executable(test_transport test_transport.cpp)
+
+target_include_directories(test_transport
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+
+target_link_libraries(test_transport
+    PRIVATE
+    Qt6::Network
+    Qt6::Core
+    GTest::gtest_main
+    GTest::gtest
+)
+
+target_sources(test_transport PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/tcp_transport.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/message_exchange.cpp
+)
+
+add_test(NAME TransportTests COMMAND test_transport)
+

@@ -27,7 +27,8 @@ project(oidipc CXX)
 
 add_library(${PROJECT_NAME} SHARED
             message_exchange.cpp
-            raw_data_decode.cpp)
+            raw_data_decode.cpp
+            tcp_transport.cpp)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
