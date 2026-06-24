@@ -1,6 +1,9 @@
 # CMake build directory
 build/
 
+# Git worktrees
+.worktrees/
+
 # Visual Studio Code project settings
 .vscode/
 
