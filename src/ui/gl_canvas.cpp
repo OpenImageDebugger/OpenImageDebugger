@@ -25,6 +25,7 @@
 
 #include "gl_canvas.h"
 
+#include <cmath>
 #include <iostream>
 
 #ifdef __EMSCRIPTEN__
@@ -62,8 +63,12 @@ void GLCanvas::mouseMoveEvent(QMouseEvent* ev) {
     const auto last_mouse_x = mouse_x_;
     const auto last_mouse_y = mouse_y_;
 
-    mouse_x_ = static_cast<int>(ev->position().x());
-    mouse_y_ = static_cast<int>(ev->position().y());
+    const auto scale_x =
+        static_cast<float>(render_width()) / static_cast<float>(qMax(1, width()));
+    const auto scale_y = static_cast<float>(render_height()) /
+                         static_cast<float>(qMax(1, height()));
+    mouse_x_ = static_cast<int>(ev->position().x() * scale_x);
+    mouse_y_ = static_cast<int>(ev->position().y() * scale_y);
 
     if (mouse_down_[0]) {
         main_window().mouse_drag_event(mouse_x_ - last_mouse_x,
@@ -95,6 +100,20 @@ void GLCanvas::mouseReleaseEvent(QMouseEvent* ev) {
 }
 
 #ifdef __EMSCRIPTEN__
+
+int GLCanvas::render_width() const {
+    if (const auto* tex = colorTexture(); tex != nullptr) {
+        return tex->pixelSize().width();
+    }
+    return static_cast<int>(std::lround(width() * devicePixelRatioF()));
+}
+
+int GLCanvas::render_height() const {
+    if (const auto* tex = colorTexture(); tex != nullptr) {
+        return tex->pixelSize().height();
+    }
+    return static_cast<int>(std::lround(height() * devicePixelRatioF()));
+}
 
 bool GLCanvas::init_gl_state() {
     glEnable(GL_BLEND);
@@ -154,7 +173,14 @@ void GLCanvas::render(QRhiCommandBuffer* cb) {
 
     drain_gl_queue();
 
-    glViewport(0, 0, width(), height());
+    const auto w = render_width();
+    const auto h = render_height();
+    glViewport(0, 0, w, h);
+    if (w != last_render_width_ || h != last_render_height_) {
+        last_render_width_ = w;
+        last_render_height_ = h;
+        main_window().resize_callback(w, h);
+    }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     main_window().draw();
 
@@ -167,13 +193,13 @@ void GLCanvas::render(QRhiCommandBuffer* cb) {
 void GLCanvas::releaseResources() {
     initialized_ = false;
     first_paint_completed_ = false;
+    last_render_width_ = 0;
+    last_render_height_ = 0;
 }
 
 void GLCanvas::resizeEvent(QResizeEvent* e) {
     QRhiWidget::resizeEvent(e);
-    if (initialized_) {
-        main_window().resize_callback(width(), height());
-    }
+    update();
 }
 
 void GLCanvas::schedule_gl(std::function<void()> task) {
@@ -190,6 +216,14 @@ void GLCanvas::drain_gl_queue() {
 }
 
 #else
+
+int GLCanvas::render_width() const {
+    return width();
+}
+
+int GLCanvas::render_height() const {
+    return height();
+}
 
 void GLCanvas::initializeGL() {
     this->makeCurrent();

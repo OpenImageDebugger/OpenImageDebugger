@@ -460,9 +460,9 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
     const auto& buffer = buffer_opt->get();
 
     const auto win_w =
-        static_cast<float>(ui_components_.ui->bufferPreview->width());
+        static_cast<float>(ui_components_.ui->bufferPreview->render_width());
     const auto win_h =
-        static_cast<float>(ui_components_.ui->bufferPreview->height());
+        static_cast<float>(ui_components_.ui->bufferPreview->render_height());
     const auto mouse_pos_ndc = vec4{2.0f * (pos_window_x - win_w / 2) / win_w,
                                     -2.0f * (pos_window_y - win_h / 2) / win_h,
                                     0.0f,

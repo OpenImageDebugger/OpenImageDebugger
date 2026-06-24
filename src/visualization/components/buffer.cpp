@@ -362,9 +362,9 @@ void Buffer::configure(const BufferParams& params) {
     // Validate buffer size (prevent potential DoS)
     // Calculate: width * height * step (step is stride in bytes per row)
     // Use checked multiplication to prevent overflow
-    const auto width_u = static_cast<std::size_t>(params.buffer_width_i);
-    const auto height_u = static_cast<std::size_t>(params.buffer_height_i);
-    const auto step_u = static_cast<std::size_t>(params.step);
+    const auto width_u = static_cast<std::uint64_t>(params.buffer_width_i);
+    const auto height_u = static_cast<std::uint64_t>(params.buffer_height_i);
+    const auto step_u = static_cast<std::uint64_t>(params.step);
 
     // Check for potential overflow before multiplication
     if (width_u > 0 && height_u > BufferConstants::MAX_BUFFER_SIZE / width_u) {
@@ -738,6 +738,21 @@ void Buffer::setup_gl_buffer() {
         tex_format = GL_RGBA;
     }
 
+    auto internal_format = GLuint{GL_RGBA32F};
+#ifdef __EMSCRIPTEN__
+    if (tex_type == GL_FLOAT) {
+        internal_format = GL_RGBA32F;
+    } else if (tex_format == GL_RED) {
+        internal_format = GL_R8;
+    } else if (tex_format == GL_RG) {
+        internal_format = GL_RG8;
+    } else if (tex_format == GL_RGB) {
+        internal_format = GL_RGB8;
+    } else {
+        internal_format = GL_RGBA8;
+    }
+#endif
+
     auto remaining_h = buffer_height_i;
 
     gl_canvas_ref().glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -762,7 +777,7 @@ void Buffer::setup_gl_buffer() {
 
             gl_canvas_ref().glTexImage2D(GL_TEXTURE_2D,
                                          0,
-                                         GL_RGBA32F,
+                                         static_cast<GLint>(internal_format),
                                          buff_w,
                                          buff_h,
                                          0,

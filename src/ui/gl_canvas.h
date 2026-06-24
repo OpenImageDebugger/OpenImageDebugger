@@ -109,6 +109,10 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
         return initialized_;
     }
 
+    [[nodiscard]] int render_width() const;
+
+    [[nodiscard]] int render_height() const;
+
     [[nodiscard]] const GLTextRenderer* get_text_renderer() const;
 
     void set_main_window(MainWindow& mw);
@@ -140,6 +144,9 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
 
 #ifdef __EMSCRIPTEN__
     std::deque<std::function<void()>> gl_queue_{};
+
+    int last_render_width_{0};
+    int last_render_height_{0};
 
     void drain_gl_queue();
 
