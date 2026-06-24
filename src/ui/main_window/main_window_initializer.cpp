@@ -376,9 +376,11 @@ void MainWindowInitializer::initialize_go_to_widget() const {
 }
 
 void MainWindowInitializer::initialize_networking() const {
+#ifndef __EMSCRIPTEN__
     deps_.socket.connectToHost(QString(deps_.host_settings.url.c_str()),
                                deps_.host_settings.port);
     deps_.socket.waitForConnected();
+#endif
 }
 
 void MainWindowInitializer::setFontIcon(QAbstractButton* ui_element,

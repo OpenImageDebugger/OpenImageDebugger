@@ -28,9 +28,30 @@
 #include <QApplication>
 #include <QCommandLineParser>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include "postmessage_transport.h"
+
+EM_JS(void, oid_install_js_hooks, (), {
+  window.oidOnMessage = function(buf) {
+    const arr = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    const len = arr.length;
+    const ptr = _malloc(len);
+    HEAPU8.set(arr, ptr);
+    Module.oidEnqueueInbound(ptr, len);
+    _free(ptr);
+  };
+  if (window.parent !== window) {
+    window.parent.postMessage(
+        {type: 'oid-control', event: 'viewer-ready', version: 'dev'}, '*');
+  }
+});
+#endif
+
 int main(int argc, char* argv[]) {
     auto app = QApplication{argc, argv};
 
+#ifndef __EMSCRIPTEN__
     auto parser = QCommandLineParser{};
     parser.addOptions({
         {"h", "hostname", "hostname", "127.0.0.1"},
@@ -43,6 +64,10 @@ int main(int argc, char* argv[]) {
     host_settings.port = static_cast<uint16_t>(parser.value("p").toUInt());
 
     auto window = oid::MainWindow{host_settings};
+#else
+    oid_install_js_hooks();
+    auto window = oid::MainWindow{oid::ConnectionSettings{}};
+#endif
     window.showWindow();
     return QApplication::exec();
 }

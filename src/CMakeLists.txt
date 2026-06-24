@@ -25,8 +25,12 @@ cmake_minimum_required(VERSION 3.28.3)
 
 project(oidwindow CXX)
 
-set(OpenGL_GL_PREFERENCE LEGACY)
-find_package(OpenGL 2.1 REQUIRED)
+include(${CMAKE_SOURCE_DIR}/cmake/EmscriptenWasm.cmake)
+
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  set(OpenGL_GL_PREFERENCE LEGACY)
+  find_package(OpenGL 2.1 REQUIRED)
+endif()
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -100,8 +104,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
                       Qt6::OpenGL
                       Qt6::OpenGLWidgets
                       Qt6::Widgets
-                      Threads::Threads
-                      ${OPENGL_gl_LIBRARY})
+                      Threads::Threads)
+
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENGL_gl_LIBRARY})
+endif()
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)

@@ -30,6 +30,10 @@
 #include <mutex>
 #include <vector>
 
+#ifdef __EMSCRIPTEN__
+#include <cstdint>
+#endif
+
 #include "transport.h"
 
 namespace oid {
@@ -46,6 +50,13 @@ class PostMessageTransport final : public ITransport {
     mutable std::mutex mutex_;
     std::deque<std::byte> inbound_;
 };
+
+#ifdef __EMSCRIPTEN__
+extern "C" {
+void oid_set_postmessage_transport(PostMessageTransport* transport);
+void oidEnqueueInbound(std::uintptr_t ptr, int len);
+}
+#endif
 
 } // namespace oid
 

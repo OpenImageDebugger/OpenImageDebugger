@@ -61,4 +61,22 @@ void PostMessageTransport::enqueue_inbound(std::vector<std::byte> data) {
     inbound_.insert(inbound_.end(), data.begin(), data.end());
 }
 
+#ifdef __EMSCRIPTEN__
+namespace {
+PostMessageTransport* g_transport = nullptr;
+}
+
+extern "C" void oid_set_postmessage_transport(PostMessageTransport* transport) {
+    g_transport = transport;
+}
+
+extern "C" void oidEnqueueInbound(const std::uintptr_t ptr, const int len) {
+    if (g_transport == nullptr || len <= 0) {
+        return;
+    }
+    const auto* data = reinterpret_cast<const std::byte*>(ptr);
+    g_transport->enqueue_inbound({data, data + len});
+}
+#endif
+
 } // namespace oid

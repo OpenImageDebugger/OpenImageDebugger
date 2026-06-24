@@ -126,6 +126,20 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             ui_mutex_, buffer_data_, state_, ui_components_});
 
     // Initialize message handler
+#ifdef __EMSCRIPTEN__
+    postmessage_transport_ = std::make_unique<PostMessageTransport>();
+    oid_set_postmessage_transport(postmessage_transport_.get());
+    message_handler_ = std::make_unique<MessageHandler>(
+        MessageHandler::Dependencies{
+            ui_mutex_,
+            buffer_data_,
+            state_,
+            ui_components_,
+            *postmessage_transport_,
+            [] { return get_icon_size(); },
+            [this] { return std::make_shared<Stage>(*this); }},
+        this);
+#else
     tcp_transport_ = std::make_unique<TcpTransport>(socket_);
     message_handler_ = std::make_unique<MessageHandler>(
         MessageHandler::Dependencies{
@@ -137,6 +151,7 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             [] { return get_icon_size(); },
             [this] { return std::make_shared<Stage>(*this); }},
         this);
+#endif
 
     // Initialize UI event handler
     event_handler_ = std::make_unique<UIEventHandler>(
@@ -274,10 +289,12 @@ bool MainWindow::is_window_ready() const {
 }
 
 void MainWindow::loop() {
+#ifndef __EMSCRIPTEN__
     if (socket_.state() == QTcpSocket::UnconnectedState) [[unlikely]] {
         QApplication::quit();
         return;
     }
+#endif
 
     message_handler_->decode_incoming_messages();
 
