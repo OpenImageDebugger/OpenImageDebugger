@@ -21,6 +21,7 @@ cp "$ROOT/wasm/loader.html" "$DIST/"
 cp "$ROOT/wasm/demo.html" "$DIST/index.html"
 cp "$ROOT/wasm/demo-buffers.js" "$DIST/"
 cp "$ROOT/wasm/test-harness.html" "$DIST/"
+cp "$ROOT/LICENSE" "$DIST/"
 cp "$BUILD_SRC/qtloader.js" "$DIST/"
 
 # Optional Qt assets emitted beside the build output.
