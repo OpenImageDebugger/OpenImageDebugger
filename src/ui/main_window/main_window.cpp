@@ -34,12 +34,11 @@
 
 EM_JS(void, oid_notify_viewer_ready, (), {
   const msg = {type: 'oid-control', event: 'viewer-ready', version: 'dev'};
+  if (typeof window.oidOnViewerReady === 'function') {
+    window.oidOnViewerReady(msg);
+  }
   if (typeof window.dispatchEvent === 'function') {
     window.dispatchEvent(new CustomEvent('oid-viewer-ready', {detail: msg}));
-  }
-  if (window.parent !== window &&
-      typeof window.parent.postMessage === 'function') {
-    window.parent.postMessage(msg, '*');
   }
 });
 #endif
