@@ -1,0 +1,7 @@
+{
+  "name": "@openimagedebugger/viewer-wasm",
+  "version": "0.0.0-dev",
+  "description": "Qt 6.11 WASM build of oidwindow",
+  "files": ["dist"],
+  "license": "MIT"
+}
