@@ -134,7 +134,7 @@ void GLCanvas::initializeGL() {
         return;
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Initialize text renderer
     if (!text_renderer_->initialize()) {
@@ -162,7 +162,7 @@ const GLTextRenderer* GLCanvas::get_text_renderer() const {
 void GLCanvas::render_buffer_icon(Stage& stage,
                                   const int icon_width,
                                   const int icon_height) {
-    glBindFramebuffer(GL_FRAMEBUFFER_EXT, icon_fbo_);
+    glBindFramebuffer(GL_FRAMEBUFFER, icon_fbo_);
 
     glViewport(0, 0, icon_width, icon_height);
 
@@ -208,7 +208,7 @@ void GLCanvas::render_buffer_icon(Stage& stage,
 
     // Reset stage camera
     stage.set_icon_drawing_mode(false);
-    glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, width(), height());
     cam = original_pose;
     cam.window_resized(width(), height());
