@@ -35,8 +35,9 @@
 #include <QObject>
 #include <QSizeF>
 
+#include "ipc/transport.h"
+
 class QListWidgetItem;
-class QTcpSocket;
 
 namespace oid {
 
@@ -54,7 +55,7 @@ class MessageHandler : public QObject {
         BufferData& buffer_data;
         WindowState& state;
         UIComponents& ui_components;
-        QTcpSocket& socket;
+        ITransport& transport;
         std::function<QSizeF()> get_icon_size;
         std::function<std::shared_ptr<Stage>()> create_stage;
     };

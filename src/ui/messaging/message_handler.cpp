@@ -26,6 +26,7 @@
 #include "message_handler.h"
 
 #include <bit>
+#include <array>
 #include <iostream>
 #include <memory>
 #include <ranges>
@@ -47,7 +48,7 @@ MessageHandler::MessageHandler(Dependencies deps, QObject* parent)
 
 void MessageHandler::decode_set_available_symbols() const {
     const auto lock = std::unique_lock{deps_.ui_mutex};
-    auto message_decoder = MessageDecoder{&deps_.socket};
+    auto message_decoder = MessageDecoder{deps_.transport};
     message_decoder.read<QStringList, QString>(
         deps_.buffer_data.available_vars);
 
@@ -70,7 +71,7 @@ void MessageHandler::respond_get_observed_symbols() const {
     for (const auto& name : deps_.buffer_data.held_buffers | std::views::keys) {
         message_composer.push(name);
     }
-    message_composer.send(&deps_.socket);
+    message_composer.send(deps_.transport);
 }
 
 QListWidgetItem* MessageHandler::find_image_list_item(
@@ -135,7 +136,7 @@ void MessageHandler::decode_plot_buffer_contents() {
     auto buff_type = BufferType{};
     auto buff_contents = std::vector<std::byte>{};
 
-    auto message_decoder = MessageDecoder{&deps_.socket};
+    auto message_decoder = MessageDecoder{deps_.transport};
     message_decoder.read(variable_name_str)
         .read(display_name_str)
         .read(pixel_layout_str)
@@ -239,39 +240,21 @@ void MessageHandler::decode_plot_buffer_contents() {
 }
 
 void MessageHandler::decode_incoming_messages() {
-    if (deps_.socket.state() == QTcpSocket::UnconnectedState) [[unlikely]] {
-        QApplication::quit();
-    }
-
     {
         const auto lock = std::unique_lock{deps_.ui_mutex};
         deps_.buffer_data.available_vars.clear();
     }
 
-    if (deps_.socket.bytesAvailable() == 0) [[unlikely]] {
+    if (!deps_.transport.has_data()) [[unlikely]] {
         return;
     }
 
     auto header = MessageType{};
-    if (!deps_.socket.read(std::bit_cast<char*>(&header), sizeof(header)))
-        [[unlikely]] {
-        const auto error = deps_.socket.error();
-        std::cerr << "[Error] Failed to read message header: "
-                  << deps_.socket.errorString().toStdString() << std::endl;
-
-        if (error == QAbstractSocket::RemoteHostClosedError ||
-            error == QAbstractSocket::NetworkError ||
-            error == QAbstractSocket::ConnectionRefusedError ||
-            error == QAbstractSocket::SocketTimeoutError) [[unlikely]] {
-            std::cerr
-                << "[Error] Critical socket error detected. Closing connection."
-                << std::endl;
-            deps_.socket.close();
-        }
+    std::array<std::byte, sizeof(header)> header_bytes{};
+    if (deps_.transport.receive(header_bytes) != header_bytes.size()) [[unlikely]] {
         return;
     }
-
-    deps_.socket.waitForReadyRead(100);
+    header = std::bit_cast<MessageType>(header_bytes);
 
     switch (header) {
     case MessageType::SetAvailableSymbols:
@@ -293,7 +276,7 @@ void MessageHandler::request_plot_buffer(
     auto message_composer = MessageComposer{};
     message_composer.push(MessageType::PlotBufferRequest)
         .push(std::string(buffer_name))
-        .send(&deps_.socket);
+        .send(deps_.transport);
 }
 
 std::string MessageHandler::get_type_label(const int type, const int channels) {

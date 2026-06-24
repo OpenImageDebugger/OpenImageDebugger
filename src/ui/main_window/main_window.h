@@ -38,6 +38,7 @@
 #include <QTimer>
 
 #include "math/linear_algebra.h"
+#include "ipc/tcp_transport.h"
 #include "ui/controllers/auto_contrast_controller.h"
 #include "ui/events/event_handler.h"
 #include "ui/go_to_widget.h"
@@ -181,6 +182,7 @@ class MainWindow final : public QMainWindow {
     mutable std::recursive_mutex ui_mutex_{};
     ConnectionSettings host_settings_{};
     QTcpSocket socket_{};
+    std::unique_ptr<TcpTransport> tcp_transport_{};
 
     ///
     // Assorted methods - private - implemented in main_window.cpp

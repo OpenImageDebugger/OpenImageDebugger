@@ -29,9 +29,11 @@
 #include <ranges>
 #include <utility>
 
+#include <QApplication>
 #include <QDateTime>
 #include <QScreen>
 #include <QSettings>
+#include <QTcpSocket>
 
 #include "main_window_initializer.h"
 #include "math/linear_algebra.h"
@@ -124,13 +126,14 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             ui_mutex_, buffer_data_, state_, ui_components_});
 
     // Initialize message handler
+    tcp_transport_ = std::make_unique<TcpTransport>(socket_);
     message_handler_ = std::make_unique<MessageHandler>(
         MessageHandler::Dependencies{
             ui_mutex_,
             buffer_data_,
             state_,
             ui_components_,
-            socket_,
+            *tcp_transport_,
             [] { return get_icon_size(); },
             [this] { return std::make_shared<Stage>(*this); }},
         this);
@@ -271,6 +274,11 @@ bool MainWindow::is_window_ready() const {
 }
 
 void MainWindow::loop() {
+    if (socket_.state() == QTcpSocket::UnconnectedState) [[unlikely]] {
+        QApplication::quit();
+        return;
+    }
+
     message_handler_->decode_incoming_messages();
 
     const auto lock = std::unique_lock{ui_mutex_};
