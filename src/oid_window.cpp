@@ -27,6 +27,7 @@
 
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QSurfaceFormat>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -41,14 +42,19 @@ EM_JS(void, oid_install_js_hooks, (), {
     Module.oidEnqueueInbound(ptr, len);
     _free(ptr);
   };
-  if (window.parent !== window) {
-    window.parent.postMessage(
-        {type: 'oid-control', event: 'viewer-ready', version: 'dev'}, '*');
-  }
 });
+
 #endif
 
 int main(int argc, char* argv[]) {
+#ifdef __EMSCRIPTEN__
+    auto format = QSurfaceFormat{};
+    format.setRenderableType(QSurfaceFormat::OpenGLES);
+    format.setVersion(3, 0);
+    format.setProfile(QSurfaceFormat::CoreProfile);
+    QSurfaceFormat::setDefaultFormat(format);
+#endif
+
     auto app = QApplication{argc, argv};
 
 #ifndef __EMSCRIPTEN__

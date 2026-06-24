@@ -359,6 +359,10 @@ void MainWindowInitializer::initialize_toolbar() const {
 
 void MainWindowInitializer::initialize_visualization_pane() const {
     deps_.ui_components.ui->bufferPreview->set_main_window(deps_.main_window);
+#ifdef __EMSCRIPTEN__
+    deps_.ui_components.ui->bufferPreview->setAttribute(Qt::WA_NativeWindow,
+                                                        false);
+#endif
 }
 
 void MainWindowInitializer::initialize_status_bar() const {

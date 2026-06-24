@@ -58,6 +58,7 @@ class MessageHandler : public QObject {
         ITransport& transport;
         std::function<QSizeF()> get_icon_size;
         std::function<std::shared_ptr<Stage>()> create_stage;
+        std::function<void(const std::shared_ptr<Stage>&)> select_stage;
     };
 
     explicit MessageHandler(Dependencies deps, QObject* parent = nullptr);

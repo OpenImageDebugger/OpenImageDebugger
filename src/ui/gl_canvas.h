@@ -28,6 +28,7 @@
 
 #include <array>
 #include <cassert>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -36,7 +37,14 @@
 
 #include <QMouseEvent>
 #include <QOpenGLFunctions>
+
+#ifdef __EMSCRIPTEN__
+#include <QRhiWidget>
+
+class QRhiCommandBuffer;
+#else
 #include <QOpenGLWidget>
+#endif
 
 namespace oid {
 
@@ -44,7 +52,11 @@ class GLTextRenderer;
 class MainWindow;
 class Stage;
 
+#ifdef __EMSCRIPTEN__
+class GLCanvas final : public QRhiWidget, public QOpenGLFunctions {
+#else
 class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
+#endif
     Q_OBJECT
   public:
     explicit GLCanvas(QWidget* parent = nullptr);
@@ -57,13 +69,29 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
 
     void mouseReleaseEvent(QMouseEvent* ev) override;
 
+    void wheelEvent(QWheelEvent* ev) override;
+
+#ifdef __EMSCRIPTEN__
+    void initialize(QRhiCommandBuffer* cb) override;
+
+    void render(QRhiCommandBuffer* cb) override;
+
+    void releaseResources() override;
+
+    void resizeEvent(QResizeEvent* e) override;
+
+    void schedule_gl(std::function<void()> task);
+
+    [[nodiscard]] bool has_completed_first_paint() const {
+        return first_paint_completed_;
+    }
+#else
     void initializeGL() override;
 
     void paintGL() override;
 
     void resizeGL(int w, int h) override;
-
-    void wheelEvent(QWheelEvent* ev) override;
+#endif
 
     [[nodiscard]] int mouse_x() const {
         return mouse_x_;
@@ -106,8 +134,17 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
     GLuint icon_fbo_{0};
 
     bool initialized_{false};
+    bool first_paint_completed_{false};
 
     std::unique_ptr<GLTextRenderer> text_renderer_{};
+
+#ifdef __EMSCRIPTEN__
+    std::deque<std::function<void()>> gl_queue_{};
+
+    void drain_gl_queue();
+
+    bool init_gl_state();
+#endif
 };
 
 } // namespace oid

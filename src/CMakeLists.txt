@@ -38,6 +38,10 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  find_package(Qt6 6.11 REQUIRED COMPONENTS GuiPrivate)
+endif()
+
 set(SOURCES
     oid_window.cpp
     io/buffer_exporter.cpp
@@ -106,7 +110,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
                       Qt6::Widgets
                       Threads::Threads)
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::GuiPrivate)
+else()
   target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENGL_gl_LIBRARY})
 endif()
 

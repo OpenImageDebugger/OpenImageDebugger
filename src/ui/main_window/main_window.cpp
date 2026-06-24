@@ -29,6 +29,17 @@
 #include <ranges>
 #include <utility>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
+EM_JS(void, oid_notify_viewer_ready, (), {
+  if (window.parent !== window) {
+    window.parent.postMessage(
+        {type: 'oid-control', event: 'viewer-ready', version: 'dev'}, '*');
+  }
+});
+#endif
+
 #include <QApplication>
 #include <QDateTime>
 #include <QScreen>
@@ -137,7 +148,10 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             ui_components_,
             *postmessage_transport_,
             [] { return get_icon_size(); },
-            [this] { return std::make_shared<Stage>(*this); }},
+            [this] { return std::make_shared<Stage>(*this); },
+            [this](const std::shared_ptr<Stage>& stage) {
+                set_currently_selected_stage(stage);
+            }},
         this);
 #else
     tcp_transport_ = std::make_unique<TcpTransport>(socket_);
@@ -149,7 +163,10 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             ui_components_,
             *tcp_transport_,
             [] { return get_icon_size(); },
-            [this] { return std::make_shared<Stage>(*this); }},
+            [this] { return std::make_shared<Stage>(*this); },
+            [this](const std::shared_ptr<Stage>& stage) {
+                set_currently_selected_stage(stage);
+            }},
         this);
 #endif
 
@@ -298,6 +315,15 @@ void MainWindow::loop() {
 
     message_handler_->decode_incoming_messages();
 
+#ifdef __EMSCRIPTEN__
+    static auto viewer_ready_sent = false;
+    if (!viewer_ready_sent && gl_canvas_ptr_->has_completed_first_paint() &&
+        is_window_ready()) {
+        oid_notify_viewer_ready();
+        viewer_ready_sent = true;
+    }
+#endif
+
     const auto lock = std::unique_lock{ui_mutex_};
     if (state_.completer_updated) {
         // Update auto-complete suggestion list
@@ -312,13 +338,15 @@ void MainWindow::loop() {
     }
 
     // Update visualization pane
-    if (state_.request_render_update) {
+    if (state_.request_render_update &&
+        ui_components_.ui->bufferPreview->is_ready()) {
         ui_components_.ui->bufferPreview->update();
         update_status_bar();
         state_.request_render_update = false;
     }
 
     // Update an icon of every entry in image list
+#ifndef __EMSCRIPTEN__
     if (state_.request_icons_update) {
 
         for (const auto& name : buffer_data_.stages | std::views::keys) {
@@ -327,6 +355,9 @@ void MainWindow::loop() {
 
         state_.request_icons_update = false;
     }
+#else
+    state_.request_icons_update = false;
+#endif
 }
 
 void MainWindow::request_render_update() {

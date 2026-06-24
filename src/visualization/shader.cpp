@@ -26,6 +26,36 @@
 #include "shader.h"
 
 #include <iostream>
+#include <sstream>
+#include <string>
+
+#ifdef __EMSCRIPTEN__
+namespace {
+
+void replace_all(std::string& text,
+                 const std::string_view from,
+                 const std::string_view to) {
+    auto pos = std::size_t{0};
+    while ((pos = text.find(from, pos)) != std::string::npos) {
+        text.replace(pos, from.size(), to);
+        pos += to.size();
+    }
+}
+
+std::string adapt_shader_source_for_gles(const GLuint type, std::string source) {
+    replace_all(source, "attribute ", "in ");
+    if (type == GL_FRAGMENT_SHADER) {
+        replace_all(source, "varying ", "in ");
+        replace_all(source, "gl_FragColor", "oid_fragColor");
+    } else {
+        replace_all(source, "varying ", "out ");
+    }
+    replace_all(source, "texture2D", "texture");
+    return source;
+}
+
+} // namespace
+#endif
 
 namespace oid {
 
@@ -195,6 +225,22 @@ const char* ShaderProgram::get_source_channel_define() const {
 GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const {
     const auto shader = gl_canvas_.glCreateShader(type);
 
+#ifdef __EMSCRIPTEN__
+    auto adapted = adapt_shader_source_for_gles(type, std::string{source});
+    std::ostringstream full_source;
+    full_source << "#version 300 es\n";
+    if (type == GL_FRAGMENT_SHADER) {
+        full_source << "precision mediump float;\n"
+                    << "precision mediump int;\n"
+                    << "out vec4 oid_fragColor;\n";
+    }
+    full_source << get_texel_format_define() << get_source_channel_define()
+                << "#define PIXEL_LAYOUT " << pixel_layout_ << "\n"
+                << adapted;
+    const auto source_string = full_source.str();
+    const auto* src_ptr = source_string.c_str();
+    gl_canvas_.glShaderSource(shader, 1, &src_ptr, nullptr);
+#else
     auto src = std::array{"#version 120\n",
                           get_texel_format_define(),
                           get_source_channel_define(),
@@ -203,6 +249,7 @@ GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const {
                           source};
 
     gl_canvas_.glShaderSource(shader, 6, src.data(), nullptr);
+#endif
     gl_canvas_.glCompileShader(shader);
 
     auto compiled = GLint{};
@@ -216,7 +263,7 @@ GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const {
         std::cerr << "Failed to compile shader_type: " + get_shader_type(type)
                   << std::endl
                   << log << std::endl;
-        return false;
+        return 0;
     }
     return shader;
 }

@@ -27,6 +27,8 @@
 
 #include <iostream>
 
+#include <rhi/qrhi.h>
+
 #include "main_window/main_window.h"
 #include "ui/gl_text_renderer.h"
 #include "visualization/components/camera.h"
@@ -36,9 +38,20 @@
 namespace oid {
 
 GLCanvas::GLCanvas(QWidget* parent)
+#ifdef __EMSCRIPTEN__
+    : QRhiWidget{parent},
+#else
     : QOpenGLWidget{parent},
+#endif
       text_renderer_{std::make_unique<GLTextRenderer>(*this)} {
     mouse_down_[0] = mouse_down_[1] = false;
+#ifdef __EMSCRIPTEN__
+    setApi(Api::OpenGL);
+    connect(this, &QRhiWidget::renderFailed, this, [this] {
+        initialized_ = false;
+        first_paint_completed_ = false;
+    });
+#endif
 }
 
 GLCanvas::~GLCanvas() = default;
@@ -78,6 +91,103 @@ void GLCanvas::mouseReleaseEvent(QMouseEvent* ev) {
         mouse_down_[1] = false;
     }
 }
+
+#ifdef __EMSCRIPTEN__
+
+bool GLCanvas::init_gl_state() {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+
+    if (!text_renderer_->initialize()) {
+        return false;
+    }
+
+    return true;
+}
+
+void GLCanvas::initialize(QRhiCommandBuffer* cb) {
+    static QRhi* last_rhi = nullptr;
+    if (last_rhi != rhi()) {
+        initialized_ = false;
+        first_paint_completed_ = false;
+        last_rhi = rhi();
+    }
+    if (initialized_) {
+        return;
+    }
+
+    const auto clear_color = QColor::fromRgbF(0.1f, 0.1f, 0.1f, 1.0f);
+    cb->beginPass(renderTarget(),
+                  clear_color,
+                  {1.0f, 0},
+                  nullptr,
+                  QRhiCommandBuffer::ExternalContent);
+    cb->beginExternal();
+    initializeOpenGLFunctions();
+
+    if (!init_gl_state()) {
+        cb->endExternal();
+        cb->endPass();
+        return;
+    }
+
+    cb->endExternal();
+    cb->endPass();
+    initialized_ = true;
+}
+
+void GLCanvas::render(QRhiCommandBuffer* cb) {
+    if (!initialized_) {
+        return;
+    }
+
+    const auto clear_color = QColor::fromRgbF(0.1f, 0.1f, 0.1f, 1.0f);
+    cb->beginPass(renderTarget(),
+                  clear_color,
+                  {1.0f, 0},
+                  nullptr,
+                  QRhiCommandBuffer::ExternalContent);
+    cb->beginExternal();
+
+    drain_gl_queue();
+
+    glViewport(0, 0, width(), height());
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    main_window().draw();
+
+    cb->endExternal();
+    cb->endPass();
+
+    first_paint_completed_ = true;
+}
+
+void GLCanvas::releaseResources() {
+    initialized_ = false;
+    first_paint_completed_ = false;
+}
+
+void GLCanvas::resizeEvent(QResizeEvent* e) {
+    QRhiWidget::resizeEvent(e);
+    if (initialized_) {
+        main_window().resize_callback(width(), height());
+    }
+}
+
+void GLCanvas::schedule_gl(std::function<void()> task) {
+    gl_queue_.push_back(std::move(task));
+    update();
+}
+
+void GLCanvas::drain_gl_queue() {
+    while (!gl_queue_.empty()) {
+        auto task = std::move(gl_queue_.front());
+        gl_queue_.pop_front();
+        task();
+    }
+}
+
+#else
 
 void GLCanvas::initializeGL() {
     this->makeCurrent();
@@ -150,6 +260,13 @@ void GLCanvas::paintGL() {
     main_window().draw();
 }
 
+void GLCanvas::resizeGL(const int w, const int h) {
+    glViewport(0, 0, w, h);
+    main_window().resize_callback(w, h);
+}
+
+#endif
+
 void GLCanvas::wheelEvent(QWheelEvent* ev) {
     main_window().scroll_callback(static_cast<float>(ev->angleDelta().y()) /
                                   120.0f);
@@ -162,6 +279,10 @@ const GLTextRenderer* GLCanvas::get_text_renderer() const {
 void GLCanvas::render_buffer_icon(Stage& stage,
                                   const int icon_width,
                                   const int icon_height) {
+    if (!initialized_) {
+        return;
+    }
+#ifndef __EMSCRIPTEN__
     glBindFramebuffer(GL_FRAMEBUFFER, icon_fbo_);
 
     glViewport(0, 0, icon_width, icon_height);
@@ -212,11 +333,7 @@ void GLCanvas::render_buffer_icon(Stage& stage,
     glViewport(0, 0, width(), height());
     cam = original_pose;
     cam.window_resized(width(), height());
-}
-
-void GLCanvas::resizeGL(const int w, const int h) {
-    glViewport(0, 0, w, h);
-    main_window().resize_callback(w, h);
+#endif
 }
 
 void GLCanvas::set_main_window(MainWindow& mw) {

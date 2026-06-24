@@ -18,6 +18,7 @@ mkdir -p "$DIST"
 
 cp "$BUILD_SRC/oidwindow.wasm" "$BUILD_SRC/oidwindow.js" "$DIST/"
 cp "$ROOT/wasm/loader.html" "$DIST/"
+cp "$ROOT/wasm/test-harness.html" "$DIST/"
 cp "$BUILD_SRC/qtloader.js" "$DIST/"
 
 # Optional Qt assets emitted beside the build output.

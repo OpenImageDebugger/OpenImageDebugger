@@ -37,6 +37,7 @@
 
 #include "ipc/message_exchange.h"
 #include "ipc/raw_data_decode.h"
+#include "ui/gl_canvas.h"
 #include "ui/main_window/main_window.h"
 #include "visualization/components/buffer.h"
 #include "visualization/stage.h"
@@ -88,6 +89,7 @@ QListWidgetItem* MessageHandler::find_image_list_item(
 
 void MessageHandler::repaint_image_list_icon(
     const std::string& variable_name_str) const {
+#ifndef __EMSCRIPTEN__
     const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto itStage = deps_.buffer_data.stages.find(variable_name_str);
     if (itStage == deps_.buffer_data.stages.end()) [[unlikely]] {
@@ -114,6 +116,7 @@ void MessageHandler::repaint_image_list_icon(
         item != nullptr) {
         item->setIcon(QPixmap::fromImage(bufferIcon));
     }
+#endif
 }
 
 void MessageHandler::update_image_list_label(
@@ -180,19 +183,57 @@ void MessageHandler::decode_plot_buffer_contents() {
         return label_ss.str();
     }();
 
+    const BufferParams params{.buffer = buff_span,
+                              .buffer_width_i = buff_width,
+                              .buffer_height_i = buff_height,
+                              .channels = buff_channels,
+                              .type = buff_type,
+                              .step = buff_stride,
+                              .pixel_layout = pixel_layout_str,
+                              .transpose_buffer = transpose_buffer};
+
     if (auto buffer_stage = deps_.buffer_data.stages.find(variable_name_str);
         buffer_stage == deps_.buffer_data.stages.end()) {
 
         auto stage = deps_.create_stage();
-        if (const BufferParams params{.buffer = buff_span,
-                                      .buffer_width_i = buff_width,
-                                      .buffer_height_i = buff_height,
-                                      .channels = buff_channels,
-                                      .type = buff_type,
-                                      .step = buff_stride,
-                                      .pixel_layout = pixel_layout_str,
-                                      .transpose_buffer = transpose_buffer};
-            !stage->initialize(params)) [[unlikely]] {
+#ifdef __EMSCRIPTEN__
+        const auto ac_enabled = deps_.state.ac_enabled;
+        auto* canvas = deps_.ui_components.ui->bufferPreview;
+        canvas->schedule_gl([this,
+                             stage,
+                             params,
+                             variable_name_str,
+                             ac_enabled]() mutable {
+            if (!stage->initialize(params)) [[unlikely]] {
+                std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
+                             "initialization failed."
+                          << std::endl;
+                return;
+            }
+            stage->set_contrast_enabled(ac_enabled);
+            {
+                const auto gl_lock = std::unique_lock{deps_.ui_mutex};
+                deps_.buffer_data.stages.try_emplace(variable_name_str, stage);
+            }
+            deps_.select_stage(stage);
+            {
+                const auto ui_lock = std::unique_lock{deps_.ui_mutex};
+                auto* list = deps_.ui_components.ui->imageList;
+                list->blockSignals(true);
+                for (int i = 0; i < list->count(); ++i) {
+                    const auto* item = list->item(i);
+                    if (item->data(Qt::UserRole).toString().toStdString() ==
+                        variable_name_str) {
+                        list->setCurrentRow(i);
+                        break;
+                    }
+                }
+                list->blockSignals(false);
+            }
+            deps_.state.request_render_update = true;
+        });
+#else
+        if (!stage->initialize(params)) [[unlikely]] {
             std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
                          "initialization failed."
                       << std::endl;
@@ -201,20 +242,28 @@ void MessageHandler::decode_plot_buffer_contents() {
         buffer_stage =
             deps_.buffer_data.stages.try_emplace(variable_name_str, stage)
                 .first;
+#endif
     } else {
-        const BufferParams params{.buffer = buff_span,
-                                  .buffer_width_i = buff_width,
-                                  .buffer_height_i = buff_height,
-                                  .channels = buff_channels,
-                                  .type = buff_type,
-                                  .step = buff_stride,
-                                  .pixel_layout = pixel_layout_str,
-                                  .transpose_buffer = transpose_buffer};
+#ifdef __EMSCRIPTEN__
+        auto* canvas = deps_.ui_components.ui->bufferPreview;
+        canvas->schedule_gl([this, params, variable_name_str]() {
+            const auto gl_lock = std::unique_lock{deps_.ui_mutex};
+            const auto it = deps_.buffer_data.stages.find(variable_name_str);
+            if (it == deps_.buffer_data.stages.end()) [[unlikely]] {
+                return;
+            }
+            if (!it->second->buffer_update(params)) [[unlikely]] {
+                std::cerr << "[Error] Buffer update failed for: "
+                          << variable_name_str << std::endl;
+            }
+        });
+#else
         if (const auto& [buffer_name, buffer_stage_ptr] = *buffer_stage;
             !buffer_stage_ptr->buffer_update(params)) [[unlikely]] {
             std::cerr << "[Error] Buffer update failed for: "
                       << variable_name_str << std::endl;
         }
+#endif
     }
 
     if (auto item = find_image_list_item(variable_name_str); item == nullptr) {
@@ -223,7 +272,14 @@ void MessageHandler::decode_plot_buffer_contents() {
         new_item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
         new_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
                            Qt::ItemIsDragEnabled);
+#ifdef __EMSCRIPTEN__
+        // Stage GL init is deferred; avoid selecting before it exists in the map.
+        deps_.ui_components.ui->imageList->blockSignals(true);
         deps_.ui_components.ui->imageList->addItem(new_item.release());
+        deps_.ui_components.ui->imageList->blockSignals(false);
+#else
+        deps_.ui_components.ui->imageList->addItem(new_item.release());
+#endif
     }
 
     repaint_image_list_icon(variable_name_str);
