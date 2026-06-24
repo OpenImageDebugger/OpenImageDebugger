@@ -27,7 +27,9 @@
 
 #include <iostream>
 
+#ifdef __EMSCRIPTEN__
 #include <rhi/qrhi.h>
+#endif
 
 #include "main_window/main_window.h"
 #include "ui/gl_text_renderer.h"

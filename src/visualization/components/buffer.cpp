@@ -789,8 +789,10 @@ void Buffer::setup_gl_buffer() {
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+#ifndef __EMSCRIPTEN__
             gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+#endif
         }
     }
 

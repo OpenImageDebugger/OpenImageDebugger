@@ -39,7 +39,7 @@ EM_JS(void, oid_install_js_hooks, (), {
     const len = arr.length;
     const ptr = _malloc(len);
     HEAPU8.set(arr, ptr);
-    Module.oidEnqueueInbound(ptr, len);
+    Module._oidEnqueueInbound(ptr, len);
     _free(ptr);
   };
 });
