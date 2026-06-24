@@ -25,7 +25,6 @@ cp "$BUILD_SRC/qtloader.js" "$DIST/"
 
 # Optional Qt assets emitted beside the build output.
 cp "$BUILD_SRC"/qt*.js "$BUILD_SRC"/qt*.wasm "$DIST/" 2>/dev/null || true
-cp "$BUILD_SRC/qtlogo.svg" "$DIST/" 2>/dev/null || true
 
 OID_REV="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo dev)"
 echo "{\"qt\":\"6.11\",\"emscripten\":\"4.0.7\",\"oid\":\"$OID_REV\"}" > "$DIST/version.json"
