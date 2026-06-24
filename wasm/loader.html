@@ -26,11 +26,22 @@
 
     <script>
       window.oidSend = function(u8) {
-        window.parent.postMessage({ type: 'oid-ipc', payload: u8 }, '*');
+        if (typeof window.parent?.postMessage === 'function') {
+          window.parent.postMessage({ type: 'oid-ipc', payload: u8 }, '*');
+        }
       };
       window.addEventListener('message', (ev) => {
         if (ev.data?.type === 'oid-ipc' && ev.data.payload) {
-          if (window.oidOnMessage) window.oidOnMessage(ev.data.payload);
+          const p = ev.data.payload;
+          const arr = p instanceof Uint8Array
+            ? p
+            : new Uint8Array(Array.isArray(p) ? p : Object.values(p));
+          if (window.oidOnMessage) window.oidOnMessage(arr);
+        }
+      });
+      window.addEventListener('oid-viewer-ready', (ev) => {
+        if (typeof window.parent?.postMessage === 'function') {
+          window.parent.postMessage(ev.detail, '*');
         }
       });
     </script>

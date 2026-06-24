@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 DIST="$ROOT/wasm/dist"
 
 [[ -f "$DIST/loader.html" ]] || {
-  echo "error: $DIST/loader.html missing — run wasm/scripts/build-wasm.sh && wasm/scripts/pack-viewer-wasm.sh" >&2
+  echo "error: $DIST/loader.html missing — run wasm/scripts/build-wasm.sh && wasm/scripts/pack.sh" >&2
   exit 1
 }
 

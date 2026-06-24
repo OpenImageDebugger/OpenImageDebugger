@@ -33,9 +33,13 @@
 #include <emscripten.h>
 
 EM_JS(void, oid_notify_viewer_ready, (), {
-  if (window.parent !== window) {
-    window.parent.postMessage(
-        {type: 'oid-control', event: 'viewer-ready', version: 'dev'}, '*');
+  const msg = {type: 'oid-control', event: 'viewer-ready', version: 'dev'};
+  if (typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('oid-viewer-ready', {detail: msg}));
+  }
+  if (window.parent !== window &&
+      typeof window.parent.postMessage === 'function') {
+    window.parent.postMessage(msg, '*');
   }
 });
 #endif

@@ -35,7 +35,14 @@
 
 EM_JS(void, oid_install_js_hooks, (), {
   window.oidOnMessage = function(buf) {
-    const arr = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    let arr;
+    if (buf instanceof Uint8Array) {
+      arr = buf;
+    } else if (Array.isArray(buf)) {
+      arr = new Uint8Array(buf);
+    } else {
+      arr = new Uint8Array(Object.values(buf));
+    }
     const len = arr.length;
     const ptr = _malloc(len);
     HEAPU8.set(arr, ptr);
