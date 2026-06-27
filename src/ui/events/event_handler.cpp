@@ -29,6 +29,7 @@
 #include <ranges>
 
 #include <QFileDialog>
+#include <QMenu>
 #include <QPoint>
 #include <QString>
 #include <QWidget>
@@ -474,25 +475,30 @@ void UIEventHandler::export_selected_buffer() {
 }
 
 void UIEventHandler::show_context_menu(const QPoint& pos) {
-    if (deps_.ui_components.ui->imageList->itemAt(pos) != nullptr) {
-        const auto globalPos =
-            deps_.ui_components.ui->imageList->mapToGlobal(pos);
+    if (deps_.ui_components.ui->imageList->itemAt(pos) == nullptr) {
+        return;
+    }
+    const auto globalPos =
+        deps_.ui_components.ui->imageList->mapToGlobal(pos);
 
-        auto menu = QMenu{deps_.ui_components.ui->imageList};
-
-        const auto buffer_name =
-            deps_.ui_components.ui->imageList->itemAt(pos)->data(Qt::UserRole);
-        menu.addAction("Export buffer", [this, buffer_name] {
-            export_buffer(buffer_name.toString());
-        });
+    const auto buffer_name =
+        deps_.ui_components.ui->imageList->itemAt(pos)->data(Qt::UserRole);
 
 #ifdef __EMSCRIPTEN__
-        // QMenu::exec() uses a nested event loop, which is unsupported on WASM.
-        menu.popup(globalPos);
+    // popup() is async; a stack QMenu is destroyed before the menu can paint.
+    auto* menu = new QMenu(deps_.ui_components.ui->imageList);
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+    menu->addAction("Export buffer", [this, buffer_name] {
+        export_buffer(buffer_name.toString());
+    });
+    menu->popup(globalPos);
 #else
-        menu.exec(globalPos);
+    auto menu = QMenu{deps_.ui_components.ui->imageList};
+    menu.addAction("Export buffer", [this, buffer_name] {
+        export_buffer(buffer_name.toString());
+    });
+    menu.exec(globalPos);
 #endif
-    }
 }
 
 void UIEventHandler::toggle_go_to_dialog() const {
