@@ -34,11 +34,22 @@
 #include <span>
 #include <string_view>
 #include <thread>
+#include <vector>
 
 #include "ipc/message_exchange.h"
 #include "ipc/tcp_transport.h"
+#include "ipc/transport.h"
 
 using namespace oid;
+
+struct RecordingTransport final : ITransport {
+  std::vector<std::vector<std::byte>> sends;
+  void send(std::span<const std::byte> data) override {
+    sends.emplace_back(data.begin(), data.end());
+  }
+  std::size_t receive(std::span<std::byte>) override { return 0; }
+  bool has_data() const override { return false; }
+};
 
 namespace {
 // Get or create QCoreApplication instance for all tests
@@ -190,6 +201,18 @@ TEST_F(MessageExchangeTest, MessageComposerPushPrimitive) {
   MessageComposer composer;
   composer.push(TEST_VALUE_42).push(MAX_UCHAR).push(true).push(TEST_VALUE_100);
   composer.clear();
+}
+
+TEST_F(MessageExchangeTest, MessageComposerSendCoalescesBlocks) {
+  RecordingTransport transport;
+  MessageComposer composer;
+  composer.push(MessageType::PlotBufferRequest).push(std::string("TestField"));
+  composer.send(transport);
+  ASSERT_EQ(transport.sends.size(), 1u);
+  ASSERT_GE(transport.sends[0].size(), 12u);
+  const auto type =
+      std::bit_cast<MessageType>(transport.sends[0].data());
+  EXPECT_EQ(type, MessageType::PlotBufferRequest);
 }
 
 TEST_F(MessageExchangeTest, MessageComposerPushString) {

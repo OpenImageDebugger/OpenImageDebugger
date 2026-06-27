@@ -35,6 +35,7 @@
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #include <QString>
 
@@ -169,8 +170,18 @@ class MessageComposer {
     }
 
     void send(ITransport& transport) const {
+        std::size_t total = 0;
         for (const auto& block : message_blocks_) {
-            transport.send(std::span{block->data(), block->size()});
+            total += block->size();
+        }
+        std::vector<std::byte> frame;
+        frame.reserve(total);
+        for (const auto& block : message_blocks_) {
+            const auto* data = block->data();
+            frame.insert(frame.end(), data, data + block->size());
+        }
+        if (!frame.empty()) {
+            transport.send(frame);
         }
     }
 
