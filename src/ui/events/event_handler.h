@@ -80,6 +80,7 @@ class UIEventHandler : public QObject {
     void symbol_selected();
     void symbol_completed(const QString& str);
     void export_buffer(const QString& buffer_name);
+    void export_selected_buffer();
     void show_context_menu(const QPoint& pos);
     void toggle_go_to_dialog() const;
     void go_to_pixel(float x, float y) const;

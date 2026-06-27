@@ -75,6 +75,7 @@ class MessageHandler : public QObject {
     void acMinLabelsResetRequested();
     void acMaxLabelsResetRequested();
     void settingsPersistenceRequested();
+    void exportSelectedBufferRequested();
 
   private:
     Dependencies deps_;

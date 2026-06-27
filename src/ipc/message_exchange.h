@@ -53,7 +53,10 @@ enum class MessageType {
     SetAvailableSymbols = 2,
     PlotBufferContents = 3,
     PlotBufferRequest = 4,
-    ExportBufferRequest = 5
+    ExportBufferRequest = 5,
+    ApplySessionState = 6,
+    SessionStateChanged = 7,
+    ExportSelectedBuffer = 8
 };
 
 // C++20 concept to replace SFINAE for primitive type checking

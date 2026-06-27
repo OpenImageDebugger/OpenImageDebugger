@@ -460,6 +460,19 @@ void UIEventHandler::export_buffer(const QString& buffer_name) {
 #endif
 }
 
+void UIEventHandler::export_selected_buffer() {
+    QString name;
+    {
+        const auto lock = std::unique_lock{deps_.ui_mutex};
+        const auto* item = deps_.ui_components.ui->imageList->currentItem();
+        if (item == nullptr) {
+            return;
+        }
+        name = item->data(Qt::UserRole).toString();
+    }
+    export_buffer(name);
+}
+
 void UIEventHandler::show_context_menu(const QPoint& pos) {
     if (deps_.ui_components.ui->imageList->itemAt(pos) != nullptr) {
         const auto globalPos =

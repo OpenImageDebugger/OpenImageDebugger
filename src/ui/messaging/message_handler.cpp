@@ -342,6 +342,9 @@ void MessageHandler::decode_incoming_messages() {
     case MessageType::PlotBufferContents:
         decode_plot_buffer_contents();
         break;
+    case MessageType::ExportSelectedBuffer:
+        emit exportSelectedBufferRequested();
+        break;
     default:
         break;
     }
