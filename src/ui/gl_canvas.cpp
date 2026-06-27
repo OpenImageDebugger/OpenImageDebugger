@@ -108,6 +108,14 @@ void GLCanvas::init_icon_framebuffer() {
     const auto icon_width = static_cast<int>(icon_size.width());
     const auto icon_height = static_cast<int>(icon_size.height());
 
+#ifdef __EMSCRIPTEN__
+    constexpr auto icon_internal_format = GL_RGBA8;
+    constexpr auto icon_format = GL_RGBA;
+#else
+    constexpr auto icon_internal_format = GL_RGB8;
+    constexpr auto icon_format = GL_RGB;
+#endif
+
     glGenTextures(1, &icon_texture_);
     glBindTexture(GL_TEXTURE_2D, icon_texture_);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -116,11 +124,11 @@ void GLCanvas::init_icon_framebuffer() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D,
                  0,
-                 GL_RGB8,
+                 icon_internal_format,
                  icon_width,
                  icon_height,
                  0,
-                 GL_RGB,
+                 icon_format,
                  GL_UNSIGNED_BYTE,
                  nullptr);
 
@@ -331,27 +339,40 @@ const GLTextRenderer* GLCanvas::get_text_renderer() const {
     return text_renderer_.get();
 }
 
-void GLCanvas::render_buffer_icon(Stage& stage,
+bool GLCanvas::render_buffer_icon(Stage& stage,
                                   const int icon_width,
                                   const int icon_height) {
     if (!initialized_ || !icon_framebuffer_ready_) {
-        return;
+        return false;
     }
+
+#ifdef __EMSCRIPTEN__
+    constexpr auto icon_read_format = GL_RGBA;
+    constexpr int icon_bytes_per_pixel = 4;
+#else
+    constexpr auto icon_read_format = GL_RGB;
+    constexpr int icon_bytes_per_pixel = 3;
+#endif
 
     glBindFramebuffer(GL_FRAMEBUFFER, icon_fbo_);
 
     glViewport(0, 0, icon_width, icon_height);
+    glDisable(GL_SCISSOR_TEST);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
 
     const auto camera = stage.get_game_object("camera");
     if (!camera.has_value()) [[unlikely]] {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        return;
+        glViewport(0, 0, render_width(), render_height());
+        return false;
     }
     const auto cam_opt =
         camera->get().get_component<Camera>("camera_component");
     if (!cam_opt.has_value()) [[unlikely]] {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        return;
+        glViewport(0, 0, render_width(), render_height());
+        return false;
     }
     auto& cam = cam_opt->get();
 
@@ -373,14 +394,16 @@ void GLCanvas::render_buffer_icon(Stage& stage,
     stage.set_icon_drawing_mode(true);
 
     stage.draw();
-    stage.get_buffer_icon().resize(3 * static_cast<size_t>(icon_width) *
-                                   static_cast<size_t>(icon_height));
+    stage.get_buffer_icon().resize(
+        static_cast<size_t>(icon_bytes_per_pixel) *
+        static_cast<size_t>(icon_width) * static_cast<size_t>(icon_height));
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ROW_LENGTH, 0);
     glReadPixels(0,
                  0,
                  icon_width,
                  icon_height,
-                 GL_RGB,
+                 icon_read_format,
                  GL_UNSIGNED_BYTE,
                  stage.get_buffer_icon().data());
 
@@ -390,6 +413,7 @@ void GLCanvas::render_buffer_icon(Stage& stage,
     glViewport(0, 0, render_width(), render_height());
     cam = original_pose;
     cam.window_resized(render_width(), render_height());
+    return true;
 }
 
 void GLCanvas::set_main_window(MainWindow& mw) {

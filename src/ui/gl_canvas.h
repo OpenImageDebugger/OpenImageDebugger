@@ -117,7 +117,9 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
 
     void set_main_window(MainWindow& mw);
 
-    void render_buffer_icon(Stage& stage, int icon_width, int icon_height);
+    [[nodiscard]] bool render_buffer_icon(Stage& stage,
+                                          int icon_width,
+                                          int icon_height);
 
   private:
     void init_icon_framebuffer();

@@ -101,16 +101,27 @@ void MessageHandler::repaint_image_list_icon(
         const auto icon_size = deps_.get_icon_size();
         const auto icon_width = static_cast<int>(icon_size.width());
         const auto icon_height = static_cast<int>(icon_size.height());
+
+        if (!deps_.ui_components.ui->bufferPreview->render_buffer_icon(
+                *stage, icon_width, icon_height)) {
+            return;
+        }
+
+#ifdef __EMSCRIPTEN__
+        const auto bytes_per_line = icon_width * 4;
+        const auto bufferIcon = QImage{stage->get_buffer_icon().data(),
+                                       icon_width,
+                                       icon_height,
+                                       bytes_per_line,
+                                       QImage::Format_RGBA8888};
+#else
         const auto bytes_per_line = icon_width * 3;
-
-        deps_.ui_components.ui->bufferPreview->render_buffer_icon(
-            *stage, icon_width, icon_height);
-
         const auto bufferIcon = QImage{stage->get_buffer_icon().data(),
                                        icon_width,
                                        icon_height,
                                        bytes_per_line,
                                        QImage::Format_RGB888};
+#endif
 
         if (const auto item = find_image_list_item(variable_name_str);
             item != nullptr) {
