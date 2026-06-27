@@ -52,7 +52,8 @@ enum class MessageType {
     GetObservedSymbolsResponse = 1,
     SetAvailableSymbols = 2,
     PlotBufferContents = 3,
-    PlotBufferRequest = 4
+    PlotBufferRequest = 4,
+    ExportBufferRequest = 5
 };
 
 // C++20 concept to replace SFINAE for primitive type checking

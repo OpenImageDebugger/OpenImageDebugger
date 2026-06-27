@@ -252,6 +252,12 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             &UIEventHandler::settingsPersistenceRequested,
             this,
             &MainWindow::persist_settings_deferred);
+#ifdef __EMSCRIPTEN__
+    connect(event_handler_.get(),
+            &UIEventHandler::exportBufferRequested,
+            message_handler_.get(),
+            &MessageHandler::request_export_buffer);
+#endif
 
     // Connect MessageHandler signals to MainWindow slots
     connect(message_handler_.get(),

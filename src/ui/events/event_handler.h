@@ -95,6 +95,7 @@ class UIEventHandler : public QObject {
     void acMaxLabelsResetRequested();
     void shiftPrecisionUpdateRequested();
     void settingsPersistenceRequested();
+    void exportBufferRequested(const QString& buffer_name);
 
   private:
     Dependencies deps_;

@@ -371,6 +371,12 @@ void UIEventHandler::symbol_completed(const QString& str) {
 }
 
 void UIEventHandler::export_buffer(const QString& buffer_name) {
+#ifdef __EMSCRIPTEN__
+    // QFileDialog::exec() uses a nested event loop, which is unsupported on WASM.
+    emit exportBufferRequested(buffer_name);
+    return;
+#endif
+
     const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto stage_it =
         deps_.buffer_data.stages.find(buffer_name.toStdString());
@@ -441,7 +447,12 @@ void UIEventHandler::show_context_menu(const QPoint& pos) {
             export_buffer(buffer_name.toString());
         });
 
+#ifdef __EMSCRIPTEN__
+        // QMenu::exec() uses a nested event loop, which is unsupported on WASM.
+        menu.popup(globalPos);
+#else
         menu.exec(globalPos);
+#endif
     }
 }
 

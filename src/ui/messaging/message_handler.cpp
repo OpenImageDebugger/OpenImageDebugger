@@ -355,6 +355,13 @@ void MessageHandler::request_plot_buffer(
         .send(deps_.transport);
 }
 
+void MessageHandler::request_export_buffer(const QString& buffer_name) const {
+    auto message_composer = MessageComposer{};
+    message_composer.push(MessageType::ExportBufferRequest)
+        .push(buffer_name.toStdString())
+        .send(deps_.transport);
+}
+
 std::string MessageHandler::get_type_label(const int type, const int channels) {
     auto result = std::stringstream{};
     switch (static_cast<BufferType>(type)) {
