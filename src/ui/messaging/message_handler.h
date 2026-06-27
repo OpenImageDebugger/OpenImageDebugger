@@ -32,6 +32,7 @@
 #include <string>
 #include <string_view>
 
+#include <QList>
 #include <QObject>
 #include <QSizeF>
 #include <QString>
@@ -66,7 +67,8 @@ class MessageHandler : public QObject {
 
     void decode_incoming_messages();
     void request_plot_buffer(std::string_view buffer_name) const;
-    void request_export_buffer(const QString& buffer_name) const;
+    void request_export_buffer(const QString& buffer_name, int format,
+                               const QList<float>& contrast) const;
     void repaint_image_list_icon(const std::string& variable_name_str) const;
 
   signals:

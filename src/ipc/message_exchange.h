@@ -60,8 +60,9 @@ enum class MessageType {
 template <typename T>
 concept PrimitiveType =
     std::is_same_v<T, MessageType> || std::is_same_v<T, int> ||
-    std::is_same_v<T, unsigned char> || std::is_same_v<T, BufferType> ||
-    std::is_same_v<T, bool> || std::is_same_v<T, std::size_t>;
+    std::is_same_v<T, float> || std::is_same_v<T, unsigned char> ||
+    std::is_same_v<T, BufferType> || std::is_same_v<T, bool> ||
+    std::is_same_v<T, std::size_t>;
 
 // Dedicated exception for socket timeout errors
 class SocketTimeoutError final : public std::runtime_error {

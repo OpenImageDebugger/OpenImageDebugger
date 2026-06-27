@@ -372,11 +372,36 @@ void UIEventHandler::symbol_completed(const QString& str) {
 
 void UIEventHandler::export_buffer(const QString& buffer_name) {
 #ifdef __EMSCRIPTEN__
-    // QFileDialog::exec() uses a nested event loop, which is unsupported on WASM.
-    emit exportBufferRequested(buffer_name);
-    return;
-#endif
+    const auto lock = std::unique_lock{deps_.ui_mutex};
+    const auto stage_it =
+        deps_.buffer_data.stages.find(buffer_name.toStdString());
+    if (stage_it == deps_.buffer_data.stages.end()) {
+        return;
+    }
 
+    const auto stage = stage_it->second;
+    const auto buffer_obj = stage->get_game_object("buffer");
+    if (!buffer_obj.has_value()) {
+        return;
+    }
+    const auto component_opt =
+        buffer_obj->get().get_component<Buffer>("buffer_component");
+    if (!component_opt.has_value()) {
+        return;
+    }
+    const auto& component = component_opt->get();
+
+    const auto* bc = component.auto_buffer_contrast_brightness();
+    auto contrast = QList<float>{};
+    contrast.reserve(8);
+    for (int i = 0; i < 8; ++i) {
+        contrast.append(bc[i]);
+    }
+
+    // QFileDialog::exec() uses a nested event loop, which is unsupported on WASM.
+    emit exportBufferRequested(buffer_name, 0, contrast);
+    return;
+#else
     const auto lock = std::unique_lock{deps_.ui_mutex};
     const auto stage_it =
         deps_.buffer_data.stages.find(buffer_name.toStdString());
@@ -432,6 +457,7 @@ void UIEventHandler::export_buffer(const QString& buffer_name) {
 
         emit settingsPersistenceRequested();
     }
+#endif
 }
 
 void UIEventHandler::show_context_menu(const QPoint& pos) {

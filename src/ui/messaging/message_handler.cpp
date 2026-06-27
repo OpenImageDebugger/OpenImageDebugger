@@ -355,11 +355,18 @@ void MessageHandler::request_plot_buffer(
         .send(deps_.transport);
 }
 
-void MessageHandler::request_export_buffer(const QString& buffer_name) const {
+void MessageHandler::request_export_buffer(const QString& buffer_name,
+                                           const int format,
+                                           const QList<float>& contrast) const {
     auto message_composer = MessageComposer{};
     message_composer.push(MessageType::ExportBufferRequest)
         .push(buffer_name.toStdString())
-        .send(deps_.transport);
+        .push(format);
+    for (int i = 0; i < 8; ++i) {
+        const auto value = i < contrast.size() ? contrast[i] : 0.f;
+        message_composer.push(value);
+    }
+    message_composer.send(deps_.transport);
 }
 
 std::string MessageHandler::get_type_label(const int type, const int channels) {

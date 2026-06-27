@@ -29,6 +29,7 @@
 #include <memory>
 #include <mutex>
 
+#include <QList>
 #include <QObject>
 #include <QString>
 
@@ -95,7 +96,8 @@ class UIEventHandler : public QObject {
     void acMaxLabelsResetRequested();
     void shiftPrecisionUpdateRequested();
     void settingsPersistenceRequested();
-    void exportBufferRequested(const QString& buffer_name);
+    void exportBufferRequested(const QString& buffer_name, int format,
+                               const QList<float>& contrast);
 
   private:
     Dependencies deps_;
