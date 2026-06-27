@@ -130,7 +130,7 @@ void MessageHandler::repaint_image_list_icon(
     };
 
 #ifdef __EMSCRIPTEN__
-    deps_.ui_components.ui->bufferPreview->schedule_gl(paint_icon);
+    deps_.ui_components.ui->bufferPreview->schedule_icon_gl(paint_icon);
 #else
     paint_icon();
 #endif
@@ -275,6 +275,7 @@ void MessageHandler::decode_plot_buffer_contents() {
                           << variable_name_str << std::endl;
             }
             deps_.state.request_icons_update = true;
+            deps_.state.request_render_update = true;
         });
 #else
         if (const auto& [buffer_name, buffer_stage_ptr] = *buffer_stage;

@@ -292,6 +292,31 @@ void MainWindow::draw() const {
     }
 }
 
+#ifdef __EMSCRIPTEN__
+void MainWindow::prepare_gl_draw() const {
+    const auto lock = std::unique_lock{ui_mutex_};
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (!stage) {
+        return;
+    }
+
+    stage->update();
+
+    const auto cam_obj = stage->get_game_object("camera");
+    if (!cam_obj.has_value()) {
+        return;
+    }
+    const auto cam_opt =
+        cam_obj->get().get_component<Camera>("camera_component");
+    if (!cam_opt.has_value()) {
+        return;
+    }
+    auto& cam = cam_opt->get();
+    cam.window_resized(ui_components_.ui->bufferPreview->render_width(),
+                       ui_components_.ui->bufferPreview->render_height());
+}
+#endif
+
 std::shared_ptr<GLCanvas> MainWindow::gl_canvas() const {
     return gl_canvas_ptr_;
 }

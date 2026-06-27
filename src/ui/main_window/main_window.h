@@ -119,6 +119,10 @@ class MainWindow final : public QMainWindow {
 
     void draw() const;
 
+#ifdef __EMSCRIPTEN__
+    void prepare_gl_draw() const;
+#endif
+
     [[nodiscard]] std::shared_ptr<GLCanvas> gl_canvas() const;
 
     [[nodiscard]] static QSizeF get_icon_size();

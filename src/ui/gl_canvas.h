@@ -82,6 +82,8 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
 
     void schedule_gl(std::function<void()> task);
 
+    void schedule_icon_gl(std::function<void()> task);
+
     [[nodiscard]] bool has_completed_first_paint() const {
         return first_paint_completed_;
     }
@@ -149,11 +151,13 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
 
 #ifdef __EMSCRIPTEN__
     std::deque<std::function<void()>> gl_queue_{};
+    std::deque<std::function<void()>> icon_gl_queue_{};
 
     int last_render_width_{0};
     int last_render_height_{0};
 
     void drain_gl_queue();
+    void drain_icon_gl_queue();
 
     bool init_gl_state();
 #endif

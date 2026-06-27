@@ -246,8 +246,10 @@ void GLCanvas::render(QRhiCommandBuffer* cb) {
         last_render_height_ = h;
         main_window().resize_callback(w, h);
     }
+    main_window().prepare_gl_draw();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     main_window().draw();
+    drain_icon_gl_queue();
 
     cb->endExternal();
     cb->endPass();
@@ -273,10 +275,23 @@ void GLCanvas::schedule_gl(std::function<void()> task) {
     update();
 }
 
+void GLCanvas::schedule_icon_gl(std::function<void()> task) {
+    icon_gl_queue_.push_back(std::move(task));
+    update();
+}
+
 void GLCanvas::drain_gl_queue() {
     while (!gl_queue_.empty()) {
         auto task = std::move(gl_queue_.front());
         gl_queue_.pop_front();
+        task();
+    }
+}
+
+void GLCanvas::drain_icon_gl_queue() {
+    while (!icon_gl_queue_.empty()) {
+        auto task = std::move(icon_gl_queue_.front());
+        icon_gl_queue_.pop_front();
         task();
     }
 }
