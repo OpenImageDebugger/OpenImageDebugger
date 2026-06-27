@@ -12,11 +12,6 @@ endif()
 
 add_compile_definitions(OID_TRANSPORT_POSTMESSAGE)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
-  set(OID_IPC_LIBRARY_TYPE STATIC CACHE INTERNAL "oidipc library type on Emscripten")
-  # Desktop -Werror is too strict for Emscripten/EM_JS glue.
-  add_compile_options(-Wno-error)
-endif()
 # oidipc is linked into oidwindow; static avoids shared-library overhead on WASM.
 set(OID_IPC_LIBRARY_TYPE SHARED)
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
