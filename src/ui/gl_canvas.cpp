@@ -99,6 +99,61 @@ void GLCanvas::mouseReleaseEvent(QMouseEvent* ev) {
     }
 }
 
+void GLCanvas::init_icon_framebuffer() {
+    if (icon_framebuffer_ready_) {
+        return;
+    }
+
+    const auto icon_size = MainWindow::get_icon_size();
+    const auto icon_width = static_cast<int>(icon_size.width());
+    const auto icon_height = static_cast<int>(icon_size.height());
+
+    glGenTextures(1, &icon_texture_);
+    glBindTexture(GL_TEXTURE_2D, icon_texture_);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,
+                 GL_RGB8,
+                 icon_width,
+                 icon_height,
+                 0,
+                 GL_RGB,
+                 GL_UNSIGNED_BYTE,
+                 nullptr);
+
+    glGenFramebuffers(1, &icon_fbo_);
+    glBindFramebuffer(GL_FRAMEBUFFER, icon_fbo_);
+    glFramebufferTexture2D(
+        GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, icon_texture_, 0);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        [[unlikely]] {
+        std::cerr << "[Error] FBO configuration is not supported. Framebuffer "
+                     "initialization failed."
+                  << std::endl;
+        destroy_icon_framebuffer();
+        return;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    icon_framebuffer_ready_ = true;
+}
+
+void GLCanvas::destroy_icon_framebuffer() {
+    if (icon_fbo_ != 0) {
+        glDeleteFramebuffers(1, &icon_fbo_);
+        icon_fbo_ = 0;
+    }
+    if (icon_texture_ != 0) {
+        glDeleteTextures(1, &icon_texture_);
+        icon_texture_ = 0;
+    }
+    icon_framebuffer_ready_ = false;
+}
+
 #ifdef __EMSCRIPTEN__
 
 int GLCanvas::render_width() const {
@@ -153,6 +208,8 @@ void GLCanvas::initialize(QRhiCommandBuffer* cb) {
         return;
     }
 
+    init_icon_framebuffer();
+
     cb->endExternal();
     cb->endPass();
     initialized_ = true;
@@ -195,6 +252,7 @@ void GLCanvas::releaseResources() {
     first_paint_completed_ = false;
     last_render_width_ = 0;
     last_render_height_ = 0;
+    destroy_icon_framebuffer();
 }
 
 void GLCanvas::resizeEvent(QResizeEvent* e) {
@@ -241,46 +299,7 @@ void GLCanvas::initializeGL() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-    ///
-    // Texture for generating icons
-    const auto icon_size = MainWindow::get_icon_size();
-    const auto icon_width = static_cast<int>(icon_size.width());
-    const auto icon_height = static_cast<int>(icon_size.height());
-    glGenTextures(1, &icon_texture_);
-    glBindTexture(GL_TEXTURE_2D, icon_texture_);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D,
-                 0,
-                 GL_RGB8,
-                 icon_width,
-                 icon_height,
-                 0,
-                 GL_RGB,
-                 GL_UNSIGNED_BYTE,
-                 nullptr);
-
-    // Generate FBO
-    glGenFramebuffers(1, &icon_fbo_);
-    glBindFramebuffer(GL_FRAMEBUFFER, icon_fbo_);
-
-    // Attach 2D texture to this FBO
-    glFramebufferTexture2D(
-        GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, icon_texture_, 0);
-
-    // Check if the GPU won't freak out about our FBO
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        [[unlikely]] {
-        std::cerr << "[Error] FBO configuration is not supported. Framebuffer "
-                     "initialization failed."
-                  << std::endl;
-        initialized_ = false;
-        return;
-    }
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    init_icon_framebuffer();
 
     // Initialize text renderer
     if (!text_renderer_->initialize()) {
@@ -315,21 +334,23 @@ const GLTextRenderer* GLCanvas::get_text_renderer() const {
 void GLCanvas::render_buffer_icon(Stage& stage,
                                   const int icon_width,
                                   const int icon_height) {
-    if (!initialized_) {
+    if (!initialized_ || !icon_framebuffer_ready_) {
         return;
     }
-#ifndef __EMSCRIPTEN__
+
     glBindFramebuffer(GL_FRAMEBUFFER, icon_fbo_);
 
     glViewport(0, 0, icon_width, icon_height);
 
     const auto camera = stage.get_game_object("camera");
     if (!camera.has_value()) [[unlikely]] {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return;
     }
     const auto cam_opt =
         camera->get().get_component<Camera>("camera_component");
     if (!cam_opt.has_value()) [[unlikely]] {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return;
     }
     auto& cam = cam_opt->get();
@@ -366,10 +387,9 @@ void GLCanvas::render_buffer_icon(Stage& stage,
     // Reset stage camera
     stage.set_icon_drawing_mode(false);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, width(), height());
+    glViewport(0, 0, render_width(), render_height());
     cam = original_pose;
-    cam.window_resized(width(), height());
-#endif
+    cam.window_resized(render_width(), render_height());
 }
 
 void GLCanvas::set_main_window(MainWindow& mw) {

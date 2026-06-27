@@ -120,6 +120,8 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
     void render_buffer_icon(Stage& stage, int icon_width, int icon_height);
 
   private:
+    void init_icon_framebuffer();
+    void destroy_icon_framebuffer();
     std::array<bool, 2> mouse_down_{};
 
     int mouse_x_{0};
@@ -136,6 +138,7 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
 
     GLuint icon_texture_{0};
     GLuint icon_fbo_{0};
+    bool icon_framebuffer_ready_{false};
 
     bool initialized_{false};
     bool first_paint_completed_{false};

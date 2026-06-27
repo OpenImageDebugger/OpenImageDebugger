@@ -89,33 +89,39 @@ QListWidgetItem* MessageHandler::find_image_list_item(
 
 void MessageHandler::repaint_image_list_icon(
     const std::string& variable_name_str) const {
-#ifndef __EMSCRIPTEN__
-    const auto lock = std::unique_lock{deps_.ui_mutex};
-    const auto itStage = deps_.buffer_data.stages.find(variable_name_str);
-    if (itStage == deps_.buffer_data.stages.end()) [[unlikely]] {
-        return;
-    }
+    const auto paint_icon = [this, variable_name_str]() {
+        const auto lock = std::unique_lock{deps_.ui_mutex};
+        const auto itStage = deps_.buffer_data.stages.find(variable_name_str);
+        if (itStage == deps_.buffer_data.stages.end()) [[unlikely]] {
+            return;
+        }
 
-    const auto& [name, stage] = *itStage;
+        const auto& [name, stage] = *itStage;
 
-    const auto icon_size = deps_.get_icon_size();
-    const auto icon_width = static_cast<int>(icon_size.width());
-    const auto icon_height = static_cast<int>(icon_size.height());
-    const auto bytes_per_line = icon_width * 3;
+        const auto icon_size = deps_.get_icon_size();
+        const auto icon_width = static_cast<int>(icon_size.width());
+        const auto icon_height = static_cast<int>(icon_size.height());
+        const auto bytes_per_line = icon_width * 3;
 
-    deps_.ui_components.ui->bufferPreview->render_buffer_icon(
-        *stage, icon_width, icon_height);
+        deps_.ui_components.ui->bufferPreview->render_buffer_icon(
+            *stage, icon_width, icon_height);
 
-    const auto bufferIcon = QImage{stage->get_buffer_icon().data(),
-                                   icon_width,
-                                   icon_height,
-                                   bytes_per_line,
-                                   QImage::Format_RGB888};
+        const auto bufferIcon = QImage{stage->get_buffer_icon().data(),
+                                       icon_width,
+                                       icon_height,
+                                       bytes_per_line,
+                                       QImage::Format_RGB888};
 
-    if (const auto item = find_image_list_item(variable_name_str);
-        item != nullptr) {
-        item->setIcon(QPixmap::fromImage(bufferIcon));
-    }
+        if (const auto item = find_image_list_item(variable_name_str);
+            item != nullptr) {
+            item->setIcon(QPixmap::fromImage(bufferIcon));
+        }
+    };
+
+#ifdef __EMSCRIPTEN__
+    deps_.ui_components.ui->bufferPreview->schedule_gl(paint_icon);
+#else
+    paint_icon();
 #endif
 }
 
@@ -231,6 +237,7 @@ void MessageHandler::decode_plot_buffer_contents() {
                 list->blockSignals(false);
             }
             deps_.state.request_render_update = true;
+            deps_.state.request_icons_update = true;
         });
 #else
         if (!stage->initialize(params)) [[unlikely]] {
@@ -256,6 +263,7 @@ void MessageHandler::decode_plot_buffer_contents() {
                 std::cerr << "[Error] Buffer update failed for: "
                           << variable_name_str << std::endl;
             }
+            deps_.state.request_icons_update = true;
         });
 #else
         if (const auto& [buffer_name, buffer_stage_ptr] = *buffer_stage;

@@ -349,18 +349,13 @@ void MainWindow::loop() {
     }
 
     // Update an icon of every entry in image list
-#ifndef __EMSCRIPTEN__
     if (state_.request_icons_update) {
-
         for (const auto& name : buffer_data_.stages | std::views::keys) {
             message_handler_->repaint_image_list_icon(name);
         }
 
         state_.request_icons_update = false;
     }
-#else
-    state_.request_icons_update = false;
-#endif
 }
 
 void MainWindow::request_render_update() {
