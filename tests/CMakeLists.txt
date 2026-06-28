@@ -136,3 +136,25 @@ target_sources(test_transport PRIVATE
 
 add_test(NAME TransportTests COMMAND test_transport)
 
+# Test session state JSON codec
+add_executable(test_session_state_codec
+    test_session_state_codec.cpp
+)
+
+target_include_directories(test_session_state_codec
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+
+target_link_libraries(test_session_state_codec
+    PRIVATE
+    Qt6::Core
+    GTest::gtest_main
+    GTest::gtest
+)
+
+target_sources(test_session_state_codec PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ui/messaging/session_state_codec.cpp
+)
+
+add_test(NAME SessionStateCodec COMMAND test_session_state_codec)
+

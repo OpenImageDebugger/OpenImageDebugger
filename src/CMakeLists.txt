@@ -58,6 +58,8 @@ set(SOURCES
     ui/main_window/settings_manager.cpp
     ui/main_window/ui_events.cpp
     ui/messaging/message_handler.cpp
+    ui/messaging/session_state_apply.cpp
+    ui/messaging/session_state_codec.cpp
     ui/symbol_completer.cpp
     ui/symbol_search_input.cpp
     visualization/components/background.cpp
