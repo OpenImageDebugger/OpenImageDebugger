@@ -210,8 +210,8 @@ TEST_F(MessageExchangeTest, MessageComposerSendCoalescesBlocks) {
   composer.send(transport);
   ASSERT_EQ(transport.sends.size(), 1u);
   ASSERT_GE(transport.sends[0].size(), 12u);
-  const auto type =
-      std::bit_cast<MessageType>(transport.sends[0].data());
+  MessageType type{};
+  std::memcpy(&type, transport.sends[0].data(), sizeof(type));
   EXPECT_EQ(type, MessageType::PlotBufferRequest);
 }
 
