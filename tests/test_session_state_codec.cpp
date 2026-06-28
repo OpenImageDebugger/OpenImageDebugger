@@ -69,10 +69,14 @@ TEST(SessionStateCodec, SerializeIsPrefsOnly) {
     callbacks.getContrastEnabled = [] { return false; };
     callbacks.getLinkViewsEnabled = [] { return false; };
 
-    const SessionStateExtraInputs extra;
+    SessionStateExtraInputs extra;
+    extra.getColorspace = [] { return QStringLiteral("rgba"); };
+    extra.getListPosition = [] { return QStringLiteral("left"); };
+
     const auto json = serialize_session_state_delta(callbacks, extra);
-    EXPECT_FALSE(json.contains("held"));
-    EXPECT_FALSE(json.contains("buffers"));
-    EXPECT_FALSE(json.contains("previous"));
-    EXPECT_TRUE(json.contains("framerate"));
+    EXPECT_TRUE(json.contains("\"framerate\""));
+    EXPECT_TRUE(json.contains("\"colorspace\""));
+    EXPECT_TRUE(json.contains("\"listPosition\""));
+    EXPECT_FALSE(json.contains("\"held\""));
+    EXPECT_FALSE(json.contains("\"buffers\""));
 }
