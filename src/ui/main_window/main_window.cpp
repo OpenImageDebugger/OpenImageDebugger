@@ -139,6 +139,19 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
         AutoContrastController::Dependencies{
             ui_mutex_, buffer_data_, state_, ui_components_});
 
+    // Initialize settings applier (before the message handler so inbound
+    // ApplySessionState can be applied through it)
+    settings_applier_ = std::make_unique<SettingsApplier>(
+        SettingsApplier::Dependencies{ui_mutex_,
+                                      state_,
+                                      ui_components_,
+                                      buffer_data_,
+                                      channel_names_,
+                                      render_framerate_,
+                                      default_export_suffix_,
+                                      *this},
+        this);
+
     // Initialize message handler
 #ifdef __EMSCRIPTEN__
     postmessage_transport_ = std::make_unique<PostMessageTransport>();
@@ -154,7 +167,8 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             [this] { return std::make_shared<Stage>(*this); },
             [this](const std::shared_ptr<Stage>& stage) {
                 set_currently_selected_stage(stage);
-            }},
+            },
+            settings_applier_.get()},
         this);
 #else
     tcp_transport_ = std::make_unique<TcpTransport>(socket_);
@@ -169,7 +183,8 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             [this] { return std::make_shared<Stage>(*this); },
             [this](const std::shared_ptr<Stage>& stage) {
                 set_currently_selected_stage(stage);
-            }},
+            },
+            settings_applier_.get()},
         this);
 #endif
 
@@ -186,18 +201,6 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
 
     // Initialize settings manager
     settings_manager_ = std::make_unique<SettingsManager>(this);
-
-    // Initialize settings applier
-    settings_applier_ = std::make_unique<SettingsApplier>(
-        SettingsApplier::Dependencies{ui_mutex_,
-                                      state_,
-                                      ui_components_,
-                                      buffer_data_,
-                                      channel_names_,
-                                      render_framerate_,
-                                      default_export_suffix_,
-                                      *this},
-        this);
 
     connect_settings_signals();
 
@@ -277,8 +280,12 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             this,
             &MainWindow::persist_settings_deferred);
 
-    // Load settings (must be done before initialization)
+    // Load settings (must be done before initialization).
+    // On WASM the extension owns persistence and prefs arrive via
+    // ApplySessionState (IPC type 6); skip the local QSettings load.
+#ifndef __EMSCRIPTEN__
     settings_manager_->load_settings();
+#endif
 
     // Initialize UI components
     initializer_->initialize();

@@ -46,6 +46,7 @@ namespace oid {
 struct BufferData;
 struct UIComponents;
 struct WindowState;
+class SettingsApplier;
 class Stage;
 
 class MessageHandler : public QObject {
@@ -61,6 +62,9 @@ class MessageHandler : public QObject {
         std::function<QSizeF()> get_icon_size;
         std::function<std::shared_ptr<Stage>()> create_stage;
         std::function<void(const std::shared_ptr<Stage>&)> select_stage;
+        // Non-owning; applies inbound ApplySessionState. May be null where no
+        // session state is ever received (e.g. desktop).
+        SettingsApplier* settings_applier = nullptr;
     };
 
     explicit MessageHandler(Dependencies deps, QObject* parent = nullptr);
@@ -83,6 +87,7 @@ class MessageHandler : public QObject {
     void decode_set_available_symbols() const;
     void respond_get_observed_symbols() const;
     void decode_plot_buffer_contents();
+    void decode_apply_session_state() const;
 
     QListWidgetItem*
     find_image_list_item(const std::string& variable_name_str) const;

@@ -39,6 +39,8 @@
 #include "ipc/raw_data_decode.h"
 #include "ui/gl_canvas.h"
 #include "ui/main_window/main_window.h"
+#include "ui/main_window/settings_applier.h"
+#include "ui/messaging/session_state_codec.h"
 #include "visualization/components/buffer.h"
 #include "visualization/stage.h"
 
@@ -315,6 +317,22 @@ void MessageHandler::decode_plot_buffer_contents() {
     deps_.state.request_render_update = true;
 }
 
+void MessageHandler::decode_apply_session_state() const {
+    auto message_decoder = MessageDecoder{deps_.transport};
+    auto json = std::string{};
+    message_decoder.read(json);
+
+    if (deps_.settings_applier == nullptr) {
+        return;
+    }
+    auto fields = SessionStateFields{};
+    if (!parse_session_state_json(QByteArray::fromStdString(json), fields)) {
+        std::cerr << "[OID] Invalid ApplySessionState JSON" << std::endl;
+        return;
+    }
+    apply_session_state_fields(fields, *deps_.settings_applier);
+}
+
 void MessageHandler::decode_incoming_messages() {
     {
         const auto lock = std::unique_lock{deps_.ui_mutex};
@@ -344,6 +362,9 @@ void MessageHandler::decode_incoming_messages() {
         break;
     case MessageType::ExportSelectedBuffer:
         emit exportSelectedBufferRequested();
+        break;
+    case MessageType::ApplySessionState:
+        decode_apply_session_state();
         break;
     default:
         break;
