@@ -299,8 +299,10 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::showWindow() {
-    ui_components_.update_timer.start(
-        static_cast<int>(1000.0 / render_framerate_));
+    // Guard against a non-positive framerate, which would produce an invalid
+    // timer interval and stall the update/render loop.
+    const auto framerate = render_framerate_ > 0.0 ? render_framerate_ : 60.0;
+    ui_components_.update_timer.start(static_cast<int>(1000.0 / framerate));
     show();
 }
 

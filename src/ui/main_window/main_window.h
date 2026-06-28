@@ -171,7 +171,12 @@ class MainWindow final : public QMainWindow {
     BufferData buffer_data_{};
     ChannelNames channel_names_{};
     std::shared_ptr<GLCanvas> gl_canvas_ptr_{};
-    double render_framerate_{};
+    // Default mirrors SettingsConstants::DEFAULT_FRAMERATE. Must be valid
+    // before showWindow() starts the update timer: on WASM load_settings() is
+    // skipped (prefs arrive later via ApplySessionState), so without a sane
+    // default the timer interval (1000/framerate) would be invalid and stall
+    // the render/message loop.
+    double render_framerate_{60.0};
     QString default_export_suffix_{};
     std::unique_ptr<AutoContrastController> ac_controller_{};
     std::unique_ptr<MessageHandler> message_handler_{};
