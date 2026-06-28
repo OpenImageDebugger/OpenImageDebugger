@@ -49,10 +49,12 @@ EM_JS(void, oid_notify_viewer_ready, (), {
 #include <QSettings>
 #include <QTcpSocket>
 
+#include "ipc/message_exchange.h"
 #include "main_window_initializer.h"
 #include "math/linear_algebra.h"
 #include "settings_applier.h"
 #include "settings_manager.h"
+#include "ui/messaging/session_state_codec.h"
 #include "ui_main_window.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
@@ -468,7 +470,54 @@ void MainWindow::persist_settings() {
         buffer_data_.removed_buffer_names.clear();
     };
 
+#ifdef __EMSCRIPTEN__
+    // The VS Code extension owns persistence on WASM: serialize prefs only and
+    // stream them as SessionStateChanged (IPC type 7). Buffers are handled
+    // extension-side via GetObservedSymbols, not here.
+    SessionStateExtraInputs extra;
+    extra.getColorspace = [this] {
+        const auto to_char = [](const QString& name) -> QChar {
+            if (name == QStringLiteral("red")) return QLatin1Char('r');
+            if (name == QStringLiteral("green")) return QLatin1Char('g');
+            if (name == QStringLiteral("blue")) return QLatin1Char('b');
+            if (name == QStringLiteral("alpha")) return QLatin1Char('a');
+            return {};
+        };
+        auto colorspace = QString{};
+        for (const auto& name : {channel_names_.name_channel_1,
+                                 channel_names_.name_channel_2,
+                                 channel_names_.name_channel_3,
+                                 channel_names_.name_channel_4}) {
+            if (const auto character = to_char(name); !character.isNull()) {
+                colorspace.append(character);
+            }
+        }
+        return colorspace;
+    };
+    extra.getListPosition = [this] {
+        auto* const splitter = ui_components_.ui->splitter;
+        const auto vertical = splitter->orientation() == Qt::Vertical;
+        const auto list_last =
+            splitter->indexOf(ui_components_.ui->frame_list) != 0;
+        if (vertical) {
+            return QString(list_last ? QStringLiteral("bottom")
+                                     : QStringLiteral("top"));
+        }
+        return QString(list_last ? QStringLiteral("right")
+                                 : QStringLiteral("left"));
+    };
+
+    const auto json = serialize_session_state_delta(callbacks, extra);
+    if (postmessage_transport_ != nullptr) {
+        auto composer = MessageComposer{};
+        composer.push(MessageType::SessionStateChanged)
+            .push(std::string(json.constData(),
+                              static_cast<std::size_t>(json.size())))
+            .send(*postmessage_transport_);
+    }
+#else
     SettingsManager::persist_settings(callbacks);
+#endif
 }
 
 vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
