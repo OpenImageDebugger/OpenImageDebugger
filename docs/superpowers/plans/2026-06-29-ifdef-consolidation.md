@@ -16,28 +16,40 @@
 - Transport interface type is `oid::ITransport` (in `src/ipc/transport.h`).
 - The only permitted `#ifdef __EMSCRIPTEN__` outside `src/platform/` after this work is the `GLCanvas` base-class block in `src/ui/gl_canvas.h`.
 - Do NOT touch unrelated guards: `Q_OS_DARWIN` (`event_handler.cpp:78`), Python-version guards (`python_native_interface.*`), thirdparty.
+- **CMake registration (every task that creates platform `.cpp` files):** in the same task,
+  add each new `_native.cpp` under the `else()` branch and each `_wasm.cpp` (and
+  `gl_canvas_wasm.cpp`) under the `if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")` branch of the
+  platform block created in Task 1 (`src/CMakeLists.txt`). Paths are relative to `src/` (e.g.
+  `platform/transport_factory_native.cpp`). A task's commit `git add` must include
+  `src/CMakeLists.txt`. The task is not green until BOTH builds compile the new file.
 
 ### Per-task verification cycle
 
-Every task ends with this cycle (substitute your build dir if not `cmake-build-debug`):
+The native build dir is `build/` and the WASM build is driven by the project script
+`wasm/scripts/build-wasm.sh` (build dir `build-wasm/`). Both are already configured. Every
+task ends with this cycle:
 
 ```bash
-# 1. Native configure + build (always required)
-cmake -S . -B cmake-build-debug -DBUILD_TESTS=ON >/dev/null
-cmake --build cmake-build-debug --target oidwindow -j 4
+# 1. Native build (always required) — build/ is pre-configured (ninja)
+cmake --build build --target oidwindow -j 4
 
 # 2. Native tests (always required)
-ctest --test-dir cmake-build-debug --output-on-failure
+ctest --test-dir build --output-on-failure
 
-# 3. WASM build (required IF EMSDK is set up; otherwise note "skipped: no EMSDK")
-#    Needs: source $EMSDK/emsdk_env.sh ; Qt6 wasm kit at $QT6_WASM_DIR
-emcmake cmake -S . -B build-wasm -DQt6_DIR="$QT6_WASM_DIR/lib/cmake/Qt6" >/dev/null
-cmake --build build-wasm --target oidwindow -j 4
+# 3. WASM build (always required — this is the verifier that catches mistakes inside
+#    #ifdef __EMSCRIPTEN__ that the native build cannot see). Incremental, ~seconds.
+bash wasm/scripts/build-wasm.sh
 ```
 
-`Expected:` both builds succeed; ctest reports all pass. If EMSDK is unavailable, the WASM
-step is skipped and the task is marked "WASM-build-unverified" for a later pass — but the
-code MUST still be written so it would compile under Emscripten.
+`Expected:` both builds report success (`Built target oidwindow`); ctest reports all pass.
+
+> WHY THE WASM BUILD IS MANDATORY, NOT OPTIONAL: a prior session proved that a
+> declaration/definition mismatch inside `#ifdef __EMSCRIPTEN__` compiled clean natively but
+> failed the WASM build. This refactor *moves* large amounts of `__EMSCRIPTEN__`-guarded code,
+> so a green native build is necessary but NOT sufficient. A task is not DONE until BOTH
+> builds are green. If `wasm/scripts/build-wasm.sh` fails to find its toolchain (EMSDK at
+> `~/emsdk`, Qt at `~/Qt/6.11.0/wasm_singlethread`), report BLOCKED — do not mark the task
+> done on the native build alone.
 
 ---
 
@@ -61,14 +73,19 @@ code MUST still be written so it would compile under Emscripten.
 
 ---
 
-## Task 1: Platform scaffold + config + CMake wiring
+## Task 1: Platform scaffold + config + CMake skeleton
 
 **Files:**
 - Create: `src/platform/platform_config.h`
 - Modify: `src/CMakeLists.txt` (the `SOURCES` list, ~line 45-80)
 
 **Interfaces:**
-- Produces: `oid::platform::kIsWasm` (`constexpr bool`).
+- Produces: `oid::platform::kIsWasm` (`constexpr bool`); an empty platform `if/else` source
+  block in `src/CMakeLists.txt` that each later task appends its own files to.
+
+> No empty stub files. Each later task creates its `.h`/`.cpp` AND appends those `.cpp` names
+> to the CMake block in the SAME task, so every task's diff is self-contained and the build is
+> green at every commit.
 
 - [ ] **Step 1: Create `src/platform/platform_config.h`**
 
@@ -90,56 +107,37 @@ inline constexpr bool kIsWasm = false;
 #endif // PLATFORM_PLATFORM_CONFIG_H_
 ```
 
-- [ ] **Step 2: Add the platform-selected source list to `src/CMakeLists.txt`**
+- [ ] **Step 2: Add the (initially empty) platform source block to `src/CMakeLists.txt`**
 
-Immediately after the closing `)` of `set(SOURCES ...)` (currently line 80), insert:
+Immediately after the closing `)` of `set(SOURCES ...)` (currently line 80), insert the
+skeleton. Each later task fills in its own `list(APPEND ...)` lines here:
 
 ```cmake
+# Platform-selected translation units. Each is appended by the task that creates it
+# (see docs/superpowers/plans/2026-06-29-ifdef-consolidation.md).
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   list(APPEND SOURCES
-    platform/transport_factory_wasm.cpp
-    platform/render_scheduler_wasm.cpp
-    platform/gl_dialect_wasm.cpp
-    platform/app_platform_wasm.cpp
-    platform/session_persistence_wasm.cpp
-    platform/ui_dialogs_wasm.cpp
-    ui/gl_canvas_wasm.cpp)
+    # platform/*_wasm.cpp and ui/gl_canvas_wasm.cpp appended per task
+  )
 else()
   list(APPEND SOURCES
-    platform/transport_factory_native.cpp
-    platform/render_scheduler_native.cpp
-    platform/gl_dialect_native.cpp
-    platform/app_platform_native.cpp
-    platform/session_persistence_native.cpp
-    platform/ui_dialogs_native.cpp
-    ui/gl_canvas_native.cpp)
+    # platform/*_native.cpp and ui/gl_canvas_native.cpp appended per task
+  )
 endif()
 ```
 
-> NOTE: the listed `.cpp` files do not exist yet. Each later task creates its pair. To keep the build green between tasks, create each new file referenced by CMake **before** building. Task 1's build step therefore also creates empty-but-valid stubs (below) for every file in the list, which later tasks fill in.
+A `list(APPEND SOURCES)` with only comments is a valid no-op.
 
-- [ ] **Step 3: Create compiling stubs for every platform `.cpp` in the list**
+- [ ] **Step 3: Run the verification cycle**
 
-For each of the 12 platform `.cpp` files and the 2 `gl_canvas_*` files, create a file containing only the MIT header plus `#include "platform/platform_config.h"` (and nothing else). Example `src/platform/transport_factory_native.cpp`:
+Run native build + ctest + WASM build from "Per-task verification cycle".
+`Expected:` both builds succeed unchanged (no new sources yet); all tests pass.
 
-```cpp
-// <MIT header lines 1-24>
-#include "platform/platform_config.h"
-// Implemented in Task 2.
-```
-
-Create the analogous stub for: `transport_factory_wasm.cpp`, `render_scheduler_native.cpp`, `render_scheduler_wasm.cpp`, `gl_dialect_native.cpp`, `gl_dialect_wasm.cpp`, `app_platform_native.cpp`, `app_platform_wasm.cpp`, `session_persistence_native.cpp`, `session_persistence_wasm.cpp`, `ui_dialogs_native.cpp`, `ui_dialogs_wasm.cpp`. For `src/ui/gl_canvas_native.cpp` and `src/ui/gl_canvas_wasm.cpp` use `#include "ui/gl_canvas.h"` instead.
-
-- [ ] **Step 4: Run the verification cycle**
-
-Run the native configure+build+ctest from "Per-task verification cycle".
-`Expected:` configures (CMake sees the new sources), builds `oidwindow`, all tests pass. The stubs add no symbols, so nothing breaks.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/platform/platform_config.h src/CMakeLists.txt src/platform/*.cpp src/ui/gl_canvas_native.cpp src/ui/gl_canvas_wasm.cpp
-git commit -m "build(platform): scaffold src/platform boundary and CMake wiring"
+git add src/platform/platform_config.h src/CMakeLists.txt
+git commit -m "build(platform): add platform_config.h and CMake source skeleton"
 ```
 
 ---
