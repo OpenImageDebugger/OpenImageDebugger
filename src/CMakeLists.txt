@@ -79,6 +79,17 @@ set(SOURCES
     visualization/stage.cpp
 )
 
+# Platform-selected sources
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  list(APPEND SOURCES
+    # WASM platform sources will be appended by platform task
+  )
+else()
+  list(APPEND SOURCES
+    # Native platform sources will be appended by platform task
+  )
+endif()
+
 set(QT_FORMS ui/main_window/main_window.ui)
 set(QT_RESOURCES resources/resources.qrc)
 
