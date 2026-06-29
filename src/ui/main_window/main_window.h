@@ -39,6 +39,7 @@
 
 #include "ipc/transport.h"
 #include "math/linear_algebra.h"
+#include "platform/render_scheduler.h"
 #include "ui/controllers/auto_contrast_controller.h"
 #include "ui/events/event_handler.h"
 #include "ui/go_to_widget.h"
@@ -175,6 +176,7 @@ class MainWindow final : public QMainWindow {
     double render_framerate_{60.0};
     QString default_export_suffix_{};
     std::unique_ptr<AutoContrastController> ac_controller_{};
+    std::unique_ptr<RenderScheduler> render_scheduler_{};
     std::unique_ptr<MessageHandler> message_handler_{};
     std::unique_ptr<UIEventHandler> event_handler_{};
     std::unique_ptr<SettingsManager> settings_manager_{};

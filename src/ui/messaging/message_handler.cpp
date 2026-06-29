@@ -37,6 +37,7 @@
 
 #include "ipc/message_exchange.h"
 #include "ipc/raw_data_decode.h"
+#include "platform/render_scheduler.h"
 #include "ui/gl_canvas.h"
 #include "ui/main_window/main_window.h"
 #include "ui/main_window/settings_applier.h"
@@ -131,11 +132,7 @@ void MessageHandler::repaint_image_list_icon(
         }
     };
 
-#ifdef __EMSCRIPTEN__
-    deps_.ui_components.ui->bufferPreview->schedule_icon_gl(paint_icon);
-#else
-    paint_icon();
-#endif
+    deps_.scheduler.run_icon_gl(paint_icon);
 }
 
 void MessageHandler::update_image_list_label(
@@ -234,18 +231,31 @@ void MessageHandler::plot_buffer_from_fields(
                               .pixel_layout = pixel_layout_str,
                               .transpose_buffer = transpose_buffer};
 
-    if (auto buffer_stage = deps_.buffer_data.stages.find(variable_name_str);
-        buffer_stage == deps_.buffer_data.stages.end()) {
+    if (deps_.buffer_data.stages.find(variable_name_str) ==
+        deps_.buffer_data.stages.end()) {
+
+        // Add the list item before scheduling GL init so that setCurrentRow
+        // inside the lambda finds the item whether run_gl is immediate (native)
+        // or deferred (WASM). blockSignals prevents premature stage selection
+        // before the stage exists in the map.
+        {
+            auto new_item = std::make_unique<QListWidgetItem>(
+                label_str.c_str(), deps_.ui_components.ui->imageList);
+            new_item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
+            new_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
+                               Qt::ItemIsDragEnabled);
+            auto* list = deps_.ui_components.ui->imageList;
+            list->blockSignals(true);
+            list->addItem(new_item.release());
+            list->blockSignals(false);
+        }
 
         auto stage = deps_.create_stage();
-#ifdef __EMSCRIPTEN__
-        const auto ac_enabled = deps_.state.ac_enabled;
-        auto* canvas = deps_.ui_components.ui->bufferPreview;
-        canvas->schedule_gl([this,
-                             stage,
-                             params,
-                             variable_name_str,
-                             ac_enabled]() mutable {
+        deps_.scheduler.run_gl([this,
+                                stage,
+                                params,
+                                variable_name_str,
+                                ac_enabled = deps_.state.ac_enabled]() mutable {
             if (!stage->initialize(params)) [[unlikely]] {
                 std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
                              "initialization failed."
@@ -275,21 +285,8 @@ void MessageHandler::plot_buffer_from_fields(
             deps_.state.request_render_update = true;
             deps_.state.request_icons_update = true;
         });
-#else
-        if (!stage->initialize(params)) [[unlikely]] {
-            std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
-                         "initialization failed."
-                      << std::endl;
-        }
-        stage->set_contrast_enabled(deps_.state.ac_enabled);
-        buffer_stage =
-            deps_.buffer_data.stages.try_emplace(variable_name_str, stage)
-                .first;
-#endif
     } else {
-#ifdef __EMSCRIPTEN__
-        auto* canvas = deps_.ui_components.ui->bufferPreview;
-        canvas->schedule_gl([this, params, variable_name_str]() {
+        deps_.scheduler.run_gl([this, params, variable_name_str]() {
             const auto gl_lock = std::unique_lock{deps_.ui_mutex};
             const auto it = deps_.buffer_data.stages.find(variable_name_str);
             if (it == deps_.buffer_data.stages.end()) [[unlikely]] {
@@ -302,29 +299,6 @@ void MessageHandler::plot_buffer_from_fields(
             deps_.state.request_icons_update = true;
             deps_.state.request_render_update = true;
         });
-#else
-        if (const auto& [buffer_name, buffer_stage_ptr] = *buffer_stage;
-            !buffer_stage_ptr->buffer_update(params)) [[unlikely]] {
-            std::cerr << "[Error] Buffer update failed for: "
-                      << variable_name_str << std::endl;
-        }
-#endif
-    }
-
-    if (auto item = find_image_list_item(variable_name_str); item == nullptr) {
-        auto new_item = std::make_unique<QListWidgetItem>(
-            label_str.c_str(), deps_.ui_components.ui->imageList);
-        new_item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
-        new_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
-                           Qt::ItemIsDragEnabled);
-#ifdef __EMSCRIPTEN__
-        // Stage GL init is deferred; avoid selecting before it exists in the map.
-        deps_.ui_components.ui->imageList->blockSignals(true);
-        deps_.ui_components.ui->imageList->addItem(new_item.release());
-        deps_.ui_components.ui->imageList->blockSignals(false);
-#else
-        deps_.ui_components.ui->imageList->addItem(new_item.release());
-#endif
     }
 
     repaint_image_list_icon(variable_name_str);

@@ -50,6 +50,7 @@ namespace oid {
 struct BufferData;
 struct UIComponents;
 struct WindowState;
+class RenderScheduler;
 class SettingsApplier;
 class Stage;
 
@@ -63,6 +64,7 @@ class MessageHandler : public QObject {
         WindowState& state;
         UIComponents& ui_components;
         ITransport& transport;
+        RenderScheduler& scheduler;
         std::function<QSizeF()> get_icon_size;
         std::function<std::shared_ptr<Stage>()> create_stage;
         std::function<void(const std::shared_ptr<Stage>&)> select_stage;

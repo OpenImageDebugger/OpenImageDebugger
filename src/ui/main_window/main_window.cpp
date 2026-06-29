@@ -51,6 +51,7 @@ EM_JS(void, oid_notify_viewer_ready, (), {
 
 #include "ipc/message_exchange.h"
 #include "main_window_initializer.h"
+#include "platform/render_scheduler.h"
 #include "platform/transport_factory.h"
 #include "math/linear_algebra.h"
 #include "settings_applier.h"
@@ -157,6 +158,8 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
 
     // Initialize message handler
     transport_ = platform::make_transport({socket_});
+    render_scheduler_ =
+        platform::make_render_scheduler(*ui_components_.ui->bufferPreview);
     message_handler_ = std::make_unique<MessageHandler>(
         MessageHandler::Dependencies{
             ui_mutex_,
@@ -164,6 +167,7 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             state_,
             ui_components_,
             *transport_,
+            *render_scheduler_,
             [] { return get_icon_size(); },
             [this] { return std::make_shared<Stage>(*this); },
             [this](const std::shared_ptr<Stage>& stage) {

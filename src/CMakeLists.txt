@@ -83,10 +83,12 @@ set(SOURCES
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   list(APPEND SOURCES
     platform/transport_factory_wasm.cpp
+    platform/render_scheduler_wasm.cpp
   )
 else()
   list(APPEND SOURCES
     platform/transport_factory_native.cpp
+    platform/render_scheduler_native.cpp
   )
 endif()
 
