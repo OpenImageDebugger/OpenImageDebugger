@@ -30,6 +30,7 @@ if(NOT DEFINED OID_IPC_LIBRARY_TYPE)
 endif()
 
 add_library(${PROJECT_NAME} ${OID_IPC_LIBRARY_TYPE}
+            buffer_assembler.cpp
             message_exchange.cpp
             raw_data_decode.cpp
             tcp_transport.cpp

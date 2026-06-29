@@ -158,3 +158,24 @@ target_sources(test_session_state_codec PRIVATE
 
 add_test(NAME SessionStateCodec COMMAND test_session_state_codec)
 
+# Test BufferAssembler
+add_executable(test_buffer_assembler test_buffer_assembler.cpp)
+
+target_include_directories(test_buffer_assembler
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc
+)
+
+target_link_libraries(test_buffer_assembler
+    PRIVATE
+    GTest::gtest_main
+    GTest::gtest
+)
+
+# Add buffer_assembler source file directly for testing
+target_sources(test_buffer_assembler PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/buffer_assembler.cpp
+)
+
+add_test(NAME BufferAssemblerTests COMMAND test_buffer_assembler)
+
