@@ -170,6 +170,29 @@ void MessageHandler::decode_plot_buffer_contents() {
         .read(buff_type)
         .read(buff_contents);
 
+    plot_buffer_from_fields(variable_name_str,
+                            display_name_str,
+                            pixel_layout_str,
+                            transpose_buffer,
+                            buff_width,
+                            buff_height,
+                            buff_channels,
+                            buff_stride,
+                            buff_type,
+                            std::move(buff_contents));
+}
+
+void MessageHandler::plot_buffer_from_fields(
+    const std::string& variable_name_str,
+    const std::string& display_name_str,
+    const std::string& pixel_layout_str,
+    bool transpose_buffer,
+    int buff_width,
+    int buff_height,
+    int buff_channels,
+    int buff_stride,
+    BufferType buff_type,
+    std::vector<std::byte> buff_contents) {
     const auto lock = std::unique_lock{deps_.ui_mutex};
 
     if (buff_type == BufferType::Float64) {

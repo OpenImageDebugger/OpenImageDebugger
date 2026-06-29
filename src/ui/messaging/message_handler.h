@@ -26,17 +26,20 @@
 #ifndef MESSAGE_HANDLER_H_
 #define MESSAGE_HANDLER_H_
 
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <QList>
 #include <QObject>
 #include <QSizeF>
 #include <QString>
 
+#include "ipc/raw_data_decode.h"
 #include "ipc/transport.h"
 
 class QListWidgetItem;
@@ -88,6 +91,16 @@ class MessageHandler : public QObject {
     void decode_set_available_symbols() const;
     void respond_get_observed_symbols() const;
     void decode_plot_buffer_contents();
+    void plot_buffer_from_fields(const std::string& variable_name_str,
+                                 const std::string& display_name_str,
+                                 const std::string& pixel_layout_str,
+                                 bool transpose_buffer,
+                                 int buff_width,
+                                 int buff_height,
+                                 int buff_channels,
+                                 int buff_stride,
+                                 BufferType buff_type,
+                                 std::vector<std::byte> buff_contents);
     void decode_apply_session_state() const;
 
     QListWidgetItem*
