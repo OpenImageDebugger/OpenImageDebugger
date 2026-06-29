@@ -35,17 +35,17 @@
 
 namespace oid {
 
-// Geometry + completed bytes buffer reassembled row-strip chunks.
+// Geometry + completed bytes for a buffer reassembled from row-strip chunks.
 struct AssembledBuffer {
   std::string variable_name;
   std::string display_name;
   std::string pixel_layout;
-  bool transpose;
-  int width;
-  int height;
-  int channels;
-  int stride;
-  int type;
+  bool transpose{};
+  int width{};
+  int height{};
+  int channels{};
+  int stride{};
+  int type{};
   std::vector<std::byte> bytes;
 };
 
@@ -55,12 +55,12 @@ class BufferAssembler {
     std::string variable_name;
     std::string display_name;
     std::string pixel_layout;
-    bool transpose;
-    int width;
-    int height;
-    int channels;
-    int stride;
-    int type;
+    bool transpose{};
+    int width{};
+    int height{};
+    int channels{};
+    int stride{};
+    int type{};
     std::size_t total_byte_size;
   };
 
@@ -69,10 +69,10 @@ class BufferAssembler {
 
   // Append row-strip chunk. Returns false if name unknown, size mismatch, or
   // out of bounds.
-  bool chunk(const std::string& name,
-             std::size_t row_offset,
-             std::size_t row_count,
-             std::span<const std::byte> bytes);
+  [[nodiscard]] bool chunk(const std::string& name,
+                           std::size_t row_offset,
+                           std::size_t row_count,
+                           std::span<const std::byte> bytes);
 
   // Finish transfer, moving bytes out dropping entry. Returns
   // nullopt if name unknown.

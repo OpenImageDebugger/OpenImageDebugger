@@ -65,15 +65,21 @@ TEST(BufferAssemblerTests, ReassemblesRowStripsIntoContiguousBuffer) {
   BufferAssembler a;
   a.begin(make_begin("buf", 8, height, stride, total));
 
-  const auto strip0 = iota_bytes(2 * stride);
-  ASSERT_TRUE(a.chunk("buf", 0, 2, std::span{strip0.data(), strip0.size()}));
+  // Create a single contiguous source buffer
+  const auto full = iota_bytes(total);
 
-  const auto strip1 = iota_bytes(2 * stride);
-  ASSERT_TRUE(a.chunk("buf", 2, 2, std::span{strip1.data(), strip1.size()}));
+  // Feed chunk 0: first 2 rows
+  ASSERT_TRUE(a.chunk("buf", 0, 2,
+                      std::span{full.data(), 2 * static_cast<std::size_t>(stride)}));
+
+  // Feed chunk 1: next 2 rows
+  ASSERT_TRUE(a.chunk("buf", 2, 2,
+                      std::span{full.data() + 2 * static_cast<std::size_t>(stride),
+                                2 * static_cast<std::size_t>(stride)}));
 
   const auto result = a.end("buf");
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result->bytes.size(), total);
+  EXPECT_EQ(result->bytes, full);
   EXPECT_EQ(result->variable_name, "buf");
 }
 
