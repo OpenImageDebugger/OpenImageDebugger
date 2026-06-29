@@ -234,27 +234,12 @@ void MessageHandler::plot_buffer_from_fields(
     if (deps_.buffer_data.stages.find(variable_name_str) ==
         deps_.buffer_data.stages.end()) {
 
-        // Add the list item before scheduling GL init so that setCurrentRow
-        // inside the lambda finds the item whether run_gl is immediate (native)
-        // or deferred (WASM). blockSignals prevents premature stage selection
-        // before the stage exists in the map.
-        {
-            auto new_item = std::make_unique<QListWidgetItem>(
-                label_str.c_str(), deps_.ui_components.ui->imageList);
-            new_item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
-            new_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
-                               Qt::ItemIsDragEnabled);
-            auto* list = deps_.ui_components.ui->imageList;
-            list->blockSignals(true);
-            list->addItem(new_item.release());
-            list->blockSignals(false);
-        }
-
         auto stage = deps_.create_stage();
         deps_.scheduler.run_gl([this,
                                 stage,
                                 params,
                                 variable_name_str,
+                                label_str,
                                 ac_enabled = deps_.state.ac_enabled]() mutable {
             if (!stage->initialize(params)) [[unlikely]] {
                 std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
@@ -266,6 +251,21 @@ void MessageHandler::plot_buffer_from_fields(
             {
                 const auto gl_lock = std::unique_lock{deps_.ui_mutex};
                 deps_.buffer_data.stages.try_emplace(variable_name_str, stage);
+            }
+            // Add the list row only after the stage initialized and is in the
+            // map, so a failed init leaves no orphan row. blockSignals prevents
+            // premature stage selection before select_stage is called.
+            {
+                auto new_item = std::make_unique<QListWidgetItem>(
+                    label_str.c_str(), deps_.ui_components.ui->imageList);
+                new_item->setData(Qt::UserRole,
+                                  QString(variable_name_str.c_str()));
+                new_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
+                                   Qt::ItemIsDragEnabled);
+                auto* list = deps_.ui_components.ui->imageList;
+                list->blockSignals(true);
+                list->addItem(new_item.release());
+                list->blockSignals(false);
             }
             deps_.select_stage(stage);
             {
