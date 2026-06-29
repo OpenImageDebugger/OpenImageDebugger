@@ -28,7 +28,7 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 
-EM_JS(void, oid_send_to_js, (const void* ptr, int len), {
+EM_JS(void, oid_send_to_js, (const void* ptr, unsigned len), {
   window.oidSend(HEAPU8.slice(ptr, ptr + len));
 });
 #endif
@@ -37,7 +37,7 @@ namespace oid {
 
 void PostMessageTransport::send(std::span<const std::byte> data) {
 #ifdef __EMSCRIPTEN__
-    oid_send_to_js(data.data(), static_cast<int>(data.size()));
+    oid_send_to_js(data.data(), static_cast<unsigned>(data.size()));
 #else
     (void)data;
 #endif
@@ -72,8 +72,8 @@ extern "C" void oid_set_postmessage_transport(PostMessageTransport* transport) {
     g_transport = transport;
 }
 
-extern "C" void oidEnqueueInbound(const std::uintptr_t ptr, const int len) {
-    if (g_transport == nullptr || len <= 0) {
+extern "C" void oidEnqueueInbound(const std::uintptr_t ptr, const unsigned len) {
+    if (g_transport == nullptr || len == 0) {
         return;
     }
     const auto* data = reinterpret_cast<const std::byte*>(ptr);
