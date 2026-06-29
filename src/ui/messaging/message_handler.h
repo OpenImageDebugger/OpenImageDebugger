@@ -39,6 +39,7 @@
 #include <QSizeF>
 #include <QString>
 
+#include "ipc/buffer_assembler.h"
 #include "ipc/raw_data_decode.h"
 #include "ipc/transport.h"
 
@@ -87,6 +88,7 @@ class MessageHandler : public QObject {
 
   private:
     Dependencies deps_;
+    BufferAssembler buffer_assembler_{};
 
     void decode_set_available_symbols() const;
     void respond_get_observed_symbols() const;
@@ -101,6 +103,9 @@ class MessageHandler : public QObject {
                                  int buff_stride,
                                  BufferType buff_type,
                                  std::vector<std::byte> buff_contents);
+    void decode_plot_buffer_begin();
+    void decode_plot_buffer_chunk();
+    void decode_plot_buffer_end();
     void decode_apply_session_state() const;
 
     QListWidgetItem*

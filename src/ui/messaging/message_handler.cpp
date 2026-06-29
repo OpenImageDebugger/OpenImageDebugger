@@ -340,6 +340,62 @@ void MessageHandler::plot_buffer_from_fields(
     deps_.state.request_render_update = true;
 }
 
+void MessageHandler::decode_plot_buffer_begin() {
+    auto p = BufferAssembler::BeginParams{};
+    auto type_int = int{};
+    auto message_decoder = MessageDecoder{deps_.transport};
+    message_decoder.read(p.variable_name)
+        .read(p.display_name)
+        .read(p.pixel_layout)
+        .read(p.transpose)
+        .read(p.width)
+        .read(p.height)
+        .read(p.channels)
+        .read(p.stride)
+        .read(type_int)
+        .read(p.total_byte_size);
+    p.type = type_int;
+    buffer_assembler_.begin(std::move(p));
+}
+
+void MessageHandler::decode_plot_buffer_chunk() {
+    auto variable_name = std::string{};
+    auto row_offset = std::size_t{};
+    auto row_count = std::size_t{};
+    auto bytes = std::vector<std::byte>{};
+    auto message_decoder = MessageDecoder{deps_.transport};
+    message_decoder.read(variable_name)
+        .read(row_offset)
+        .read(row_count)
+        .read(bytes);
+    if (!buffer_assembler_.chunk(variable_name, row_offset, row_count, bytes)) {
+        std::cerr << "[Error] Dropped buffer chunk for: " << variable_name
+                  << std::endl;
+    }
+}
+
+void MessageHandler::decode_plot_buffer_end() {
+    auto variable_name = std::string{};
+    auto message_decoder = MessageDecoder{deps_.transport};
+    message_decoder.read(variable_name);
+    auto assembled = buffer_assembler_.end(variable_name);
+    if (!assembled) {
+        std::cerr << "[Error] PlotBufferEnd for unknown buffer: " << variable_name
+                  << std::endl;
+        return;
+    }
+    plot_buffer_from_fields(assembled->variable_name,
+                            assembled->display_name,
+                            assembled->pixel_layout,
+                            assembled->transpose,
+                            assembled->width,
+                            assembled->height,
+                            assembled->channels,
+                            assembled->stride,
+                            static_cast<BufferType>(assembled->type),
+                            std::move(assembled->bytes));
+}
+
 void MessageHandler::notify_buffer_removed(const QString& buffer_name) const {
     auto message_composer = MessageComposer{};
     message_composer.push(MessageType::BufferRemoved)
@@ -389,6 +445,15 @@ void MessageHandler::decode_incoming_messages() {
         break;
     case MessageType::PlotBufferContents:
         decode_plot_buffer_contents();
+        break;
+    case MessageType::PlotBufferBegin:
+        decode_plot_buffer_begin();
+        break;
+    case MessageType::PlotBufferChunk:
+        decode_plot_buffer_chunk();
+        break;
+    case MessageType::PlotBufferEnd:
+        decode_plot_buffer_end();
         break;
     case MessageType::ExportSelectedBuffer:
         emit exportSelectedBufferRequested();
