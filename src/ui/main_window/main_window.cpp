@@ -51,6 +51,7 @@ EM_JS(void, oid_notify_viewer_ready, (), {
 
 #include "ipc/message_exchange.h"
 #include "main_window_initializer.h"
+#include "platform/transport_factory.h"
 #include "math/linear_algebra.h"
 #include "settings_applier.h"
 #include "settings_manager.h"
@@ -155,16 +156,14 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
         this);
 
     // Initialize message handler
-#ifdef __EMSCRIPTEN__
-    postmessage_transport_ = std::make_unique<PostMessageTransport>();
-    oid_set_postmessage_transport(postmessage_transport_.get());
+    transport_ = platform::make_transport({socket_});
     message_handler_ = std::make_unique<MessageHandler>(
         MessageHandler::Dependencies{
             ui_mutex_,
             buffer_data_,
             state_,
             ui_components_,
-            *postmessage_transport_,
+            *transport_,
             [] { return get_icon_size(); },
             [this] { return std::make_shared<Stage>(*this); },
             [this](const std::shared_ptr<Stage>& stage) {
@@ -172,23 +171,6 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             },
             settings_applier_.get()},
         this);
-#else
-    tcp_transport_ = std::make_unique<TcpTransport>(socket_);
-    message_handler_ = std::make_unique<MessageHandler>(
-        MessageHandler::Dependencies{
-            ui_mutex_,
-            buffer_data_,
-            state_,
-            ui_components_,
-            *tcp_transport_,
-            [] { return get_icon_size(); },
-            [this] { return std::make_shared<Stage>(*this); },
-            [this](const std::shared_ptr<Stage>& stage) {
-                set_currently_selected_stage(stage);
-            },
-            settings_applier_.get()},
-        this);
-#endif
 
     // Initialize UI event handler
     event_handler_ = std::make_unique<UIEventHandler>(
@@ -359,12 +341,10 @@ bool MainWindow::is_window_ready() const {
 }
 
 void MainWindow::loop() {
-#ifndef __EMSCRIPTEN__
-    if (socket_.state() == QTcpSocket::UnconnectedState) [[unlikely]] {
+    if (platform::should_quit_on_disconnect(socket_)) [[unlikely]] {
         QApplication::quit();
         return;
     }
-#endif
 
     message_handler_->decode_incoming_messages();
 
@@ -514,12 +494,12 @@ void MainWindow::persist_settings() {
     };
 
     const auto json = serialize_session_state_delta(callbacks, extra);
-    if (postmessage_transport_ != nullptr) {
+    if (transport_ != nullptr) {
         auto composer = MessageComposer{};
         composer.push(MessageType::SessionStateChanged)
             .push(std::string(json.constData(),
                               static_cast<std::size_t>(json.size())))
-            .send(*postmessage_transport_);
+            .send(*transport_);
     }
 #else
     SettingsManager::persist_settings(callbacks);

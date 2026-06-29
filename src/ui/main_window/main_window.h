@@ -37,12 +37,8 @@
 #include <QTcpSocket>
 #include <QTimer>
 
+#include "ipc/transport.h"
 #include "math/linear_algebra.h"
-#ifndef __EMSCRIPTEN__
-#include "ipc/tcp_transport.h"
-#else
-#include "ipc/postmessage_transport.h"
-#endif
 #include "ui/controllers/auto_contrast_controller.h"
 #include "ui/events/event_handler.h"
 #include "ui/go_to_widget.h"
@@ -195,11 +191,7 @@ class MainWindow final : public QMainWindow {
     mutable std::recursive_mutex ui_mutex_{};
     ConnectionSettings host_settings_{};
     QTcpSocket socket_{};
-#ifndef __EMSCRIPTEN__
-    std::unique_ptr<TcpTransport> tcp_transport_{};
-#else
-    std::unique_ptr<PostMessageTransport> postmessage_transport_{};
-#endif
+    std::unique_ptr<ITransport> transport_{};
 
     ///
     // Assorted methods - private - implemented in main_window.cpp
