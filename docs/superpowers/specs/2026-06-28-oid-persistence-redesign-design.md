@@ -238,3 +238,23 @@ Types 6/7 are already declared in `message_exchange.h` and `message-exchange.ts`
 - **Internal consistency:** buffer subsystem uses only existing IPC; prefs use 6/7; storage split (global prefs / workspace buffers) consistent across §1–5; `minmaxCompact` omission stated once and reflected in fields + tests.
 - **Scope check:** single implementation plan; removal-notification IPC and `minmaxCompact` readback explicitly deferred.
 - **Ambiguity check:** "currently held" = `getObservedSymbols()`; removal = held-set diff between stops; replot target = `wanted ∪ held`; type 6/7 payload = prefs-only (no buffer keys).
+
+---
+
+## Addendum (2026-06-29): immediate buffer capture/removal
+
+The original §3 captured the watched set only at debugger stops (`captureHeld` from
+`onStopped`). Two refinements bring it to true desktop parity (persist on add/remove):
+
+- **Persist on plot:** when the user plots a buffer (`onPlotBufferRequest` /
+  `oid.plot`), the extension immediately adds it to the per-workspace set
+  (`BufferStore.add`). Previously a buffer plotted with no *subsequent* stop was
+  never persisted.
+- **Immediate removal (IPC type 9 `BufferRemoved`, viewer → ext):** when the user
+  removes a buffer, the viewer emits `bufferRemoved` →
+  `MessageHandler::notify_buffer_removed` sends type 9; the extension calls
+  `BufferStore.remove`, dropping it from the set at once. This is required because,
+  with persist-on-plot, a plotted-then-removed buffer would otherwise be replotted
+  every stop until expiry (the stop-diff only drops buffers seen in a prior stop's
+  `observed`). The desktop INI/QSettings path is unchanged; type 9 is wired only
+  under `__EMSCRIPTEN__`.
