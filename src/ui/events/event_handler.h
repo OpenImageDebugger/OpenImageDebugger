@@ -99,6 +99,7 @@ class UIEventHandler : public QObject {
     void settingsPersistenceRequested();
     void exportBufferRequested(const QString& buffer_name, int format,
                                const QList<float>& contrast);
+    void bufferRemoved(const QString& buffer_name);
 
   private:
     Dependencies deps_;

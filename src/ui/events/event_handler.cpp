@@ -343,6 +343,10 @@ void UIEventHandler::remove_selected_buffer() {
 
         deps_.buffer_data.removed_buffer_names.insert(buffer_name);
 
+        // Notify the host (VS Code extension on WASM) so it can drop the buffer
+        // from the persisted set immediately. Connected only under EMSCRIPTEN.
+        emit bufferRemoved(QString::fromStdString(buffer_name));
+
         if (deps_.buffer_data.stages.empty()) {
             emit shiftPrecisionUpdateRequested();
         }

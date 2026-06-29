@@ -56,7 +56,8 @@ enum class MessageType {
     ExportBufferRequest = 5,
     ApplySessionState = 6,
     SessionStateChanged = 7,
-    ExportSelectedBuffer = 8
+    ExportSelectedBuffer = 8,
+    BufferRemoved = 9
 };
 
 // C++20 concept to replace SFINAE for primitive type checking

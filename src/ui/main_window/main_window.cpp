@@ -266,6 +266,10 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             &MessageHandler::exportSelectedBufferRequested,
             event_handler_.get(),
             &UIEventHandler::export_selected_buffer);
+    connect(event_handler_.get(),
+            &UIEventHandler::bufferRemoved,
+            message_handler_.get(),
+            &MessageHandler::notify_buffer_removed);
 #endif
 
     // Connect MessageHandler signals to MainWindow slots

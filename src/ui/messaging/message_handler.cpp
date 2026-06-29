@@ -317,6 +317,13 @@ void MessageHandler::decode_plot_buffer_contents() {
     deps_.state.request_render_update = true;
 }
 
+void MessageHandler::notify_buffer_removed(const QString& buffer_name) const {
+    auto message_composer = MessageComposer{};
+    message_composer.push(MessageType::BufferRemoved)
+        .push(buffer_name.toStdString());
+    message_composer.send(deps_.transport);
+}
+
 void MessageHandler::decode_apply_session_state() const {
     auto message_decoder = MessageDecoder{deps_.transport};
     auto json = std::string{};
