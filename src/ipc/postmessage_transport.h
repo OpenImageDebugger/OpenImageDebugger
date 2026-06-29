@@ -55,7 +55,7 @@ class PostMessageTransport final : public ITransport {
 #ifdef __EMSCRIPTEN__
 extern "C" {
 void oid_set_postmessage_transport(PostMessageTransport* transport);
-EMSCRIPTEN_KEEPALIVE void oidEnqueueInbound(std::uintptr_t ptr, int len);
+EMSCRIPTEN_KEEPALIVE void oidEnqueueInbound(std::uintptr_t ptr, unsigned len);
 }
 #endif
 
