@@ -29,6 +29,7 @@
 #include <array>
 #include <bit>
 #include <cassert>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -180,11 +181,25 @@ void export_binary(const std::string& fname, const Buffer& buffer) {
     const auto in_ptr = std::bit_cast<const T*>(buffer.buffer_.data());
 
     const auto output_path = std::filesystem::path{fname};
-    auto ofs = std::ofstream{output_path};
+    auto ofs = std::ofstream{output_path, std::ios::binary};
 
-    ofs << get_type_descriptor<T>() << height_i << width_i << buffer.channels;
+    ofs << get_type_descriptor<T>() << '\n';
+
+    const auto height  = static_cast<std::int32_t>(height_i);
+    const auto width   = static_cast<std::int32_t>(width_i);
+    const auto channels = static_cast<std::int32_t>(buffer.channels);
+
+    ofs.write(reinterpret_cast<const char*>(&height), sizeof(height));
+    ofs.write(reinterpret_cast<const char*>(&width), sizeof(width));
+    ofs.write(reinterpret_cast<const char*>(&channels), sizeof(channels));
+
+    const auto row_bytes =
+        sizeof(T) * static_cast<std::size_t>(buffer.channels) * width_i;
+
     for (std::size_t y = 0; y < height_i; ++y) {
-        ofs << in_ptr + y * buffer.step * buffer.channels;
+        ofs.write(reinterpret_cast<const char*>(
+                      in_ptr + y * buffer.step * buffer.channels),
+                  row_bytes);
     }
 }
 
