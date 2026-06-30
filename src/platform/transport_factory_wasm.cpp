@@ -25,7 +25,7 @@
 
 #include "platform/transport_factory.h"
 
-#include "ipc/postmessage_transport.h"
+#include "platform/postmessage_transport.h"
 
 namespace oid::platform {
 

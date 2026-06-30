@@ -35,7 +35,7 @@
 #include <vector>
 
 #include "ipc/tcp_transport.h"
-#include "ipc/postmessage_transport.h"
+#include "platform/postmessage_transport.h"
 
 namespace {
 

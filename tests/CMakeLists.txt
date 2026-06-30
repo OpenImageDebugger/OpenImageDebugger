@@ -130,7 +130,7 @@ target_link_libraries(test_transport
 
 target_sources(test_transport PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/tcp_transport.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/postmessage_transport.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/platform/postmessage_transport.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/message_exchange.cpp
 )
 

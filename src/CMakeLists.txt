@@ -87,6 +87,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     platform/render_scheduler_wasm.cpp
     platform/gl_dialect_wasm.cpp
     platform/session_persistence_wasm.cpp
+    platform/postmessage_transport.cpp
     ui/gl_canvas_wasm.cpp
   )
 else()

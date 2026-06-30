@@ -23,7 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "postmessage_transport.h"
+#include "platform/postmessage_transport.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>

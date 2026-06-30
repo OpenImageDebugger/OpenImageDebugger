@@ -35,7 +35,7 @@
 #include <emscripten.h>
 #endif
 
-#include "transport.h"
+#include "ipc/transport.h"
 
 namespace oid {
 

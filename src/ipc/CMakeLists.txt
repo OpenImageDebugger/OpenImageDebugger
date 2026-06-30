@@ -33,8 +33,7 @@ add_library(${PROJECT_NAME} ${OID_IPC_LIBRARY_TYPE}
             buffer_assembler.cpp
             message_exchange.cpp
             raw_data_decode.cpp
-            tcp_transport.cpp
-            postmessage_transport.cpp)
+            tcp_transport.cpp)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)
