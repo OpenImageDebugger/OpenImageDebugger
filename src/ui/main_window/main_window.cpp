@@ -35,10 +35,10 @@
 #include <QSettings>
 #include <QTcpSocket>
 
-#include "ipc/message_exchange.h"
 #include "main_window_initializer.h"
 #include "platform/app_platform.h"
 #include "platform/render_scheduler.h"
+#include "platform/session_persistence.h"
 #include "platform/transport_factory.h"
 #include "math/linear_algebra.h"
 #include "settings_applier.h"
@@ -262,9 +262,7 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
     // Load settings (must be done before initialization).
     // On WASM the extension owns persistence and prefs arrive via
     // ApplySessionState (IPC type 6); skip the local QSettings load.
-#ifndef __EMSCRIPTEN__
-    settings_manager_->load_settings();
-#endif
+    platform::load_settings_if_local(*settings_manager_);
 
     // Initialize UI components
     initializer_->initialize();
@@ -439,10 +437,6 @@ void MainWindow::persist_settings() {
         buffer_data_.removed_buffer_names.clear();
     };
 
-#ifdef __EMSCRIPTEN__
-    // The VS Code extension owns persistence on WASM: serialize prefs only and
-    // stream them as SessionStateChanged (IPC type 7). Buffers are handled
-    // extension-side via GetObservedSymbols, not here.
     SessionStateExtraInputs extra;
     extra.getColorspace = [this] {
         const auto to_char = [](const QString& name) -> QChar {
@@ -476,17 +470,7 @@ void MainWindow::persist_settings() {
                                  : QStringLiteral("left"));
     };
 
-    const auto json = serialize_session_state_delta(callbacks, extra);
-    if (transport_ != nullptr) {
-        auto composer = MessageComposer{};
-        composer.push(MessageType::SessionStateChanged)
-            .push(std::string(json.constData(),
-                              static_cast<std::size_t>(json.size())))
-            .send(*transport_);
-    }
-#else
-    SettingsManager::persist_settings(callbacks);
-#endif
+    platform::persist_session(callbacks, extra, transport_.get());
 }
 
 vec4 MainWindow::get_stage_coordinates(const float pos_window_x,

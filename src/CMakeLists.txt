@@ -86,6 +86,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     platform/transport_factory_wasm.cpp
     platform/render_scheduler_wasm.cpp
     platform/gl_dialect_wasm.cpp
+    platform/session_persistence_wasm.cpp
     ui/gl_canvas_wasm.cpp
   )
 else()
@@ -94,6 +95,7 @@ else()
     platform/transport_factory_native.cpp
     platform/render_scheduler_native.cpp
     platform/gl_dialect_native.cpp
+    platform/session_persistence_native.cpp
     ui/gl_canvas_native.cpp
   )
 endif()
