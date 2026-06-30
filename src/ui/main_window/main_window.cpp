@@ -37,6 +37,7 @@
 
 #include "main_window_initializer.h"
 #include "platform/app_platform.h"
+#include "platform/platform_config.h"
 #include "platform/render_scheduler.h"
 #include "platform/session_persistence.h"
 #include "platform/transport_factory.h"
@@ -230,20 +231,20 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             &UIEventHandler::settingsPersistenceRequested,
             this,
             &MainWindow::persist_settings_deferred);
-#ifdef __EMSCRIPTEN__
-    connect(event_handler_.get(),
-            &UIEventHandler::exportBufferRequested,
-            message_handler_.get(),
-            &MessageHandler::request_export_buffer);
-    connect(message_handler_.get(),
-            &MessageHandler::exportSelectedBufferRequested,
-            event_handler_.get(),
-            &UIEventHandler::export_selected_buffer);
-    connect(event_handler_.get(),
-            &UIEventHandler::bufferRemoved,
-            message_handler_.get(),
-            &MessageHandler::notify_buffer_removed);
-#endif
+    if constexpr (platform::kIsWasm) {
+        connect(event_handler_.get(),
+                &UIEventHandler::exportBufferRequested,
+                message_handler_.get(),
+                &MessageHandler::request_export_buffer);
+        connect(message_handler_.get(),
+                &MessageHandler::exportSelectedBufferRequested,
+                event_handler_.get(),
+                &UIEventHandler::export_selected_buffer);
+        connect(event_handler_.get(),
+                &UIEventHandler::bufferRemoved,
+                message_handler_.get(),
+                &MessageHandler::notify_buffer_removed);
+    }
 
     // Connect MessageHandler signals to MainWindow slots
     connect(message_handler_.get(),
