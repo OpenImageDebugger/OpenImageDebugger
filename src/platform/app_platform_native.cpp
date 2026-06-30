@@ -23,21 +23,37 @@
  * IN THE SOFTWARE.
  */
 
-#include "ui/main_window/main_window.h"
-
-#include <QApplication>
-
 #include "platform/app_platform.h"
 
-int main(int argc, char* argv[]) {
-    oid::platform::configure_surface_format();
+#include <QCommandLineParser>
+#include <QCoreApplication>
 
-    auto app = QApplication{argc, argv};
+namespace oid::platform {
 
-    const auto settings = oid::platform::parse_connection_settings(argc, argv);
-    oid::platform::install_inbound_hooks();
-
-    auto window = oid::MainWindow{settings};
-    window.showWindow();
-    return QApplication::exec();
+void configure_surface_format() {
+    // No-op on native: the OpenGL format is selected automatically.
 }
+
+ConnectionSettings parse_connection_settings(int /*argc*/, char** /*argv*/) {
+    auto parser = QCommandLineParser{};
+    parser.addOptions({
+        {"h", "hostname", "hostname", "127.0.0.1"},
+        {"p", "port", "port", "9588"},
+    });
+    parser.parse(QCoreApplication::arguments());
+
+    auto settings = ConnectionSettings{};
+    settings.url  = parser.value("h").toStdString();
+    settings.port = static_cast<uint16_t>(parser.value("p").toUInt());
+    return settings;
+}
+
+void install_inbound_hooks() {
+    // No-op on native.
+}
+
+void notify_viewer_ready_once(bool /*window_ready*/, bool /*first_paint_done*/) {
+    // No-op on native.
+}
+
+} // namespace oid::platform

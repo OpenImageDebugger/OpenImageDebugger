@@ -82,6 +82,7 @@ set(SOURCES
 # Platform-selected sources
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   list(APPEND SOURCES
+    platform/app_platform_wasm.cpp
     platform/transport_factory_wasm.cpp
     platform/render_scheduler_wasm.cpp
     platform/gl_dialect_wasm.cpp
@@ -89,6 +90,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   )
 else()
   list(APPEND SOURCES
+    platform/app_platform_native.cpp
     platform/transport_factory_native.cpp
     platform/render_scheduler_native.cpp
     platform/gl_dialect_native.cpp

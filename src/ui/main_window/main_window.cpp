@@ -29,20 +29,6 @@
 #include <ranges>
 #include <utility>
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-
-EM_JS(void, oid_notify_viewer_ready, (), {
-  const msg = {type: 'oid-control', event: 'viewer-ready', version: 'dev'};
-  if (typeof window.oidOnViewerReady === 'function') {
-    window.oidOnViewerReady(msg);
-  }
-  if (typeof window.dispatchEvent === 'function') {
-    window.dispatchEvent(new CustomEvent('oid-viewer-ready', {detail: msg}));
-  }
-});
-#endif
-
 #include <QApplication>
 #include <QDateTime>
 #include <QScreen>
@@ -51,6 +37,7 @@ EM_JS(void, oid_notify_viewer_ready, (), {
 
 #include "ipc/message_exchange.h"
 #include "main_window_initializer.h"
+#include "platform/app_platform.h"
 #include "platform/render_scheduler.h"
 #include "platform/transport_factory.h"
 #include "math/linear_algebra.h"
@@ -350,14 +337,8 @@ void MainWindow::loop() {
 
     message_handler_->decode_incoming_messages();
 
-#ifdef __EMSCRIPTEN__
-    static auto viewer_ready_sent = false;
-    if (!viewer_ready_sent && gl_canvas_ptr_->has_completed_first_paint() &&
-        is_window_ready()) {
-        oid_notify_viewer_ready();
-        viewer_ready_sent = true;
-    }
-#endif
+    platform::notify_viewer_ready_once(is_window_ready(),
+                                       gl_canvas_ptr_->has_completed_first_paint());
 
     const auto lock = std::unique_lock{ui_mutex_};
     if (state_.completer_updated) {

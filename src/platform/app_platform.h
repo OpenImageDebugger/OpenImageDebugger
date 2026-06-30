@@ -23,21 +23,28 @@
  * IN THE SOFTWARE.
  */
 
+#ifndef PLATFORM_APP_PLATFORM_H_
+#define PLATFORM_APP_PLATFORM_H_
+
 #include "ui/main_window/main_window.h"
 
-#include <QApplication>
+namespace oid::platform {
 
-#include "platform/app_platform.h"
+/// Set up the default QSurfaceFormat (GLES 3.0 on WASM; no-op on native).
+void configure_surface_format();
 
-int main(int argc, char* argv[]) {
-    oid::platform::configure_surface_format();
+/// Parse -h / -p command-line arguments into a ConnectionSettings.
+/// On WASM there are no CLI args — returns a default-constructed value.
+ConnectionSettings parse_connection_settings(int argc, char** argv);
 
-    auto app = QApplication{argc, argv};
+/// Install JS inbound message hooks (oidOnMessage).
+/// No-op on native.
+void install_inbound_hooks();
 
-    const auto settings = oid::platform::parse_connection_settings(argc, argv);
-    oid::platform::install_inbound_hooks();
+/// WASM: emit oid_notify_viewer_ready exactly once when both flags are true.
+/// Native: no-op.
+void notify_viewer_ready_once(bool window_ready, bool first_paint_done);
 
-    auto window = oid::MainWindow{settings};
-    window.showWindow();
-    return QApplication::exec();
-}
+} // namespace oid::platform
+
+#endif // PLATFORM_APP_PLATFORM_H_

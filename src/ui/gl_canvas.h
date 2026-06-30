@@ -85,10 +85,6 @@ class GLCanvas final : public GlWidgetBase, public QOpenGLFunctions {
     void schedule_gl(std::function<void()> task);
 
     void schedule_icon_gl(std::function<void()> task);
-
-    [[nodiscard]] bool has_completed_first_paint() const {
-        return first_paint_completed_;
-    }
 #else
     void initializeGL() override;
 
@@ -96,6 +92,10 @@ class GLCanvas final : public GlWidgetBase, public QOpenGLFunctions {
 
     void resizeGL(int w, int h) override;
 #endif
+
+    [[nodiscard]] bool has_completed_first_paint() const {
+        return first_paint_completed_;
+    }
 
     [[nodiscard]] int mouse_x() const {
         return mouse_x_;
