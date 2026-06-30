@@ -303,7 +303,6 @@ void MainWindow::draw() const {
     }
 }
 
-#ifdef __EMSCRIPTEN__
 void MainWindow::prepare_gl_draw() const {
     const auto lock = std::unique_lock{ui_mutex_};
     const auto stage = buffer_data_.currently_selected_stage.lock();
@@ -326,7 +325,6 @@ void MainWindow::prepare_gl_draw() const {
     cam.window_resized(ui_components_.ui->bufferPreview->render_width(),
                        ui_components_.ui->bufferPreview->render_height());
 }
-#endif
 
 std::shared_ptr<GLCanvas> MainWindow::gl_canvas() const {
     return gl_canvas_ptr_;

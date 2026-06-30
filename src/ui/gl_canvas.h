@@ -53,10 +53,12 @@ class MainWindow;
 class Stage;
 
 #ifdef __EMSCRIPTEN__
-class GLCanvas final : public QRhiWidget, public QOpenGLFunctions {
+using GlWidgetBase = QRhiWidget;
 #else
-class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
+using GlWidgetBase = QOpenGLWidget;
 #endif
+
+class GLCanvas final : public GlWidgetBase, public QOpenGLFunctions {
     Q_OBJECT
   public:
     explicit GLCanvas(QWidget* parent = nullptr);
@@ -124,6 +126,7 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
                                           int icon_height);
 
   private:
+    void platform_ctor_init(); // defined per-platform in gl_canvas_<platform>.cpp
     void init_icon_framebuffer();
     void destroy_icon_framebuffer();
     std::array<bool, 2> mouse_down_{};
