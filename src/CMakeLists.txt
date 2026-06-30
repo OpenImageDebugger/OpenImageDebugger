@@ -84,12 +84,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   list(APPEND SOURCES
     platform/transport_factory_wasm.cpp
     platform/render_scheduler_wasm.cpp
+    platform/gl_dialect_wasm.cpp
     ui/gl_canvas_wasm.cpp
   )
 else()
   list(APPEND SOURCES
     platform/transport_factory_native.cpp
     platform/render_scheduler_native.cpp
+    platform/gl_dialect_native.cpp
     ui/gl_canvas_native.cpp
   )
 endif()

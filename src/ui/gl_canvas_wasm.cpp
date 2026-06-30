@@ -25,6 +25,7 @@
 
 #include "ui/gl_canvas.h"
 
+#include <cmath>
 #include <rhi/qrhi.h>
 
 #include "main_window/main_window.h"
@@ -171,4 +172,5 @@ void GLCanvas::platform_ctor_init() {
         first_paint_completed_ = false;
     });
 }
+
 } // namespace oid

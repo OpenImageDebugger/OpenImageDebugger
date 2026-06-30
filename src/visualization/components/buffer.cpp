@@ -36,6 +36,7 @@
 
 #include "camera.h"
 #include "math/linear_algebra.h"
+#include "platform/gl_dialect.h"
 #include "visualization/game_object.h"
 #include "visualization/shaders/oid_shaders.h"
 #include "visualization/stage.h"
@@ -733,28 +734,8 @@ void Buffer::setup_gl_buffer() {
         tex_format = GL_RGBA;
     }
 
-    auto internal_format = GLuint{GL_RGBA32F};
-#ifdef __EMSCRIPTEN__
-    if (tex_type == GL_FLOAT) {
-        if (tex_format == GL_RED) {
-            internal_format = GL_R32F;
-        } else if (tex_format == GL_RG) {
-            internal_format = GL_RG32F;
-        } else if (tex_format == GL_RGB) {
-            internal_format = GL_RGB32F;
-        } else {
-            internal_format = GL_RGBA32F;
-        }
-    } else if (tex_format == GL_RED) {
-        internal_format = GL_R8;
-    } else if (tex_format == GL_RG) {
-        internal_format = GL_RG8;
-    } else if (tex_format == GL_RGB) {
-        internal_format = GL_RGB8;
-    } else {
-        internal_format = GL_RGBA8;
-    }
-#endif
+    const auto internal_format =
+        the_dialect().texture_internal_format(tex_type, tex_format);
 
     auto remaining_h = buffer_height_i;
 
@@ -807,10 +788,10 @@ void Buffer::setup_gl_buffer() {
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-#ifndef __EMSCRIPTEN__
-            gl_canvas_ref().glTexParameteri(
-                GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-#endif
+            if (the_dialect().has_texture_wrap_r) {
+                gl_canvas_ref().glTexParameteri(
+                    GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            }
         }
     }
 

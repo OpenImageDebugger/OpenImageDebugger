@@ -23,60 +23,51 @@
  * IN THE SOFTWARE.
  */
 
-#include "ui/gl_canvas.h"
-
-#include <iostream>
-
-#include "main_window/main_window.h"
-#include "ui/gl_text_renderer.h"
+#include "platform/gl_dialect.h"
 
 namespace oid {
 
-int GLCanvas::render_width() const {
-    return width();
-}
-
-int GLCanvas::render_height() const {
-    return height();
-}
-
-void GLCanvas::initializeGL() {
-    this->makeCurrent();
-    if (const auto context = this->context();
-        context == nullptr || !context->isValid()) [[unlikely]] {
-        std::cerr << "[Error] OpenGL context is not valid. OpenGL "
-                     "initialization cannot proceed."
-                  << std::endl;
-        initialized_ = false;
-        return;
+GLuint GlDialect::texture_internal_format(GLenum tex_type,
+                                          GLenum tex_format) const
+{
+    if (tex_type == GL_FLOAT) {
+        if (tex_format == GL_RED) {
+            return GL_R32F;
+        }
+        if (tex_format == GL_RG) {
+            return GL_RG32F;
+        }
+        if (tex_format == GL_RGB) {
+            return GL_RGB32F;
+        }
+        return GL_RGBA32F;
     }
-    initializeOpenGLFunctions();
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
-    init_icon_framebuffer();
-
-    // Initialize text renderer
-    if (!text_renderer_->initialize()) {
-        initialized_ = false;
-        return;
+    if (tex_format == GL_RED) {
+        return GL_R8;
     }
-
-    initialized_ = true;
+    if (tex_format == GL_RG) {
+        return GL_RG8;
+    }
+    if (tex_format == GL_RGB) {
+        return GL_RGB8;
+    }
+    return GL_RGBA8;
 }
 
-void GLCanvas::paintGL() {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    main_window().draw();
+const GlDialect& the_dialect() {
+    static const GlDialect dialect{
+        .version_directive        = "#version 300 es\n",
+        .fragment_preamble        = "precision mediump float;\n"
+                                    "precision mediump int;\n"
+                                    "out vec4 oid_fragColor;\n",
+        .uses_out_color           = true,
+        .icon_image_format        = QImage::Format_RGBA8888,
+        .icon_bytes_per_pixel     = 4,
+        .has_texture_wrap_r       = false,
+        .icon_gl_internal_format  = GL_RGBA8,
+        .icon_gl_format           = GL_RGBA,
+    };
+    return dialect;
 }
-
-void GLCanvas::resizeGL(const int w, const int h) {
-    glViewport(0, 0, w, h);
-    main_window().resize_callback(w, h);
-}
-
-void GLCanvas::platform_ctor_init() {}
 
 } // namespace oid

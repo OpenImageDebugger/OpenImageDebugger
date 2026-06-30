@@ -23,60 +23,30 @@
  * IN THE SOFTWARE.
  */
 
-#include "ui/gl_canvas.h"
+#ifndef PLATFORM_GL_DIALECT_H_
+#define PLATFORM_GL_DIALECT_H_
 
-#include <iostream>
+#include <string_view>
 
-#include "main_window/main_window.h"
-#include "ui/gl_text_renderer.h"
+#include <GL/gl.h>
+#include <QImage>
 
 namespace oid {
 
-int GLCanvas::render_width() const {
-    return width();
-}
+struct GlDialect {
+    std::string_view version_directive;
+    std::string_view fragment_preamble;
+    bool uses_out_color;
+    QImage::Format icon_image_format;
+    int icon_bytes_per_pixel;
+    bool has_texture_wrap_r;
+    GLenum icon_gl_internal_format;
+    GLenum icon_gl_format;
+    GLuint texture_internal_format(GLenum tex_type, GLenum tex_format) const;
+};
 
-int GLCanvas::render_height() const {
-    return height();
-}
-
-void GLCanvas::initializeGL() {
-    this->makeCurrent();
-    if (const auto context = this->context();
-        context == nullptr || !context->isValid()) [[unlikely]] {
-        std::cerr << "[Error] OpenGL context is not valid. OpenGL "
-                     "initialization cannot proceed."
-                  << std::endl;
-        initialized_ = false;
-        return;
-    }
-    initializeOpenGLFunctions();
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
-    init_icon_framebuffer();
-
-    // Initialize text renderer
-    if (!text_renderer_->initialize()) {
-        initialized_ = false;
-        return;
-    }
-
-    initialized_ = true;
-}
-
-void GLCanvas::paintGL() {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    main_window().draw();
-}
-
-void GLCanvas::resizeGL(const int w, const int h) {
-    glViewport(0, 0, w, h);
-    main_window().resize_callback(w, h);
-}
-
-void GLCanvas::platform_ctor_init() {}
+const GlDialect& the_dialect();
 
 } // namespace oid
+
+#endif // PLATFORM_GL_DIALECT_H_

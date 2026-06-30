@@ -29,6 +29,7 @@
 #include <iostream>
 
 #include "main_window/main_window.h"
+#include "platform/gl_dialect.h"
 #include "ui/gl_text_renderer.h"
 #include "visualization/components/camera.h"
 // Required for GameObject::get_component<>() template method instantiation
@@ -94,13 +95,9 @@ void GLCanvas::init_icon_framebuffer() {
     const auto icon_width = static_cast<int>(icon_size.width());
     const auto icon_height = static_cast<int>(icon_size.height());
 
-#ifdef __EMSCRIPTEN__
-    constexpr auto icon_internal_format = GL_RGBA8;
-    constexpr auto icon_format = GL_RGBA;
-#else
-    constexpr auto icon_internal_format = GL_RGB8;
-    constexpr auto icon_format = GL_RGB;
-#endif
+    const auto& dialect = the_dialect();
+    const auto icon_internal_format = dialect.icon_gl_internal_format;
+    const auto icon_format = dialect.icon_gl_format;
 
     glGenTextures(1, &icon_texture_);
     glBindTexture(GL_TEXTURE_2D, icon_texture_);
@@ -110,7 +107,7 @@ void GLCanvas::init_icon_framebuffer() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D,
                  0,
-                 icon_internal_format,
+                 static_cast<GLint>(icon_internal_format),
                  icon_width,
                  icon_height,
                  0,
@@ -164,13 +161,9 @@ bool GLCanvas::render_buffer_icon(Stage& stage,
         return false;
     }
 
-#ifdef __EMSCRIPTEN__
-    constexpr auto icon_read_format = GL_RGBA;
-    constexpr int icon_bytes_per_pixel = 4;
-#else
-    constexpr auto icon_read_format = GL_RGB;
-    constexpr int icon_bytes_per_pixel = 3;
-#endif
+    const auto& dialect = the_dialect();
+    const auto icon_read_format = dialect.icon_gl_format;
+    const auto icon_bytes_per_pixel = dialect.icon_bytes_per_pixel;
 
     glBindFramebuffer(GL_FRAMEBUFFER, icon_fbo_);
 

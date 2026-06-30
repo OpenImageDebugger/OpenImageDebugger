@@ -37,6 +37,7 @@
 
 #include "ipc/message_exchange.h"
 #include "ipc/raw_data_decode.h"
+#include "platform/gl_dialect.h"
 #include "platform/render_scheduler.h"
 #include "ui/gl_canvas.h"
 #include "ui/main_window/main_window.h"
@@ -110,21 +111,13 @@ void MessageHandler::repaint_image_list_icon(
             return;
         }
 
-#ifdef __EMSCRIPTEN__
-        const auto bytes_per_line = icon_width * 4;
+        const auto& dialect = the_dialect();
+        const auto bytes_per_line = icon_width * dialect.icon_bytes_per_pixel;
         const auto bufferIcon = QImage{stage->get_buffer_icon().data(),
                                        icon_width,
                                        icon_height,
                                        bytes_per_line,
-                                       QImage::Format_RGBA8888};
-#else
-        const auto bytes_per_line = icon_width * 3;
-        const auto bufferIcon = QImage{stage->get_buffer_icon().data(),
-                                       icon_width,
-                                       icon_height,
-                                       bytes_per_line,
-                                       QImage::Format_RGB888};
-#endif
+                                       dialect.icon_image_format};
 
         if (const auto item = find_image_list_item(variable_name_str);
             item != nullptr) {
