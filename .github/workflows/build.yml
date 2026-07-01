@@ -45,7 +45,7 @@ jobs:
             name: ubuntu-24.04
             container: ghcr.io/openimagedebugger/oid:24.04
             ccache-variant: "ccache"
-          - os: ubuntu-24.04
+          - os: ubuntu-26.04
             name: ubuntu-26.04
             container: ghcr.io/openimagedebugger/oid:26.04
             ccache-variant: "ccache"
