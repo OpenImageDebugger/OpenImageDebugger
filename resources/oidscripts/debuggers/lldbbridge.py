@@ -33,6 +33,7 @@ class LldbBridge(BridgeInterface):
         self._event_handler = None
         self._last_thread_id = 0
         self._last_frame_idx = 0
+        self._process_was_stopped = False
 
         # Store debugger from the main thread since it isn't available from an event loop.
         self._debugger = lldb.debugger
@@ -47,6 +48,16 @@ class LldbBridge(BridgeInterface):
 
     def get_backend_name(self):
         return 'lldb'
+
+    def _check_stop_transition(self):
+        process = self._get_process(self.get_lldb_backend())
+        is_stopped = process.is_stopped
+        # GDB fires stop on every halt; LLDB's stop-hook is not always installed.
+        # Detect running→stopped so repeat breakpoints at the same frame still refresh.
+        if is_stopped and not self._process_was_stopped:
+            with self._lock:
+                self._event_queue.append('stop')
+        self._process_was_stopped = is_stopped
 
     def _check_frame_modification(self):
         process = self._get_process(self.get_lldb_backend())
@@ -69,6 +80,7 @@ class LldbBridge(BridgeInterface):
 
     def event_loop(self):
         while True:
+            self._check_stop_transition()
             self._check_frame_modification()
 
             requests_to_process = []

@@ -180,9 +180,13 @@ class OpenImageDebuggerWindow(object):
 
     def initialize_window(self):
         # Initialize OID lib
+        init_params = {'oid_path': self._script_path}
+        ui_binary = os.environ.get('OID_UI_BINARY')
+        if ui_binary:
+            init_params['ui_binary'] = ui_binary
         self._native_handler = self._lib.oid_initialize(
             self._plot_variable_c_callback,
-            {'oid_path': self._script_path})
+            init_params)
 
         # Launch UI
         self._lib.oid_exec(self._native_handler)
