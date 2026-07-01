@@ -27,35 +27,153 @@
 #include "process_impl.h"
 
 #include <memory>
+#include <string>
+#include <vector>
 
-#include <QProcess>
-#include <QString>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 
 namespace oid {
 
+namespace {
+
+std::wstring utf8_to_wide(const std::string& text) {
+    if (text.empty()) {
+        return {};
+    }
+
+    const auto size = MultiByteToWideChar(CP_UTF8,
+                                          MB_ERR_INVALID_CHARS,
+                                          text.data(),
+                                          static_cast<int>(text.size()),
+                                          nullptr,
+                                          0);
+    if (size <= 0) {
+        return {};
+    }
+
+    std::wstring wide(static_cast<size_t>(size), L'\0');
+    MultiByteToWideChar(CP_UTF8,
+                        MB_ERR_INVALID_CHARS,
+                        text.data(),
+                        static_cast<int>(text.size()),
+                        wide.data(),
+                        size);
+    return wide;
+}
+
+std::wstring quote_windows_arg(const std::wstring& arg) {
+    if (arg.empty()) {
+        return L"\"\"";
+    }
+
+    if (arg.find_first_of(L" \t\"") == std::wstring::npos) {
+        return arg;
+    }
+
+    std::wstring quoted;
+    quoted.reserve(arg.size() + 2);
+    quoted.push_back(L'"');
+    for (const wchar_t ch : arg) {
+        if (ch == L'"') {
+            quoted.append(L"\\\"");
+        } else {
+            quoted.push_back(ch);
+        }
+    }
+    quoted.push_back(L'"');
+    return quoted;
+}
+
+std::wstring build_command_line(const std::vector<std::string>& command) {
+    std::wstring line;
+    for (size_t i = 0; i < command.size(); ++i) {
+        if (i > 0) {
+            line.push_back(L' ');
+        }
+        line += quote_windows_arg(utf8_to_wide(command[i]));
+    }
+    return line;
+}
+
+} // namespace
+
 class ProcessImplWin32 final : public ProcessImpl {
   public:
+    ProcessImplWin32() = default;
+
+    ProcessImplWin32(const ProcessImplWin32&) = delete;
+    ProcessImplWin32(ProcessImplWin32&&) = delete;
+    ProcessImplWin32& operator=(const ProcessImplWin32&) = delete;
+    ProcessImplWin32& operator=(ProcessImplWin32&&) = delete;
+
+    ~ProcessImplWin32() noexcept override {
+        kill();
+        close_process_handle();
+    }
+
     void start(std::vector<std::string>& command) override {
-        const auto program = QString::fromStdString(command[0]);
-        QStringList args;
-        for (size_t i = 1; i < command.size(); i++) {
-            args.append(QString::fromStdString(command[i]));
+        kill();
+        close_process_handle();
+
+        if (command.empty()) {
+            return;
         }
 
-        proc_.start(program, args);
-        proc_.waitForStarted();
+        auto command_line = build_command_line(command);
+        command_line.push_back(L'\0');
+
+        STARTUPINFOW startup_info{};
+        startup_info.cb = sizeof(startup_info);
+        PROCESS_INFORMATION process_info{};
+
+        if (!CreateProcessW(nullptr,
+                            command_line.data(),
+                            nullptr,
+                            nullptr,
+                            FALSE,
+                            0,
+                            nullptr,
+                            nullptr,
+                            &startup_info,
+                            &process_info)) {
+            return;
+        }
+
+        CloseHandle(process_info.hThread);
+        process_handle_ = process_info.hProcess;
     }
 
     [[nodiscard]] bool isRunning() const override {
-        return proc_.state() == QProcess::Running;
+        if (process_handle_ == nullptr) {
+            return false;
+        }
+
+        DWORD exit_code = 0;
+        if (!GetExitCodeProcess(process_handle_, &exit_code)) {
+            return false;
+        }
+
+        return exit_code == STILL_ACTIVE;
     }
 
     void kill() override {
-        proc_.kill();
+        if (process_handle_ != nullptr && isRunning()) {
+            TerminateProcess(process_handle_, 1);
+        }
     }
 
   private:
-    QProcess proc_{};
+    void close_process_handle() {
+        if (process_handle_ != nullptr) {
+            CloseHandle(process_handle_);
+            process_handle_ = nullptr;
+        }
+    }
+
+    HANDLE process_handle_{nullptr};
 };
 
 void Process::createImpl() {
