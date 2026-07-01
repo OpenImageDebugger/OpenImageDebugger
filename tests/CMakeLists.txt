@@ -108,7 +108,74 @@ target_link_libraries(test_message_exchange
 # Add message_exchange source file directly for testing
 target_sources(test_message_exchange PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/message_exchange.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/tcp_transport.cpp
 )
 
 add_test(NAME MessageExchangeTests COMMAND test_message_exchange)
+
+# Test for ITransport / TcpTransport
+add_executable(test_transport test_transport.cpp)
+
+target_include_directories(test_transport
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+
+target_link_libraries(test_transport
+    PRIVATE
+    Qt6::Network
+    Qt6::Core
+    GTest::gtest_main
+    GTest::gtest
+)
+
+target_sources(test_transport PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/tcp_transport.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/platform/postmessage_transport.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/message_exchange.cpp
+)
+
+add_test(NAME TransportTests COMMAND test_transport)
+
+# Test session state JSON codec
+add_executable(test_session_state_codec
+    test_session_state_codec.cpp
+)
+
+target_include_directories(test_session_state_codec
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+
+target_link_libraries(test_session_state_codec
+    PRIVATE
+    Qt6::Core
+    GTest::gtest_main
+    GTest::gtest
+)
+
+target_sources(test_session_state_codec PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ui/messaging/session_state_codec.cpp
+)
+
+add_test(NAME SessionStateCodec COMMAND test_session_state_codec)
+
+# Test BufferAssembler
+add_executable(test_buffer_assembler test_buffer_assembler.cpp)
+
+target_include_directories(test_buffer_assembler
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc
+)
+
+target_link_libraries(test_buffer_assembler
+    PRIVATE
+    GTest::gtest_main
+    GTest::gtest
+)
+
+# Add buffer_assembler source file directly for testing
+target_sources(test_buffer_assembler PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/buffer_assembler.cpp
+)
+
+add_test(NAME BufferAssemblerTests COMMAND test_buffer_assembler)
 

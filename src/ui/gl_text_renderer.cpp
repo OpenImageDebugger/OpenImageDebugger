@@ -27,6 +27,7 @@
 #include <QPainter>
 #include <QPixmap>
 
+#include "platform/gl_dialect.h"
 #include "visualization/shaders/oid_shaders.h"
 
 namespace oid {
@@ -200,12 +201,15 @@ void GLTextRenderer::generate_glyphs_texture() {
     gl_canvas_.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     gl_canvas_.glTexParameteri(
         GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    gl_canvas_.glTexParameteri(
-        GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    gl_canvas_.glTexParameteri(
-        GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    gl_canvas_.glTexParameteri(
-        GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+    const auto& dialect = the_dialect();
+    const auto wrap_mode = dialect.has_texture_wrap_r ? GL_CLAMP_TO_BORDER
+                                                      : GL_CLAMP_TO_EDGE;
+    gl_canvas_.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_mode);
+    gl_canvas_.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_mode);
+    if (dialect.has_texture_wrap_r) {
+        gl_canvas_.glTexParameteri(
+            GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+    }
 }
 
 } // namespace oid

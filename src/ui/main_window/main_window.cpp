@@ -29,14 +29,22 @@
 #include <ranges>
 #include <utility>
 
+#include <QApplication>
 #include <QDateTime>
 #include <QScreen>
 #include <QSettings>
+#include <QTcpSocket>
 
 #include "main_window_initializer.h"
+#include "platform/app_platform.h"
+#include "platform/platform_config.h"
+#include "platform/render_scheduler.h"
+#include "platform/session_persistence.h"
+#include "platform/transport_factory.h"
 #include "math/linear_algebra.h"
 #include "settings_applier.h"
 #include "settings_manager.h"
+#include "ui/messaging/session_state_codec.h"
 #include "ui_main_window.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
@@ -123,16 +131,37 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
         AutoContrastController::Dependencies{
             ui_mutex_, buffer_data_, state_, ui_components_});
 
+    // Initialize settings applier (before the message handler so inbound
+    // ApplySessionState can be applied through it)
+    settings_applier_ = std::make_unique<SettingsApplier>(
+        SettingsApplier::Dependencies{ui_mutex_,
+                                      state_,
+                                      ui_components_,
+                                      buffer_data_,
+                                      channel_names_,
+                                      render_framerate_,
+                                      default_export_suffix_,
+                                      *this},
+        this);
+
     // Initialize message handler
+    transport_ = platform::make_transport({socket_});
+    render_scheduler_ =
+        platform::make_render_scheduler(*ui_components_.ui->bufferPreview);
     message_handler_ = std::make_unique<MessageHandler>(
         MessageHandler::Dependencies{
             ui_mutex_,
             buffer_data_,
             state_,
             ui_components_,
-            socket_,
+            *transport_,
+            *render_scheduler_,
             [] { return get_icon_size(); },
-            [this] { return std::make_shared<Stage>(*this); }},
+            [this] { return std::make_shared<Stage>(*this); },
+            [this](const std::shared_ptr<Stage>& stage) {
+                set_currently_selected_stage(stage);
+            },
+            settings_applier_.get()},
         this);
 
     // Initialize UI event handler
@@ -148,18 +177,6 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
 
     // Initialize settings manager
     settings_manager_ = std::make_unique<SettingsManager>(this);
-
-    // Initialize settings applier
-    settings_applier_ = std::make_unique<SettingsApplier>(
-        SettingsApplier::Dependencies{ui_mutex_,
-                                      state_,
-                                      ui_components_,
-                                      buffer_data_,
-                                      channel_names_,
-                                      render_framerate_,
-                                      default_export_suffix_,
-                                      *this},
-        this);
 
     connect_settings_signals();
 
@@ -214,6 +231,20 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             &UIEventHandler::settingsPersistenceRequested,
             this,
             &MainWindow::persist_settings_deferred);
+    if constexpr (platform::kIsWasm) {
+        connect(event_handler_.get(),
+                &UIEventHandler::exportBufferRequested,
+                message_handler_.get(),
+                &MessageHandler::request_export_buffer);
+        connect(message_handler_.get(),
+                &MessageHandler::exportSelectedBufferRequested,
+                event_handler_.get(),
+                &UIEventHandler::export_selected_buffer);
+        connect(event_handler_.get(),
+                &UIEventHandler::bufferRemoved,
+                message_handler_.get(),
+                &MessageHandler::notify_buffer_removed);
+    }
 
     // Connect MessageHandler signals to MainWindow slots
     connect(message_handler_.get(),
@@ -229,8 +260,10 @@ MainWindow::MainWindow(ConnectionSettings host_settings, QWidget* parent)
             this,
             &MainWindow::persist_settings_deferred);
 
-    // Load settings (must be done before initialization)
-    settings_manager_->load_settings();
+    // Load settings (must be done before initialization).
+    // On WASM the extension owns persistence and prefs arrive via
+    // ApplySessionState (IPC type 6); skip the local QSettings load.
+    platform::load_settings_if_local(*settings_manager_);
 
     // Initialize UI components
     initializer_->initialize();
@@ -242,8 +275,10 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::showWindow() {
-    ui_components_.update_timer.start(
-        static_cast<int>(1000.0 / render_framerate_));
+    // Guard against a non-positive framerate, which would produce an invalid
+    // timer interval and stall the update/render loop.
+    const auto framerate = render_framerate_ > 0.0 ? render_framerate_ : 60.0;
+    ui_components_.update_timer.start(static_cast<int>(1000.0 / framerate));
     show();
 }
 
@@ -252,6 +287,29 @@ void MainWindow::draw() const {
     if (const auto stage = buffer_data_.currently_selected_stage.lock()) {
         stage->draw();
     }
+}
+
+void MainWindow::prepare_gl_draw() const {
+    const auto lock = std::unique_lock{ui_mutex_};
+    const auto stage = buffer_data_.currently_selected_stage.lock();
+    if (!stage) {
+        return;
+    }
+
+    stage->update();
+
+    const auto cam_obj = stage->get_game_object("camera");
+    if (!cam_obj.has_value()) {
+        return;
+    }
+    const auto cam_opt =
+        cam_obj->get().get_component<Camera>("camera_component");
+    if (!cam_opt.has_value()) {
+        return;
+    }
+    auto& cam = cam_opt->get();
+    cam.window_resized(ui_components_.ui->bufferPreview->render_width(),
+                       ui_components_.ui->bufferPreview->render_height());
 }
 
 std::shared_ptr<GLCanvas> MainWindow::gl_canvas() const {
@@ -271,7 +329,15 @@ bool MainWindow::is_window_ready() const {
 }
 
 void MainWindow::loop() {
+    if (platform::should_quit_on_disconnect(socket_)) [[unlikely]] {
+        QApplication::quit();
+        return;
+    }
+
     message_handler_->decode_incoming_messages();
+
+    platform::notify_viewer_ready_once(is_window_ready(),
+                                       gl_canvas_ptr_->has_completed_first_paint());
 
     const auto lock = std::unique_lock{ui_mutex_};
     if (state_.completer_updated) {
@@ -287,7 +353,8 @@ void MainWindow::loop() {
     }
 
     // Update visualization pane
-    if (state_.request_render_update) {
+    if (state_.request_render_update &&
+        ui_components_.ui->bufferPreview->is_ready()) {
         ui_components_.ui->bufferPreview->update();
         update_status_bar();
         state_.request_render_update = false;
@@ -295,7 +362,6 @@ void MainWindow::loop() {
 
     // Update an icon of every entry in image list
     if (state_.request_icons_update) {
-
         for (const auto& name : buffer_data_.stages | std::views::keys) {
             message_handler_->repaint_image_list_icon(name);
         }
@@ -372,7 +438,40 @@ void MainWindow::persist_settings() {
         buffer_data_.removed_buffer_names.clear();
     };
 
-    SettingsManager::persist_settings(callbacks);
+    SessionStateExtraInputs extra;
+    extra.getColorspace = [this] {
+        const auto to_char = [](const QString& name) -> QChar {
+            if (name == QStringLiteral("red")) return QLatin1Char('r');
+            if (name == QStringLiteral("green")) return QLatin1Char('g');
+            if (name == QStringLiteral("blue")) return QLatin1Char('b');
+            if (name == QStringLiteral("alpha")) return QLatin1Char('a');
+            return {};
+        };
+        auto colorspace = QString{};
+        for (const auto& name : {channel_names_.name_channel_1,
+                                 channel_names_.name_channel_2,
+                                 channel_names_.name_channel_3,
+                                 channel_names_.name_channel_4}) {
+            if (const auto character = to_char(name); !character.isNull()) {
+                colorspace.append(character);
+            }
+        }
+        return colorspace;
+    };
+    extra.getListPosition = [this] {
+        auto* const splitter = ui_components_.ui->splitter;
+        const auto vertical = splitter->orientation() == Qt::Vertical;
+        const auto list_last =
+            splitter->indexOf(ui_components_.ui->frame_list) != 0;
+        if (vertical) {
+            return QString(list_last ? QStringLiteral("bottom")
+                                     : QStringLiteral("top"));
+        }
+        return QString(list_last ? QStringLiteral("right")
+                                 : QStringLiteral("left"));
+    };
+
+    platform::persist_session(callbacks, extra, transport_.get());
 }
 
 vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
@@ -404,9 +503,9 @@ vec4 MainWindow::get_stage_coordinates(const float pos_window_x,
     const auto& buffer = buffer_opt->get();
 
     const auto win_w =
-        static_cast<float>(ui_components_.ui->bufferPreview->width());
+        static_cast<float>(ui_components_.ui->bufferPreview->render_width());
     const auto win_h =
-        static_cast<float>(ui_components_.ui->bufferPreview->height());
+        static_cast<float>(ui_components_.ui->bufferPreview->render_height());
     const auto mouse_pos_ndc = vec4{2.0f * (pos_window_x - win_w / 2) / win_w,
                                     -2.0f * (pos_window_y - win_h / 2) / win_h,
                                     0.0f,

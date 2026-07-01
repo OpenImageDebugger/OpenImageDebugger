@@ -36,6 +36,7 @@
 
 #include "camera.h"
 #include "math/linear_algebra.h"
+#include "platform/gl_dialect.h"
 #include "visualization/game_object.h"
 #include "visualization/shaders/oid_shaders.h"
 #include "visualization/stage.h"
@@ -359,21 +360,16 @@ void Buffer::configure(const BufferParams& params) {
         return;
     }
 
-    // Validate buffer size (prevent potential DoS)
-    // Calculate: width * height * step (step is stride in bytes per row)
-    // Use checked multiplication to prevent overflow
-    const auto width_u = static_cast<std::size_t>(params.buffer_width_i);
-    const auto height_u = static_cast<std::size_t>(params.buffer_height_i);
-    const auto step_u = static_cast<std::size_t>(params.step);
-
-    // Check for potential overflow before multiplication
-    if (width_u > 0 && height_u > BufferConstants::MAX_BUFFER_SIZE / width_u) {
-        std::cerr << "[Error] Buffer dimensions too large (would overflow)"
-                  << std::endl;
-        return;
-    }
-
-    if (const auto buffer_size = width_u * height_u * step_u;
+    // Validate buffer size (prevent potential DoS). The real memory footprint
+    // is the size of the received pixel data. `step` is in pixels per row (see
+    // GL_UNPACK_ROW_LENGTH below), so a width*height*step estimate would
+    // double-count the row width and reject valid large buffers. Validate the
+    // actual byte count against the same 16 GB ceiling the desktop build uses.
+    // Cast to uint64 so the comparison is well-formed on 32-bit (WASM) builds,
+    // where size_t cannot represent the 16 GB ceiling (the real WASM limit is
+    // the ~2 GB heap; this ceiling only ever binds on the 64-bit desktop build).
+    if (const auto buffer_size =
+            static_cast<std::uint64_t>(params.buffer.size());
         buffer_size > BufferConstants::MAX_BUFFER_SIZE) {
         std::cerr << "[Error] Buffer size too large: " << buffer_size
                   << " bytes (maximum: " << BufferConstants::MAX_BUFFER_SIZE
@@ -738,6 +734,9 @@ void Buffer::setup_gl_buffer() {
         tex_format = GL_RGBA;
     }
 
+    const auto internal_format =
+        the_dialect().texture_internal_format(tex_type, tex_format);
+
     auto remaining_h = buffer_height_i;
 
     gl_canvas_ref().glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -762,7 +761,7 @@ void Buffer::setup_gl_buffer() {
 
             gl_canvas_ref().glTexImage2D(GL_TEXTURE_2D,
                                          0,
-                                         GL_RGBA32F,
+                                         static_cast<GLint>(internal_format),
                                          buff_w,
                                          buff_h,
                                          0,
@@ -789,8 +788,10 @@ void Buffer::setup_gl_buffer() {
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             gl_canvas_ref().glTexParameteri(
                 GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            gl_canvas_ref().glTexParameteri(
-                GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            if (the_dialect().has_texture_wrap_r) {
+                gl_canvas_ref().glTexParameteri(
+                    GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+            }
         }
     }
 

@@ -29,6 +29,7 @@
 #include <memory>
 #include <mutex>
 
+#include <QList>
 #include <QObject>
 #include <QString>
 
@@ -79,6 +80,7 @@ class UIEventHandler : public QObject {
     void symbol_selected();
     void symbol_completed(const QString& str);
     void export_buffer(const QString& buffer_name);
+    void export_selected_buffer();
     void show_context_menu(const QPoint& pos);
     void toggle_go_to_dialog() const;
     void go_to_pixel(float x, float y) const;
@@ -95,6 +97,9 @@ class UIEventHandler : public QObject {
     void acMaxLabelsResetRequested();
     void shiftPrecisionUpdateRequested();
     void settingsPersistenceRequested();
+    void exportBufferRequested(const QString& buffer_name, int format,
+                               const QList<float>& contrast);
+    void bufferRemoved(const QString& buffer_name);
 
   private:
     Dependencies deps_;

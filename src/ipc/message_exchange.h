@@ -35,12 +35,15 @@
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <vector>
 
-#include <QPointer>
 #include <QString>
-#include <QTcpSocket>
 
+#include "transport.h"
+#include "tcp_transport.h"
 #include "raw_data_decode.h"
+
+class QTcpSocket;
 
 namespace oid {
 
@@ -49,15 +52,24 @@ enum class MessageType {
     GetObservedSymbolsResponse = 1,
     SetAvailableSymbols = 2,
     PlotBufferContents = 3,
-    PlotBufferRequest = 4
+    PlotBufferRequest = 4,
+    ExportBufferRequest = 5,
+    ApplySessionState = 6,
+    SessionStateChanged = 7,
+    ExportSelectedBuffer = 8,
+    BufferRemoved = 9,
+    PlotBufferBegin = 10,
+    PlotBufferChunk = 11,
+    PlotBufferEnd = 12
 };
 
 // C++20 concept to replace SFINAE for primitive type checking
 template <typename T>
 concept PrimitiveType =
     std::is_same_v<T, MessageType> || std::is_same_v<T, int> ||
-    std::is_same_v<T, unsigned char> || std::is_same_v<T, BufferType> ||
-    std::is_same_v<T, bool> || std::is_same_v<T, std::size_t>;
+    std::is_same_v<T, float> || std::is_same_v<T, unsigned char> ||
+    std::is_same_v<T, BufferType> || std::is_same_v<T, bool> ||
+    std::is_same_v<T, std::size_t>;
 
 // Dedicated exception for socket timeout errors
 class SocketTimeoutError final : public std::runtime_error {
@@ -166,27 +178,23 @@ class MessageComposer {
         return *this;
     }
 
-    void send(QTcpSocket* socket) const {
+    void send(ITransport& transport) const {
+        std::size_t total = 0;
         for (const auto& block : message_blocks_) {
-            auto offset = qint64{0};
-            do {
-                // Convert std::byte* to const char* for Qt API (safe: same
-                // size/alignment)
-                offset +=
-                    socket->write(std::bit_cast<const char*>(block->data()),
-                                  static_cast<qint64>(block->size()));
-
-                if (offset < static_cast<qint64>(block->size()) &&
-                    !socket->waitForBytesWritten(5000)) [[unlikely]] {
-                    throw_socket_timeout_error("write");
-                }
-            } while (offset < static_cast<qint64>(block->size()));
+            total += block->size();
         }
-
-        if (!socket->waitForBytesWritten(5000)) [[unlikely]] {
-            throw_socket_timeout_error("write");
+        std::vector<std::byte> frame;
+        frame.reserve(total);
+        for (const auto& block : message_blocks_) {
+            const auto* data = block->data();
+            frame.insert(frame.end(), data, data + block->size());
+        }
+        if (!frame.empty()) {
+            transport.send(frame);
         }
     }
+
+    void send(QTcpSocket* socket) const;
 
     void clear() {
         message_blocks_.clear();
@@ -213,7 +221,9 @@ class MessageComposer {
 
 class MessageDecoder {
   public:
-    explicit MessageDecoder(QTcpSocket* socket) : socket_{socket} {}
+    explicit MessageDecoder(ITransport& transport);
+
+    explicit MessageDecoder(QTcpSocket* socket);
 
     template <PrimitiveType T> MessageDecoder& read(T& value) {
         // Safe mutable byte access to object representation
@@ -295,23 +305,19 @@ class MessageDecoder {
     }
 
   private:
-    QPointer<QTcpSocket> socket_{};
+    std::unique_ptr<TcpTransport> owned_tcp_transport_;
+    ITransport& transport_;
 
     void read_impl(std::span<std::byte> dst) const {
-        assert(!socket_.isNull() && "socket_ must be valid");
         auto offset = std::size_t{0};
         const auto read_length = dst.size();
-        do {
-            // Convert std::byte* to char* for Qt API (safe: same
-            // size/alignment)
-            offset += socket_->read(std::bit_cast<char*>(dst.data() + offset),
-                                    static_cast<qint64>(read_length - offset));
-
-            if (offset < read_length && !socket_->waitForReadyRead(5000))
-                [[unlikely]] {
+        while (offset < read_length) {
+            const auto n = transport_.receive(dst.subspan(offset));
+            if (n == 0) {
                 throw_socket_timeout_error("read");
             }
-        } while (offset < read_length);
+            offset += n;
+        }
     }
 };
 

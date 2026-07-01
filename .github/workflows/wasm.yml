@@ -1,0 +1,61 @@
+# The MIT License (MIT)
+#
+# Copyright (c) 2015-2026 OpenImageDebugger contributors
+# (https://github.com/OpenImageDebugger/OpenImageDebugger)
+
+name: WASM Build
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  wasm:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install emsdk 4.0.7
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git /opt/emsdk
+          /opt/emsdk/emsdk install 4.0.7
+          /opt/emsdk/emsdk activate 4.0.7
+          echo "EMSDK=/opt/emsdk" >> "$GITHUB_ENV"
+          echo "/opt/emsdk" >> "$GITHUB_PATH"
+          echo "/opt/emsdk/upstream/emscripten" >> "$GITHUB_PATH"
+
+      - name: Install Qt 6.11 desktop (WASM host)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.11.0"
+          host: "linux"
+          target: "desktop"
+          arch: "linux_gcc_64"
+          cache: true
+
+      - name: Install Qt 6.11 WASM
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.11.0"
+          host: "all_os"
+          target: "wasm"
+          arch: "wasm_singlethread"
+          cache: true
+
+      - name: Build WASM
+        env:
+          EMSDK: /opt/emsdk
+          QT_WASM_DIR: ${{ env.QT_ROOT_DIR }}/6.11.0/wasm_singlethread
+          QT_HOST_PATH: ${{ env.QT_ROOT_DIR }}/6.11.0/gcc_64
+        run: bash wasm/scripts/build-wasm.sh --reconfigure
+
+      - name: Pack artifact
+        run: bash wasm/scripts/pack-viewer-wasm.sh
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: viewer-wasm
+          path: wasm/dist

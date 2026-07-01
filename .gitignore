@@ -1,5 +1,12 @@
 # CMake build directory
 build/
+build-wasm/
+
+# Git worktrees
+.worktrees/
+
+# WASM npm pack output
+wasm/dist/
 
 # Visual Studio Code project settings
 .vscode/

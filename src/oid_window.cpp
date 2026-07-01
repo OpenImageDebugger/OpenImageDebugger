@@ -26,23 +26,18 @@
 #include "ui/main_window/main_window.h"
 
 #include <QApplication>
-#include <QCommandLineParser>
+
+#include "platform/app_platform.h"
 
 int main(int argc, char* argv[]) {
+    oid::platform::configure_surface_format();
+
     auto app = QApplication{argc, argv};
 
-    auto parser = QCommandLineParser{};
-    parser.addOptions({
-        {"h", "hostname", "hostname", "127.0.0.1"},
-        {"p", "port", "port", "9588"},
-    });
-    parser.parse(QCoreApplication::arguments());
+    const auto settings = oid::platform::parse_connection_settings(argc, argv);
+    oid::platform::install_inbound_hooks();
 
-    auto host_settings = oid::ConnectionSettings{};
-    host_settings.url = parser.value("h").toStdString();
-    host_settings.port = static_cast<uint16_t>(parser.value("p").toUInt());
-
-    auto window = oid::MainWindow{host_settings};
+    auto window = oid::MainWindow{settings};
     window.showWindow();
     return QApplication::exec();
 }

@@ -29,11 +29,13 @@
 #include <ranges>
 
 #include <QFileDialog>
+#include <QMenu>
 #include <QPoint>
 #include <QString>
 #include <QWidget>
 
 #include "io/buffer_exporter.h"
+#include "platform/platform_config.h"
 #include "ui/main_window/main_window.h"
 #include "visualization/components/buffer.h"
 #include "visualization/components/buffer_values.h"
@@ -342,6 +344,10 @@ void UIEventHandler::remove_selected_buffer() {
 
         deps_.buffer_data.removed_buffer_names.insert(buffer_name);
 
+        // Notify the host (VS Code extension on WASM) so it can drop the buffer
+        // from the persisted set immediately. Connected only under EMSCRIPTEN.
+        emit bufferRemoved(QString::fromStdString(buffer_name));
+
         if (deps_.buffer_data.stages.empty()) {
             emit shiftPrecisionUpdateRequested();
         }
@@ -390,57 +396,92 @@ void UIEventHandler::export_buffer(const QString& buffer_name) {
     }
     const auto& component = component_opt->get();
 
-    auto file_dialog = QFileDialog{deps_.ui_components.ui->bufferPreview};
-    file_dialog.setAcceptMode(QFileDialog::AcceptSave);
-    file_dialog.setFileMode(QFileDialog::AnyFile);
-
-    auto output_extensions = QHash<QString, BufferExporter::OutputType>{};
-    output_extensions[QObject::tr("Image File (*.png)")] =
-        BufferExporter::OutputType::Bitmap;
-    output_extensions[QObject::tr("Octave Raw Matrix (*.oct)")] =
-        BufferExporter::OutputType::OctaveMatrix;
-
-    auto it = QHashIterator{output_extensions};
-
-    auto save_message = QString{};
-
-    while (it.hasNext()) {
-        it.next();
-        save_message += it.key();
-        if (it.hasNext()) {
-            save_message += ";;";
+    if constexpr (platform::kIsWasm) {
+        const auto* bc = component.auto_buffer_contrast_brightness();
+        auto contrast = QList<float>{};
+        contrast.reserve(8);
+        for (int i = 0; i < 8; ++i) {
+            contrast.append(bc[i]);
         }
-    }
 
-    file_dialog.setNameFilter(save_message);
-    file_dialog.selectNameFilter(deps_.default_export_suffix);
+        // QFileDialog::exec() uses a nested event loop, which is unsupported on WASM.
+        emit exportBufferRequested(buffer_name, 0, contrast);
+    } else {
+        auto file_dialog = QFileDialog{deps_.ui_components.ui->bufferPreview};
+        file_dialog.setAcceptMode(QFileDialog::AcceptSave);
+        file_dialog.setFileMode(QFileDialog::AnyFile);
 
-    if (file_dialog.exec() == QDialog::Accepted) {
-        const auto file_name = file_dialog.selectedFiles()[0].toStdString();
-        const auto selected_filter = file_dialog.selectedNameFilter();
+        auto output_extensions = QHash<QString, BufferExporter::OutputType>{};
+        output_extensions[QObject::tr("Image File (*.png)")] =
+            BufferExporter::OutputType::Bitmap;
+        output_extensions[QObject::tr("Octave Raw Matrix (*.oct)")] =
+            BufferExporter::OutputType::OctaveMatrix;
 
-        BufferExporter::export_buffer(
-            component, file_name, output_extensions[selected_filter]);
+        auto it = QHashIterator{output_extensions};
 
-        deps_.default_export_suffix = selected_filter;
+        auto save_message = QString{};
 
-        emit settingsPersistenceRequested();
+        while (it.hasNext()) {
+            it.next();
+            save_message += it.key();
+            if (it.hasNext()) {
+                save_message += ";;";
+            }
+        }
+
+        file_dialog.setNameFilter(save_message);
+        file_dialog.selectNameFilter(deps_.default_export_suffix);
+
+        if (file_dialog.exec() == QDialog::Accepted) {
+            const auto file_name = file_dialog.selectedFiles()[0].toStdString();
+            const auto selected_filter = file_dialog.selectedNameFilter();
+
+            BufferExporter::export_buffer(
+                component, file_name, output_extensions[selected_filter]);
+
+            deps_.default_export_suffix = selected_filter;
+
+            emit settingsPersistenceRequested();
+        }
     }
 }
 
+void UIEventHandler::export_selected_buffer() {
+    QString name;
+    {
+        const auto lock = std::unique_lock{deps_.ui_mutex};
+        const auto* item = deps_.ui_components.ui->imageList->currentItem();
+        if (item == nullptr) {
+            return;
+        }
+        name = item->data(Qt::UserRole).toString();
+    }
+    export_buffer(name);
+}
+
 void UIEventHandler::show_context_menu(const QPoint& pos) {
-    if (deps_.ui_components.ui->imageList->itemAt(pos) != nullptr) {
-        const auto globalPos =
-            deps_.ui_components.ui->imageList->mapToGlobal(pos);
+    if (deps_.ui_components.ui->imageList->itemAt(pos) == nullptr) {
+        return;
+    }
+    const auto globalPos =
+        deps_.ui_components.ui->imageList->mapToGlobal(pos);
 
+    const auto buffer_name =
+        deps_.ui_components.ui->imageList->itemAt(pos)->data(Qt::UserRole);
+
+    if constexpr (platform::kIsWasm) {
+        // popup() is async; a stack QMenu is destroyed before the menu can paint.
+        auto* menu = new QMenu(deps_.ui_components.ui->imageList);
+        menu->setAttribute(Qt::WA_DeleteOnClose);
+        menu->addAction("Export buffer", [this, buffer_name] {
+            export_buffer(buffer_name.toString());
+        });
+        menu->popup(globalPos);
+    } else {
         auto menu = QMenu{deps_.ui_components.ui->imageList};
-
-        const auto buffer_name =
-            deps_.ui_components.ui->imageList->itemAt(pos)->data(Qt::UserRole);
         menu.addAction("Export buffer", [this, buffer_name] {
             export_buffer(buffer_name.toString());
         });
-
         menu.exec(globalPos);
     }
 }

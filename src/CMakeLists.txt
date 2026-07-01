@@ -25,14 +25,22 @@ cmake_minimum_required(VERSION 3.28.3)
 
 project(oidwindow CXX)
 
-set(OpenGL_GL_PREFERENCE LEGACY)
-find_package(OpenGL 2.1 REQUIRED)
+include(${CMAKE_SOURCE_DIR}/cmake/EmscriptenWasm.cmake)
+
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  set(OpenGL_GL_PREFERENCE LEGACY)
+  find_package(OpenGL 2.1 REQUIRED)
+endif()
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 "6.4.2" REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui OpenGL OpenGLWidgets Widgets)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  find_package(Qt6 6.11 REQUIRED COMPONENTS GuiPrivate)
+endif()
 
 set(SOURCES
     oid_window.cpp
@@ -50,6 +58,8 @@ set(SOURCES
     ui/main_window/settings_manager.cpp
     ui/main_window/ui_events.cpp
     ui/messaging/message_handler.cpp
+    ui/messaging/session_state_apply.cpp
+    ui/messaging/session_state_codec.cpp
     ui/symbol_completer.cpp
     ui/symbol_search_input.cpp
     visualization/components/background.cpp
@@ -69,10 +79,32 @@ set(SOURCES
     visualization/stage.cpp
 )
 
+# Platform-selected sources
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  list(APPEND SOURCES
+    platform/app_platform_wasm.cpp
+    platform/transport_factory_wasm.cpp
+    platform/render_scheduler_wasm.cpp
+    platform/gl_dialect_wasm.cpp
+    platform/session_persistence_wasm.cpp
+    platform/postmessage_transport.cpp
+    ui/gl_canvas_wasm.cpp
+  )
+else()
+  list(APPEND SOURCES
+    platform/app_platform_native.cpp
+    platform/transport_factory_native.cpp
+    platform/render_scheduler_native.cpp
+    platform/gl_dialect_native.cpp
+    platform/session_persistence_native.cpp
+    ui/gl_canvas_native.cpp
+  )
+endif()
+
 set(QT_FORMS ui/main_window/main_window.ui)
 set(QT_RESOURCES resources/resources.qrc)
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
+qt_add_executable(${PROJECT_NAME} ${SOURCES} ${QT_FORMS} ${QT_RESOURCES})
 
 add_dependencies(${PROJECT_NAME} oidipc)
 
@@ -92,7 +124,7 @@ target_include_directories(${PROJECT_NAME} SYSTEM
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-fvisibility=hidden>")
 
 target_link_options(${PROJECT_NAME}
-                     PUBLIC "$<$<PLATFORM_ID:Unix>:-Wl,--exclude-libs,ALL;>")
+                     PUBLIC "$<$<AND:$<PLATFORM_ID:Unix>,$<NOT:$<STREQUAL:${CMAKE_SYSTEM_NAME},Emscripten>>>:-Wl,--exclude-libs,ALL;>")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
                       oidipc
@@ -100,8 +132,18 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
                       Qt6::OpenGL
                       Qt6::OpenGLWidgets
                       Qt6::Widgets
-                      Threads::Threads
-                      ${OPENGL_gl_LIBRARY})
+                      Threads::Threads)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::GuiPrivate)
+else()
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENGL_gl_LIBRARY})
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  target_link_options(${PROJECT_NAME} PRIVATE
+    "SHELL:-s EXPORTED_FUNCTIONS=['_main','_oidEnqueueInbound','_oid_set_postmessage_transport','__embind_initialize_bindings']")
+endif()
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)

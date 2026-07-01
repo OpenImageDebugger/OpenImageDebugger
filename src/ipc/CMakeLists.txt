@@ -25,9 +25,15 @@ cmake_minimum_required(VERSION 3.28.3)
 
 project(oidipc CXX)
 
-add_library(${PROJECT_NAME} SHARED
+if(NOT DEFINED OID_IPC_LIBRARY_TYPE)
+  set(OID_IPC_LIBRARY_TYPE SHARED)
+endif()
+
+add_library(${PROJECT_NAME} ${OID_IPC_LIBRARY_TYPE}
+            buffer_assembler.cpp
             message_exchange.cpp
-            raw_data_decode.cpp)
+            raw_data_decode.cpp
+            tcp_transport.cpp)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       WINDOWS_EXPORT_ALL_SYMBOLS ON)

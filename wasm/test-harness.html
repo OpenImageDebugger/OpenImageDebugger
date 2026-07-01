@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OID WASM browser test</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; font-family: system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; }
+    #bar { flex: 0 0 auto; padding: 0.5rem 1rem; background: #1e1e1e; color: #ccc; font-size: 0.85rem; }
+    #bar.ok { color: #8f8; }
+    #bar.err { color: #f88; }
+    iframe { flex: 1 1 auto; width: 100%; border: none; display: block; min-height: 0; }
+  </style>
+</head>
+<body>
+  <div id="bar">Waiting for viewer… — close other OID WASM tabs first</div>
+  <iframe id="viewer" src="loader.html"></iframe>
+  <script>
+    const bar = document.getElementById('bar');
+    const viewer = document.getElementById('viewer');
+
+    function pushU32(buf, v) {
+      buf.push(v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >> 24) & 0xff);
+    }
+    function pushI32(buf, v) { pushU32(buf, v | 0); }
+    function pushString(buf, s) {
+      const bytes = new TextEncoder().encode(s);
+      pushU32(buf, bytes.length);
+      for (const b of bytes) buf.push(b);
+    }
+    function buildPlotBufferContents(p) {
+      const parts = [];
+      pushU32(parts, 3); // PlotBufferContents
+      pushString(parts, p.variableName);
+      pushString(parts, p.displayName);
+      pushString(parts, p.pixelLayout);
+      parts.push(p.transpose ? 1 : 0);
+      pushI32(parts, p.width);
+      pushI32(parts, p.height);
+      pushI32(parts, p.channels);
+      pushI32(parts, p.stride);
+      pushI32(parts, p.bufferType);
+      pushU32(parts, p.pixels.length);
+      for (const b of p.pixels) parts.push(b);
+      return new Uint8Array(parts);
+    }
+
+    window.addEventListener('message', (ev) => {
+      if (ev.source !== viewer.contentWindow) return;
+      const msg = ev.data;
+      if (msg?.type === 'oid-control' && msg.event === 'viewer-ready') {
+        bar.textContent = 'viewer-ready — sending 2×2 test image in 300ms…';
+        bar.className = '';
+        setTimeout(() => {
+          const payload = buildPlotBufferContents({
+            variableName: 'test',
+            displayName: 'test',
+            pixelLayout: 'rgba',
+            transpose: false,
+            width: 2,
+            height: 2,
+            channels: 3,
+            stride: 6,
+            bufferType: 0,
+            pixels: new Uint8Array([255, 0, 0, 0, 255, 0, 0, 0, 255, 128, 128, 128]),
+          });
+          viewer.contentWindow.postMessage({ type: 'oid-ipc', payload }, '*');
+          bar.textContent = 'Sent PlotBufferContents (2×2 RGB)';
+          bar.className = 'ok';
+        }, 300);
+      }
+    });
+
+    viewer.addEventListener('error', () => {
+      bar.textContent = 'iframe failed to load';
+      bar.className = 'err';
+    });
+  </script>
+</body>
+</html>

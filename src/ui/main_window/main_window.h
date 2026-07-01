@@ -37,7 +37,9 @@
 #include <QTcpSocket>
 #include <QTimer>
 
+#include "ipc/transport.h"
 #include "math/linear_algebra.h"
+#include "platform/render_scheduler.h"
 #include "ui/controllers/auto_contrast_controller.h"
 #include "ui/events/event_handler.h"
 #include "ui/go_to_widget.h"
@@ -114,6 +116,8 @@ class MainWindow final : public QMainWindow {
 
     void draw() const;
 
+    void prepare_gl_draw() const;
+
     [[nodiscard]] std::shared_ptr<GLCanvas> gl_canvas() const;
 
     [[nodiscard]] static QSizeF get_icon_size();
@@ -162,9 +166,15 @@ class MainWindow final : public QMainWindow {
     BufferData buffer_data_{};
     ChannelNames channel_names_{};
     std::shared_ptr<GLCanvas> gl_canvas_ptr_{};
-    double render_framerate_{};
+    // Default mirrors SettingsConstants::DEFAULT_FRAMERATE. Must be valid
+    // before showWindow() starts the update timer: on WASM load_settings() is
+    // skipped (prefs arrive later via ApplySessionState), so without a sane
+    // default the timer interval (1000/framerate) would be invalid and stall
+    // the render/message loop.
+    double render_framerate_{60.0};
     QString default_export_suffix_{};
     std::unique_ptr<AutoContrastController> ac_controller_{};
+    std::unique_ptr<RenderScheduler> render_scheduler_{};
     std::unique_ptr<MessageHandler> message_handler_{};
     std::unique_ptr<UIEventHandler> event_handler_{};
     std::unique_ptr<SettingsManager> settings_manager_{};
@@ -181,6 +191,7 @@ class MainWindow final : public QMainWindow {
     mutable std::recursive_mutex ui_mutex_{};
     ConnectionSettings host_settings_{};
     QTcpSocket socket_{};
+    std::unique_ptr<ITransport> transport_{};
 
     ///
     // Assorted methods - private - implemented in main_window.cpp

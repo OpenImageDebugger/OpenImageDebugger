@@ -34,10 +34,22 @@
 #include <span>
 #include <string_view>
 #include <thread>
+#include <vector>
 
 #include "ipc/message_exchange.h"
+#include "ipc/tcp_transport.h"
+#include "ipc/transport.h"
 
 using namespace oid;
+
+struct RecordingTransport final : ITransport {
+  std::vector<std::vector<std::byte>> sends;
+  void send(std::span<const std::byte> data) override {
+    sends.emplace_back(data.begin(), data.end());
+  }
+  std::size_t receive(std::span<std::byte>) override { return 0; }
+  bool has_data() const override { return false; }
+};
 
 namespace {
 // Get or create QCoreApplication instance for all tests
@@ -189,6 +201,18 @@ TEST_F(MessageExchangeTest, MessageComposerPushPrimitive) {
   MessageComposer composer;
   composer.push(TEST_VALUE_42).push(MAX_UCHAR).push(true).push(TEST_VALUE_100);
   composer.clear();
+}
+
+TEST_F(MessageExchangeTest, MessageComposerSendCoalescesBlocks) {
+  RecordingTransport transport;
+  MessageComposer composer;
+  composer.push(MessageType::PlotBufferRequest).push(std::string("TestField"));
+  composer.send(transport);
+  ASSERT_EQ(transport.sends.size(), 1u);
+  ASSERT_GE(transport.sends[0].size(), 12u);
+  MessageType type{};
+  std::memcpy(&type, transport.sends[0].data(), sizeof(type));
+  EXPECT_EQ(type, MessageType::PlotBufferRequest);
 }
 
 TEST_F(MessageExchangeTest, MessageComposerPushString) {
@@ -344,10 +368,13 @@ TEST_F(MessageExchangeTest, RoundTripPrimitive) {
 
   constexpr int value = TEST_VALUE_12345;
   MessageComposer composer;
-  composer.push(value).send(client_socket_.get());
+  composer.push(value);
+  oid::TcpTransport client_transport{*client_socket_};
+  composer.send(client_transport);
   QCoreApplication::processEvents();
 
-  MessageDecoder decoder(server_socket_);
+  oid::TcpTransport server_transport{*server_socket_};
+  MessageDecoder decoder(server_transport);
   int result = 0;
   decoder.read(result);
   EXPECT_EQ(result, value);
@@ -358,10 +385,13 @@ TEST_F(MessageExchangeTest, RoundTripString) {
 
   const auto test_string = std::string(TEST_STRING_ROUND_TRIP);
   MessageComposer composer;
-  composer.push(test_string).send(client_socket_.get());
+  composer.push(test_string);
+  oid::TcpTransport client_transport{*client_socket_};
+  composer.send(client_transport);
   QCoreApplication::processEvents();
 
-  MessageDecoder decoder(server_socket_);
+  oid::TcpTransport server_transport{*server_socket_};
+  MessageDecoder decoder(server_transport);
   std::string result;
   decoder.read(result);
   EXPECT_EQ(result, test_string);
@@ -378,11 +408,13 @@ TEST_F(MessageExchangeTest, RoundTripComplexMessage) {
   composer.push(MessageType::PlotBufferContents)
       .push(test_int_value)
       .push(test_bool_value)
-      .push(test_buffer_name)
-      .send(client_socket_.get());
+      .push(test_buffer_name);
+  oid::TcpTransport client_transport{*client_socket_};
+  composer.send(client_transport);
   QCoreApplication::processEvents();
 
-  MessageDecoder decoder(server_socket_);
+  oid::TcpTransport server_transport{*server_socket_};
+  MessageDecoder decoder(server_transport);
   MessageType type = MessageType::PlotBufferContents;
   int value = 0;
   bool flag = false;

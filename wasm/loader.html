@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, user-scalable=0">
+    <title>Open Image Debugger</title>
+    <style>
+      html, body { padding: 0; margin: 0; overflow: hidden; width: 100%; height: 100%; }
+      #screen {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      #qtspinner { margin: 0; }
+    </style>
+  </head>
+  <body onload="init()">
+    <figure style="overflow:visible;" id="qtspinner">
+      <center style="margin-top:1.5em; line-height:150%">
+        <strong>Open Image Debugger</strong>
+        <div id="qtstatus">Loading...</div>
+      </center>
+    </figure>
+    <div id="screen"></div>
+
+    <script>
+      window.oidSend = function(u8) {
+        if (typeof window.parent?.postMessage === 'function') {
+          window.parent.postMessage({ type: 'oid-ipc', payload: u8 }, '*');
+        }
+      };
+      window.addEventListener('message', (ev) => {
+        if (ev.data?.type === 'oid-ipc' && ev.data.payload) {
+          const p = ev.data.payload;
+          const arr = p instanceof Uint8Array
+            ? p
+            : new Uint8Array(Array.isArray(p) ? p : Object.values(p));
+          if (window.oidOnMessage) window.oidOnMessage(arr);
+        }
+      });
+      window.addEventListener('oid-viewer-ready', (ev) => {
+        if (typeof window.parent?.postMessage === 'function') {
+          window.parent.postMessage(ev.detail, '*');
+        }
+      });
+    </script>
+
+    <script type="text/javascript">
+      async function init() {
+        const spinner = document.querySelector('#qtspinner');
+        const screen = document.querySelector('#screen');
+        const status = document.querySelector('#qtstatus');
+
+        const showUi = (ui) => {
+          [spinner, screen].forEach((element) => element.style.display = 'none');
+          if (screen === ui) screen.style.position = 'default';
+          ui.style.display = 'block';
+        };
+
+        try {
+          showUi(spinner);
+          status.innerHTML = 'Loading...';
+
+          await qtLoad({
+            qt: {
+              onLoaded: () => showUi(screen),
+              onExit: (exitData) => {
+                status.innerHTML = 'Application exit';
+                if (exitData.code !== undefined) status.innerHTML += ` with code ${exitData.code}`;
+                if (exitData.text !== undefined) status.innerHTML += ` (${exitData.text})`;
+                showUi(spinner);
+              },
+              entryFunction: window.oidwindow_entry,
+              containerElements: [screen],
+            },
+          });
+        } catch (e) {
+          console.error(e);
+          status.innerHTML = String(e);
+        }
+      }
+    </script>
+    <script src="oidwindow.js"></script>
+    <script src="qtloader.js"></script>
+  </body>
+</html>

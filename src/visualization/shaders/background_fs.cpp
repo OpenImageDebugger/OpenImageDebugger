@@ -28,11 +28,11 @@ extern auto const background_frag_shader{R"glsl(
 
 void main()
 {
-    const int tile_size = 10;
+    const float tile_size = 10.0;
     float intensity = mod(floor(gl_FragCoord.x / tile_size) +
-                          floor(gl_FragCoord.y / tile_size), 2);
+                          floor(gl_FragCoord.y / tile_size), 2.0);
     intensity = intensity * 0.2 + 0.4;
-    gl_FragColor = vec4(vec3(intensity), 1);
+    gl_FragColor = vec4(vec3(intensity), 1.0);
 }
 
 )glsl"};

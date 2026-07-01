@@ -34,6 +34,7 @@
 #include <QString>
 
 #include "main_window.h"
+#include "platform/platform_config.h"
 #include "ui/go_to_widget.h"
 #include "ui/symbol_completer.h"
 #include "ui_main_window.h"
@@ -359,6 +360,12 @@ void MainWindowInitializer::initialize_toolbar() const {
 
 void MainWindowInitializer::initialize_visualization_pane() const {
     deps_.ui_components.ui->bufferPreview->set_main_window(deps_.main_window);
+    // Qt::WA_NativeWindow and setAttribute are cross-platform; both branches
+    // compile on both platforms, so if constexpr is safe here.
+    if constexpr (platform::kIsWasm) {
+        deps_.ui_components.ui->bufferPreview->setAttribute(
+            Qt::WA_NativeWindow, false);
+    }
 }
 
 void MainWindowInitializer::initialize_status_bar() const {
@@ -376,9 +383,13 @@ void MainWindowInitializer::initialize_go_to_widget() const {
 }
 
 void MainWindowInitializer::initialize_networking() const {
-    deps_.socket.connectToHost(QString(deps_.host_settings.url.c_str()),
-                               deps_.host_settings.port);
-    deps_.socket.waitForConnected();
+    // QTcpSocket::connectToHost / waitForConnected exist on both platforms, so
+    // both branches compile everywhere — if constexpr is safe here.
+    if constexpr (!platform::kIsWasm) {
+        deps_.socket.connectToHost(QString(deps_.host_settings.url.c_str()),
+                                   deps_.host_settings.port);
+        deps_.socket.waitForConnected();
+    }
 }
 
 void MainWindowInitializer::setFontIcon(QAbstractButton* ui_element,

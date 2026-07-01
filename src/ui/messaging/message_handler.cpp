@@ -26,6 +26,7 @@
 #include "message_handler.h"
 
 #include <bit>
+#include <array>
 #include <iostream>
 #include <memory>
 #include <ranges>
@@ -36,7 +37,12 @@
 
 #include "ipc/message_exchange.h"
 #include "ipc/raw_data_decode.h"
+#include "platform/gl_dialect.h"
+#include "platform/render_scheduler.h"
+#include "ui/gl_canvas.h"
 #include "ui/main_window/main_window.h"
+#include "ui/main_window/settings_applier.h"
+#include "ui/messaging/session_state_codec.h"
 #include "visualization/components/buffer.h"
 #include "visualization/stage.h"
 
@@ -47,7 +53,7 @@ MessageHandler::MessageHandler(Dependencies deps, QObject* parent)
 
 void MessageHandler::decode_set_available_symbols() const {
     const auto lock = std::unique_lock{deps_.ui_mutex};
-    auto message_decoder = MessageDecoder{&deps_.socket};
+    auto message_decoder = MessageDecoder{deps_.transport};
     message_decoder.read<QStringList, QString>(
         deps_.buffer_data.available_vars);
 
@@ -70,7 +76,7 @@ void MessageHandler::respond_get_observed_symbols() const {
     for (const auto& name : deps_.buffer_data.held_buffers | std::views::keys) {
         message_composer.push(name);
     }
-    message_composer.send(&deps_.socket);
+    message_composer.send(deps_.transport);
 }
 
 QListWidgetItem* MessageHandler::find_image_list_item(
@@ -87,32 +93,39 @@ QListWidgetItem* MessageHandler::find_image_list_item(
 
 void MessageHandler::repaint_image_list_icon(
     const std::string& variable_name_str) const {
-    const auto lock = std::unique_lock{deps_.ui_mutex};
-    const auto itStage = deps_.buffer_data.stages.find(variable_name_str);
-    if (itStage == deps_.buffer_data.stages.end()) [[unlikely]] {
-        return;
-    }
+    const auto paint_icon = [this, variable_name_str]() {
+        const auto lock = std::unique_lock{deps_.ui_mutex};
+        const auto itStage = deps_.buffer_data.stages.find(variable_name_str);
+        if (itStage == deps_.buffer_data.stages.end()) [[unlikely]] {
+            return;
+        }
 
-    const auto& [name, stage] = *itStage;
+        const auto& [name, stage] = *itStage;
 
-    const auto icon_size = deps_.get_icon_size();
-    const auto icon_width = static_cast<int>(icon_size.width());
-    const auto icon_height = static_cast<int>(icon_size.height());
-    const auto bytes_per_line = icon_width * 3;
+        const auto icon_size = deps_.get_icon_size();
+        const auto icon_width = static_cast<int>(icon_size.width());
+        const auto icon_height = static_cast<int>(icon_size.height());
 
-    deps_.ui_components.ui->bufferPreview->render_buffer_icon(
-        *stage, icon_width, icon_height);
+        if (!deps_.ui_components.ui->bufferPreview->render_buffer_icon(
+                *stage, icon_width, icon_height)) {
+            return;
+        }
 
-    const auto bufferIcon = QImage{stage->get_buffer_icon().data(),
-                                   icon_width,
-                                   icon_height,
-                                   bytes_per_line,
-                                   QImage::Format_RGB888};
+        const auto& dialect = the_dialect();
+        const auto bytes_per_line = icon_width * dialect.icon_bytes_per_pixel;
+        const auto bufferIcon = QImage{stage->get_buffer_icon().data(),
+                                       icon_width,
+                                       icon_height,
+                                       bytes_per_line,
+                                       dialect.icon_image_format};
 
-    if (const auto item = find_image_list_item(variable_name_str);
-        item != nullptr) {
-        item->setIcon(QPixmap::fromImage(bufferIcon));
-    }
+        if (const auto item = find_image_list_item(variable_name_str);
+            item != nullptr) {
+            item->setIcon(QPixmap::fromImage(bufferIcon));
+        }
+    };
+
+    deps_.scheduler.run_icon_gl(paint_icon);
 }
 
 void MessageHandler::update_image_list_label(
@@ -135,7 +148,7 @@ void MessageHandler::decode_plot_buffer_contents() {
     auto buff_type = BufferType{};
     auto buff_contents = std::vector<std::byte>{};
 
-    auto message_decoder = MessageDecoder{&deps_.socket};
+    auto message_decoder = MessageDecoder{deps_.transport};
     message_decoder.read(variable_name_str)
         .read(display_name_str)
         .read(pixel_layout_str)
@@ -147,6 +160,29 @@ void MessageHandler::decode_plot_buffer_contents() {
         .read(buff_type)
         .read(buff_contents);
 
+    plot_buffer_from_fields(variable_name_str,
+                            display_name_str,
+                            pixel_layout_str,
+                            transpose_buffer,
+                            buff_width,
+                            buff_height,
+                            buff_channels,
+                            buff_stride,
+                            buff_type,
+                            std::move(buff_contents));
+}
+
+void MessageHandler::plot_buffer_from_fields(
+    const std::string& variable_name_str,
+    const std::string& display_name_str,
+    const std::string& pixel_layout_str,
+    bool transpose_buffer,
+    int buff_width,
+    int buff_height,
+    int buff_channels,
+    int buff_stride,
+    BufferType buff_type,
+    std::vector<std::byte> buff_contents) {
     const auto lock = std::unique_lock{deps_.ui_mutex};
 
     if (buff_type == BufferType::Float64) {
@@ -179,50 +215,83 @@ void MessageHandler::decode_plot_buffer_contents() {
         return label_ss.str();
     }();
 
-    if (auto buffer_stage = deps_.buffer_data.stages.find(variable_name_str);
-        buffer_stage == deps_.buffer_data.stages.end()) {
+    const BufferParams params{.buffer = buff_span,
+                              .buffer_width_i = buff_width,
+                              .buffer_height_i = buff_height,
+                              .channels = buff_channels,
+                              .type = buff_type,
+                              .step = buff_stride,
+                              .pixel_layout = pixel_layout_str,
+                              .transpose_buffer = transpose_buffer};
+
+    if (deps_.buffer_data.stages.find(variable_name_str) ==
+        deps_.buffer_data.stages.end()) {
 
         auto stage = deps_.create_stage();
-        if (const BufferParams params{.buffer = buff_span,
-                                      .buffer_width_i = buff_width,
-                                      .buffer_height_i = buff_height,
-                                      .channels = buff_channels,
-                                      .type = buff_type,
-                                      .step = buff_stride,
-                                      .pixel_layout = pixel_layout_str,
-                                      .transpose_buffer = transpose_buffer};
-            !stage->initialize(params)) [[unlikely]] {
-            std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
-                         "initialization failed."
-                      << std::endl;
-        }
-        stage->set_contrast_enabled(deps_.state.ac_enabled);
-        buffer_stage =
-            deps_.buffer_data.stages.try_emplace(variable_name_str, stage)
-                .first;
+        deps_.scheduler.run_gl([this,
+                                stage,
+                                params,
+                                variable_name_str,
+                                label_str,
+                                ac_enabled = deps_.state.ac_enabled]() mutable {
+            if (!stage->initialize(params)) [[unlikely]] {
+                std::cerr << "[Error] Could not initialize OpenGL canvas. Stage "
+                             "initialization failed."
+                          << std::endl;
+                return;
+            }
+            stage->set_contrast_enabled(ac_enabled);
+            {
+                const auto gl_lock = std::unique_lock{deps_.ui_mutex};
+                deps_.buffer_data.stages.try_emplace(variable_name_str, stage);
+            }
+            // Add the list row only after the stage initialized and is in the
+            // map, so a failed init leaves no orphan row. blockSignals prevents
+            // premature stage selection before select_stage is called.
+            {
+                auto new_item = std::make_unique<QListWidgetItem>(
+                    label_str.c_str(), deps_.ui_components.ui->imageList);
+                new_item->setData(Qt::UserRole,
+                                  QString(variable_name_str.c_str()));
+                new_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
+                                   Qt::ItemIsDragEnabled);
+                auto* list = deps_.ui_components.ui->imageList;
+                list->blockSignals(true);
+                list->addItem(new_item.release());
+                list->blockSignals(false);
+            }
+            deps_.select_stage(stage);
+            {
+                const auto ui_lock = std::unique_lock{deps_.ui_mutex};
+                auto* list = deps_.ui_components.ui->imageList;
+                list->blockSignals(true);
+                for (int i = 0; i < list->count(); ++i) {
+                    const auto* item = list->item(i);
+                    if (item->data(Qt::UserRole).toString().toStdString() ==
+                        variable_name_str) {
+                        list->setCurrentRow(i);
+                        break;
+                    }
+                }
+                list->blockSignals(false);
+            }
+            deps_.state.request_render_update = true;
+            deps_.state.request_icons_update = true;
+        });
     } else {
-        const BufferParams params{.buffer = buff_span,
-                                  .buffer_width_i = buff_width,
-                                  .buffer_height_i = buff_height,
-                                  .channels = buff_channels,
-                                  .type = buff_type,
-                                  .step = buff_stride,
-                                  .pixel_layout = pixel_layout_str,
-                                  .transpose_buffer = transpose_buffer};
-        if (const auto& [buffer_name, buffer_stage_ptr] = *buffer_stage;
-            !buffer_stage_ptr->buffer_update(params)) [[unlikely]] {
-            std::cerr << "[Error] Buffer update failed for: "
-                      << variable_name_str << std::endl;
-        }
-    }
-
-    if (auto item = find_image_list_item(variable_name_str); item == nullptr) {
-        auto new_item = std::make_unique<QListWidgetItem>(
-            label_str.c_str(), deps_.ui_components.ui->imageList);
-        new_item->setData(Qt::UserRole, QString(variable_name_str.c_str()));
-        new_item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
-                           Qt::ItemIsDragEnabled);
-        deps_.ui_components.ui->imageList->addItem(new_item.release());
+        deps_.scheduler.run_gl([this, params, variable_name_str]() {
+            const auto gl_lock = std::unique_lock{deps_.ui_mutex};
+            const auto it = deps_.buffer_data.stages.find(variable_name_str);
+            if (it == deps_.buffer_data.stages.end()) [[unlikely]] {
+                return;
+            }
+            if (!it->second->buffer_update(params)) [[unlikely]] {
+                std::cerr << "[Error] Buffer update failed for: "
+                          << variable_name_str << std::endl;
+            }
+            deps_.state.request_icons_update = true;
+            deps_.state.request_render_update = true;
+        });
     }
 
     repaint_image_list_icon(variable_name_str);
@@ -238,40 +307,101 @@ void MessageHandler::decode_plot_buffer_contents() {
     deps_.state.request_render_update = true;
 }
 
-void MessageHandler::decode_incoming_messages() {
-    if (deps_.socket.state() == QTcpSocket::UnconnectedState) [[unlikely]] {
-        QApplication::quit();
-    }
+void MessageHandler::decode_plot_buffer_begin() {
+    auto p = BufferAssembler::BeginParams{};
+    auto type_int = int{};
+    auto message_decoder = MessageDecoder{deps_.transport};
+    message_decoder.read(p.variable_name)
+        .read(p.display_name)
+        .read(p.pixel_layout)
+        .read(p.transpose)
+        .read(p.width)
+        .read(p.height)
+        .read(p.channels)
+        .read(p.stride)
+        .read(type_int)
+        .read(p.total_byte_size);
+    p.type = type_int;
+    buffer_assembler_.begin(std::move(p));
+}
 
+void MessageHandler::decode_plot_buffer_chunk() {
+    auto variable_name = std::string{};
+    auto row_offset = std::size_t{};
+    auto row_count = std::size_t{};
+    auto bytes = std::vector<std::byte>{};
+    auto message_decoder = MessageDecoder{deps_.transport};
+    message_decoder.read(variable_name)
+        .read(row_offset)
+        .read(row_count)
+        .read(bytes);
+    if (!buffer_assembler_.chunk(variable_name, row_offset, row_count, bytes)) {
+        std::cerr << "[Error] Dropped buffer chunk for: " << variable_name
+                  << std::endl;
+    }
+}
+
+void MessageHandler::decode_plot_buffer_end() {
+    auto variable_name = std::string{};
+    auto message_decoder = MessageDecoder{deps_.transport};
+    message_decoder.read(variable_name);
+    auto assembled = buffer_assembler_.end(variable_name);
+    if (!assembled) {
+        std::cerr << "[Error] PlotBufferEnd for unknown buffer: " << variable_name
+                  << std::endl;
+        return;
+    }
+    plot_buffer_from_fields(assembled->variable_name,
+                            assembled->display_name,
+                            assembled->pixel_layout,
+                            assembled->transpose,
+                            assembled->width,
+                            assembled->height,
+                            assembled->channels,
+                            assembled->stride,
+                            static_cast<BufferType>(assembled->type),
+                            std::move(assembled->bytes));
+}
+
+void MessageHandler::notify_buffer_removed(const QString& buffer_name) const {
+    auto message_composer = MessageComposer{};
+    message_composer.push(MessageType::BufferRemoved)
+        .push(buffer_name.toStdString());
+    message_composer.send(deps_.transport);
+}
+
+void MessageHandler::decode_apply_session_state() const {
+    auto message_decoder = MessageDecoder{deps_.transport};
+    auto json = std::string{};
+    message_decoder.read(json);
+
+    if (deps_.settings_applier == nullptr) {
+        return;
+    }
+    auto fields = SessionStateFields{};
+    if (!parse_session_state_json(QByteArray::fromStdString(json), fields)) {
+        std::cerr << "[OID] Invalid ApplySessionState JSON" << std::endl;
+        return;
+    }
+    apply_session_state_fields(fields, *deps_.settings_applier);
+}
+
+void MessageHandler::decode_incoming_messages() {
     {
         const auto lock = std::unique_lock{deps_.ui_mutex};
         deps_.buffer_data.available_vars.clear();
     }
 
-    if (deps_.socket.bytesAvailable() == 0) [[unlikely]] {
+    if (!deps_.transport.has_data()) [[unlikely]] {
         return;
     }
 
     auto header = MessageType{};
-    if (!deps_.socket.read(std::bit_cast<char*>(&header), sizeof(header)))
-        [[unlikely]] {
-        const auto error = deps_.socket.error();
-        std::cerr << "[Error] Failed to read message header: "
-                  << deps_.socket.errorString().toStdString() << std::endl;
-
-        if (error == QAbstractSocket::RemoteHostClosedError ||
-            error == QAbstractSocket::NetworkError ||
-            error == QAbstractSocket::ConnectionRefusedError ||
-            error == QAbstractSocket::SocketTimeoutError) [[unlikely]] {
-            std::cerr
-                << "[Error] Critical socket error detected. Closing connection."
-                << std::endl;
-            deps_.socket.close();
-        }
+    std::array<std::byte, sizeof(header)> header_bytes{};
+    if (deps_.transport.receive(header_bytes) != header_bytes.size()) [[unlikely]] {
         return;
     }
-
-    deps_.socket.waitForReadyRead(100);
+    header = std::bit_cast<MessageType>(header_bytes);
 
     switch (header) {
     case MessageType::SetAvailableSymbols:
@@ -283,6 +413,21 @@ void MessageHandler::decode_incoming_messages() {
     case MessageType::PlotBufferContents:
         decode_plot_buffer_contents();
         break;
+    case MessageType::PlotBufferBegin:
+        decode_plot_buffer_begin();
+        break;
+    case MessageType::PlotBufferChunk:
+        decode_plot_buffer_chunk();
+        break;
+    case MessageType::PlotBufferEnd:
+        decode_plot_buffer_end();
+        break;
+    case MessageType::ExportSelectedBuffer:
+        emit exportSelectedBufferRequested();
+        break;
+    case MessageType::ApplySessionState:
+        decode_apply_session_state();
+        break;
     default:
         break;
     }
@@ -293,7 +438,21 @@ void MessageHandler::request_plot_buffer(
     auto message_composer = MessageComposer{};
     message_composer.push(MessageType::PlotBufferRequest)
         .push(std::string(buffer_name))
-        .send(&deps_.socket);
+        .send(deps_.transport);
+}
+
+void MessageHandler::request_export_buffer(const QString& buffer_name,
+                                           const int format,
+                                           const QList<float>& contrast) const {
+    auto message_composer = MessageComposer{};
+    message_composer.push(MessageType::ExportBufferRequest)
+        .push(buffer_name.toStdString())
+        .push(format);
+    for (int i = 0; i < 8; ++i) {
+        const auto value = i < contrast.size() ? contrast[i] : 0.f;
+        message_composer.push(value);
+    }
+    message_composer.send(deps_.transport);
 }
 
 std::string MessageHandler::get_type_label(const int type, const int channels) {

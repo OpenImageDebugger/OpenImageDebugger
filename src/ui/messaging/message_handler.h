@@ -26,23 +26,32 @@
 #ifndef MESSAGE_HANDLER_H_
 #define MESSAGE_HANDLER_H_
 
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <vector>
 
+#include <QList>
 #include <QObject>
 #include <QSizeF>
+#include <QString>
+
+#include "ipc/buffer_assembler.h"
+#include "ipc/raw_data_decode.h"
+#include "ipc/transport.h"
 
 class QListWidgetItem;
-class QTcpSocket;
 
 namespace oid {
 
 struct BufferData;
 struct UIComponents;
 struct WindowState;
+class RenderScheduler;
+class SettingsApplier;
 class Stage;
 
 class MessageHandler : public QObject {
@@ -54,28 +63,52 @@ class MessageHandler : public QObject {
         BufferData& buffer_data;
         WindowState& state;
         UIComponents& ui_components;
-        QTcpSocket& socket;
+        ITransport& transport;
+        RenderScheduler& scheduler;
         std::function<QSizeF()> get_icon_size;
         std::function<std::shared_ptr<Stage>()> create_stage;
+        std::function<void(const std::shared_ptr<Stage>&)> select_stage;
+        // Non-owning; applies inbound ApplySessionState. May be null where no
+        // session state is ever received (e.g. desktop).
+        SettingsApplier* settings_applier = nullptr;
     };
 
     explicit MessageHandler(Dependencies deps, QObject* parent = nullptr);
 
     void decode_incoming_messages();
     void request_plot_buffer(std::string_view buffer_name) const;
+    void request_export_buffer(const QString& buffer_name, int format,
+                               const QList<float>& contrast) const;
+    void notify_buffer_removed(const QString& buffer_name) const;
     void repaint_image_list_icon(const std::string& variable_name_str) const;
 
   signals:
     void acMinLabelsResetRequested();
     void acMaxLabelsResetRequested();
     void settingsPersistenceRequested();
+    void exportSelectedBufferRequested();
 
   private:
     Dependencies deps_;
+    BufferAssembler buffer_assembler_{};
 
     void decode_set_available_symbols() const;
     void respond_get_observed_symbols() const;
     void decode_plot_buffer_contents();
+    void plot_buffer_from_fields(const std::string& variable_name_str,
+                                 const std::string& display_name_str,
+                                 const std::string& pixel_layout_str,
+                                 bool transpose_buffer,
+                                 int buff_width,
+                                 int buff_height,
+                                 int buff_channels,
+                                 int buff_stride,
+                                 BufferType buff_type,
+                                 std::vector<std::byte> buff_contents);
+    void decode_plot_buffer_begin();
+    void decode_plot_buffer_chunk();
+    void decode_plot_buffer_end();
+    void decode_apply_session_state() const;
 
     QListWidgetItem*
     find_image_list_item(const std::string& variable_name_str) const;

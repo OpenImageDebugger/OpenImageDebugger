@@ -28,6 +28,7 @@
 
 #include <array>
 #include <cassert>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -36,7 +37,14 @@
 
 #include <QMouseEvent>
 #include <QOpenGLFunctions>
+
+#ifdef __EMSCRIPTEN__
+#include <QRhiWidget>
+
+class QRhiCommandBuffer;
+#else
 #include <QOpenGLWidget>
+#endif
 
 namespace oid {
 
@@ -44,7 +52,13 @@ class GLTextRenderer;
 class MainWindow;
 class Stage;
 
-class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
+#ifdef __EMSCRIPTEN__
+using GlWidgetBase = QRhiWidget;
+#else
+using GlWidgetBase = QOpenGLWidget;
+#endif
+
+class GLCanvas final : public GlWidgetBase, public QOpenGLFunctions {
     Q_OBJECT
   public:
     explicit GLCanvas(QWidget* parent = nullptr);
@@ -57,13 +71,31 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
 
     void mouseReleaseEvent(QMouseEvent* ev) override;
 
+    void wheelEvent(QWheelEvent* ev) override;
+
+#ifdef __EMSCRIPTEN__
+    void initialize(QRhiCommandBuffer* cb) override;
+
+    void render(QRhiCommandBuffer* cb) override;
+
+    void releaseResources() override;
+
+    void resizeEvent(QResizeEvent* e) override;
+
+    void schedule_gl(std::function<void()> task);
+
+    void schedule_icon_gl(std::function<void()> task);
+#else
     void initializeGL() override;
 
     void paintGL() override;
 
     void resizeGL(int w, int h) override;
+#endif
 
-    void wheelEvent(QWheelEvent* ev) override;
+    [[nodiscard]] bool has_completed_first_paint() const {
+        return first_paint_completed_;
+    }
 
     [[nodiscard]] int mouse_x() const {
         return mouse_x_;
@@ -81,13 +113,22 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
         return initialized_;
     }
 
+    [[nodiscard]] int render_width() const;
+
+    [[nodiscard]] int render_height() const;
+
     [[nodiscard]] const GLTextRenderer* get_text_renderer() const;
 
     void set_main_window(MainWindow& mw);
 
-    void render_buffer_icon(Stage& stage, int icon_width, int icon_height);
+    [[nodiscard]] bool render_buffer_icon(Stage& stage,
+                                          int icon_width,
+                                          int icon_height);
 
   private:
+    void platform_ctor_init(); // defined per-platform in gl_canvas_<platform>.cpp
+    void init_icon_framebuffer();
+    void destroy_icon_framebuffer();
     std::array<bool, 2> mouse_down_{};
 
     int mouse_x_{0};
@@ -104,10 +145,25 @@ class GLCanvas final : public QOpenGLWidget, public QOpenGLFunctions {
 
     GLuint icon_texture_{0};
     GLuint icon_fbo_{0};
+    bool icon_framebuffer_ready_{false};
 
     bool initialized_{false};
+    bool first_paint_completed_{false};
 
     std::unique_ptr<GLTextRenderer> text_renderer_{};
+
+#ifdef __EMSCRIPTEN__
+    std::deque<std::function<void()>> gl_queue_{};
+    std::deque<std::function<void()>> icon_gl_queue_{};
+
+    int last_render_width_{0};
+    int last_render_height_{0};
+
+    void drain_gl_queue();
+    void drain_icon_gl_queue();
+
+    bool init_gl_state();
+#endif
 };
 
 } // namespace oid

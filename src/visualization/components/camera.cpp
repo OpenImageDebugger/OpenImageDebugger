@@ -93,8 +93,8 @@ void Camera::window_resized(const int w, const int h) {
 void Camera::scroll_callback(const float delta) {
     const auto mouse_x = static_cast<float>(gl_canvas_ref().mouse_x());
     const auto mouse_y = static_cast<float>(gl_canvas_ref().mouse_y());
-    const auto win_w = static_cast<float>(gl_canvas_ref().width());
-    const auto win_h = static_cast<float>(gl_canvas_ref().height());
+    const auto win_w = static_cast<float>(gl_canvas_ref().render_width());
+    const auto win_h = static_cast<float>(gl_canvas_ref().render_height());
 
     const auto mouse_pos_ndc = vec4{2.0f * (mouse_x - win_w / 2.0f) / win_w,
                                     -2.0f * (mouse_y - win_h / 2.0f) / win_h,
@@ -145,7 +145,8 @@ void Camera::update_object_pose() const {
 }
 
 bool Camera::post_initialize() {
-    window_resized(gl_canvas_ref().width(), gl_canvas_ref().height());
+    window_resized(gl_canvas_ref().render_width(),
+                   gl_canvas_ref().render_height());
     set_initial_zoom();
     update_object_pose();
 
