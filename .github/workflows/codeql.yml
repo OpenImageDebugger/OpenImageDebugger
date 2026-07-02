@@ -53,7 +53,7 @@ jobs:
     # Consider using larger runners for possible analysis time improvements.
 
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-26.04' }}
-    # container: ghcr.io/openimagedebugger/oid:26.04
+    container: ghcr.io/openimagedebugger/oid:26.04
     timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
     permissions:
       # required for all workflows
