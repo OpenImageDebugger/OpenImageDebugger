@@ -34,7 +34,7 @@
 namespace oid {
 
 Background::Background(const std::shared_ptr<GameObject>& game_object,
-                       const std::shared_ptr<GLCanvas>& gl_canvas)
+                       const std::shared_ptr<RenderCanvas>& gl_canvas)
     : Component{game_object, gl_canvas}, background_prog{*gl_canvas} {}
 
 Background::~Background() noexcept {

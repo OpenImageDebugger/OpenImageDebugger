@@ -29,6 +29,7 @@
 
 #include <csignal>
 #include <spawn.h>
+#include <sys/wait.h>
 
 extern char** environ;
 
@@ -69,15 +70,44 @@ class ProcessImplUnix final : public ProcessImpl {
     }
 
     [[nodiscard]] bool isRunning() const override {
-        return pid_ != 0 && ::kill(pid_, 0) == 0;
+        if (pid_ == 0) {
+            return false;
+        }
+        // The spawned window is our child: when it exits (e.g. the user
+        // closes it) it stays a zombie until waited on, and ::kill(pid, 0)
+        // "succeeds" on a zombie. Without reaping here, a closed window would
+        // be reported as running forever and the bridge would never relaunch
+        // it. WNOHANG keeps this non-blocking.
+        int status = 0;
+        const auto reaped = ::waitpid(pid_, &status, WNOHANG);
+        if (reaped == pid_) {
+            pid_ = 0; // exited; reaped just now
+            return false;
+        }
+        if (reaped == 0) {
+            return true; // still running
+        }
+        // -1: not reapable by us (e.g. ECHILD when SIGCHLD is SIG_IGN and the
+        // system auto-reaps). Fall back to the signal-0 liveness probe.
+        if (::kill(pid_, 0) != 0) {
+            pid_ = 0;
+            return false;
+        }
+        return true;
     }
 
     void kill() override {
-        ::kill(pid_, SIGTERM);
+        // Never signal pid 0: that would SIGTERM our whole process group
+        // (including the debugger the bridge is loaded into).
+        if (pid_ > 0) {
+            ::kill(pid_, SIGTERM);
+        }
     }
 
   private:
-    pid_t pid_{0};
+    // mutable: isRunning() is const but must record the reaped/exited state
+    // so a recycled pid is never probed again.
+    mutable pid_t pid_{0};
 };
 
 void Process::createImpl() {

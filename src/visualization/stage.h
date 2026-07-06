@@ -35,15 +35,16 @@
 
 #include "visualization/components/buffer.h"
 #include "visualization/events.h"
+#include "visualization/render_canvas.h"
 
 namespace oid {
 
-class MainWindow;
 class GameObject;
 
 class Stage {
   public:
-    explicit Stage(MainWindow& main_window);
+    Stage(std::shared_ptr<RenderCanvas> canvas,
+          std::function<void()> on_render_update);
 
     [[nodiscard]] bool initialize(const BufferParams& params);
 
@@ -80,12 +81,11 @@ class Stage {
 
     [[nodiscard]] const std::vector<uint8_t>& get_buffer_icon() const;
 
-    [[nodiscard]] MainWindow& get_main_window() const;
-
   private:
     bool contrast_enabled_{};
     std::vector<uint8_t> buffer_icon_{};
-    MainWindow& main_window_; // Non-owning reference
+    std::shared_ptr<RenderCanvas> canvas_;
+    std::function<void()> on_render_update_;
     std::map<std::string, std::shared_ptr<GameObject>, std::less<>>
         all_game_objects{};
 };

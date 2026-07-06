@@ -23,56 +23,58 @@
  * IN THE SOFTWARE.
  */
 
+// The sole KeyboardState implementation. Camera (part of the shared
+// visualization layer) polls is_modifier_key_pressed() / is_key_pressed()
+// every frame for continuous pan/zoom; this polls ImGui's IO state directly
+// (ImGui, in turn, is fed by GLFW's key callbacks), so no explicit event
+// routing into this file is needed.
+
 #include "events.h"
 
-#include <cassert>
-
-#include <QApplication>
-#include <QKeyEvent>
+#include <imgui.h>
 
 namespace oid {
 
-std::set<int> KeyboardState::pressed_keys_{};
-
 bool KeyboardState::is_modifier_key_pressed(const ModifierKey key) {
+    const ImGuiIO& io = ImGui::GetIO();
     switch (key) {
     case ModifierKey::Alt:
-        return (QApplication::keyboardModifiers() & Qt::AltModifier) != 0;
+        return io.KeyAlt;
     case ModifierKey::Control:
-        return (QApplication::keyboardModifiers() & Qt::ControlModifier) != 0;
+        return io.KeyCtrl;
     case ModifierKey::Shift:
-        return (QApplication::keyboardModifiers() & Qt::ShiftModifier) != 0;
+        return io.KeyShift;
     default:
-        assert(!"Invalid modifier key");
         return false;
     }
 }
 
 bool KeyboardState::is_key_pressed(const Key key) {
-    switch (key) {
-    case Key::Left:
-        return pressed_keys_.contains(Qt::Key_Left);
-    case Key::Right:
-        return pressed_keys_.contains(Qt::Key_Right);
-    case Key::Up:
-        return pressed_keys_.contains(Qt::Key_Up);
-    case Key::Down:
-        return pressed_keys_.contains(Qt::Key_Down);
-    case Key::Plus:
-        return pressed_keys_.contains(Qt::Key_Plus);
-    case Key::Minus:
-        return pressed_keys_.contains(Qt::Key_Minus);
-    default:
-        assert(!"Invalid key requested");
+    // Suppress camera key input while a text field (e.g. the symbol search box)
+    // holds the keyboard: the bare arrow keys now pan the canvas, so without
+    // this guard navigating the autocomplete with Up/Down would also pan. When
+    // no widget captures the keyboard, the canvas owns these keys.
+    if (ImGui::GetIO().WantCaptureKeyboard) {
         return false;
     }
-}
-
-void KeyboardState::update_keyboard_state(const QEvent* event) {
-    if (event->type() == QEvent::KeyPress) {
-        pressed_keys_.insert(dynamic_cast<const QKeyEvent*>(event)->key());
-    } else if (event->type() == QEvent::KeyRelease) {
-        pressed_keys_.erase(dynamic_cast<const QKeyEvent*>(event)->key());
+    switch (key) {
+    case Key::Left:
+        return ImGui::IsKeyDown(ImGuiKey_LeftArrow);
+    case Key::Right:
+        return ImGui::IsKeyDown(ImGuiKey_RightArrow);
+    case Key::Up:
+        return ImGui::IsKeyDown(ImGuiKey_UpArrow);
+    case Key::Down:
+        return ImGui::IsKeyDown(ImGuiKey_DownArrow);
+    case Key::Plus:
+        // US layout: '+' is Shift+'='; also accept the keypad '+'.
+        return ImGui::IsKeyDown(ImGuiKey_Equal) ||
+               ImGui::IsKeyDown(ImGuiKey_KeypadAdd);
+    case Key::Minus:
+        return ImGui::IsKeyDown(ImGuiKey_Minus) ||
+               ImGui::IsKeyDown(ImGuiKey_KeypadSubtract);
+    default:
+        return false;
     }
 }
 

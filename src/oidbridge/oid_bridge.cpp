@@ -27,24 +27,23 @@
 
 #include <cstdint>
 
-#include <bit>
+#include <chrono>
 #include <deque>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <span>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "debuggerinterface/preprocessor_directives.h"
 #include "debuggerinterface/python_native_interface.h"
+#include "ipc/asio_transport.h"
 #include "ipc/message_exchange.h"
 #include "system/process/process.h"
-
-#include <QPointer>
-#include <QTcpServer>
-#include <QTcpSocket>
 
 struct PlotBufferParams {
     std::string variable_name_str;
@@ -97,18 +96,26 @@ class OidBridge {
         : plot_callback_{std::move(plot_callback)} {}
 
     bool start() {
-        // Initialize server
-        if (!server_.listen(QHostAddress::Any)) {
-            std::cerr << "[OpenImageDebugger] Could not start TCP server"
-                      << std::endl;
-            return false;
+        // The user may have closed a previous window: its process is gone and
+        // its socket is dead. Drop the stale transport so wait_for_client()
+        // below accepts the fresh window's connection; otherwise client_
+        // keeps pointing at the dead socket, the new window is never adopted,
+        // and every send fails. Checked via the process (not just the socket)
+        // because a dead window's socket can still report readable leftover
+        // data.
+        if (client_ != nullptr &&
+            (!ui_proc_.isRunning() || !client_->is_connected())) {
+            client_.reset();
         }
+        // acceptor_ already listens on an ephemeral port (all interfaces)
+        // as part of its construction.
+        const auto portStdString = std::to_string(acceptor_.port());
 
-        const auto windowBinaryPath = this->oid_path_ + "/oidwindow";
-        const auto portStdString = std::to_string(server_.serverPort());
-
-        std::vector<std::string> command{
-            windowBinaryPath, "-style", "fusion", "-p", portStdString};
+        // The viewer parses only -h/-p. Process::start() takes a non-const
+        // reference (it builds a mutable argv from the strings' data()), so
+        // command cannot be const here.
+        std::vector<std::string> command = {
+            oid_path_ + "/oidwindow", "-p", portStdString};
 
         ui_proc_.start(command);
 
@@ -128,11 +135,11 @@ class OidBridge {
     }
 
     std::deque<std::string> get_observed_symbols() {
-        assert(!client_.isNull());
+        assert(client_ != nullptr);
 
         auto message_composer = oid::MessageComposer{};
-        message_composer.push(oid::MessageType::GetObservedSymbols)
-            .send(client_);
+        message_composer.push(oid::MessageType::GetObservedSymbols);
+        send_to_window(message_composer);
 
         if (const auto response =
                 fetch_message(oid::MessageType::GetObservedSymbolsResponse);
@@ -147,12 +154,12 @@ class OidBridge {
 
     void
     set_available_symbols(const std::deque<std::string>& available_vars) const {
-        assert(!client_.isNull());
+        assert(client_ != nullptr);
 
         auto message_composer = oid::MessageComposer{};
         message_composer.push(oid::MessageType::SetAvailableSymbols)
-            .push(available_vars)
-            .send(client_);
+            .push(available_vars);
+        send_to_window(message_composer);
     }
 
     void run_event_loop() {
@@ -183,6 +190,8 @@ class OidBridge {
         const auto buff_type = params.buff_type;
         const auto& buffer = params.buffer;
 
+        assert(client_ != nullptr);
+
         auto message_composer = oid::MessageComposer{};
         message_composer.push(oid::MessageType::PlotBufferContents)
             .push(variable_name_str)
@@ -194,8 +203,8 @@ class OidBridge {
             .push(buff_channels)
             .push(buff_stride)
             .push(buff_type)
-            .push(buffer)
-            .send(client_);
+            .push(buffer);
+        send_to_window(message_composer);
     }
 
     ~OidBridge() noexcept {
@@ -204,8 +213,12 @@ class OidBridge {
 
   private:
     oid::Process ui_proc_{};
-    QTcpServer server_{};
-    QPointer<QTcpSocket> client_{}; // Qt-managed non-owning pointer
+    // Declaration order matters: acceptor_ must outlive client_ (the
+    // AsioTransport returned by acceptor_.accept() references the
+    // acceptor's io_context), and members are destroyed in reverse
+    // declaration order.
+    oid::AsioAcceptor acceptor_{};
+    std::unique_ptr<oid::AsioTransport> client_{};
     std::string oid_path_{};
 
     std::function<int(const char*)> plot_callback_{};
@@ -224,54 +237,91 @@ class OidBridge {
         return nullptr;
     }
 
+    // Sends a composed message to the UI window, tolerating a dead peer: the
+    // user can close the window at any moment, and a failed send must never
+    // let an exception cross the extern "C" bridge API into the debugger's
+    // Python interpreter -- libc++abi would terminate the whole debugger.
+    // The message is dropped; the next debugger stop relaunches the window
+    // (see start()'s stale-client reset). Caught as the base
+    // std::runtime_error for the same shared-library visibility reason as in
+    // try_read_incoming_messages below.
+    void send_to_window(const oid::MessageComposer& message_composer) const {
+        try {
+            message_composer.send(*client_);
+        } catch (const std::runtime_error& e) {
+            std::cerr << "[OpenImageDebugger] could not reach the OID window "
+                         "(closed?); message dropped: "
+                      << e.what() << std::endl;
+        }
+    }
+
     void try_read_incoming_messages(const int msecs = 3000) {
-        assert(!client_.isNull());
+        if (client_ == nullptr) {
+            return;
+        }
 
-        do {
-            client_->waitForReadyRead(msecs);
+        client_->set_timeout(std::chrono::milliseconds{msecs});
+        try {
+            // Wait (bounded by msecs) for the first message, then drain
+            // whatever else is already buffered -- mirrors the old
+            // waitForReadyRead(msecs)+bytesAvailable() loop, where a lost
+            // or absent response simply falls out on timeout.
+            auto first = true;
+            while (first || client_->has_data()) {
+                first = false;
 
-            if (client_.isNull() || client_->bytesAvailable() == 0) {
-                break;
+                auto header = oid::MessageType{};
+                oid::MessageDecoder{*client_}.read(header);
+
+                switch (header) {
+                case oid::MessageType::PlotBufferRequest:
+                    received_messages_[header] = decode_plot_buffer_request();
+                    break;
+                case oid::MessageType::GetObservedSymbolsResponse:
+                    received_messages_[header] =
+                        decode_get_observed_symbols_response();
+                    break;
+                case oid::MessageType::BufferRemoved: {
+                    auto removed_name = std::string{};
+                    oid::MessageDecoder{*client_}.read(removed_name);
+                    // The debugger side does not currently track removals;
+                    // consuming the name keeps the message stream framed
+                    // correctly for the next message.
+                    break;
+                }
+                default:
+                    std::cerr << "[OpenImageDebugger] Received message with "
+                                 "incorrect header"
+                              << std::endl;
+                    break;
+                }
             }
-
-            auto header = oid::MessageType{};
-            client_->read(std::bit_cast<char*>(&header), sizeof(header));
-
-            switch (header) {
-            case oid::MessageType::PlotBufferRequest:
-                received_messages_[header] = decode_plot_buffer_request();
-                break;
-            case oid::MessageType::GetObservedSymbolsResponse:
-                received_messages_[header] =
-                    decode_get_observed_symbols_response();
-                break;
-            default:
-                std::cerr
-                    << "[OpenImageDebugger] Received message with incorrect "
-                       "header"
-                    << std::endl;
-                break;
-            }
-        } while (!client_.isNull() && client_->bytesAvailable() > 0);
+        } catch (const std::runtime_error&) {
+            // oid::SocketTimeoutError: no (further) message within the timeout
+            // -- not an error. Caught as the base std::runtime_error because
+            // it is thrown from liboidipc and this catch is in liboidbridge
+            // (built -fvisibility=hidden); a derived-type catch would miss it
+            // across the shared-library boundary and std::terminate.
+        }
     }
 
     [[nodiscard]] std::unique_ptr<UiMessage>
     decode_plot_buffer_request() const {
-        assert(!client_.isNull());
+        assert(client_ != nullptr);
 
         auto response = std::make_unique<PlotBufferRequestMessage>();
-        auto message_decoder = oid::MessageDecoder{client_};
+        auto message_decoder = oid::MessageDecoder{*client_};
         message_decoder.read(response->buffer_name);
         return response;
     }
 
     [[nodiscard]] std::unique_ptr<UiMessage>
     decode_get_observed_symbols_response() const {
-        assert(!client_.isNull());
+        assert(client_ != nullptr);
 
         auto response = std::make_unique<GetObservedSymbolsResponseMessage>();
 
-        auto message_decoder = oid::MessageDecoder{client_};
+        auto message_decoder = oid::MessageDecoder{*client_};
         message_decoder.read<std::deque<std::string>, std::string>(
             response->observed_symbols);
 
@@ -291,13 +341,20 @@ class OidBridge {
     }
 
     void wait_for_client() {
-        if (client_.isNull()) {
-            if (!server_.waitForNewConnection(10000)) {
+        if (client_ == nullptr) {
+            try {
+                client_ = std::make_unique<oid::AsioTransport>(
+                    acceptor_.accept(std::chrono::seconds{10}));
+            } catch (const std::runtime_error&) {
+                // oid::SocketTimeoutError (accept timed out). Caught as the
+                // base std::runtime_error: it is thrown from liboidipc and
+                // this catch is in liboidbridge (-fvisibility=hidden), so a
+                // derived-type catch would miss it across the shared-library
+                // boundary and std::terminate.
                 std::cerr << "[OpenImageDebugger] No clients connected to "
                              "OpenImageDebugger server"
                           << std::endl;
             }
-            client_ = QPointer(server_.nextPendingConnection());
         }
     }
 };

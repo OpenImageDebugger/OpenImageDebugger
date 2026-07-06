@@ -34,7 +34,7 @@ namespace oid {
 class Camera final : public Component {
   public:
     Camera(const std::shared_ptr<GameObject>& game_object,
-           const std::shared_ptr<GLCanvas>& gl_canvas);
+           const std::shared_ptr<RenderCanvas>& gl_canvas);
 
     ~Camera() noexcept override;
 

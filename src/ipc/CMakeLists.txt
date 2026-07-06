@@ -25,7 +25,23 @@ cmake_minimum_required(VERSION 3.28.3)
 
 project(oidipc CXX)
 
-add_library(${PROJECT_NAME} SHARED
+if(NOT DEFINED OID_IPC_LIBRARY_TYPE)
+  # Emscripten emulates shared libraries as static objects and drops their
+  # symbols from the final link (see em++'s "-shared" warning), which leaves
+  # oidwindow with undefined BufferAssembler/codec symbols. Build oidipc STATIC
+  # on WASM so its symbols are linked into oidwindow.wasm; keep it SHARED on
+  # native (installed as a runtime library).
+  if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    set(OID_IPC_LIBRARY_TYPE STATIC)
+  else()
+    set(OID_IPC_LIBRARY_TYPE SHARED)
+  endif()
+endif()
+
+# The codec/data core is Qt-free and platform-agnostic (compiles everywhere,
+# including under Emscripten).
+add_library(${PROJECT_NAME} ${OID_IPC_LIBRARY_TYPE}
+            buffer_assembler.cpp
             message_exchange.cpp
             raw_data_decode.cpp)
 
@@ -35,8 +51,19 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 target_include_directories(${PROJECT_NAME}
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC
-                      Qt6::Network)
+# TCP transport is native-only. WASM has no TCP -- it uses PostMessageTransport
+# (src/platform) -- so standalone Asio (which does not compile under
+# Emscripten: it requires Windows or POSIX threading/signal primitives) is
+# neither built nor linked there.
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  target_sources(${PROJECT_NAME} PRIVATE
+                 asio_transport.cpp)
+  target_include_directories(${PROJECT_NAME} SYSTEM
+                             PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../thirdparty/asio/asio/include)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC ASIO_STANDALONE ASIO_NO_DEPRECATED)
+  find_package(Threads REQUIRED)
+  target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)
+endif()
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION OpenImageDebugger)

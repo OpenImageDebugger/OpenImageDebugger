@@ -26,10 +26,42 @@
 #include "shader.h"
 
 #include <iostream>
+#include <sstream>
+#include <string>
+
+#include "platform/gl_dialect.h"
+
+namespace {
+
+void replace_all(std::string& text,
+                 const std::string_view from,
+                 const std::string_view to) {
+    auto pos = std::size_t{0};
+    while ((pos = text.find(from, pos)) != std::string::npos) {
+        text.replace(pos, from.size(), to);
+        pos += to.size();
+    }
+}
+
+std::string adapt_shader_source_for_gles(const GLuint type,
+                                         std::string source) {
+    replace_all(source, "attribute ", "in ");
+    if (type == GL_FRAGMENT_SHADER) {
+        replace_all(source, "varying ", "in ");
+        replace_all(source, "gl_FragColor", "oid_fragColor");
+    } else {
+        replace_all(source, "varying ", "out ");
+    }
+    replace_all(source, "texture2D", "texture");
+    return source;
+}
+
+} // namespace
 
 namespace oid {
 
-ShaderProgram::ShaderProgram(GLCanvas& gl_canvas) : gl_canvas_{gl_canvas} {}
+ShaderProgram::ShaderProgram(const RenderCanvas& gl_canvas)
+    : gl_canvas_{gl_canvas} {}
 
 ShaderProgram::~ShaderProgram() noexcept {
     gl_canvas_.glDeleteProgram(program_);
@@ -195,14 +227,22 @@ const char* ShaderProgram::get_source_channel_define() const {
 GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const {
     const auto shader = gl_canvas_.glCreateShader(type);
 
-    auto src = std::array{"#version 120\n",
-                          get_texel_format_define(),
-                          get_source_channel_define(),
-                          "#define PIXEL_LAYOUT ",
-                          pixel_layout_.data(),
-                          source};
-
-    gl_canvas_.glShaderSource(shader, 6, src.data(), nullptr);
+    const auto& dialect = the_dialect();
+    const auto body =
+        dialect.uses_out_color
+            ? adapt_shader_source_for_gles(type, std::string{source})
+            : std::string{source};
+    std::ostringstream full_source;
+    full_source << dialect.version_directive;
+    if (type == GL_FRAGMENT_SHADER) {
+        full_source << dialect.fragment_preamble;
+    }
+    full_source << get_texel_format_define() << get_source_channel_define()
+                << "#define PIXEL_LAYOUT " << pixel_layout_ << "\n"
+                << body;
+    const auto source_string = full_source.str();
+    const auto* src_ptr = source_string.c_str();
+    gl_canvas_.glShaderSource(shader, 1, &src_ptr, nullptr);
     gl_canvas_.glCompileShader(shader);
 
     auto compiled = GLint{};
@@ -216,7 +256,7 @@ GLuint ShaderProgram::compile(const GLuint type, const GLchar* source) const {
         std::cerr << "Failed to compile shader_type: " + get_shader_type(type)
                   << std::endl
                   << log << std::endl;
-        return false;
+        return 0;
     }
     return shader;
 }

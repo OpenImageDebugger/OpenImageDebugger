@@ -35,9 +35,9 @@
 #include "math/linear_algebra.h"
 #include "visualization/components/component.h"
 
-class Stage;
-
 namespace oid {
+
+class Stage;
 
 class GameObject {
   public:

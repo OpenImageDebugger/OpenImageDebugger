@@ -27,16 +27,16 @@
 
 #include <cmath>
 
-#include "ui/gl_canvas.h"
 #include "visualization/components/buffer.h"
 #include "visualization/events.h"
 #include "visualization/game_object.h"
+#include "visualization/render_canvas.h"
 #include "visualization/stage.h"
 
 namespace oid {
 
 Camera::Camera(const std::shared_ptr<GameObject>& game_object,
-               const std::shared_ptr<GLCanvas>& gl_canvas)
+               const std::shared_ptr<RenderCanvas>& gl_canvas)
     : Component{game_object, gl_canvas} {}
 
 Camera::~Camera() noexcept {
@@ -93,8 +93,8 @@ void Camera::window_resized(const int w, const int h) {
 void Camera::scroll_callback(const float delta) {
     const auto mouse_x = static_cast<float>(gl_canvas_ref().mouse_x());
     const auto mouse_y = static_cast<float>(gl_canvas_ref().mouse_y());
-    const auto win_w = static_cast<float>(gl_canvas_ref().width());
-    const auto win_h = static_cast<float>(gl_canvas_ref().height());
+    const auto win_w = static_cast<float>(gl_canvas_ref().render_width());
+    const auto win_h = static_cast<float>(gl_canvas_ref().render_height());
 
     const auto mouse_pos_ndc = vec4{2.0f * (mouse_x - win_w / 2.0f) / win_w,
                                     -2.0f * (mouse_y - win_h / 2.0f) / win_h,
@@ -145,7 +145,8 @@ void Camera::update_object_pose() const {
 }
 
 bool Camera::post_initialize() {
-    window_resized(gl_canvas_ref().width(), gl_canvas_ref().height());
+    window_resized(gl_canvas_ref().render_width(),
+                   gl_canvas_ref().render_height());
     set_initial_zoom();
     update_object_pose();
 
@@ -158,38 +159,44 @@ void Camera::handle_key_events() {
 
     auto event_intercepted = EventProcessCode::IGNORED;
 
-    if (KeyboardState::is_modifier_key_pressed(
-            KeyboardState::ModifierKey::Control)) {
-        auto delta_pos = vec4{0.0f, 0.0f, 0.0f, 0.0f};
+    // Pan on the bare arrow keys (no modifier). Zoom keeps its Ctrl+'+'/'-'
+    // binding in key_press_event(); panning deliberately does NOT require Ctrl
+    // because macOS reserves Ctrl+Arrow for Mission Control / Spaces at the OS
+    // level, so a Ctrl+Arrow pan is unreachable there (and in a browser/webview
+    // the host can intercept it too). The ImGui frontend gates these keys on
+    // !io.WantCaptureKeyboard (see events.cpp) so arrows drive panning
+    // only when no text field -- e.g. the symbol search box -- holds focus; the
+    // Qt frontend gates naturally, as its KeyboardState only sees canvas key
+    // events.
+    auto delta_pos = vec4{0.0f, 0.0f, 0.0f, 0.0f};
 
-        if (KeyboardState::is_key_pressed(Key::Up)) {
-            delta_pos.y() = -1.0f;
-            event_intercepted = EventProcessCode::INTERCEPTED;
-        } else if (KeyboardState::is_key_pressed(Key::Down)) {
-            delta_pos.y() = 1.0f;
-            event_intercepted = EventProcessCode::INTERCEPTED;
-        }
+    if (KeyboardState::is_key_pressed(Key::Up)) {
+        delta_pos.y() = -1.0f;
+        event_intercepted = EventProcessCode::INTERCEPTED;
+    } else if (KeyboardState::is_key_pressed(Key::Down)) {
+        delta_pos.y() = 1.0f;
+        event_intercepted = EventProcessCode::INTERCEPTED;
+    }
 
-        if (KeyboardState::is_key_pressed(Key::Left)) {
-            delta_pos.x() = -1.0f;
-            event_intercepted = EventProcessCode::INTERCEPTED;
-        } else if (KeyboardState::is_key_pressed(Key::Right)) {
-            delta_pos.x() = 1.0f;
-            event_intercepted = EventProcessCode::INTERCEPTED;
-        }
+    if (KeyboardState::is_key_pressed(Key::Left)) {
+        delta_pos.x() = -1.0f;
+        event_intercepted = EventProcessCode::INTERCEPTED;
+    } else if (KeyboardState::is_key_pressed(Key::Right)) {
+        delta_pos.x() = 1.0f;
+        event_intercepted = EventProcessCode::INTERCEPTED;
+    }
 
-        if (event_intercepted == EventProcessCode::INTERCEPTED) {
-            // Recompute zoom matrix to discard its internal translation
-            camera_pos_x_ -= delta_pos.x() + scale_(0, 3);
-            camera_pos_y_ -= delta_pos.y() + scale_(1, 3);
+    if (event_intercepted == EventProcessCode::INTERCEPTED) {
+        // Recompute zoom matrix to discard its internal translation
+        camera_pos_x_ -= delta_pos.x() + scale_(0, 3);
+        camera_pos_y_ -= delta_pos.y() + scale_(1, 3);
 
-            const auto zoom = 1.0f / compute_zoom();
-            scale_ = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
+        const auto zoom = 1.0f / compute_zoom();
+        scale_ = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
 
-            update_object_pose();
+        update_object_pose();
 
-            game_object_ref().request_render_update();
-        }
+        game_object_ref().request_render_update();
     }
 }
 

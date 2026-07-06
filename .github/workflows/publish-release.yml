@@ -36,6 +36,8 @@ on:
 
 jobs:
   bump:
+    permissions:
+      contents: write # commisery creates the release tag + GitHub release
     uses: ./.github/workflows/commisery-bump.yml
   build-all:
     needs: [bump]
@@ -44,6 +46,8 @@ jobs:
   publish-release:
     needs: [build-all, bump]
     if: needs.bump.outputs.next-version != ''
+    permissions:
+      contents: write # action-gh-release uploads assets to the release
     runs-on: ubuntu-slim
     strategy:
       fail-fast: false
