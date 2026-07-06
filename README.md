@@ -50,12 +50,23 @@ customized to work with any arbitrary data structure.
 
 * A C++20 compliant compiler
 * GDB **15.0.50+** or LLDB **18.1.3+**
-* Qt **6.4.2+**
 * CMake **3.28.3+**
 * Python **3.12.3+** development packages
 * OpenGL **2.1+** support
+* Linux only: Wayland and X11 development packages, needed to build the bundled GLFW (see the `apt install` command below)
 
-Note: this list might get out-of-date by accident. For a more accurate list of requirements, please check what is used in <https://github.com/OpenImageDebugger/OpenImageDebugger/blob/main/.github/workflows/build.yml>.
+All other third-party libraries are bundled as git submodules and built from source, so they don't need to be installed:
+
+* [Dear ImGui](https://github.com/ocornut/imgui) — viewer UI
+* [GLFW](https://github.com/glfw/glfw) — window and OpenGL context management
+* [Eigen](https://gitlab.com/libeigen/eigen) — linear algebra for the visualization layer
+* [Asio](https://github.com/chriskohlhoff/asio) (standalone) — IPC between the debugger bridge and the viewer
+* [nlohmann/json](https://github.com/nlohmann/json) — settings persistence
+* [stb](https://github.com/nothings/stb) — PNG export and text rendering (`stb_image_write`, `stb_truetype`)
+* [nanosvg](https://github.com/memononen/nanosvg) — toolbar icon rasterization
+* [GoogleTest](https://github.com/google/googletest) — unit tests
+
+Note: this list might get out-of-date by accident. For a more accurate list of requirements, please check what is used in <https://github.com/OpenImageDebugger/OpenImageDebugger/blob/main/.github/workflows/build.yml> and in the CI container images defined in <https://github.com/OpenImageDebugger/dockerfiles>.
 
 ## Installation
 
@@ -64,7 +75,9 @@ Note: this list might get out-of-date by accident. For a more accurate list of r
 On Ubuntu, you can install most of the dependencies with the following command:
 
 ```bash
-sudo apt install build-essential libgl1-mesa-dev libpython3-dev python3-dev cmake qt6-base-dev
+sudo apt install build-essential cmake libgl1-mesa-dev libpython3-dev python3-dev \
+    libwayland-dev libxcursor-dev libxi-dev libxinerama-dev libxkbcommon-dev \
+    libxrandr-dev pkg-config
 ```
 
 ### Building the Open Image Debugger
@@ -113,13 +126,6 @@ python /path/to/OpenImageDebugger/oid.py --test
 
 If the installation was succesful, you should see the Open Image Debugger window
 with the buffers `sample_buffer_1` and `sample_buffer_2`.
-
-## Troubleshooting
-
-### QtCreator configuration
-
-If you are using QtCreator, you can change your Qt version under
-Tools->Options->Build & Run->Kits. Make sure you have Qt >= 5.6 selected.
 
 ## Using plugin
 

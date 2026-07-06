@@ -86,27 +86,6 @@ jobs:
         name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # 1.13.0
 
-      - if: contains(matrix.os, 'windows')
-        name: Install Qt (Windows)
-        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # 4.3.1
-        with:
-          version: "6.10.*"
-          aqtversion: "==3.3.*"
-          setup-python: false
-          cache: true
-
-      - if: matrix.os == 'macos-15' || matrix.os == 'macos-26'
-        name: Install Qt (macOS - arm64)
-        run: |
-          brew install qtbase
-          echo "PATH=/opt/homebrew/opt/qt@6/bin:$PATH" >> "$GITHUB_ENV"
-
-      - if: matrix.os == 'macos-26-intel'
-        name: Install Qt (macOS - intel)
-        run: |
-          brew install qtbase
-          echo "PATH=/usr/local/opt/qt@6/bin:$PATH" >> "$GITHUB_ENV"
-
       - name: Build
         shell: bash
         env:

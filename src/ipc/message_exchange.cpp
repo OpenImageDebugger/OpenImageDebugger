@@ -46,4 +46,6 @@ size_t StringBlock::size() const noexcept {
     return reinterpret_cast<const std::byte*>(data_.data());
 }
 
+MessageDecoder::MessageDecoder(ITransport& transport) : transport_{transport} {}
+
 } // namespace oid

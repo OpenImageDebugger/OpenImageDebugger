@@ -35,9 +35,12 @@
 
 #include "buffer.h"
 #include "camera.h"
-#include "ui/gl_text_renderer.h"
 #include "visualization/game_object.h"
 #include "visualization/stage.h"
+
+// GLTextRenderer is Qt-free: it consumes a pure GlyphAtlas, baked by
+// host/text/stb_glyph_atlas.cpp in the GLFW/ImGui build.
+#include "visualization/gl_text_renderer.h"
 
 namespace oid {
 
@@ -45,7 +48,7 @@ template <typename T>
 using Array_4_4 = const std::array<const std::array<T, 4>, 4>;
 
 BufferValues::BufferValues(const std::shared_ptr<GameObject>& game_object,
-                           const std::shared_ptr<GLCanvas>& gl_canvas)
+                           const std::shared_ptr<RenderCanvas>& gl_canvas)
     : Component{game_object, gl_canvas} {}
 
 BufferValues::~BufferValues() = default;
@@ -249,6 +252,12 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv) {
 }
 
 void BufferValues::draw_text(const DrawTextParams& params) {
+    const auto text_renderer = gl_canvas_ref().get_text_renderer();
+
+    if (text_renderer == nullptr) {
+        return; // glyph atlas unavailable (e.g. embedded font failed to bake)
+    }
+
     const auto x = params.x;
     const auto y = params.y;
     const auto& text = params.text;
@@ -257,8 +266,6 @@ void BufferValues::draw_text(const DrawTextParams& params) {
     const auto& buffer_pose = params.buffer_pose;
     const auto channels = params.channels;
     const auto y_offset = params.y_offset;
-
-    const auto text_renderer = gl_canvas_ref().get_text_renderer();
 
     const auto buffer_component_opt =
         game_object_ref().get_component<Buffer>("buffer_component");

@@ -34,7 +34,7 @@
 
 #include "GL/gl.h"
 
-#include "ui/gl_canvas.h"
+#include "visualization/render_canvas.h"
 
 namespace oid {
 
@@ -42,7 +42,7 @@ class ShaderProgram {
   public:
     enum class TexelChannels { FormatR, FormatRG, FormatRGB, FormatRGBA };
 
-    explicit ShaderProgram(GLCanvas& gl_canvas);
+    explicit ShaderProgram(const RenderCanvas& gl_canvas);
 
     ShaderProgram(const ShaderProgram&) = delete;
 
@@ -82,7 +82,7 @@ class ShaderProgram {
   private:
     GLuint program_{0};
 
-    GLCanvas& gl_canvas_;
+    const RenderCanvas& gl_canvas_;
 
     TexelChannels texel_format_{};
 

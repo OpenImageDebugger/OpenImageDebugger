@@ -1,6 +1,9 @@
 # CMake build directory
 build/
 
+# Git worktrees
+.worktrees/
+
 # Visual Studio Code project settings
 .vscode/
 
@@ -9,3 +12,10 @@ CMakeLists.txt.user
 
 # MacOS Desktop Service Store file
 .DS_Store
+
+# Local tool caches and build/output dirs
+.cache/
+.serena/
+build-imgui/
+out/
+imgui.ini

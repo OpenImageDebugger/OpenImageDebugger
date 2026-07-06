@@ -27,13 +27,19 @@ project(OpenImageDebugger)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
 
+# Regenerate embedded font/SVG headers from source assets at configure time.
+# Sets OID_GENERATED_DIR at root scope so src/ and tests/ both see it.
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedAssets.cmake)
+
 add_subdirectory(src)
 add_subdirectory(src/ipc)
-add_subdirectory(src/oidbridge)
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  add_subdirectory(src/oidbridge)
+endif()
 
 # Add tests if enabled
 option(BUILD_TESTS "Build unit tests" ON)
-if(BUILD_TESTS)
+if(BUILD_TESTS AND NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
     enable_testing()
     add_subdirectory(tests)
 endif()

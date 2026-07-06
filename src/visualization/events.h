@@ -26,29 +26,20 @@
 #ifndef EVENTS_H_
 #define EVENTS_H_
 
-#include <set>
-
-#include <QEvent>
-
 namespace oid {
 
 enum class EventProcessCode { IGNORED, INTERCEPTED };
 
+// Polled every frame by Camera (see camera.cpp): the GLFW/ImGui build's
+// implementation lives in events.cpp and reads ImGui's IO state.
 class KeyboardState {
   public:
-    friend class MainWindow;
-
     enum class ModifierKey { Control, Alt, Shift };
     enum class Key { Left, Right, Up, Down, Plus, Minus };
 
     static bool is_modifier_key_pressed(ModifierKey key);
 
     static bool is_key_pressed(Key key);
-
-  private:
-    static void update_keyboard_state(const QEvent* event);
-
-    static std::set<int> pressed_keys_;
 };
 
 } // namespace oid

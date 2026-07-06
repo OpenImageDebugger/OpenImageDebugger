@@ -30,7 +30,6 @@ class OpenImageDebuggerWindow(object):
 
         if PLATFORM_NAME == 'windows':
             os.add_dll_directory(script_path)
-            os.add_dll_directory(os.getenv('Qt5_Dir') + '/' + 'bin')
 
         # Request ctypes to load libGL before the native oidwindow does; this
         # fixes an issue on Ubuntu machines with nvidia drivers. For more

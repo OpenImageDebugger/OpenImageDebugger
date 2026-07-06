@@ -32,7 +32,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS False)
 
 find_package(Threads REQUIRED)
-find_package(Qt6 6.4.2 REQUIRED COMPONENTS Network)
 
 add_compile_options("$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall;-Wextra;-pedantic;-Werror>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/W4;/WX>")
+
+# The MSVC CRT flags std::getenv with deprecation warning C4996, which /WX
+# turns into a hard error.
+add_compile_definitions("$<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>")

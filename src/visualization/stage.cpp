@@ -30,9 +30,9 @@
 #include <ranges>
 #include <set>
 #include <string>
+#include <utility>
 
 #include "game_object.h"
-#include "ui/main_window/main_window.h"
 #include "visualization/components/background.h"
 #include "visualization/components/buffer_values.h"
 #include "visualization/components/camera.h"
@@ -71,7 +71,10 @@ struct CompareRenderOrder {
     }
 };
 
-Stage::Stage(MainWindow& main_window) : main_window_{main_window} {}
+Stage::Stage(std::shared_ptr<RenderCanvas> canvas,
+             std::function<void()> on_render_update)
+    : canvas_{std::move(canvas)},
+      on_render_update_{std::move(on_render_update)} {}
 
 bool Stage::get_contrast_enabled() const {
     return contrast_enabled_;
@@ -89,21 +92,16 @@ const std::vector<uint8_t>& Stage::get_buffer_icon() const {
     return buffer_icon_;
 }
 
-MainWindow& Stage::get_main_window() const {
-    return main_window_;
-}
-
 bool Stage::initialize(const BufferParams& params) {
     const auto camera_obj = std::make_shared<GameObject>();
 
     camera_obj->set_stage(*this);
 
-    camera_obj->add_component(
-        "camera_component",
-        std::make_shared<Camera>(camera_obj, main_window_.gl_canvas()));
+    camera_obj->add_component("camera_component",
+                              std::make_shared<Camera>(camera_obj, canvas_));
     camera_obj->add_component(
         "background_component",
-        std::make_shared<Background>(camera_obj, main_window_.gl_canvas()));
+        std::make_shared<Background>(camera_obj, canvas_));
 
     all_game_objects["camera"] = camera_obj;
 
@@ -112,11 +110,9 @@ bool Stage::initialize(const BufferParams& params) {
     buffer_obj->set_stage(*this);
 
     buffer_obj->add_component(
-        "text_component",
-        std::make_shared<BufferValues>(buffer_obj, main_window_.gl_canvas()));
+        "text_component", std::make_shared<BufferValues>(buffer_obj, canvas_));
 
-    const auto buffer_component =
-        std::make_shared<Buffer>(buffer_obj, main_window_.gl_canvas());
+    const auto buffer_component = std::make_shared<Buffer>(buffer_obj, canvas_);
 
     buffer_component->configure(params);
     buffer_obj->add_component("buffer_component", buffer_component);
@@ -280,7 +276,9 @@ EventProcessCode Stage::key_press_event(const int key_code) const {
 }
 
 void Stage::request_render_update() const {
-    main_window_.request_render_update();
+    if (on_render_update_) {
+        on_render_update_();
+    }
 }
 
 void Stage::go_to_pixel(const float x, const float y) const {

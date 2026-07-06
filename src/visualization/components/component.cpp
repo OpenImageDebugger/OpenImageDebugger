@@ -28,7 +28,7 @@
 namespace oid {
 
 Component::Component(const std::shared_ptr<GameObject>& game_object,
-                     const std::shared_ptr<GLCanvas>& gl_canvas)
+                     const std::shared_ptr<RenderCanvas>& gl_canvas)
     : game_object_{game_object}, gl_canvas_{gl_canvas} {}
 
 Component::~Component() noexcept = default;

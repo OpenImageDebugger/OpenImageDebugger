@@ -26,11 +26,12 @@
 #ifndef COMPONENT_H_
 #define COMPONENT_H_
 
+#include <cassert>
 #include <memory>
 
 #include "math/linear_algebra.h"
-#include "ui/gl_canvas.h"
 #include "visualization/events.h"
+#include "visualization/render_canvas.h"
 
 namespace oid {
 
@@ -39,7 +40,7 @@ class GameObject;
 class Component {
   public:
     Component(const std::shared_ptr<GameObject>& game_object,
-              const std::shared_ptr<GLCanvas>& gl_canvas);
+              const std::shared_ptr<RenderCanvas>& gl_canvas);
 
     [[nodiscard]] virtual bool initialize();
 
@@ -82,20 +83,20 @@ class Component {
         return *obj;
     }
 
-    [[nodiscard]] std::shared_ptr<GLCanvas> gl_canvas() const noexcept {
+    [[nodiscard]] std::shared_ptr<RenderCanvas> gl_canvas() const noexcept {
         return gl_canvas_.lock();
     }
 
-    [[nodiscard]] GLCanvas& gl_canvas_ref() const {
+    [[nodiscard]] RenderCanvas& gl_canvas_ref() const {
         const auto canvas = gl_canvas_.lock();
-        assert(canvas && "GLCanvas has been destroyed");
+        assert(canvas && "RenderCanvas has been destroyed");
         return *canvas;
     }
 
   public:
     std::weak_ptr<GameObject> game_object_;
 
-    std::weak_ptr<GLCanvas> gl_canvas_;
+    std::weak_ptr<RenderCanvas> gl_canvas_;
 };
 
 } // namespace oid
