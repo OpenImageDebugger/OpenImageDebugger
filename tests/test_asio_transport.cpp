@@ -46,7 +46,7 @@ TEST(AsioTransport, RoundTripBytes) {
     const unsigned short port = acceptor.local_endpoint().port();
 
     asio::ip::tcp::socket server_sock(server_ctx);
-    std::thread server([&acceptor, &server_sock] {
+    std::jthread server([&acceptor, &server_sock] {
         acceptor.accept(server_sock);
         // Echo 4 bytes back after receiving 4.
         std::array<std::byte, 4> buf{};
@@ -74,7 +74,7 @@ TEST(AsioTransport, HasDataFalseBeforeSend) {
         asio::ip::tcp::endpoint(asio::ip::make_address("127.0.0.1"), 0));
     const unsigned short port = acceptor.local_endpoint().port();
     asio::ip::tcp::socket server_sock(server_ctx);
-    std::thread server(
+    std::jthread server(
         [&acceptor, &server_sock] { acceptor.accept(server_sock); });
     AsioTransport client("127.0.0.1", port);
     server.join();
@@ -88,7 +88,7 @@ TEST(AsioCodec, RoundTripPlotBufferRequest) {
         asio::ip::tcp::endpoint(asio::ip::make_address("127.0.0.1"), 0));
     const unsigned short port = acceptor.local_endpoint().port();
     asio::ip::tcp::socket raw_server(server_ctx);
-    std::thread server(
+    std::jthread server(
         [&acceptor, &raw_server] { acceptor.accept(raw_server); });
 
     AsioTransport client("127.0.0.1", port);
@@ -130,7 +130,7 @@ TEST(AsioCodec, RoundTripPlotBufferRequest) {
 
 TEST(AsioTransport, ReceiveTimesOutOnSilentPeer) {
     AsioAcceptor acceptor;
-    std::thread server([&acceptor] {
+    std::jthread server([&acceptor] {
         auto t = acceptor.accept(std::chrono::seconds{5});
         std::this_thread::sleep_for(std::chrono::milliseconds{300});
     });
@@ -145,7 +145,7 @@ TEST(AsioAcceptor, AcceptThenRoundTrip) {
     AsioAcceptor acceptor;
     const unsigned short port = acceptor.port();
     std::optional<AsioTransport> server_side;
-    std::thread server([&server_side, &acceptor] {
+    std::jthread server([&server_side, &acceptor] {
         server_side.emplace(acceptor.accept(std::chrono::seconds{5}));
     });
     AsioTransport client("127.0.0.1", port);
@@ -183,7 +183,7 @@ TEST(AsioTransport, IsConnectedTrueWhileOpenNoData) {
     AsioAcceptor acceptor;
     const unsigned short port = acceptor.port();
     std::optional<AsioTransport> server_side;
-    std::thread server([&server_side, &acceptor] {
+    std::jthread server([&server_side, &acceptor] {
         server_side.emplace(acceptor.accept(std::chrono::seconds{5}));
     });
     AsioTransport client("127.0.0.1", port);
@@ -195,7 +195,7 @@ TEST(AsioTransport, IsConnectedFalseAfterPeerClose) {
     AsioAcceptor acceptor;
     const unsigned short port = acceptor.port();
     std::optional<AsioTransport> server_side;
-    std::thread server([&server_side, &acceptor] {
+    std::jthread server([&server_side, &acceptor] {
         server_side.emplace(acceptor.accept(std::chrono::seconds{5}));
     });
     AsioTransport client("127.0.0.1", port);
