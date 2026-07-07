@@ -25,6 +25,7 @@
 
 #include <cstring>
 #include <gtest/gtest.h>
+#include <numbers>
 #include <vector>
 
 #include "ipc/raw_data_decode.h"
@@ -32,7 +33,7 @@
 using namespace oid;
 
 namespace {
-constexpr double TEST_PI = 3.14159;
+constexpr double TEST_PI = std::numbers::pi;
 constexpr double TEST_LARGE_VALUE = 1e10;
 constexpr double TEST_NEGATIVE_VALUE = -42.5;
 constexpr double TEST_VALUE_1 = 1.0;
