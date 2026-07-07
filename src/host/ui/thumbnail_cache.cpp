@@ -137,16 +137,15 @@ GLuint ThumbnailCache::texture_for(const std::string& name,
 void ThumbnailCache::evict_missing(const std::vector<std::string>& live_names) {
     const std::unordered_set<std::string> live(live_names.begin(),
                                                live_names.end());
-    for (auto it = entries_.begin(); it != entries_.end();) {
-        if (!live.contains(it->first)) {
-            if (it->second.tex != 0) {
-                canvas_.glDeleteTextures(1, &it->second.tex);
+    std::erase_if(entries_, [&live, this](const auto& kv) {
+        if (!live.contains(kv.first)) {
+            if (kv.second.tex != 0) {
+                canvas_.glDeleteTextures(1, &kv.second.tex);
             }
-            it = entries_.erase(it);
-        } else {
-            ++it;
+            return true;
         }
-    }
+        return false;
+    });
 }
 
 } // namespace oid::host
