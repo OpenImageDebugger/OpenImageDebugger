@@ -61,6 +61,62 @@ T get_or(const nlohmann::json& j, const std::string& key, T def) {
     }
 }
 
+// Parses the "window" section (size + optional position) into `out`,
+// clamping the persisted size to a sane range. Extracted from
+// settings_from_json() to keep that function's cognitive complexity down.
+void apply_window_section(const nlohmann::json& w,
+                          const AppSettings& defaults,
+                          AppSettings& out) {
+    out.window_w = get_or(w, "w", defaults.window_w);
+    out.window_h = get_or(w, "h", defaults.window_h);
+    // glfwCreateWindow() returns NULL (fatal startup failure) for
+    // non-positive sizes, and huge persisted values can wrap to
+    // negative/garbage ints when narrowed to int. Clamp to a sane
+    // range so a bad persisted size (minimized-to-0x0, hand-edited,
+    // or hostile) can never brick startup.
+    if (out.window_w < 100 || out.window_w > 16384) {
+        out.window_w = defaults.window_w;
+    }
+    if (out.window_h < 100 || out.window_h > 16384) {
+        out.window_h = defaults.window_h;
+    }
+    if (w.contains("x") && w.at("x").is_number_integer()) {
+        out.window_x = w.at("x").get<int>();
+    }
+    if (w.contains("y") && w.at("y").is_number_integer()) {
+        out.window_y = w.at("y").get<int>();
+    }
+}
+
+// Parses the "ui" section into `out`. Extracted from settings_from_json()
+// to keep that function's cognitive complexity down.
+void apply_ui_section(const nlohmann::json& ui,
+                      const AppSettings& defaults,
+                      AppSettings& out) {
+    out.left_pane_w = get_or(ui, "leftPaneWidth", defaults.left_pane_w);
+    out.contrast_enabled =
+        get_or(ui, "contrastEnabled", defaults.contrast_enabled);
+    out.link_views = get_or(ui, "linkViews", defaults.link_views);
+    out.last_export_dir = get_or(ui, "lastExportDir", defaults.last_export_dir);
+}
+
+// Parses the "previousBuffers" array into `out`, skipping malformed
+// entries so one bad entry doesn't discard the rest. Extracted from
+// settings_from_json() to keep that function's cognitive complexity down.
+void apply_previous_buffers_section(const nlohmann::json& buffers,
+                                    AppSettings& out) {
+    for (const auto& entry : buffers) {
+        if (!entry.is_object() || !entry.contains("name") ||
+            !entry.at("name").is_string() || !entry.contains("expiry") ||
+            !entry.at("expiry").is_number_integer()) {
+            continue; // skip malformed entry, keep the rest
+        }
+        out.previous_buffers.emplace_back(
+            entry.at("name").get<std::string>(),
+            entry.at("expiry").get<std::int64_t>());
+    }
+}
+
 } // namespace
 
 std::string settings_to_json(const AppSettings& s) {
@@ -102,51 +158,16 @@ AppSettings settings_from_json(std::string_view json) {
         AppSettings out{};
 
         if (j.contains("window") && j.at("window").is_object()) {
-            const auto& w = j.at("window");
-            out.window_w = get_or(w, "w", defaults.window_w);
-            out.window_h = get_or(w, "h", defaults.window_h);
-            // glfwCreateWindow() returns NULL (fatal startup failure) for
-            // non-positive sizes, and huge persisted values can wrap to
-            // negative/garbage ints when narrowed to int. Clamp to a sane
-            // range so a bad persisted size (minimized-to-0x0, hand-edited,
-            // or hostile) can never brick startup.
-            if (out.window_w < 100 || out.window_w > 16384) {
-                out.window_w = defaults.window_w;
-            }
-            if (out.window_h < 100 || out.window_h > 16384) {
-                out.window_h = defaults.window_h;
-            }
-            if (w.contains("x") && w.at("x").is_number_integer()) {
-                out.window_x = w.at("x").get<int>();
-            }
-            if (w.contains("y") && w.at("y").is_number_integer()) {
-                out.window_y = w.at("y").get<int>();
-            }
+            apply_window_section(j.at("window"), defaults, out);
         }
 
         if (j.contains("ui") && j.at("ui").is_object()) {
-            const auto& ui = j.at("ui");
-            out.left_pane_w = get_or(ui, "leftPaneWidth", defaults.left_pane_w);
-            out.contrast_enabled =
-                get_or(ui, "contrastEnabled", defaults.contrast_enabled);
-            out.link_views = get_or(ui, "linkViews", defaults.link_views);
-            out.last_export_dir =
-                get_or(ui, "lastExportDir", defaults.last_export_dir);
+            apply_ui_section(j.at("ui"), defaults, out);
         }
 
         if (j.contains("previousBuffers") &&
             j.at("previousBuffers").is_array()) {
-            for (const auto& entry : j.at("previousBuffers")) {
-                if (!entry.is_object() || !entry.contains("name") ||
-                    !entry.at("name").is_string() ||
-                    !entry.contains("expiry") ||
-                    !entry.at("expiry").is_number_integer()) {
-                    continue; // skip malformed entry, keep the rest
-                }
-                out.previous_buffers.emplace_back(
-                    entry.at("name").get<std::string>(),
-                    entry.at("expiry").get<std::int64_t>());
-            }
+            apply_previous_buffers_section(j.at("previousBuffers"), out);
         }
 
         return out;
