@@ -16,6 +16,55 @@ class EigenXX(interface.TypeInspectorInterface):
     """
     Implementation for inspecting Eigen::Matrix and Eigen::Map
     """
+    def _resolve_dynamic_size(self, picked_obj, is_eigen_map, height, width):
+        dynamic_buffer = False
+
+        if height <= 0:
+            # Buffer has dynamic width
+            if is_eigen_map:
+                height = int(picked_obj['m_rows']['m_value'])
+            else:
+                height = int(picked_obj['m_storage']['m_rows'])
+            dynamic_buffer = True
+
+        if width <= 0:
+            # Buffer has dynamic height
+            if is_eigen_map:
+                width = int(picked_obj['m_cols']['m_value'])
+            else:
+                width = int(picked_obj['m_storage']['m_cols'])
+            dynamic_buffer = True
+
+        return height, width, dynamic_buffer
+
+    def _oid_type_for(self, current_type):
+        # Assign the OpenImageDebugger type according to underlying type
+        if current_type == 'short':
+            type_value = symbols.OID_TYPES_INT16
+        elif current_type == 'float':
+            type_value = symbols.OID_TYPES_FLOAT32
+        elif current_type == 'double':
+            type_value = symbols.OID_TYPES_FLOAT64
+        elif current_type == 'int':
+            type_value = symbols.OID_TYPES_INT32
+
+        return type_value
+
+    def _get_buffer_pointer(self, debugger_bridge, current_type, picked_obj,
+                             is_eigen_map, dynamic_buffer):
+        # Differentiate between Map and dynamic/static Matrices
+        if is_eigen_map:
+            buffer = debugger_bridge.get_casted_pointer(current_type,
+                                                        picked_obj['m_data'])
+        elif dynamic_buffer:
+            buffer = debugger_bridge.get_casted_pointer(
+                current_type, picked_obj['m_storage'])
+        else:
+            buffer = debugger_bridge.get_casted_pointer(
+                current_type, picked_obj['m_storage']['m_data']['array'])
+
+        return buffer
+
     def get_buffer_metadata(self, obj_name, picked_obj, debugger_bridge):
         """
         Gets the buffer meta data from types of the Eigen Library
@@ -38,47 +87,18 @@ class EigenXX(interface.TypeInspectorInterface):
         width = int(matrix_type_obj.template_argument(2))
         matrix_flag = int(matrix_type_obj.template_argument(3))
         transpose_buffer = ((matrix_flag&0x1) == 0)
-        dynamic_buffer = False
 
-        if height <= 0:
-            # Buffer has dynamic width
-            if is_eigen_map:
-                height = int(picked_obj['m_rows']['m_value'])
-            else:
-                height = int(picked_obj['m_storage']['m_rows'])
-            dynamic_buffer = True
-
-        if width <= 0:
-            # Buffer has dynamic height
-            if is_eigen_map:
-                width = int(picked_obj['m_cols']['m_value'])
-            else:
-                width = int(picked_obj['m_storage']['m_cols'])
-            dynamic_buffer = True
+        height, width, dynamic_buffer = self._resolve_dynamic_size(
+            picked_obj, is_eigen_map, height, width)
 
         if transpose_buffer:
             width, height = height, width
 
-        # Assign the OpenImageDebugger type according to underlying type
-        if current_type == 'short':
-            type_value = symbols.OID_TYPES_INT16
-        elif current_type == 'float':
-            type_value = symbols.OID_TYPES_FLOAT32
-        elif current_type == 'double':
-            type_value = symbols.OID_TYPES_FLOAT64
-        elif current_type == 'int':
-            type_value = symbols.OID_TYPES_INT32
+        type_value = self._oid_type_for(current_type)
 
-        # Differentiate between Map and dynamic/static Matrices
-        if is_eigen_map:
-            buffer = debugger_bridge.get_casted_pointer(current_type,
-                                                        picked_obj['m_data'])
-        elif dynamic_buffer:
-            buffer = debugger_bridge.get_casted_pointer(
-                current_type, picked_obj['m_storage'])
-        else:
-            buffer = debugger_bridge.get_casted_pointer(
-                current_type, picked_obj['m_storage']['m_data']['array'])
+        buffer = self._get_buffer_pointer(
+            debugger_bridge, current_type, picked_obj, is_eigen_map,
+            dynamic_buffer)
 
         # Set row stride and pixel layout
         pixel_layout = 'bgra'
