@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <ranges>
 #include <string_view>
 
 namespace oid::host {
@@ -46,18 +47,13 @@ bool contains_ci(std::string_view haystack, std::string_view needle) {
         return true;
     }
 
-    return std::search(haystack.begin(),
-                       haystack.end(),
-                       needle.begin(),
-                       needle.end(),
-                       ci_char_equal) != haystack.end();
+    return !std::ranges::search(haystack, needle, ci_char_equal).empty();
 }
 
 bool ci_less(std::string_view a, std::string_view b) {
-    return std::lexicographical_compare(
-        a.begin(), a.end(), b.begin(), b.end(), [](char lhs, char rhs) {
-            return ascii_tolower(lhs) < ascii_tolower(rhs);
-        });
+    return std::ranges::lexicographical_compare(a, b, [](char lhs, char rhs) {
+        return ascii_tolower(lhs) < ascii_tolower(rhs);
+    });
 }
 
 } // namespace
@@ -74,7 +70,7 @@ filter_symbols(const std::vector<std::string>& candidates,
         }
     }
 
-    std::stable_sort(result.begin(), result.end(), ci_less);
+    std::ranges::stable_sort(result, ci_less);
 
     return result;
 }

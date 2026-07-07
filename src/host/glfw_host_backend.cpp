@@ -154,10 +154,9 @@ std::vector<GlfwHostBackend::MonitorRect> GlfwHostBackend::monitors() const {
 
 bool GlfwHostBackend::window_visible_on(
     int x, int y, int w, int h, const std::vector<MonitorRect>& monitors) {
-    return std::any_of(
-        monitors.begin(), monitors.end(), [x, y, w, h](const MonitorRect& m) {
-            return x < m.x + m.w && x + w > m.x && y < m.y + m.h && y + h > m.y;
-        });
+    return std::ranges::any_of(monitors, [x, y, w, h](const MonitorRect& m) {
+        return x < m.x + m.w && x + w > m.x && y < m.y + m.h && y + h > m.y;
+    });
 }
 
 } // namespace oid::host
