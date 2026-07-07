@@ -43,75 +43,75 @@ constexpr double TEST_VALUE_5 = 5.0;
 } // namespace
 
 TEST(RawDataDecodeTest, TypeSizeUnsignedByte) {
-  EXPECT_EQ(type_size(BufferType::UnsignedByte), sizeof(std::uint8_t));
+    EXPECT_EQ(type_size(BufferType::UnsignedByte), sizeof(std::uint8_t));
 }
 
 TEST(RawDataDecodeTest, TypeSizeUnsignedShort) {
-  EXPECT_EQ(type_size(BufferType::UnsignedShort), sizeof(std::int16_t));
+    EXPECT_EQ(type_size(BufferType::UnsignedShort), sizeof(std::int16_t));
 }
 
 TEST(RawDataDecodeTest, TypeSizeShort) {
-  EXPECT_EQ(type_size(BufferType::Short), sizeof(std::int16_t));
+    EXPECT_EQ(type_size(BufferType::Short), sizeof(std::int16_t));
 }
 
 TEST(RawDataDecodeTest, TypeSizeInt32) {
-  EXPECT_EQ(type_size(BufferType::Int32), sizeof(std::int32_t));
+    EXPECT_EQ(type_size(BufferType::Int32), sizeof(std::int32_t));
 }
 
 TEST(RawDataDecodeTest, TypeSizeFloat32) {
-  EXPECT_EQ(type_size(BufferType::Float32), sizeof(float));
+    EXPECT_EQ(type_size(BufferType::Float32), sizeof(float));
 }
 
 TEST(RawDataDecodeTest, TypeSizeFloat64) {
-  EXPECT_EQ(type_size(BufferType::Float64), sizeof(double));
+    EXPECT_EQ(type_size(BufferType::Float64), sizeof(double));
 }
 
 TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_Empty) {
-  std::vector<std::byte> empty;
-  auto result = make_float_buffer_from_double(empty);
-  EXPECT_TRUE(result.empty());
+    std::vector<std::byte> empty;
+    auto result = make_float_buffer_from_double(empty);
+    EXPECT_TRUE(result.empty());
 }
 
 namespace {
 void TestSingleDoubleValue(double value) {
-  std::vector<std::byte> double_buffer(sizeof(double));
-  std::memcpy(double_buffer.data(), &value, sizeof(double));
-  const auto float_buffer = make_float_buffer_from_double(double_buffer);
-  EXPECT_EQ(float_buffer.size(), sizeof(float));
-  float result = 0.0f;
-  std::memcpy(&result, float_buffer.data(), sizeof(float));
-  EXPECT_FLOAT_EQ(result, static_cast<float>(value));
+    std::vector<std::byte> double_buffer(sizeof(double));
+    std::memcpy(double_buffer.data(), &value, sizeof(double));
+    const auto float_buffer = make_float_buffer_from_double(double_buffer);
+    EXPECT_EQ(float_buffer.size(), sizeof(float));
+    float result = 0.0f;
+    std::memcpy(&result, float_buffer.data(), sizeof(float));
+    EXPECT_FLOAT_EQ(result, static_cast<float>(value));
 }
 } // namespace
 
 TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_SingleValue) {
-  TestSingleDoubleValue(TEST_PI);
+    TestSingleDoubleValue(TEST_PI);
 }
 
 TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_MultipleValues) {
-  const std::vector<double> values = {TEST_VALUE_1, TEST_VALUE_2_5, TEST_PI,
-                                      TEST_VALUE_4, TEST_VALUE_5};
-  std::vector<std::byte> double_buffer(values.size() * sizeof(double));
-  std::memcpy(double_buffer.data(), values.data(), double_buffer.size());
-  const auto float_buffer = make_float_buffer_from_double(double_buffer);
+    const std::vector<double> values = {
+        TEST_VALUE_1, TEST_VALUE_2_5, TEST_PI, TEST_VALUE_4, TEST_VALUE_5};
+    std::vector<std::byte> double_buffer(values.size() * sizeof(double));
+    std::memcpy(double_buffer.data(), values.data(), double_buffer.size());
+    const auto float_buffer = make_float_buffer_from_double(double_buffer);
 
-  EXPECT_EQ(float_buffer.size(), values.size() * sizeof(float));
-  for (auto i = 0U; i < values.size(); ++i) {
-    float result = 0.0f;
-    std::memcpy(&result, float_buffer.data() + i * sizeof(float),
-                sizeof(float));
-    EXPECT_FLOAT_EQ(result, static_cast<float>(values[i]));
-  }
+    EXPECT_EQ(float_buffer.size(), values.size() * sizeof(float));
+    for (auto i = 0U; i < values.size(); ++i) {
+        float result = 0.0f;
+        std::memcpy(
+            &result, float_buffer.data() + i * sizeof(float), sizeof(float));
+        EXPECT_FLOAT_EQ(result, static_cast<float>(values[i]));
+    }
 }
 
 TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_LargeValue) {
-  TestSingleDoubleValue(TEST_LARGE_VALUE);
+    TestSingleDoubleValue(TEST_LARGE_VALUE);
 }
 
 TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_NegativeValue) {
-  TestSingleDoubleValue(TEST_NEGATIVE_VALUE);
+    TestSingleDoubleValue(TEST_NEGATIVE_VALUE);
 }
 
 TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_Zero) {
-  TestSingleDoubleValue(0.0);
+    TestSingleDoubleValue(0.0);
 }
