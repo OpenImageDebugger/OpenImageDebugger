@@ -21,4 +21,12 @@ Checks: >
   bugprone-misplaced-operator-in-strlen-in-alloc,
   bugprone-misplaced-pointer-arithmetic-in-alloc,
   bugprone-misplaced-widening-cast,
-  bugprone-move-forwarding-reference
+  bugprone-move-forwarding-reference,
+  readability-identifier-naming
+CheckOptions:
+  - key: readability-identifier-naming.EnumConstantCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.ClassConstantCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: UPPER_CASE
