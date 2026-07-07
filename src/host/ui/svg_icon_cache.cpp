@@ -43,7 +43,8 @@ namespace oid::host {
 namespace {
 
 // Maps an IconId to its embedded SVG source (headers generated from
-// src/resources/icons/*.svg, one "<name>_svg.h" per icon). Returns
+// the .svg files under src/resources/icons, one "<name>_svg.h" per
+// icon). Returns
 // {data, size}; every IconId has a matching array, so there is no
 // "not found" case.
 std::pair<const unsigned char*, std::size_t> svg_source_for(IconId id) {
