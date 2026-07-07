@@ -27,8 +27,8 @@
 #define TESTS_SUPPORT_SCRATCH_DIR_H_
 
 #include <filesystem>
+#include <format>
 #include <random>
-#include <sstream>
 #include <stdexcept>
 
 #include <gtest/gtest.h>
@@ -50,9 +50,9 @@ inline std::filesystem::path scratch_dir() {
     const fs::path base{::testing::TempDir()};
     std::random_device rd;
     for (int attempt = 0; attempt < 16; ++attempt) {
-        std::ostringstream name;
-        name << "oid_scratch_" << std::hex << rd() << rd();
-        const fs::path dir = base / name.str();
+        const std::string name =
+            std::format("oid_scratch_{:x}{:x}", rd(), rd());
+        const fs::path dir = base / name;
         if (fs::create_directory(dir)) { // atomic; false if name taken
             fs::permissions(
                 dir, fs::perms::owner_all, fs::perm_options::replace);
