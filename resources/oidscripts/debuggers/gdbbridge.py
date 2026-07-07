@@ -119,6 +119,21 @@ class GdbBridge(BridgeInterface):
                 elif gdb.TYPE_CODE_STRUCT == field.type.code:
                     self._get_observable_children_members(field, output_set, complete_symbol_name)
 
+    def _add_observable_symbol(self, symbol, name, observable_symbols):
+        # Check if the symbol is already observable
+        if self._type_bridge.is_symbol_observable(symbol, name):
+            observable_symbols.add(name)
+
+        # Special case to handle 'this'
+        elif name == 'this':
+            this_field = gdb.parse_and_eval(name).dereference().type.fields()
+            for field in this_field:
+                self._get_observable_children_members(field, observable_symbols, name)
+
+        # Check if we have a struct or a class
+        else:
+            self._get_observable_children_members(symbol, observable_symbols)
+
     def get_available_symbols(self):
         frame = gdb.selected_frame()
         block = frame.block()
@@ -126,21 +141,7 @@ class GdbBridge(BridgeInterface):
         while block is not None:
             for symbol in block:
                 if symbol.is_argument or symbol.is_variable:
-                    name = symbol.name
-
-                    # Check if the symbol is already observable
-                    if self._type_bridge.is_symbol_observable(symbol, name):
-                        observable_symbols.add(name)
-
-                    # Special case to handle 'this'
-                    elif name == 'this':
-                        this_field = gdb.parse_and_eval(name).dereference().type.fields()
-                        for field in this_field:
-                            self._get_observable_children_members(field, observable_symbols, name)
-
-                    # Check if we have a struct or a class
-                    else:
-                        self._get_observable_children_members(symbol, observable_symbols)
+                    self._add_observable_symbol(symbol, symbol.name, observable_symbols)
 
             block = block.superblock
 
