@@ -106,6 +106,75 @@ std::optional<oid::vec4> stage_coordinates(oid::Stage& stage,
     return mouse_pos;
 }
 
+// Negative sentinel: the Stage failed to initialize, or its camera
+// GameObject/component isn't set up yet, so zoom isn't known this frame.
+float compute_zoom_pct(oid::Stage* stage) {
+    float zoom_pct = -1.0f;
+    if (stage != nullptr) {
+        if (const oid::Camera* cam = camera_of(*stage); cam != nullptr) {
+            zoom_pct = cam->compute_zoom() * 100.0f;
+        }
+    }
+    return zoom_pct;
+}
+
+// Formats the hovered pixel's value text (coordinates + per-channel
+// values, plus float precision when applicable) — Qt parity with
+// MainWindow::update_status_bar in the legacy Qt frontend (see tag
+// legacy-qt).
+std::string format_pixel_value_text(const oid::Buffer& buffer,
+                                    oid::Stage& stage,
+                                    const int px,
+                                    const int py) {
+    auto pixel = std::stringstream{};
+    // Qt set fixed/setprecision(3) on its status stream (the legacy Qt
+    // frontend; see tag legacy-qt) and that stream state governs how
+    // get_pixel_info() prints float channels — replicate it or float
+    // values render with default precision.
+    pixel << std::fixed << std::setprecision(3);
+    pixel << "(" << px << ", " << py << ") val=";
+    buffer.get_pixel_info(pixel, px, py);
+    if (oid::BufferType::Float64 == buffer.type ||
+        oid::BufferType::Float32 == buffer.type) {
+        if (const oid::BufferValues* values = values_of(stage);
+            values != nullptr) {
+            pixel << " precision=[" << values->get_float_precision() << "]";
+        }
+    }
+    return pixel.str();
+}
+
+// Pixel value under the (last-hovered) cursor — Qt parity with
+// MainWindow::update_status_bar in the legacy Qt frontend (see tag
+// legacy-qt) minus its second zoom readout: this bar already shows one
+// above.
+// mouse_x()/mouse_y() persist the last hover position (main.cpp only
+// feeds them while the canvas is hovered), so the readout persists after
+// the cursor leaves the canvas, exactly like Qt's QLabel.
+std::optional<std::string> format_hovered_pixel_text(oid::Stage* stage,
+                                                     const GlfwCanvas& canvas) {
+    if (stage == nullptr) {
+        return std::nullopt;
+    }
+    const oid::Buffer* buffer = buffer_of(*stage);
+    if (buffer == nullptr) {
+        return std::nullopt;
+    }
+
+    const auto coords = stage_coordinates(*stage,
+                                          static_cast<float>(canvas.mouse_x()),
+                                          static_cast<float>(canvas.mouse_y()),
+                                          canvas.render_width(),
+                                          canvas.render_height());
+    if (!coords.has_value()) {
+        return std::nullopt;
+    }
+
+    const auto px = static_cast<int>(std::floor(coords->x()));
+    const auto py = static_cast<int>(std::floor(coords->y()));
+    return format_pixel_value_text(*buffer, *stage, px, py);
+}
+
 } // namespace
 
 void draw_status_bar(const UiState& ui,
@@ -120,16 +189,7 @@ void draw_status_bar(const UiState& ui,
         const BufferRecord& rec = model.at(sel);
 
         oid::Stage* stage = stages.selected_stage(sel);
-
-        // Negative sentinel: the Stage failed to initialize, or its camera
-        // GameObject/component isn't set up yet, so zoom isn't known this
-        // frame.
-        float zoom_pct = -1.0f;
-        if (stage != nullptr) {
-            if (const oid::Camera* cam = camera_of(*stage); cam != nullptr) {
-                zoom_pct = cam->compute_zoom() * 100.0f;
-            }
-        }
+        const float zoom_pct = compute_zoom_pct(stage);
 
         line = std::format("{}   [{}x{}]   {}",
                            rec.display_name,
@@ -141,46 +201,9 @@ void draw_status_bar(const UiState& ui,
                 std::format("   zoom: {}%", static_cast<int>(zoom_pct + 0.5f));
         }
 
-        // Pixel value under the (last-hovered) cursor — Qt parity with
-        // MainWindow::update_status_bar in the legacy Qt frontend (see tag
-        // legacy-qt) minus its second zoom readout: this bar already shows
-        // one above.
-        // mouse_x()/mouse_y() persist the last hover position
-        // (main.cpp only feeds them while the canvas is hovered), so
-        // the readout persists after the cursor leaves the canvas, exactly
-        // like Qt's QLabel.
-        if (stage != nullptr) {
-            if (const oid::Buffer* buffer = buffer_of(*stage);
-                buffer != nullptr) {
-                const auto coords =
-                    stage_coordinates(*stage,
-                                      static_cast<float>(canvas.mouse_x()),
-                                      static_cast<float>(canvas.mouse_y()),
-                                      canvas.render_width(),
-                                      canvas.render_height());
-                if (coords.has_value()) {
-                    const auto px = static_cast<int>(std::floor(coords->x()));
-                    const auto py = static_cast<int>(std::floor(coords->y()));
-                    auto pixel = std::stringstream{};
-                    // Qt set fixed/setprecision(3) on its status stream
-                    // (the legacy Qt frontend; see tag legacy-qt) and that
-                    // stream state governs how
-                    // get_pixel_info() prints float channels — replicate it or
-                    // float values render with default precision.
-                    pixel << std::fixed << std::setprecision(3);
-                    pixel << "(" << px << ", " << py << ") val=";
-                    buffer->get_pixel_info(pixel, px, py);
-                    if (oid::BufferType::Float64 == buffer->type ||
-                        oid::BufferType::Float32 == buffer->type) {
-                        if (const oid::BufferValues* values = values_of(*stage);
-                            values != nullptr) {
-                            pixel << " precision=["
-                                  << values->get_float_precision() << "]";
-                        }
-                    }
-                    line += "   " + pixel.str();
-                }
-            }
+        if (const auto pixel_text = format_hovered_pixel_text(stage, canvas);
+            pixel_text.has_value()) {
+            line += "   " + *pixel_text;
         }
     }
 
