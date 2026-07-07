@@ -247,6 +247,436 @@ void draw_canvas_pane(oid::host::GlfwCanvas& canvas,
     }
 }
 
+// Qt parity: the legacy Qt frontend's imageList minimumSize is 150
+// (width, 0 height; see tag legacy-qt); the left pane never shrinks
+// narrower than that.
+constexpr float kMinPaneW = 150.0f;
+// Splitter handle width. The handle is flush against the list pane and
+// painted, so this whole band is both visible and grabbable -- wide
+// enough to make a comfortable, easy-to-see target.
+constexpr float kSplitterW = 12.0f;
+
+// Initializes the GLFW backend window (at the saved size/position) and the
+// ImGui layer, then seeds the canvas-pane logical size to the window's
+// initial size. Returns false if either backend or ImGui failed to
+// initialize (main() then exits with status 1, exactly as it did inline).
+bool initialize_backend_and_ui(oid::host::GlfwHostBackend& backend,
+                               oid::host::ImGuiLayer& imgui,
+                               const oid::host::AppSettings& loaded,
+                               float& content_scale,
+                               PaneRenderSize& pane_size) {
+    if (!backend.initialize(
+            "OpenImageDebugger (ImGui)", loaded.window_w, loaded.window_h)) {
+        return false;
+    }
+
+    // Restore the saved window position only if it is still reachable (e.g.
+    // not on a monitor that has since been unplugged) -- otherwise leave it
+    // at whatever position the OS/window manager chose for the just-created
+    // window.
+    if (loaded.window_x.has_value() && loaded.window_y.has_value() &&
+        oid::host::GlfwHostBackend::window_visible_on(*loaded.window_x,
+                                                      *loaded.window_y,
+                                                      loaded.window_w,
+                                                      loaded.window_h,
+                                                      backend.monitors())) {
+        backend.set_window_position(*loaded.window_x, *loaded.window_y);
+    }
+
+    // HiDPI: query the window's content scale (e.g. 2x on Retina displays)
+    // up front so ImGuiLayer::initialize can rasterize the UI font atlas at
+    // physical resolution -- crisp text instead of a blurry upscaled bitmap
+    // font. Native: thin GLFW pass-through. Non-native: the GLFW shim doesn't
+    // track devicePixelRatio, so this queries it directly instead.
+    content_scale = oid::platform::initial_content_scale(backend.window());
+
+    if (!imgui.initialize(backend.window(), content_scale)) {
+        return false;
+    }
+
+    // Canvas-pane logical size (see the PaneRenderSize comment above),
+    // seeded to the window's initial logical size so GlfwCanvas's
+    // SizeProvider below never reports 0x0 before the first draw_canvas_pane
+    // call updates it to the actual pane size.
+    int ww = 0;
+    int wh = 0;
+    glfwGetWindowSize(backend.window(), &ww, &wh);
+    pane_size.width = (std::max)(1, ww);
+    pane_size.height = (std::max)(1, wh);
+
+    return true;
+}
+
+// Constructs the shared GlfwCanvas (SizeProvider bound to `pane_size`) and
+// resolves its OpenGL entry points. Returns false (after printing the same
+// diagnostic main() used to print inline) if entry-point resolution fails.
+bool create_canvas(GLFWwindow* window,
+                   PaneRenderSize& pane_size,
+                   std::shared_ptr<oid::host::GlfwCanvas>& canvas) {
+    // Stage's shared_ptr<RenderCanvas> needs shared ownership of the
+    // GlfwCanvas; since GlfwCanvas is non-copyable (it owns a unique_ptr GL
+    // entry-point table), make_shared is the clean way to get it into a
+    // shared_ptr without an aliasing/no-op-deleter stack-lifetime hazard.
+    // The SizeProvider makes render_width()/render_height() report the
+    // canvas PANE's render size (pane_size, kept live by draw_canvas_pane)
+    // rather than the whole window's framebuffer size -- see the
+    // PaneRenderSize comment above for why that distinction matters.
+    canvas = std::make_shared<oid::host::GlfwCanvas>(window, [&pane_size] {
+        return std::make_pair(pane_size.width, pane_size.height);
+    });
+    if (!canvas->load()) {
+        std::cerr << "[Error] failed to resolve OpenGL entry points\n";
+        return false;
+    }
+    return true;
+}
+
+// Aggregates references to the frame loop's per-main() state so the frame
+// lambda's body (originally ~180 lines, all under one capture list) can be
+// split into named helpers below without re-threading each one's own
+// parameter list. Every member is a reference to a main()-local that
+// outlives the frame loop (the loop runs to completion inside main()), so
+// holding references here is safe; nothing here is copied out of the
+// locals the lambda used to mutate through its capture list.
+struct FrameContext {
+    oid::host::IpcClient& ipc;
+    oid::host::UiState& ui;
+    oid::host::ThumbnailCache& thumbnails;
+    oid::host::IpcBufferModel& model;
+    oid::host::GlfwHostBackend& backend;
+    bool& goto_open;
+    oid::host::StageManager& stages;
+    oid::host::SvgIconCache& svg_icons;
+    float& left_pane_w;
+    oid::host::ExportDialogState& export_dialog;
+    std::string& last_export_dir;
+    std::shared_ptr<oid::host::GlfwCanvas>& canvas;
+    oid::host::StageView& view;
+    PaneRenderSize& pane_size;
+    std::set<std::string, std::less<>>& seen_this_session;
+    std::vector<oid::host::PreviousBuffer>& prev_buffers;
+    oid::platform::SessionBridge& session_bridge;
+    oid::host::SettingsSaver& saver;
+};
+
+// Drains inbound IPC and reconciles the buffer-list thumbnail cache for
+// this frame; must run before any panel below reads the model.
+void poll_ipc_and_update_thumbnails(FrameContext& ctx) {
+    // Drain inbound IPC before drawing anything this frame, so the
+    // model (and thus every panel below) reflects the debugger's
+    // latest state, and refresh the symbol-search candidate list
+    // from it.
+    ctx.ipc.poll();
+    ctx.ui.set_available_symbols(ctx.ipc.available_symbols());
+
+    // Buffer-list thumbnails: reset the per-frame icon-render budget
+    // and drop cached textures for buffers no longer in the model,
+    // now that ipc.poll() above has reconciled the model for this
+    // frame.
+    ctx.thumbnails.begin_frame();
+    std::vector<std::string> live_buffer_names;
+    live_buffer_names.reserve(ctx.model.size());
+    for (std::size_t i = 0; i < ctx.model.size(); ++i) {
+        live_buffer_names.push_back(ctx.model.variable_name_of(i));
+    }
+    ctx.thumbnails.evict_missing(live_buffer_names);
+}
+
+// Draws the menu bar and handles the frame's global keyboard shortcuts
+// (quit, go-to toggle, symbol-search focus). Returns whether the symbol
+// search box should claim focus this frame (draw_main_ui's search panel
+// acts on it).
+bool process_menu_and_shortcuts(FrameContext& ctx) {
+    bool request_quit = false;
+    oid::host::draw_menu_bar(request_quit);
+    if (request_quit) {
+        glfwSetWindowShouldClose(ctx.backend.window(), 1);
+    }
+
+    // Primary shortcut modifier: accept EITHER Ctrl or Cmd/Super so
+    // the shortcuts follow each platform's convention without a
+    // compile-time split. On macOS the Qt app binds "Ctrl+..." to Cmd,
+    // so Cmd must work; on Linux/Windows it is Ctrl. This matters for
+    // non-native builds too: the GLFW shim maps the host's metaKey to
+    // GLFW_MOD_SUPER -> io.KeySuper, so a compile-time __APPLE__ split
+    // (undefined on non-native builds) would wrongly force Ctrl-only
+    // even on macOS. Accepting both is harmless: Ctrl+K/Ctrl+L collide
+    // with nothing, and Ctrl stays as a reliable fallback wherever the
+    // host reserves Cmd (e.g. a full tab's Cmd+L address bar; the
+    // embedding host's webview does deliver Cmd).
+    const bool shortcut_mod = ImGui::GetIO().KeyCtrl || ImGui::GetIO().KeySuper;
+
+    // Ctrl+L (Cmd+L on macOS) toggles the go-to widget (parity
+    // with the Qt app's toggle_go_to_dialog() global QShortcut). A
+    // modified key is never text input, so this fires even while a
+    // text field holds focus -- NOT gated on WantCaptureKeyboard
+    // (see shortcuts.h).
+    if (oid::host::should_fire_ctrl_shortcut(
+            shortcut_mod, ImGui::IsKeyPressed(ImGuiKey_L, /*repeat=*/false))) {
+        ctx.goto_open = !ctx.goto_open;
+    }
+    oid::host::draw_goto_panel(
+        ctx.ui, ctx.stages, ctx.goto_open, ctx.svg_icons);
+
+    // Ctrl+K (Cmd+K on macOS) focuses the symbol search box
+    // (parity with the Qt app's global QShortcut calling
+    // symbolList->setFocus()). Computed once per frame, before the
+    // panel draws, so draw_symbol_search() can act on it the same
+    // frame. Like Ctrl+L, it fires regardless of keyboard capture
+    // (a modified key is not text input) and reuses the same
+    // platform modifier (shortcut_mod).
+    bool focus_symbol_search = false;
+    if (oid::host::should_fire_ctrl_shortcut(
+            shortcut_mod, ImGui::IsKeyPressed(ImGuiKey_K, /*repeat=*/false))) {
+        focus_symbol_search = true;
+    }
+    return focus_symbol_search;
+}
+
+// Draws the app-chrome host body: menu-bar-adjacent layout math, the left
+// (buffer list) pane, the draggable splitter, the right (canvas) pane, and
+// the status bar. `focus_symbol_search` comes from
+// process_menu_and_shortcuts (Ctrl+K), computed earlier in the frame so the
+// symbol-search panel can act on it this same frame.
+void draw_main_ui(FrameContext& ctx, bool focus_symbol_search) {
+    // Host body: fills the viewport work area (BeginMainMenuBar
+    // already shrank vp->WorkPos/WorkSize to sit below the menu
+    // bar). Fixed pos/size, no title bar, no move/resize/scrollbar
+    // -- this is the app-chrome frame the LEFT (buffer list) and
+    // RIGHT (canvas) panes and the status bar sit inside.
+    const ImGuiViewport* vp = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(vp->WorkPos);
+    ImGui::SetNextWindowSize(vp->WorkSize);
+    // Qt parity: centralwidget's QHBoxLayout has 4/4/4/4 margins
+    // (leftMargin/topMargin/rightMargin/bottomMargin; see tag
+    // legacy-qt).
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
+    if (const ImGuiWindowFlags host_flags =
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+            ImGuiWindowFlags_NoBringToFrontOnFocus;
+        ImGui::Begin("##host_body", nullptr, host_flags)) {
+        // Reserve the status-bar strip from font metrics (a
+        // Separator + one text line) rather than a fixed literal, so
+        // it scales with the HiDPI-rasterized UI font set up in
+        // setup_ui_fonts() -- otherwise the status text clips on
+        // Retina displays.
+        const float status_h = ImGui::GetTextLineHeightWithSpacing() +
+                               ImGui::GetStyle().ItemSpacing.y;
+        const float avail_h =
+            (std::max)(ImGui::GetContentRegionAvail().y - status_h, 0.0f);
+        // Qt parity for the splitter's right-hand stop: QSplitter
+        // stops when frame_image hits its layout minimum, which is
+        // dominated by the toolbar row (9 fixed-26px buttons +
+        // "Format:" label + the 100px combo, with a spacing gap
+        // between each of the 11 items). Reserve that width for the
+        // canvas pane instead of a flat kMinPaneW.
+        const float min_canvas_w = 9.0f * 26.0f +
+                                   ImGui::CalcTextSize("Format:").x + 100.0f +
+                                   10.0f * ImGui::GetStyle().ItemSpacing.x;
+        const float max_pane_w = (std::max)(ImGui::GetContentRegionAvail().x -
+                                                min_canvas_w - kSplitterW,
+                                            kMinPaneW);
+        ctx.left_pane_w = std::clamp(ctx.left_pane_w, kMinPaneW, max_pane_w);
+
+        // Left pane: buffer list (icon thumbnails, text rows,
+        // selection, delete -- see thumbnail_cache.h).
+        ImGui::BeginChild(
+            "##list_pane", ImVec2(ctx.left_pane_w, avail_h), true);
+        // Symbol search sits above the buffer list (parity with the
+        // Qt app's layout: SymbolSearchInput above the buffer list
+        // widget).
+        oid::host::draw_symbol_search(ctx.ui, ctx.ipc, focus_symbol_search);
+        oid::host::draw_buffer_list(ctx.ui,
+                                    ctx.model,
+                                    ctx.ipc,
+                                    ctx.stages,
+                                    ctx.thumbnails,
+                                    ctx.export_dialog,
+                                    ctx.last_export_dir);
+        ImGui::EndChild();
+
+        // Draggable splitter handle, flush against the list pane's
+        // right edge. ctx.left_pane_w refers to a main() local, so
+        // the width persists frame to
+        // frame and
+        // across selection changes (parity with QSplitter's draggable
+        // handle).
+        //
+        // SameLine(0,0) on both sides is load-bearing: a plain
+        // SameLine() inserts the default ItemSpacing.x (~8px) of dead,
+        // non-grabbable space before AND after this button, which both
+        // offsets the 6px grab band ~8px to the right of the visible
+        // divider the user aims at and leaves an 8px gap before the
+        // canvas begins. The net effect is a splitter that only grabs
+        // from a narrow sliver (feels like it "works only sometimes")
+        // while clicks just past it fall onto the canvas and pan the
+        // image (feels like "the background drags the image"). On
+        // non-native builds the resize cursor is also stubbed out by
+        // the GLFW shim, so a mis-aimed grab gives no feedback -- hence
+        // painting the handle (below) so there is something visible to
+        // aim at.
+        ImGui::SameLine(0.0f, 0.0f);
+        ImGui::InvisibleButton("##vsplit", ImVec2(kSplitterW, avail_h));
+        const bool split_hot = ImGui::IsItemHovered() || ImGui::IsItemActive();
+        if (split_hot) {
+            ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        }
+        if (ImGui::IsItemActive()) {
+            ctx.left_pane_w =
+                std::clamp(ctx.left_pane_w + ImGui::GetIO().MouseDelta.x,
+                           kMinPaneW,
+                           max_pane_w);
+        }
+        // Paint the handle so it reads as a grabbable divider.
+        ImGui::GetWindowDrawList()->AddRectFilled(
+            ImGui::GetItemRectMin(),
+            ImGui::GetItemRectMax(),
+            ImGui::GetColorU32(split_hot ? ImGuiCol_SeparatorActive
+                                         : ImGuiCol_Separator));
+
+        ImGui::SameLine(0.0f, 0.0f);
+
+        // Right pane: the canvas. NoScrollWithMouse so the wheel
+        // reaches zoom instead of scrolling the child.
+        ImGui::BeginChild("##canvas_pane",
+                          ImVec2(0, avail_h),
+                          false,
+                          ImGuiWindowFlags_NoScrollbar |
+                              ImGuiWindowFlags_NoScrollWithMouse);
+        // Qt parity: frame_image's QVBoxLayout (see tag legacy-qt)
+        // spaces its rows (toolbar, canvas) 3px apart; only the Y
+        // component changes so horizontal spacing inside the
+        // toolbar row is unaffected.
+        ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 3.0f);
+        // Toolbar first so draw_canvas_pane's
+        // GetContentRegionAvail() (used to size the offscreen
+        // texture below) reflects the space left after this row,
+        // not the whole pane.
+        oid::host::draw_toolbar(ctx.ui, ctx.stages, ctx.model, ctx.goto_open);
+        // Contrast min/max editor for the selected buffer, above
+        // the canvas (parity with the legacy Qt frontend's
+        // minMaxEditor row in frame_image's QVBoxLayout; see tag
+        // legacy-qt); shown only while the toolbar's acEdit toggle
+        // is on (parity with Qt's acEdit -> minMaxEditor visibility
+        // binding).
+        if (ctx.ui.ac_editor_visible()) {
+            oid::host::draw_contrast_panel(ctx.ui, ctx.stages, ctx.svg_icons);
+        }
+        if (oid::Stage* sel = ctx.stages.selected_stage(ctx.ui.selected());
+            sel != nullptr) {
+            draw_canvas_pane(*ctx.canvas,
+                             ctx.view,
+                             *sel,
+                             ctx.ui,
+                             ctx.stages,
+                             ctx.model,
+                             ctx.pane_size);
+        }
+        // else: selected buffer's Stage failed to initialize (or
+        // the model is empty); skip rendering the canvas this
+        // frame, but keep the rest of the UI going.
+        ImGui::PopStyleVar();
+        ImGui::EndChild();
+
+        ImGui::Separator();
+        oid::host::draw_status_bar(ctx.ui, ctx.model, ctx.stages, *ctx.canvas);
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+}
+
+// Looks up the confirmed export's target buffer (by model index -> live
+// Stage -> Buffer component, mirroring the Qt app's
+// UIEventHandler::export_buffer() lookup chain; see panel_accessors.h's
+// buffer_of()) and performs the export if found. Early-returns (leaving
+// `status` empty) on each lookup miss instead of nesting three deep,
+// preserving the original guard order and side effects exactly.
+void export_confirmed_buffer(FrameContext& ctx, std::string& status) {
+    const auto idx = ctx.ui.model_index_of(ctx.export_dialog.buffer_name);
+    if (!idx.has_value()) {
+        return;
+    }
+    oid::Stage* stage = ctx.stages.stage_for(*idx);
+    if (stage == nullptr) {
+        return;
+    }
+    const oid::Buffer* buffer = oid::host::buffer_of(*stage);
+    if (buffer == nullptr) {
+        return;
+    }
+    oid::platform::perform_export(
+        *buffer, ctx.export_dialog, ctx.ipc, status, ctx.last_export_dir);
+}
+
+// Export dialog: drawn outside the host-body window (a modal popup
+// doesn't need to be nested inside one). On Save, exports the selected
+// buffer and records the outcome in the status bar. A successful export
+// also updates `last_export_dir` from the saved file's parent directory,
+// so the next dialog open (and the persisted settings snapshot) default
+// to it.
+void handle_export_requests(FrameContext& ctx) {
+    if (!oid::platform::confirm_export(ctx.export_dialog)) {
+        return;
+    }
+    // perform_export always sets a non-empty status, so an empty
+    // status afterwards means the buffer lookup failed (deleted
+    // between dialog-open and confirm).
+    std::string status;
+    export_confirmed_buffer(ctx, status);
+    if (status.empty()) {
+        status = "Export failed: " + ctx.export_dialog.buffer_name;
+    }
+    ctx.ui.set_status_message(status);
+}
+
+// Recomputes the merged previous-buffers list, builds a live settings
+// snapshot, and hands it to the saver (debounced disk/IPC write).
+void persist_settings_if_dirty(FrameContext& ctx) {
+    // Settings persistence: recompute the merged
+    // previous-buffers list from this frame's model contents, build
+    // a live AppSettings snapshot, and hand it to the saver, which
+    // debounces the actual disk write. Cheap: bounded by the number
+    // of currently-loaded buffers, no I/O unless the saver decides
+    // to flush.
+    for (std::size_t i = 0; i < ctx.model.size(); ++i) {
+        ctx.seen_this_session.insert(ctx.model.variable_name_of(i));
+    }
+    std::vector<std::string> loaded_names;
+    loaded_names.reserve(ctx.model.size());
+    for (std::size_t i = 0; i < ctx.model.size(); ++i) {
+        loaded_names.push_back(ctx.model.variable_name_of(i));
+    }
+    const auto now_s = static_cast<std::int64_t>(
+        std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+            .count());
+    ctx.prev_buffers = oid::host::merge_previous_buffers(
+        ctx.prev_buffers, loaded_names, ctx.seen_this_session, now_s);
+
+    oid::host::AppSettings live;
+    const auto [ww, wh] = ctx.backend.window_size();
+    const auto [wx, wy] = ctx.backend.window_position();
+    live.window_w = ww;
+    live.window_h = wh;
+    live.window_x = wx;
+    live.window_y = wy;
+    live.left_pane_w = ctx.left_pane_w;
+    live.contrast_enabled = ctx.ui.contrast_enabled();
+    live.link_views = ctx.ui.link_views();
+    live.previous_buffers = ctx.prev_buffers;
+    live.last_export_dir = ctx.last_export_dir;
+    // Hold off saving until the platform says persisting is safe
+    // (see SessionBridge::can_persist -- non-native builds gate on the
+    // embedding host's first real session-state update, so a
+    // default/empty snapshot doesn't get echoed back and overwrite the
+    // persisted buffer list; native is always safe).
+    if (ctx.session_bridge.can_persist()) {
+        ctx.saver.update(live, glfwGetTime());
+    }
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -272,64 +702,16 @@ int main(int argc, char** argv) {
     const oid::host::AppSettings loaded = settings_backend.load();
 
     oid::host::GlfwHostBackend backend;
-    if (!backend.initialize(
-            "OpenImageDebugger (ImGui)", loaded.window_w, loaded.window_h)) {
-        return 1;
-    }
-
-    // Restore the saved window position only if it is still reachable (e.g.
-    // not on a monitor that has since been unplugged) -- otherwise leave it
-    // at whatever position the OS/window manager chose for the just-created
-    // window.
-    if (loaded.window_x.has_value() && loaded.window_y.has_value() &&
-        oid::host::GlfwHostBackend::window_visible_on(*loaded.window_x,
-                                                      *loaded.window_y,
-                                                      loaded.window_w,
-                                                      loaded.window_h,
-                                                      backend.monitors())) {
-        backend.set_window_position(*loaded.window_x, *loaded.window_y);
-    }
-
-    // HiDPI: query the window's content scale (e.g. 2x on Retina displays)
-    // up front so ImGuiLayer::initialize can rasterize the UI font atlas at
-    // physical resolution -- crisp text instead of a blurry upscaled bitmap
-    // font. Native: thin GLFW pass-through. Non-native: the GLFW shim doesn't
-    // track devicePixelRatio, so this queries it directly instead.
-    const float content_scale =
-        oid::platform::initial_content_scale(backend.window());
-
     oid::host::ImGuiLayer imgui;
-    if (!imgui.initialize(backend.window(), content_scale)) {
+    float content_scale = 0.0f;
+    PaneRenderSize pane_size{};
+    if (!initialize_backend_and_ui(
+            backend, imgui, loaded, content_scale, pane_size)) {
         return 1;
     }
 
-    // Canvas-pane logical size (see the PaneRenderSize comment above),
-    // seeded to the window's initial logical size so GlfwCanvas's
-    // SizeProvider below never reports 0x0 before the first draw_canvas_pane
-    // call updates it to the actual pane size.
-    PaneRenderSize pane_size{};
-    {
-        int ww = 0;
-        int wh = 0;
-        glfwGetWindowSize(backend.window(), &ww, &wh);
-        pane_size.width = (std::max)(1, ww);
-        pane_size.height = (std::max)(1, wh);
-    }
-
-    // Stage's shared_ptr<RenderCanvas> needs shared ownership of the
-    // GlfwCanvas; since GlfwCanvas is non-copyable (it owns a unique_ptr GL
-    // entry-point table), make_shared is the clean way to get it into a
-    // shared_ptr without an aliasing/no-op-deleter stack-lifetime hazard.
-    // The SizeProvider makes render_width()/render_height() report the
-    // canvas PANE's render size (pane_size, kept live by draw_canvas_pane)
-    // rather than the whole window's framebuffer size -- see the
-    // PaneRenderSize comment above for why that distinction matters.
-    auto canvas =
-        std::make_shared<oid::host::GlfwCanvas>(backend.window(), [&pane_size] {
-            return std::make_pair(pane_size.width, pane_size.height);
-        });
-    if (!canvas->load()) {
-        std::cerr << "[Error] failed to resolve OpenGL entry points\n";
+    std::shared_ptr<oid::host::GlfwCanvas> canvas;
+    if (!create_canvas(backend.window(), pane_size, canvas)) {
         return 1;
     }
 
@@ -348,14 +730,15 @@ int main(int argc, char** argv) {
     // Left pane (buffer list) width in screen points; set by apply_settings
     // below (startup: from the loaded settings; non-native: also every time a
     // session-state update arrives mid-session). Lives here (not `static`) so
-    // it persists across frames as the user drags the splitter via the loop
-    // lambda's [&] capture (parity with the Qt app's QSplitter, which
+    // it persists across frames as the user drags the splitter via the
+    // FrameContext reference (parity with the Qt app's QSplitter, which
     // remembers its handle position for the life of the window).
     float left_pane_w = 0.0f;
 
     // Export dialog's default path (see `export_dialog` below) and the
     // persisted previous-buffer list; hoisted up here -- alongside
-    // `left_pane_w` -- so apply_settings's [&] capture can reach them too:
+    // `left_pane_w` -- so apply_settings's explicit captures can reach them
+    // too:
     // a restored/pushed settings snapshot (native startup, or a non-native
     // mid-session session-state update) must feed back into the outgoing
     // per-frame settings snapshot built near the end of the frame lambda
@@ -408,16 +791,7 @@ int main(int argc, char** argv) {
 
     oid::host::StageView view{*canvas};
 
-    // Qt parity: the legacy Qt frontend's imageList minimumSize is 150
-    // (width, 0 height; see tag legacy-qt); the left pane never shrinks
-    // narrower than that.
-    static constexpr float kMinPaneW = 150.0f;
-    // Splitter handle width. The handle is flush against the list pane and
-    // painted, so this whole band is both visible and grabbable -- wide
-    // enough to make a comfortable, easy-to-see target.
-    constexpr float kSplitterW = 12.0f;
-
-    // Go-to widget's open flag, kept alive by the loop lambda's [&] capture.
+    // Go-to widget's open flag, kept alive across frames via FrameContext.
     bool goto_open = false;
 
     // Export dialog: one long-lived ExportDialogState
@@ -470,329 +844,52 @@ int main(int argc, char** argv) {
                                    settings_backend.make_save_sink(ipc)};
     std::set<std::string, std::less<>> seen_this_session;
 
-    oid::host::FrameLoop loop{
-        backend,
-        [&ipc,
-         &ui,
-         &thumbnails,
-         &model,
-         &imgui,
-         &backend,
-         &goto_open,
-         &stages,
-         &svg_icons,
-         &left_pane_w,
-         &export_dialog,
-         &last_export_dir,
-         &canvas,
-         &view,
-         &pane_size,
-         &seen_this_session,
-         &prev_buffers,
-         &session_bridge,
-         &saver] {
-            // Drain inbound IPC before drawing anything this frame, so the
-            // model (and thus every panel below) reflects the debugger's
-            // latest state, and refresh the symbol-search candidate list
-            // from it.
-            ipc.poll();
-            ui.set_available_symbols(ipc.available_symbols());
+    // FrameContext bundles the frame loop's state so the frame lambda's body
+    // (originally one ~180-line block under a 19-entry capture list) can be
+    // split into named helpers instead of re-threading each one's own
+    // parameter list; see the FrameContext comment above. Every referenced
+    // object is a main() local declared above, so all of them outlive the
+    // frame loop below.
+    FrameContext ctx{ipc,
+                     ui,
+                     thumbnails,
+                     model,
+                     backend,
+                     goto_open,
+                     stages,
+                     svg_icons,
+                     left_pane_w,
+                     export_dialog,
+                     last_export_dir,
+                     canvas,
+                     view,
+                     pane_size,
+                     seen_this_session,
+                     prev_buffers,
+                     session_bridge,
+                     saver};
 
-            // Buffer-list thumbnails: reset the per-frame icon-render budget
-            // and drop cached textures for buffers no longer in the model,
-            // now that ipc.poll() above has reconciled the model for this
-            // frame.
-            thumbnails.begin_frame();
-            std::vector<std::string> live_buffer_names;
-            live_buffer_names.reserve(model.size());
-            for (std::size_t i = 0; i < model.size(); ++i) {
-                live_buffer_names.push_back(model.variable_name_of(i));
-            }
-            thumbnails.evict_missing(live_buffer_names);
+    oid::host::FrameLoop loop{backend, [&ctx, &imgui] {
+                                  poll_ipc_and_update_thumbnails(ctx);
 
-            // Canvas sizing + HiDPI is handled in ImGuiLayer::begin_frame's
-            // hidpi_sync() (non-native): it makes the canvas track its
-            // container and drives the drawing buffer + ImGui display metrics
-            // from the device pixel ratio. Nothing to do here.
+                                  // Canvas sizing + HiDPI is handled in
+                                  // ImGuiLayer::begin_frame's hidpi_sync()
+                                  // (non-native): it makes the canvas track its
+                                  // container and drives the drawing buffer +
+                                  // ImGui display metrics from the device pixel
+                                  // ratio. Nothing to do here.
 
-            imgui.begin_frame();
+                                  imgui.begin_frame();
 
-            bool request_quit = false;
-            oid::host::draw_menu_bar(request_quit);
-            if (request_quit) {
-                glfwSetWindowShouldClose(backend.window(), 1);
-            }
+                                  const bool focus_symbol_search =
+                                      process_menu_and_shortcuts(ctx);
+                                  draw_main_ui(ctx, focus_symbol_search);
+                                  handle_export_requests(ctx);
 
-            // Primary shortcut modifier: accept EITHER Ctrl or Cmd/Super so
-            // the shortcuts follow each platform's convention without a
-            // compile-time split. On macOS the Qt app binds "Ctrl+..." to Cmd,
-            // so Cmd must work; on Linux/Windows it is Ctrl. This matters for
-            // non-native builds too: the GLFW shim maps the host's metaKey to
-            // GLFW_MOD_SUPER -> io.KeySuper, so a compile-time __APPLE__ split
-            // (undefined on non-native builds) would wrongly force Ctrl-only
-            // even on macOS. Accepting both is harmless: Ctrl+K/Ctrl+L collide
-            // with nothing, and Ctrl stays as a reliable fallback wherever the
-            // host reserves Cmd (e.g. a full tab's Cmd+L address bar; the
-            // embedding host's webview does deliver Cmd).
-            const bool shortcut_mod =
-                ImGui::GetIO().KeyCtrl || ImGui::GetIO().KeySuper;
+                                  imgui.render();
 
-            // Ctrl+L (Cmd+L on macOS) toggles the go-to widget (parity
-            // with the Qt app's toggle_go_to_dialog() global QShortcut). A
-            // modified key is never text input, so this fires even while a
-            // text field holds focus -- NOT gated on WantCaptureKeyboard
-            // (see shortcuts.h).
-            if (oid::host::should_fire_ctrl_shortcut(
-                    shortcut_mod,
-                    ImGui::IsKeyPressed(ImGuiKey_L, /*repeat=*/false))) {
-                goto_open = !goto_open;
-            }
-            oid::host::draw_goto_panel(ui, stages, goto_open, svg_icons);
-
-            // Ctrl+K (Cmd+K on macOS) focuses the symbol search box
-            // (parity with the Qt app's global QShortcut calling
-            // symbolList->setFocus()). Computed once per frame, before the
-            // panel draws, so draw_symbol_search() can act on it the same
-            // frame. Like Ctrl+L, it fires regardless of keyboard capture
-            // (a modified key is not text input) and reuses the same
-            // platform modifier (shortcut_mod).
-            bool focus_symbol_search = false;
-            if (oid::host::should_fire_ctrl_shortcut(
-                    shortcut_mod,
-                    ImGui::IsKeyPressed(ImGuiKey_K, /*repeat=*/false))) {
-                focus_symbol_search = true;
-            }
-
-            // Host body: fills the viewport work area (BeginMainMenuBar
-            // already shrank vp->WorkPos/WorkSize to sit below the menu
-            // bar). Fixed pos/size, no title bar, no move/resize/scrollbar
-            // -- this is the app-chrome frame the LEFT (buffer list) and
-            // RIGHT (canvas) panes and the status bar sit inside.
-            const ImGuiViewport* vp = ImGui::GetMainViewport();
-            ImGui::SetNextWindowPos(vp->WorkPos);
-            ImGui::SetNextWindowSize(vp->WorkSize);
-            // Qt parity: centralwidget's QHBoxLayout has 4/4/4/4 margins
-            // (leftMargin/topMargin/rightMargin/bottomMargin; see tag
-            // legacy-qt).
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
-            if (const ImGuiWindowFlags host_flags =
-                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
-                    ImGuiWindowFlags_NoScrollbar |
-                    ImGuiWindowFlags_NoScrollWithMouse |
-                    ImGuiWindowFlags_NoBringToFrontOnFocus;
-                ImGui::Begin("##host_body", nullptr, host_flags)) {
-                // Reserve the status-bar strip from font metrics (a
-                // Separator + one text line) rather than a fixed literal, so
-                // it scales with the HiDPI-rasterized UI font set up in
-                // setup_ui_fonts() -- otherwise the status text clips on
-                // Retina displays.
-                const float status_h = ImGui::GetTextLineHeightWithSpacing() +
-                                       ImGui::GetStyle().ItemSpacing.y;
-                const float avail_h =
-                    (std::max)(ImGui::GetContentRegionAvail().y - status_h,
-                               0.0f);
-                // Qt parity for the splitter's right-hand stop: QSplitter
-                // stops when frame_image hits its layout minimum, which is
-                // dominated by the toolbar row (9 fixed-26px buttons +
-                // "Format:" label + the 100px combo, with a spacing gap
-                // between each of the 11 items). Reserve that width for the
-                // canvas pane instead of a flat kMinPaneW.
-                const float min_canvas_w =
-                    9.0f * 26.0f + ImGui::CalcTextSize("Format:").x + 100.0f +
-                    10.0f * ImGui::GetStyle().ItemSpacing.x;
-                const float max_pane_w =
-                    (std::max)(ImGui::GetContentRegionAvail().x - min_canvas_w -
-                                   kSplitterW,
-                               kMinPaneW);
-                left_pane_w = std::clamp(left_pane_w, kMinPaneW, max_pane_w);
-
-                // Left pane: buffer list (icon thumbnails, text rows,
-                // selection, delete -- see thumbnail_cache.h).
-                ImGui::BeginChild(
-                    "##list_pane", ImVec2(left_pane_w, avail_h), true);
-                // Symbol search sits above the buffer list (parity with the
-                // Qt app's layout: SymbolSearchInput above the buffer list
-                // widget).
-                oid::host::draw_symbol_search(ui, ipc, focus_symbol_search);
-                oid::host::draw_buffer_list(ui,
-                                            model,
-                                            ipc,
-                                            stages,
-                                            thumbnails,
-                                            export_dialog,
-                                            last_export_dir);
-                ImGui::EndChild();
-
-                // Draggable splitter handle, flush against the list pane's
-                // right edge. left_pane_w is captured by reference from
-                // outside the lambda above, so the width persists frame to
-                // frame and
-                // across selection changes (parity with QSplitter's draggable
-                // handle).
-                //
-                // SameLine(0,0) on both sides is load-bearing: a plain
-                // SameLine() inserts the default ItemSpacing.x (~8px) of dead,
-                // non-grabbable space before AND after this button, which both
-                // offsets the 6px grab band ~8px to the right of the visible
-                // divider the user aims at and leaves an 8px gap before the
-                // canvas begins. The net effect is a splitter that only grabs
-                // from a narrow sliver (feels like it "works only sometimes")
-                // while clicks just past it fall onto the canvas and pan the
-                // image (feels like "the background drags the image"). On
-                // non-native builds the resize cursor is also stubbed out by
-                // the GLFW shim, so a mis-aimed grab gives no feedback -- hence
-                // painting the handle (below) so there is something visible to
-                // aim at.
-                ImGui::SameLine(0.0f, 0.0f);
-                ImGui::InvisibleButton("##vsplit", ImVec2(kSplitterW, avail_h));
-                const bool split_hot =
-                    ImGui::IsItemHovered() || ImGui::IsItemActive();
-                if (split_hot) {
-                    ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
-                }
-                if (ImGui::IsItemActive()) {
-                    left_pane_w =
-                        std::clamp(left_pane_w + ImGui::GetIO().MouseDelta.x,
-                                   kMinPaneW,
-                                   max_pane_w);
-                }
-                // Paint the handle so it reads as a grabbable divider.
-                ImGui::GetWindowDrawList()->AddRectFilled(
-                    ImGui::GetItemRectMin(),
-                    ImGui::GetItemRectMax(),
-                    ImGui::GetColorU32(split_hot ? ImGuiCol_SeparatorActive
-                                                 : ImGuiCol_Separator));
-
-                ImGui::SameLine(0.0f, 0.0f);
-
-                // Right pane: the canvas. NoScrollWithMouse so the wheel
-                // reaches zoom instead of scrolling the child.
-                ImGui::BeginChild("##canvas_pane",
-                                  ImVec2(0, avail_h),
-                                  false,
-                                  ImGuiWindowFlags_NoScrollbar |
-                                      ImGuiWindowFlags_NoScrollWithMouse);
-                // Qt parity: frame_image's QVBoxLayout (see tag legacy-qt)
-                // spaces its rows (toolbar, canvas) 3px apart; only the Y
-                // component changes so horizontal spacing inside the
-                // toolbar row is unaffected.
-                ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 3.0f);
-                // Toolbar first so draw_canvas_pane's
-                // GetContentRegionAvail() (used to size the offscreen
-                // texture below) reflects the space left after this row,
-                // not the whole pane.
-                oid::host::draw_toolbar(ui, stages, model, goto_open);
-                // Contrast min/max editor for the selected buffer, above
-                // the canvas (parity with the legacy Qt frontend's
-                // minMaxEditor row in frame_image's QVBoxLayout; see tag
-                // legacy-qt); shown only while the toolbar's acEdit toggle
-                // is on (parity with Qt's acEdit -> minMaxEditor visibility
-                // binding).
-                if (ui.ac_editor_visible()) {
-                    oid::host::draw_contrast_panel(ui, stages, svg_icons);
-                }
-                if (oid::Stage* sel = stages.selected_stage(ui.selected());
-                    sel != nullptr) {
-                    draw_canvas_pane(
-                        *canvas, view, *sel, ui, stages, model, pane_size);
-                }
-                // else: selected buffer's Stage failed to initialize (or
-                // the model is empty); skip rendering the canvas this
-                // frame, but keep the rest of the UI going.
-                ImGui::PopStyleVar();
-                ImGui::EndChild();
-
-                ImGui::Separator();
-                oid::host::draw_status_bar(ui, model, stages, *canvas);
-            }
-            ImGui::End();
-            ImGui::PopStyleVar();
-
-            // Export dialog: drawn outside the host-body
-            // window (a modal popup doesn't need to be nested inside one).
-            // On Save, look up the target buffer's live Stage/Buffer
-            // component the same way the Qt app's
-            // UIEventHandler::export_buffer() does (stage's "buffer"
-            // GameObject -> "buffer_component"; see panel_accessors.h's
-            // buffer_of()), export it, and record the outcome in the
-            // status bar. A successful export also updates
-            // `last_export_dir` from the saved file's parent directory, so
-            // the next dialog open (and the persisted settings snapshot
-            // below) default to it.
-            if (const bool export_confirmed =
-                    oid::platform::confirm_export(export_dialog);
-                export_confirmed) {
-                // perform_export always sets a non-empty status, so an empty
-                // status afterwards means the buffer lookup failed (deleted
-                // between dialog-open and confirm).
-                std::string status;
-                if (const auto idx =
-                        ui.model_index_of(export_dialog.buffer_name);
-                    idx.has_value()) {
-                    if (oid::Stage* stage = stages.stage_for(*idx);
-                        stage != nullptr) {
-                        if (const oid::Buffer* buffer =
-                                oid::host::buffer_of(*stage);
-                            buffer != nullptr) {
-                            oid::platform::perform_export(*buffer,
-                                                          export_dialog,
-                                                          ipc,
-                                                          status,
-                                                          last_export_dir);
-                        }
-                    }
-                }
-                if (status.empty()) {
-                    status = "Export failed: " + export_dialog.buffer_name;
-                }
-                ui.set_status_message(status);
-            }
-
-            imgui.render();
-
-            // Settings persistence: recompute the merged
-            // previous-buffers list from this frame's model contents, build
-            // a live AppSettings snapshot, and hand it to the saver, which
-            // debounces the actual disk write. Cheap: bounded by the number
-            // of currently-loaded buffers, no I/O unless the saver decides
-            // to flush.
-            for (std::size_t i = 0; i < model.size(); ++i) {
-                seen_this_session.insert(model.variable_name_of(i));
-            }
-            std::vector<std::string> loaded_names;
-            loaded_names.reserve(model.size());
-            for (std::size_t i = 0; i < model.size(); ++i) {
-                loaded_names.push_back(model.variable_name_of(i));
-            }
-            const auto now_s = static_cast<std::int64_t>(
-                std::chrono::duration_cast<std::chrono::seconds>(
-                    std::chrono::system_clock::now().time_since_epoch())
-                    .count());
-            prev_buffers = oid::host::merge_previous_buffers(
-                prev_buffers, loaded_names, seen_this_session, now_s);
-
-            oid::host::AppSettings live;
-            const auto [ww, wh] = backend.window_size();
-            const auto [wx, wy] = backend.window_position();
-            live.window_w = ww;
-            live.window_h = wh;
-            live.window_x = wx;
-            live.window_y = wy;
-            live.left_pane_w = left_pane_w;
-            live.contrast_enabled = ui.contrast_enabled();
-            live.link_views = ui.link_views();
-            live.previous_buffers = prev_buffers;
-            live.last_export_dir = last_export_dir;
-            // Hold off saving until the platform says persisting is safe
-            // (see SessionBridge::can_persist -- non-native builds gate on the
-            // embedding host's first real session-state update, so a
-            // default/empty snapshot doesn't get echoed back and overwrite the
-            // persisted buffer list; native is always safe).
-            if (session_bridge.can_persist()) {
-                saver.update(live, glfwGetTime());
-            }
-        }};
+                                  persist_settings_if_dirty(ctx);
+                              }};
 
     loop.run();
     // Force a final save if a debounced write was still pending when the
