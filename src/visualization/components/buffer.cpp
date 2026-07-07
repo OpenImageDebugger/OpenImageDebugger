@@ -64,23 +64,24 @@ void format_pixel_value(std::stringstream& message,
                         const BufferType type,
                         const std::span<const std::byte> buffer,
                         const int pos) {
+    using enum BufferType;
     switch (type) {
-    case BufferType::Float32:
+    case Float32:
         message << std::bit_cast<const float*>(buffer.data())[pos];
         break;
-    case BufferType::Float64:
+    case Float64:
         message << std::bit_cast<const double*>(buffer.data())[pos];
         break;
-    case BufferType::UnsignedByte:
+    case UnsignedByte:
         message << static_cast<short>(static_cast<uint8_t>(buffer[pos]));
         break;
-    case BufferType::Short:
+    case Short:
         message << std::bit_cast<const short*>(buffer.data())[pos];
         break;
-    case BufferType::UnsignedShort:
+    case UnsignedShort:
         message << std::bit_cast<const unsigned short*>(buffer.data())[pos];
         break;
-    case BufferType::Int32:
+    case Int32:
         message << std::bit_cast<const int*>(buffer.data())[pos];
         break;
     }
@@ -166,24 +167,25 @@ void Buffer::set_icon_drawing_mode(const bool is_enabled) const {
 void Buffer::update_min_color_value(float* lowest,
                                     const int i,
                                     const int c) const {
-    if (type == BufferType::Float32 || type == BufferType::Float64) {
+    using enum BufferType;
+    if (type == Float32 || type == Float64) {
         lowest[c] = (std::min)(lowest[c],
                                std::bit_cast<const float*>(
                                    buffer_.data())[channels * i + c]);
-    } else if (type == BufferType::UnsignedByte) {
+    } else if (type == UnsignedByte) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(static_cast<uint8_t>(
                                    buffer_[channels * i + c])));
-    } else if (type == BufferType::Short) {
+    } else if (type == Short) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(std::bit_cast<const short*>(
                                    buffer_.data())[channels * i + c]));
-    } else if (type == BufferType::UnsignedShort) {
+    } else if (type == UnsignedShort) {
         lowest[c] =
             (std::min)(lowest[c],
                        static_cast<float>(std::bit_cast<const unsigned short*>(
                            buffer_.data())[channels * i + c]));
-    } else if (type == BufferType::Int32) {
+    } else if (type == Int32) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(std::bit_cast<const int*>(
                                    buffer_.data())[channels * i + c]));
@@ -218,24 +220,25 @@ void Buffer::recompute_min_color_values() {
 void Buffer::update_max_color_value(float* upper,
                                     const int i,
                                     const int c) const {
-    if (type == BufferType::Float32 || type == BufferType::Float64) {
+    using enum BufferType;
+    if (type == Float32 || type == Float64) {
         upper[c] = (std::max)(upper[c],
                               std::bit_cast<const float*>(
                                   buffer_.data())[channels * i + c]);
-    } else if (type == BufferType::UnsignedByte) {
+    } else if (type == UnsignedByte) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(static_cast<uint8_t>(
                                   buffer_[channels * i + c])));
-    } else if (type == BufferType::Short) {
+    } else if (type == Short) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(std::bit_cast<const short*>(
                                   buffer_.data())[channels * i + c]));
-    } else if (type == BufferType::UnsignedShort) {
+    } else if (type == UnsignedShort) {
         upper[c] =
             (std::max)(upper[c],
                        static_cast<float>(std::bit_cast<const unsigned short*>(
                            buffer_.data())[channels * i + c]));
-    } else if (type == BufferType::Int32) {
+    } else if (type == Int32) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(std::bit_cast<const int*>(
                                   buffer_.data())[channels * i + c]));
@@ -274,6 +277,7 @@ void Buffer::reset_contrast_brightness_parameters() {
 }
 
 void Buffer::compute_contrast_brightness_parameters() {
+    using enum BufferType;
     const auto lowest = min_buffer_values();
     const auto upper = max_buffer_values();
 
@@ -283,19 +287,19 @@ void Buffer::compute_contrast_brightness_parameters() {
 
     for (int c = 0; c < channels; ++c) {
         auto maxIntensity = 1.0f;
-        if (type == BufferType::UnsignedByte) {
+        if (type == UnsignedByte) {
             maxIntensity = 255.0f;
-        } else if (type == BufferType::Short) {
+        } else if (type == Short) {
             // All non-real values have max color 255
             maxIntensity =
                 static_cast<float>((std::numeric_limits<short>::max)());
-        } else if (type == BufferType::UnsignedShort) {
+        } else if (type == UnsignedShort) {
             maxIntensity = static_cast<float>(
                 (std::numeric_limits<unsigned short>::max)());
-        } else if (type == BufferType::Int32) {
+        } else if (type == Int32) {
             maxIntensity =
                 static_cast<float>((std::numeric_limits<int>::max)());
-        } else if (type == BufferType::Float32 || type == BufferType::Float64) {
+        } else if (type == Float32 || type == Float64) {
             maxIntensity = 1.0f;
         }
         const auto upp_minus_low = upper[c] - lowest[c];

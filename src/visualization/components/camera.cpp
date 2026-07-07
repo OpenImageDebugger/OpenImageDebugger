@@ -201,27 +201,28 @@ void Camera::handle_key_events() {
 }
 
 EventProcessCode Camera::key_press_event(int) {
-    using Key = KeyboardState::Key;
+    using enum EventProcessCode;
+    using enum KeyboardState::Key;
 
     const auto screen_center = vec4{0.0f, 0.0f, 0.0f, 1.0f};
-    auto event_intercepted = EventProcessCode::IGNORED;
+    auto event_intercepted = IGNORED;
 
     if (KeyboardState::is_modifier_key_pressed(
             KeyboardState::ModifierKey::Control)) {
-        if (KeyboardState::is_key_pressed(Key::Plus)) {
+        if (KeyboardState::is_key_pressed(Plus)) {
             scale_at(screen_center, 1.0f);
 
-            event_intercepted = EventProcessCode::INTERCEPTED;
-        } else if (KeyboardState::is_key_pressed(Key::Minus)) {
+            event_intercepted = INTERCEPTED;
+        } else if (KeyboardState::is_key_pressed(Minus)) {
             scale_at(screen_center, -1.0f);
 
-            event_intercepted = EventProcessCode::INTERCEPTED;
-        } else if (KeyboardState::is_key_pressed(Key::Left) ||
-                   KeyboardState::is_key_pressed(Key::Right) ||
-                   KeyboardState::is_key_pressed(Key::Up) ||
-                   KeyboardState::is_key_pressed(Key::Down)) {
+            event_intercepted = INTERCEPTED;
+        } else if (KeyboardState::is_key_pressed(Left) ||
+                   KeyboardState::is_key_pressed(Right) ||
+                   KeyboardState::is_key_pressed(Up) ||
+                   KeyboardState::is_key_pressed(Down)) {
             // Prevent the arrow keys to propagate
-            event_intercepted = EventProcessCode::INTERCEPTED;
+            event_intercepted = INTERCEPTED;
         }
     }
 

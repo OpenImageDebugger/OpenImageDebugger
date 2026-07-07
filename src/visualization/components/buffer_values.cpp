@@ -58,6 +58,7 @@ int BufferValues::render_index() const {
 }
 
 inline void pix2str(const PixelFormatParams& params) {
+    using enum BufferType;
     const auto type = params.type;
     const auto buffer = params.buffer;
     const auto pos = params.pos;
@@ -67,22 +68,22 @@ inline void pix2str(const PixelFormatParams& params) {
     const auto float_precision = params.float_precision;
     const auto pixel_pos = pos + channel;
 
-    if (type == BufferType::Float32 || type == BufferType::Float64) {
+    if (type == Float32 || type == Float64) {
         const float fpix = std::bit_cast<const float*>(buffer)[pixel_pos];
         snprintf(pix_label, label_length, "%.*f", float_precision, fpix);
-    } else if (type == BufferType::UnsignedByte) {
+    } else if (type == UnsignedByte) {
         snprintf(pix_label,
                  label_length,
                  "%d",
                  static_cast<uint8_t>(buffer[pixel_pos]));
-    } else if (type == BufferType::Short) {
+    } else if (type == Short) {
         const short fpix = std::bit_cast<const short*>(buffer)[pixel_pos];
         snprintf(pix_label, label_length, "%d", fpix);
-    } else if (type == BufferType::UnsignedShort) {
+    } else if (type == UnsignedShort) {
         const unsigned short fpix =
             std::bit_cast<const unsigned short*>(buffer)[pixel_pos];
         snprintf(pix_label, label_length, "%d", fpix);
-    } else if (type == BufferType::Int32) {
+    } else if (type == Int32) {
         const int fpix = std::bit_cast<const int*>(buffer)[pixel_pos];
         const auto written = snprintf(pix_label, label_length, "%d", fpix);
         if (written > 0 && static_cast<size_t>(written) > 7) {

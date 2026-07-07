@@ -36,13 +36,14 @@
 namespace oid {
 
 bool KeyboardState::is_modifier_key_pressed(const ModifierKey key) {
+    using enum ModifierKey;
     const ImGuiIO& io = ImGui::GetIO();
     switch (key) {
-    case ModifierKey::Alt:
+    case Alt:
         return io.KeyAlt;
-    case ModifierKey::Control:
+    case Control:
         return io.KeyCtrl;
-    case ModifierKey::Shift:
+    case Shift:
         return io.KeyShift;
     default:
         return false;
@@ -50,6 +51,7 @@ bool KeyboardState::is_modifier_key_pressed(const ModifierKey key) {
 }
 
 bool KeyboardState::is_key_pressed(const Key key) {
+    using enum Key;
     // Suppress camera key input while a text field (e.g. the symbol search box)
     // holds the keyboard: the bare arrow keys now pan the canvas, so without
     // this guard navigating the autocomplete with Up/Down would also pan. When
@@ -58,19 +60,19 @@ bool KeyboardState::is_key_pressed(const Key key) {
         return false;
     }
     switch (key) {
-    case Key::Left:
+    case Left:
         return ImGui::IsKeyDown(ImGuiKey_LeftArrow);
-    case Key::Right:
+    case Right:
         return ImGui::IsKeyDown(ImGuiKey_RightArrow);
-    case Key::Up:
+    case Up:
         return ImGui::IsKeyDown(ImGuiKey_UpArrow);
-    case Key::Down:
+    case Down:
         return ImGui::IsKeyDown(ImGuiKey_DownArrow);
-    case Key::Plus:
+    case Plus:
         // US layout: '+' is Shift+'='; also accept the keypad '+'.
         return ImGui::IsKeyDown(ImGuiKey_Equal) ||
                ImGui::IsKeyDown(ImGuiKey_KeypadAdd);
-    case Key::Minus:
+    case Minus:
         return ImGui::IsKeyDown(ImGuiKey_Minus) ||
                ImGui::IsKeyDown(ImGuiKey_KeypadSubtract);
     default:
