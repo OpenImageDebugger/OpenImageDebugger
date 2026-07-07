@@ -84,7 +84,7 @@ class MessageExchangeTest : public ::testing::Test {
     // the acceptor's io_context without owning it.
     void ConnectSockets() {
         acceptor_.emplace();
-        std::thread server_thread([this] {
+        std::jthread server_thread([this] {
             server_transport_.emplace(
                 acceptor_->accept(std::chrono::seconds{5}));
         });
