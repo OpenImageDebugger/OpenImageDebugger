@@ -28,18 +28,19 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include <Windows.h>
 
 namespace oid {
 
 namespace {
 
-std::wstring utf8_to_wide(const std::string& text) {
+std::wstring utf8_to_wide(const std::string_view text) {
     if (text.empty()) {
         return {};
     }
@@ -78,7 +79,7 @@ std::wstring quote_windows_arg(const std::wstring& arg) {
     quoted.push_back(L'"');
     for (const wchar_t ch : arg) {
         if (ch == L'"') {
-            quoted.append(L"\\\"");
+            quoted.append(LR"(\")");
         } else {
             quoted.push_back(ch);
         }
