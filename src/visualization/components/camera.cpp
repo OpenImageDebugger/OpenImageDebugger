@@ -433,7 +433,8 @@ vec4 Camera::get_position() const {
 }
 
 void Camera::recenter_camera() {
-    camera_pos_x_ = camera_pos_y_ = 0.0f;
+    camera_pos_x_ = 0.0f;
+    camera_pos_y_ = 0.0f;
 
     set_initial_zoom();
     update_object_pose();

@@ -113,8 +113,14 @@ void mat4::set_from_st(const float scaleX,
     data[13] = y;
     data[14] = z;
 
-    data[1] = data[2] = data[3] = data[4] = 0.0f;
-    data[6] = data[7] = data[8] = data[9] = 0.0f;
+    data[1] = 0.0f;
+    data[2] = 0.0f;
+    data[3] = 0.0f;
+    data[4] = 0.0f;
+    data[6] = 0.0f;
+    data[7] = 0.0f;
+    data[8] = 0.0f;
+    data[9] = 0.0f;
     data[11] = 0.0f;
     data[15] = 1.0f;
 }
@@ -195,9 +201,17 @@ void mat4::set_ortho_projection(const float right,
     data[10] = -2.0f / (far - near);
     data[14] = -(far + near) / (far - near);
 
-    data[1] = data[2] = data[3] = data[4] = 0.0f;
-    data[6] = data[7] = data[8] = data[9] = 0.0f;
-    data[11] = data[12] = data[13] = 0.0f;
+    data[1] = 0.0f;
+    data[2] = 0.0f;
+    data[3] = 0.0f;
+    data[4] = 0.0f;
+    data[6] = 0.0f;
+    data[7] = 0.0f;
+    data[8] = 0.0f;
+    data[9] = 0.0f;
+    data[11] = 0.0f;
+    data[12] = 0.0f;
+    data[13] = 0.0f;
     data[15] = 1.0f;
 }
 
