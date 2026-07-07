@@ -100,8 +100,10 @@ std::optional<oid::vec4> stage_coordinates(oid::Stage& stage,
     const auto vp_inv = (cam.projection() * view * buff_pose).inv();
 
     auto mouse_pos = vp_inv * mouse_pos_ndc;
-    mouse_pos += oid::vec4(
-        buffer.buffer_width_f / 2.0f, buffer.buffer_height_f / 2.f, 0.0f, 0.0f);
+    mouse_pos += oid::vec4(buffer.buffer_width_f() / 2.0f,
+                           buffer.buffer_height_f() / 2.f,
+                           0.0f,
+                           0.0f);
 
     return mouse_pos;
 }
@@ -134,8 +136,8 @@ std::string format_pixel_value_text(const oid::Buffer& buffer,
     pixel << std::fixed << std::setprecision(3);
     pixel << "(" << px << ", " << py << ") val=";
     buffer.get_pixel_info(pixel, px, py);
-    if (oid::BufferType::Float64 == buffer.type ||
-        oid::BufferType::Float32 == buffer.type) {
+    if (oid::BufferType::Float64 == buffer.type() ||
+        oid::BufferType::Float32 == buffer.type()) {
         if (const oid::BufferValues* values = values_of(stage);
             values != nullptr) {
             pixel << " precision=[" << values->get_float_precision() << "]";

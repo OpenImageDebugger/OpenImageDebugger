@@ -79,21 +79,7 @@ class Buffer final : public Component {
 
     static constexpr int max_texture_size = BufferConstants::MAX_TEXTURE_SIZE;
 
-    std::vector<GLuint> buff_tex{};
-
     static const std::array<float, 8> no_ac_params;
-
-    float buffer_width_f{};
-    float buffer_height_f{};
-
-    int channels{};
-    int step{};
-
-    BufferType type{BufferType::UnsignedByte};
-
-    std::span<const std::byte> buffer_{};
-
-    bool transpose{};
 
     [[nodiscard]] bool buffer_update() override;
 
@@ -129,8 +115,22 @@ class Buffer final : public Component {
 
     void draw(const mat4& projection, const mat4& viewInv) override;
 
-    int num_textures_x{};
-    int num_textures_y{};
+    [[nodiscard]] const std::vector<GLuint>& buff_tex() const;
+
+    [[nodiscard]] float buffer_width_f() const;
+    [[nodiscard]] float buffer_height_f() const;
+
+    [[nodiscard]] int channels() const;
+    [[nodiscard]] int step() const;
+
+    [[nodiscard]] BufferType type() const;
+
+    [[nodiscard]] std::span<const std::byte> buffer() const;
+
+    [[nodiscard]] bool transpose() const;
+
+    [[nodiscard]] int num_textures_x() const;
+    [[nodiscard]] int num_textures_y() const;
 
     std::span<float> min_buffer_values();
 
@@ -156,6 +156,23 @@ class Buffer final : public Component {
     void update_min_color_value(float* lowest, const int i, const int c) const;
 
     void update_max_color_value(float* upper, const int i, const int c) const;
+
+    std::vector<GLuint> buff_tex_{};
+
+    float buffer_width_f_{};
+    float buffer_height_f_{};
+
+    int channels_{};
+    int step_{};
+
+    BufferType type_{BufferType::UnsignedByte};
+
+    std::span<const std::byte> buffer_{};
+
+    bool transpose_{};
+
+    int num_textures_x_{};
+    int num_textures_y_{};
 
     std::string pixel_layout_{'r', 'g', 'b', 'a'};
 

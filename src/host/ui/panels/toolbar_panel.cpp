@@ -290,7 +290,7 @@ void draw_format_combo(const UiState& ui, StageManager& stages) {
     oid::Buffer* selected_buffer =
         selected_stage != nullptr ? buffer_of(*selected_stage) : nullptr;
     const bool format_disabled =
-        selected_buffer == nullptr || selected_buffer->channels < 3;
+        selected_buffer == nullptr || selected_buffer->channels() < 3;
 
     ImGui::BeginDisabled(format_disabled);
     ImGui::SetNextItemWidth(100.0f);

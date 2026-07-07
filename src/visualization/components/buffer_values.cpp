@@ -107,10 +107,10 @@ inline void pix2str(const PixelFormatParams& params) {
 
 void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params) {
     const auto& buffer = params.buffer;
-    const auto step = buffer.step;
-    const auto channels = buffer.channels;
+    const auto step = buffer.step();
+    const auto channels = buffer.channels();
     const auto channels_f = static_cast<float>(channels);
-    const auto type = buffer.type;
+    const auto type = buffer.type();
     const auto x = params.x;
     const auto y = params.y;
     const auto pos_center_x = params.pos_center_x;
@@ -142,7 +142,7 @@ void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params) {
                    recenter_factors[c]);
 
         const PixelFormatParams pix_params{type,
-                                           buffer.buffer_.data(),
+                                           buffer.buffer().data(),
                                            pos,
                                            c,
                                            label_length,
@@ -187,9 +187,9 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv) {
             return;
         }
         const auto& buffer_component = buffer_component_opt->get();
-        const auto buffer_width_f = buffer_component.buffer_width_f;
-        const auto buffer_height_f = buffer_component.buffer_height_f;
-        const auto channels = buffer_component.channels;
+        const auto buffer_width_f = buffer_component.buffer_width_f();
+        const auto buffer_height_f = buffer_component.buffer_height_f();
+        const auto channels = buffer_component.channels();
         const auto channels_f = static_cast<float>(channels);
 
         const auto tl_ndc = vec4{-1.0f, 1.0f, 0.0f, 1.0f};
@@ -298,34 +298,34 @@ void BufferValues::draw_text(const DrawTextParams& params) {
         auto_buffer_contrast_brightness = Buffer::no_ac_params.data();
     }
 
-    text_renderer->text_prog.use();
+    text_renderer->text_prog().use();
     gl_canvas_ref().glEnableVertexAttribArray(0);
-    gl_canvas_ref().glBindBuffer(GL_ARRAY_BUFFER, text_renderer->text_vbo);
+    gl_canvas_ref().glBindBuffer(GL_ARRAY_BUFFER, text_renderer->text_vbo());
     gl_canvas_ref().glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, nullptr);
 
     gl_canvas_ref().glActiveTexture(GL_TEXTURE0);
     const auto x_plus_half_buffer_width =
-        static_cast<int>(x + buffer_component.buffer_width_f / 2.0f);
+        static_cast<int>(x + buffer_component.buffer_width_f() / 2.0f);
     const auto y_plus_half_buffer_height =
-        static_cast<int>(y + buffer_component.buffer_height_f / 2.0f);
+        static_cast<int>(y + buffer_component.buffer_height_f() / 2.0f);
 
     const GLuint buff_tex = buffer_component.sub_texture_id_at_coord(
         x_plus_half_buffer_width, y_plus_half_buffer_height);
     gl_canvas_ref().glBindTexture(GL_TEXTURE_2D, buff_tex);
-    text_renderer->text_prog.uniform1i("buff_sampler", 0);
+    text_renderer->text_prog().uniform1i("buff_sampler", 0);
 
     gl_canvas_ref().glActiveTexture(GL_TEXTURE1);
-    gl_canvas_ref().glBindTexture(GL_TEXTURE_2D, text_renderer->text_tex);
-    text_renderer->text_prog.uniform1i("text_sampler", 1);
+    gl_canvas_ref().glBindTexture(GL_TEXTURE_2D, text_renderer->text_tex());
+    text_renderer->text_prog().uniform1i("text_sampler", 1);
 
-    text_renderer->text_prog.uniform_matrix4fv(
+    text_renderer->text_prog().uniform_matrix4fv(
         "mvp", 1, GL_FALSE, (projection * view_inv).data());
-    text_renderer->text_prog.uniform2f(
+    text_renderer->text_prog().uniform2f(
         "pix_coord",
         buffer_component.tile_coord_x(x_plus_half_buffer_width),
         buffer_component.tile_coord_y(y_plus_half_buffer_height));
 
-    text_renderer->text_prog.uniform4fv(
+    text_renderer->text_prog().uniform4fv(
         "brightness_contrast", 2, auto_buffer_contrast_brightness);
 
     // Compute text box size
@@ -333,11 +333,11 @@ void BufferValues::draw_text(const DrawTextParams& params) {
     auto boxH = 0.0f;
     for (const auto c : std::string{text}) {
         const auto uchar = static_cast<unsigned char>(c);
-        boxW +=
-            static_cast<float>(text_renderer->text_texture_advances[uchar][0]);
+        boxW += static_cast<float>(
+            text_renderer->text_texture_advances()[uchar][0]);
         boxH = (std::max)(boxH,
                           static_cast<float>(
-                              text_renderer->text_texture_sizes[uchar][1]));
+                              text_renderer->text_texture_sizes()[uchar][1]));
     }
 
     constexpr auto paddingScale = 1.0f / (1.0f - 2.0f * padding_);
@@ -351,10 +351,10 @@ void BufferValues::draw_text(const DrawTextParams& params) {
 
     auto centeredCoord = vec4{x, y, 0.0f, 1.0f};
 
-    if (static_cast<int>(buffer_component.buffer_width_f) % 2 == 0) {
+    if (static_cast<int>(buffer_component.buffer_width_f()) % 2 == 0) {
         centeredCoord.x() += 0.5f;
     }
-    if (static_cast<int>(buffer_component.buffer_height_f) % 2 == 0) {
+    if (static_cast<int>(buffer_component.buffer_height_f()) % 2 == 0) {
         centeredCoord.y() += 0.5f;
     }
 
@@ -366,30 +366,34 @@ void BufferValues::draw_text(const DrawTextParams& params) {
     for (const auto c : std::string{text}) {
         const auto uchar = static_cast<unsigned char>(c);
         const auto tex_tl_x =
-            static_cast<float>(text_renderer->text_texture_tls[uchar][0]);
+            static_cast<float>(text_renderer->text_texture_tls()[uchar][0]);
         const auto tex_tl_y =
-            static_cast<float>(text_renderer->text_texture_tls[uchar][1]);
+            static_cast<float>(text_renderer->text_texture_tls()[uchar][1]);
         const auto x2 = x_pos + tex_tl_x * sx;
         const auto y2 = y_pos - tex_tl_y * sy;
 
         const auto tex_wid =
-            static_cast<float>(text_renderer->text_texture_sizes[uchar][0]);
+            static_cast<float>(text_renderer->text_texture_sizes()[uchar][0]);
         const auto tex_hei =
-            static_cast<float>(text_renderer->text_texture_sizes[uchar][1]);
+            static_cast<float>(text_renderer->text_texture_sizes()[uchar][1]);
 
         const auto w = tex_wid * sx;
         const auto h = tex_hei * sy;
 
         const auto tex_lower_x =
-            static_cast<float>(text_renderer->text_texture_offsets[uchar][0]) /
-            text_renderer->text_texture_width;
+            static_cast<float>(
+                text_renderer->text_texture_offsets()[uchar][0]) /
+            text_renderer->text_texture_width();
         const auto tex_lower_y =
-            static_cast<float>(text_renderer->text_texture_offsets[uchar][1]) /
-            text_renderer->text_texture_height;
+            static_cast<float>(
+                text_renderer->text_texture_offsets()[uchar][1]) /
+            text_renderer->text_texture_height();
         const auto tex_upper_x =
-            tex_lower_x + (tex_wid - 1.0f) / text_renderer->text_texture_width;
+            tex_lower_x +
+            (tex_wid - 1.0f) / text_renderer->text_texture_width();
         const auto tex_upper_y =
-            tex_lower_y + (tex_hei - 1.0f) / text_renderer->text_texture_height;
+            tex_lower_y +
+            (tex_hei - 1.0f) / text_renderer->text_texture_height();
 
         /*
          * box format: <pixel coord x, pixel coord y, texture coord x, texture
@@ -406,10 +410,10 @@ void BufferValues::draw_text(const DrawTextParams& params) {
             GL_ARRAY_BUFFER, sizeof box, box.data(), GL_DYNAMIC_DRAW);
         gl_canvas_ref().glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-        const auto tex_adv_x =
-            static_cast<float>(text_renderer->text_texture_advances[uchar][0]);
-        const auto tex_adv_y =
-            static_cast<float>(text_renderer->text_texture_advances[uchar][1]);
+        const auto tex_adv_x = static_cast<float>(
+            text_renderer->text_texture_advances()[uchar][0]);
+        const auto tex_adv_y = static_cast<float>(
+            text_renderer->text_texture_advances()[uchar][1]);
         auto char_step_direction =
             vec4{tex_adv_x * sx, tex_adv_y * sy, 0.0f, 1.0f};
 
