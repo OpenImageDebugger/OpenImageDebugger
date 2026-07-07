@@ -35,6 +35,23 @@
 
 namespace oid::host {
 
+// Already-decoded wire fields for a single buffer, grouped so
+// make_buffer_record() stays under Sonar's parameter-count limit. Field
+// names and order mirror BufferRecord (see buffer_model.h), except
+// `stride`, which becomes BufferRecord::step.
+struct BufferRecordParams {
+    std::string variable_name;
+    std::string display_name;
+    std::string pixel_layout;
+    bool transpose;
+    int width;
+    int height;
+    int channels;
+    int stride;
+    oid::BufferType type;
+    std::vector<std::byte> bytes;
+};
+
 // Builds a BufferRecord from already-decoded wire fields. This is the
 // single funnel IpcClient's single-shot (PlotBufferContents) and
 // chunked (PlotBufferEnd) decode paths both call, mirroring the Qt
@@ -43,16 +60,7 @@ namespace oid::host {
 // Float64 payloads are converted to float bytes via
 // oid::make_float_buffer_from_double() (BufferRecord::type is left as
 // Float64, unchanged, matching the Qt path).
-BufferRecord make_buffer_record(std::string variable_name,
-                                std::string display_name,
-                                std::string pixel_layout,
-                                bool transpose,
-                                int width,
-                                int height,
-                                int channels,
-                                int stride,
-                                oid::BufferType type,
-                                std::vector<std::byte> bytes);
+BufferRecord make_buffer_record(BufferRecordParams params);
 
 } // namespace oid::host
 

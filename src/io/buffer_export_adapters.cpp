@@ -41,13 +41,13 @@ RgbaImage normalize_to_rgba8(const Buffer& buffer) {
 
     return normalize_to_rgba8_raw(
         std::bit_cast<const std::uint8_t*>(buffer.buffer_.data()),
-        buffer.type,
-        static_cast<int>(buffer.buffer_width_f),
-        static_cast<int>(buffer.buffer_height_f),
-        buffer.channels,
-        buffer.step,
-        bc_comp,
-        buffer.get_pixel_layout());
+        {.type = buffer.type,
+         .width = static_cast<int>(buffer.buffer_width_f),
+         .height = static_cast<int>(buffer.buffer_height_f),
+         .channels = buffer.channels,
+         .step = buffer.step,
+         .pixel_layout = buffer.get_pixel_layout()},
+        bc_comp);
 }
 
 bool export_octave(const Buffer& buffer, const std::string& path) {

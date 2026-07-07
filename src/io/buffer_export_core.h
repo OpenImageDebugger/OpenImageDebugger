@@ -54,17 +54,24 @@ struct RgbaImage {
 // Octave raw-matrix writer. Returns false on stream failure.
 bool export_octave(const Buffer& buffer, const std::string& path);
 
+// Buffer geometry/typing, grouped so normalize_to_rgba8_raw() stays under
+// Sonar's parameter-count limit. `data` and `bc_comp` stay separate
+// parameters: they're the payload being normalized, not buffer shape.
+struct RawBufferDesc {
+    BufferType type;
+    int width;
+    int height;
+    int channels;
+    int step;
+    const char* pixel_layout;
+};
+
 // Pure entry points taking plain parameters (no GL-coupled Buffer needed),
 // so both frontends -- and this file's own tests -- can drive them headlessly.
 [[nodiscard]] RgbaImage
 normalize_to_rgba8_raw(const std::uint8_t* data,
-                       BufferType type,
-                       int width,
-                       int height,
-                       int channels,
-                       int step,
-                       const std::array<float, 8>& bc_comp,
-                       const char* pixel_layout);
+                       const RawBufferDesc& desc,
+                       const std::array<float, 8>& bc_comp);
 
 bool export_octave_raw(const std::uint8_t* data,
                        BufferType type,
