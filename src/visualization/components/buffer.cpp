@@ -114,15 +114,15 @@ Buffer::Buffer(const std::shared_ptr<GameObject>& game_object,
 
 Buffer::~Buffer() noexcept {
     if (const auto canvas = gl_canvas()) {
-        const auto num_textures = num_textures_x * num_textures_y;
-        canvas->glDeleteTextures(num_textures, buff_tex.data());
+        const auto num_textures = num_textures_x_ * num_textures_y_;
+        canvas->glDeleteTextures(num_textures, buff_tex_.data());
         canvas->glDeleteBuffers(1, &vbo_);
     }
 }
 
 bool Buffer::buffer_update() {
-    const auto num_textures = num_textures_x * num_textures_y;
-    gl_canvas_ref().glDeleteTextures(num_textures, buff_tex.data());
+    const auto num_textures = num_textures_x_ * num_textures_y_;
+    gl_canvas_ref().glDeleteTextures(num_textures, buff_tex_.data());
 
     if (!create_shader_program()) {
         return false;
@@ -134,22 +134,22 @@ bool Buffer::buffer_update() {
 void Buffer::get_pixel_info(std::stringstream& message,
                             const int x,
                             const int y) const {
-    if (x < 0 || static_cast<float>(x) >= buffer_width_f || y < 0 ||
-        static_cast<float>(y) >= buffer_height_f) {
+    if (x < 0 || static_cast<float>(x) >= buffer_width_f_ || y < 0 ||
+        static_cast<float>(y) >= buffer_height_f_) {
         message << "[out of bounds]";
         return;
     }
 
-    const auto pos = channels * (y * step + x);
+    const auto pos = channels_ * (y * step_ + x);
     const auto [start_ch, end_ch] = get_channel_range(
-        display_channel_mode_, channels, pixel_layout_.data());
+        display_channel_mode_, channels_, pixel_layout_.data());
 
     message << "[";
-    for (int c = start_ch; c < end_ch && c < channels; ++c) {
+    for (int c = start_ch; c < end_ch && c < channels_; ++c) {
         if (c > start_ch) {
             message << " ";
         }
-        format_pixel_value(message, type, buffer_, pos + c);
+        format_pixel_value(message, type_, buffer_, pos + c);
     }
     message << "]";
 }
@@ -168,33 +168,33 @@ void Buffer::update_min_color_value(float* lowest,
                                     const int i,
                                     const int c) const {
     using enum BufferType;
-    if (type == Float32 || type == Float64) {
+    if (type_ == Float32 || type_ == Float64) {
         lowest[c] = (std::min)(lowest[c],
                                std::bit_cast<const float*>(
-                                   buffer_.data())[channels * i + c]);
-    } else if (type == UnsignedByte) {
+                                   buffer_.data())[channels_ * i + c]);
+    } else if (type_ == UnsignedByte) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(static_cast<uint8_t>(
-                                   buffer_[channels * i + c])));
-    } else if (type == Short) {
+                                   buffer_[channels_ * i + c])));
+    } else if (type_ == Short) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(std::bit_cast<const short*>(
-                                   buffer_.data())[channels * i + c]));
-    } else if (type == UnsignedShort) {
+                                   buffer_.data())[channels_ * i + c]));
+    } else if (type_ == UnsignedShort) {
         lowest[c] =
             (std::min)(lowest[c],
                        static_cast<float>(std::bit_cast<const unsigned short*>(
-                           buffer_.data())[channels * i + c]));
-    } else if (type == Int32) {
+                           buffer_.data())[channels_ * i + c]));
+    } else if (type_ == Int32) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(std::bit_cast<const int*>(
-                                   buffer_.data())[channels * i + c]));
+                                   buffer_.data())[channels_ * i + c]));
     }
 }
 
 void Buffer::recompute_min_color_values() {
-    const auto buffer_width_i = static_cast<int>(buffer_width_f);
-    const auto buffer_height_i = static_cast<int>(buffer_height_f);
+    const auto buffer_width_i = static_cast<int>(buffer_width_f_);
+    const auto buffer_height_i = static_cast<int>(buffer_height_f_);
 
     auto lowest = min_buffer_values();
 
@@ -204,15 +204,15 @@ void Buffer::recompute_min_color_values() {
 
     for (int y = 0; y < buffer_height_i; ++y) {
         for (int x = 0; x < buffer_width_i; ++x) {
-            const auto i = y * step + x;
-            for (int c = 0; c < channels; ++c) {
+            const auto i = y * step_ + x;
+            for (int c = 0; c < channels_; ++c) {
                 update_min_color_value(lowest.data(), i, c);
             }
         }
     }
 
     // For single channel buffers: fill with 0
-    for (int c = channels; c < 4; ++c) {
+    for (int c = channels_; c < 4; ++c) {
         lowest[c] = 0.0;
     }
 }
@@ -221,33 +221,33 @@ void Buffer::update_max_color_value(float* upper,
                                     const int i,
                                     const int c) const {
     using enum BufferType;
-    if (type == Float32 || type == Float64) {
+    if (type_ == Float32 || type_ == Float64) {
         upper[c] = (std::max)(upper[c],
                               std::bit_cast<const float*>(
-                                  buffer_.data())[channels * i + c]);
-    } else if (type == UnsignedByte) {
+                                  buffer_.data())[channels_ * i + c]);
+    } else if (type_ == UnsignedByte) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(static_cast<uint8_t>(
-                                  buffer_[channels * i + c])));
-    } else if (type == Short) {
+                                  buffer_[channels_ * i + c])));
+    } else if (type_ == Short) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(std::bit_cast<const short*>(
-                                  buffer_.data())[channels * i + c]));
-    } else if (type == UnsignedShort) {
+                                  buffer_.data())[channels_ * i + c]));
+    } else if (type_ == UnsignedShort) {
         upper[c] =
             (std::max)(upper[c],
                        static_cast<float>(std::bit_cast<const unsigned short*>(
-                           buffer_.data())[channels * i + c]));
-    } else if (type == Int32) {
+                           buffer_.data())[channels_ * i + c]));
+    } else if (type_ == Int32) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(std::bit_cast<const int*>(
-                                  buffer_.data())[channels * i + c]));
+                                  buffer_.data())[channels_ * i + c]));
     }
 }
 
 void Buffer::recompute_max_color_values() {
-    const auto buffer_width_i = static_cast<int>(buffer_width_f);
-    const auto buffer_height_i = static_cast<int>(buffer_height_f);
+    const auto buffer_width_i = static_cast<int>(buffer_width_f_);
+    const auto buffer_height_i = static_cast<int>(buffer_height_f_);
 
     auto upper = max_buffer_values();
     for (int i = 0; i < 4; ++i) {
@@ -256,15 +256,15 @@ void Buffer::recompute_max_color_values() {
 
     for (int y = 0; y < buffer_height_i; ++y) {
         for (int x = 0; x < buffer_width_i; ++x) {
-            const auto i = y * step + x;
-            for (int c = 0; c < channels; ++c) {
+            const auto i = y * step_ + x;
+            for (int c = 0; c < channels_; ++c) {
                 update_max_color_value(upper.data(), i, c);
             }
         }
     }
 
     // For single channel buffers: fill with 0
-    for (int c = channels; c < 4; ++c) {
+    for (int c = channels_; c < 4; ++c) {
         upper[c] = 0.0;
     }
 }
@@ -285,21 +285,21 @@ void Buffer::compute_contrast_brightness_parameters() {
     const auto auto_buffer_brightness =
         auto_buffer_contrast_brightness_.data() + 4;
 
-    for (int c = 0; c < channels; ++c) {
+    for (int c = 0; c < channels_; ++c) {
         auto maxIntensity = 1.0f;
-        if (type == UnsignedByte) {
+        if (type_ == UnsignedByte) {
             maxIntensity = 255.0f;
-        } else if (type == Short) {
+        } else if (type_ == Short) {
             // All non-real values have max color 255
             maxIntensity =
                 static_cast<float>((std::numeric_limits<short>::max)());
-        } else if (type == UnsignedShort) {
+        } else if (type_ == UnsignedShort) {
             maxIntensity = static_cast<float>(
                 (std::numeric_limits<unsigned short>::max)());
-        } else if (type == Int32) {
+        } else if (type_ == Int32) {
             maxIntensity =
                 static_cast<float>((std::numeric_limits<int>::max)());
-        } else if (type == Float32 || type == Float64) {
+        } else if (type_ == Float32 || type_ == Float64) {
             maxIntensity = 1.0f;
         }
         const auto upp_minus_low = upper[c] - lowest[c];
@@ -319,7 +319,7 @@ void Buffer::compute_contrast_brightness_parameters() {
         auto_buffer_brightness[c] =
             -lowest[c] / maxIntensity * auto_buffer_contrast[c];
     }
-    for (int c = channels; c < 4; ++c) {
+    for (int c = channels_; c < 4; ++c) {
         auto_buffer_contrast[c] = auto_buffer_contrast[0];
         auto_buffer_brightness[c] = auto_buffer_brightness[0];
     }
@@ -328,7 +328,7 @@ void Buffer::compute_contrast_brightness_parameters() {
 int Buffer::sub_texture_id_at_coord(const int x, const int y) const {
     const auto tx = x / max_texture_size;
     const auto ty = y / max_texture_size;
-    return static_cast<int>(buff_tex[ty * num_textures_x + tx]);
+    return static_cast<int>(buff_tex_[ty * num_textures_x_ + tx]);
 }
 
 void Buffer::configure(const BufferParams& params) {
@@ -389,15 +389,15 @@ void Buffer::configure(const BufferParams& params) {
     }
 
     buffer_ = params.buffer;
-    channels = params.channels;
-    type = params.type;
-    buffer_width_f = static_cast<float>(params.buffer_width_i);
-    buffer_height_f = static_cast<float>(params.buffer_height_i);
-    step = params.step;
-    transpose = params.transpose_buffer;
+    channels_ = params.channels;
+    type_ = params.type;
+    buffer_width_f_ = static_cast<float>(params.buffer_width_i);
+    buffer_height_f_ = static_cast<float>(params.buffer_height_i);
+    step_ = params.step;
+    transpose_ = params.transpose_buffer;
     // Only update pixel layout during initial setup, not on buffer updates
     // This preserves user-selected pixel formats when buffer updates
-    if (buff_tex.empty() && !params.pixel_layout.empty() &&
+    if (buff_tex_.empty() && !params.pixel_layout.empty() &&
         params.pixel_layout.size() == 4) {
         set_pixel_layout(params.pixel_layout);
     }
@@ -471,7 +471,7 @@ int Buffer::get_selected_channel_index() const {
 }
 
 float Buffer::tile_coord_x(const int x) const {
-    const auto buffer_width_i = static_cast<int>(buffer_width_f);
+    const auto buffer_width_i = static_cast<int>(buffer_width_f_);
     const auto last_width = buffer_width_i % max_texture_size;
     const auto tile_width =
         x > buffer_width_i - last_width ? last_width : max_texture_size;
@@ -480,7 +480,7 @@ float Buffer::tile_coord_x(const int x) const {
 }
 
 float Buffer::tile_coord_y(const int y) const {
-    const auto buffer_height_i = static_cast<int>(buffer_height_f);
+    const auto buffer_height_i = static_cast<int>(buffer_height_f_);
     const auto last_height = buffer_height_i % max_texture_size;
     const auto tile_height =
         y > buffer_height_i - last_height ? last_height : max_texture_size;
@@ -520,7 +520,7 @@ void Buffer::update_object_pose() const {
 
     auto transposition = mat4{};
 
-    if (transpose) {
+    if (transpose_) {
         // clang-format off
         transposition << std::initializer_list<float>{
             0.0f, 1.0f, 0.0f, 0.0f,
@@ -540,14 +540,14 @@ bool Buffer::create_shader_program() {
     // Buffer Shaders
     // Use display_channel_mode_ if set, otherwise use actual buffer channels
     const auto effective_channels =
-        (display_channel_mode_ == -1) ? channels : display_channel_mode_;
+        (display_channel_mode_ == -1) ? channels_ : display_channel_mode_;
 
     // Validate effective_channels to ensure it's within supported range
     if (effective_channels < 1 || effective_channels > 4) {
         std::cerr << "[Error] Invalid effective channel count: "
                   << effective_channels
                   << " (must be between 1 and 4). Display mode: "
-                  << display_channel_mode_ << ", buffer channels: " << channels
+                  << display_channel_mode_ << ", buffer channels: " << channels_
                   << std::endl;
         return false;
     }
@@ -623,8 +623,8 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
         buff_prog_.uniform4fv("brightness_contrast", 2, no_ac_params.data());
     }
 
-    const auto buffer_width_i = static_cast<int>(buffer_width_f);
-    const auto buffer_height_i = static_cast<int>(buffer_height_f);
+    const auto buffer_width_i = static_cast<int>(buffer_width_f_);
+    const auto buffer_height_i = static_cast<int>(buffer_height_f_);
 
     auto remaining_h = buffer_height_i;
 
@@ -633,7 +633,7 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
         py -= 0.5f;
     }
 
-    for (int ty = 0; ty < num_textures_y; ++ty) {
+    for (int ty = 0; ty < num_textures_y_; ++ty) {
         const auto buff_h = (std::min)(remaining_h, max_texture_size);
         remaining_h -= buff_h;
 
@@ -649,12 +649,12 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
             px -= 0.5f;
         }
 
-        for (int tx = 0; tx < num_textures_x; ++tx) {
+        for (int tx = 0; tx < num_textures_x_; ++tx) {
             const auto buff_w = (std::min)(remaining_w, max_texture_size);
             remaining_w -= buff_w;
 
             gl_canvas_ref().glBindTexture(GL_TEXTURE_2D,
-                                          buff_tex[ty * num_textures_x + tx]);
+                                          buff_tex_[ty * num_textures_x_ + tx]);
 
             auto tile_model = mat4{};
 
@@ -687,6 +687,46 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
     }
 }
 
+const std::vector<GLuint>& Buffer::buff_tex() const {
+    return buff_tex_;
+}
+
+float Buffer::buffer_width_f() const {
+    return buffer_width_f_;
+}
+
+float Buffer::buffer_height_f() const {
+    return buffer_height_f_;
+}
+
+int Buffer::channels() const {
+    return channels_;
+}
+
+int Buffer::step() const {
+    return step_;
+}
+
+BufferType Buffer::type() const {
+    return type_;
+}
+
+std::span<const std::byte> Buffer::buffer() const {
+    return buffer_;
+}
+
+bool Buffer::transpose() const {
+    return transpose_;
+}
+
+int Buffer::num_textures_x() const {
+    return num_textures_x_;
+}
+
+int Buffer::num_textures_y() const {
+    return num_textures_y_;
+}
+
 std::span<float> Buffer::min_buffer_values() {
     return min_buffer_values_;
 }
@@ -704,45 +744,45 @@ const float* Buffer::auto_buffer_contrast_brightness() const {
 }
 
 void Buffer::setup_gl_buffer() {
-    const auto buffer_width_i = static_cast<int>(buffer_width_f);
-    const auto buffer_height_i = static_cast<int>(buffer_height_f);
+    const auto buffer_width_i = static_cast<int>(buffer_width_f_);
+    const auto buffer_height_i = static_cast<int>(buffer_height_f_);
 
     // Initialize contrast parameters
     reset_contrast_brightness_parameters();
 
     // Buffer texture
     constexpr auto max_texture_size_f = static_cast<float>(max_texture_size);
-    num_textures_x = static_cast<int>(
+    num_textures_x_ = static_cast<int>(
         std::ceil(static_cast<float>(buffer_width_i) / max_texture_size_f));
-    num_textures_y = static_cast<int>(
+    num_textures_y_ = static_cast<int>(
         std::ceil(static_cast<float>(buffer_height_i) / max_texture_size_f));
-    const int num_textures = num_textures_x * num_textures_y;
+    const int num_textures = num_textures_x_ * num_textures_y_;
 
-    buff_tex.resize(num_textures);
-    gl_canvas_ref().glGenTextures(num_textures, buff_tex.data());
+    buff_tex_.resize(num_textures);
+    gl_canvas_ref().glGenTextures(num_textures, buff_tex_.data());
 
     auto tex_type = GLuint{GL_UNSIGNED_BYTE};
     auto tex_format = GLuint{GL_RED};
 
-    if (type == BufferType::Float32 || type == BufferType::Float64) {
+    if (type_ == BufferType::Float32 || type_ == BufferType::Float64) {
         tex_type = GL_FLOAT;
-    } else if (type == BufferType::UnsignedByte) {
+    } else if (type_ == BufferType::UnsignedByte) {
         tex_type = GL_UNSIGNED_BYTE;
-    } else if (type == BufferType::Short) {
+    } else if (type_ == BufferType::Short) {
         tex_type = GL_SHORT;
-    } else if (type == BufferType::UnsignedShort) {
+    } else if (type_ == BufferType::UnsignedShort) {
         tex_type = GL_UNSIGNED_SHORT;
-    } else if (type == BufferType::Int32) {
+    } else if (type_ == BufferType::Int32) {
         tex_type = GL_INT;
     }
 
-    if (channels == 1) {
+    if (channels_ == 1) {
         tex_format = GL_RED;
-    } else if (channels == 2) {
+    } else if (channels_ == 2) {
         tex_format = GL_RG;
-    } else if (channels == 3) {
+    } else if (channels_ == 3) {
         tex_format = GL_RGB;
-    } else if (channels == 4) {
+    } else if (channels_ == 4) {
         tex_format = GL_RGBA;
     }
 
@@ -752,19 +792,19 @@ void Buffer::setup_gl_buffer() {
     auto remaining_h = buffer_height_i;
 
     gl_canvas_ref().glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    gl_canvas_ref().glPixelStorei(GL_UNPACK_ROW_LENGTH, step);
+    gl_canvas_ref().glPixelStorei(GL_UNPACK_ROW_LENGTH, step_);
 
-    for (int ty = 0; ty < num_textures_y; ++ty) {
+    for (int ty = 0; ty < num_textures_y_; ++ty) {
         const auto buff_h = (std::min)(remaining_h, max_texture_size);
         remaining_h -= buff_h;
 
         auto remaining_w = buffer_width_i;
-        for (int tx = 0; tx < num_textures_x; ++tx) {
+        for (int tx = 0; tx < num_textures_x_; ++tx) {
             const auto buff_w = (std::min)(remaining_w, max_texture_size);
             remaining_w -= buff_w;
 
-            const auto tex_id = ty * num_textures_x + tx;
-            gl_canvas_ref().glBindTexture(GL_TEXTURE_2D, buff_tex[tex_id]);
+            const auto tex_id = ty * num_textures_x_ + tx;
+            gl_canvas_ref().glBindTexture(GL_TEXTURE_2D, buff_tex_[tex_id]);
 
             gl_canvas_ref().glPixelStorei(GL_UNPACK_SKIP_ROWS,
                                           ty * max_texture_size);

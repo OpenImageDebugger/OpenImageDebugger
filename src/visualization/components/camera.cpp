@@ -124,8 +124,9 @@ std::pair<float, float> Camera::get_buffer_initial_dimensions() const {
     }
     const auto& buff = buff_opt->get();
 
-    const auto buf_dim = buffer_obj->get().get_pose() *
-                         vec4(buff.buffer_width_f, buff.buffer_height_f, 0, 1);
+    const auto buf_dim =
+        buffer_obj->get().get_pose() *
+        vec4(buff.buffer_width_f(), buff.buffer_height_f(), 0, 1);
 
     const auto x = std::abs(buf_dim.x());
     const auto y = std::abs(buf_dim.y());
@@ -392,7 +393,7 @@ void Camera::move_to(const float x, const float y) {
     }
     const auto& buff = buff_opt->get();
     const auto buf_dim =
-        vec4(buff.buffer_width_f, buff.buffer_height_f, 0.0f, 1.0f);
+        vec4(buff.buffer_width_f(), buff.buffer_height_f(), 0.0f, 1.0f);
     const auto centered_coord = buf_dim * 0.5f - vec4(x, y, 0.0f, 0.0f);
 
     // Recompute zoom matrix to discard its internal translation
@@ -425,7 +426,7 @@ vec4 Camera::get_position() const {
     }
     const auto& buff = buff_opt->get();
     const auto buf_dim =
-        vec4(buff.buffer_width_f, buff.buffer_height_f, 0.0f, 1.0f);
+        vec4(buff.buffer_width_f(), buff.buffer_height_f(), 0.0f, 1.0f);
     const auto pos_vec = vec4{camera_pos_x_, camera_pos_y_, 0.0f, 1.0f};
 
     return buf_dim * 0.5f -

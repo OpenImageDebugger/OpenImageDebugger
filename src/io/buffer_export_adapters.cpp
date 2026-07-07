@@ -40,24 +40,24 @@ RgbaImage normalize_to_rgba8(const Buffer& buffer) {
     std::copy(bc, bc + 8, bc_comp.begin());
 
     return normalize_to_rgba8_raw(
-        std::bit_cast<const std::uint8_t*>(buffer.buffer_.data()),
-        {.type = buffer.type,
-         .width = static_cast<int>(buffer.buffer_width_f),
-         .height = static_cast<int>(buffer.buffer_height_f),
-         .channels = buffer.channels,
-         .step = buffer.step,
+        std::bit_cast<const std::uint8_t*>(buffer.buffer().data()),
+        {.type = buffer.type(),
+         .width = static_cast<int>(buffer.buffer_width_f()),
+         .height = static_cast<int>(buffer.buffer_height_f()),
+         .channels = buffer.channels(),
+         .step = buffer.step(),
          .pixel_layout = buffer.get_pixel_layout()},
         bc_comp);
 }
 
 bool export_octave(const Buffer& buffer, const std::string& path) {
     return export_octave_raw(
-        std::bit_cast<const std::uint8_t*>(buffer.buffer_.data()),
-        buffer.type,
-        static_cast<int>(buffer.buffer_width_f),
-        static_cast<int>(buffer.buffer_height_f),
-        buffer.channels,
-        buffer.step,
+        std::bit_cast<const std::uint8_t*>(buffer.buffer().data()),
+        buffer.type(),
+        static_cast<int>(buffer.buffer_width_f()),
+        static_cast<int>(buffer.buffer_height_f()),
+        buffer.channels(),
+        buffer.step(),
         path);
 }
 

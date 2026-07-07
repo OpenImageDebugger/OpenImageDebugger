@@ -33,31 +33,31 @@
 namespace oid {
 
 GLTextRenderer::GLTextRenderer(const RenderCanvas& canvas, GlyphAtlas atlas)
-    : text_prog{canvas}, canvas_{canvas}, atlas_{std::move(atlas)} {}
+    : text_prog_{canvas}, canvas_{canvas}, atlas_{std::move(atlas)} {}
 
 GLTextRenderer::~GLTextRenderer() {
-    canvas_.glDeleteTextures(1, &text_tex);
-    canvas_.glDeleteBuffers(1, &text_vbo);
+    canvas_.glDeleteTextures(1, &text_tex_);
+    canvas_.glDeleteBuffers(1, &text_vbo_);
 }
 
 bool GLTextRenderer::initialize() {
-    if (!text_prog.create(shader::text_vert_shader,
-                          shader::text_frag_shader,
-                          ShaderProgram::TexelChannels::FormatR,
-                          "rgba",
-                          {"mvp",
-                           "buff_sampler",
-                           "text_sampler",
-                           "pix_coord",
-                           "brightness_contrast"})) {
+    if (!text_prog_.create(shader::text_vert_shader,
+                           shader::text_frag_shader,
+                           ShaderProgram::TexelChannels::FormatR,
+                           "rgba",
+                           {"mvp",
+                            "buff_sampler",
+                            "text_sampler",
+                            "pix_coord",
+                            "brightness_contrast"})) {
         return false;
     }
 
-    canvas_.glGenTextures(1, &text_tex);
+    canvas_.glGenTextures(1, &text_tex_);
     canvas_.glActiveTexture(GL_TEXTURE0);
-    canvas_.glBindTexture(GL_TEXTURE_2D, text_tex);
+    canvas_.glBindTexture(GL_TEXTURE_2D, text_tex_);
     canvas_.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    canvas_.glGenBuffers(1, &text_vbo);
+    canvas_.glGenBuffers(1, &text_vbo_);
     upload_atlas();
 
     return true;
@@ -65,15 +65,15 @@ bool GLTextRenderer::initialize() {
 
 void GLTextRenderer::upload_atlas() {
     canvas_.glActiveTexture(GL_TEXTURE0);
-    canvas_.glBindTexture(GL_TEXTURE_2D, text_tex);
+    canvas_.glBindTexture(GL_TEXTURE_2D, text_tex_);
 
-    text_texture_width = atlas_.texture_width;
-    text_texture_height = atlas_.texture_height;
+    text_texture_width_ = atlas_.texture_width;
+    text_texture_height_ = atlas_.texture_height;
 
     {
         constexpr auto mipmap_levels = 5;
-        auto tex_level_width = static_cast<int>(text_texture_width);
-        auto tex_level_height = static_cast<int>(text_texture_height);
+        auto tex_level_width = static_cast<int>(text_texture_width_);
+        auto tex_level_height = static_cast<int>(text_texture_height_);
 
         for (int i = 0; i < mipmap_levels; ++i) {
             canvas_.glTexImage2D(GL_TEXTURE_2D,
@@ -96,17 +96,17 @@ void GLTextRenderer::upload_atlas() {
                                 0,
                                 0,
                                 0,
-                                static_cast<GLsizei>(text_texture_width),
-                                static_cast<GLsizei>(text_texture_height),
+                                static_cast<GLsizei>(text_texture_width_),
+                                static_cast<GLsizei>(text_texture_height_),
                                 GL_RED,
                                 GL_UNSIGNED_BYTE,
                                 atlas_.pixels.data());
     }
 
-    text_texture_offsets = atlas_.offsets;
-    text_texture_advances = atlas_.advances;
-    text_texture_sizes = atlas_.sizes;
-    text_texture_tls = atlas_.tls;
+    text_texture_offsets_ = atlas_.offsets;
+    text_texture_advances_ = atlas_.advances;
+    text_texture_sizes_ = atlas_.sizes;
+    text_texture_tls_ = atlas_.tls;
 
     canvas_.glGenerateMipmap(GL_TEXTURE_2D);
     canvas_.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -121,6 +121,42 @@ void GLTextRenderer::upload_atlas() {
         canvas_.glTexParameteri(
             GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
     }
+}
+
+GLuint GLTextRenderer::text_vbo() const {
+    return text_vbo_;
+}
+
+GLuint GLTextRenderer::text_tex() const {
+    return text_tex_;
+}
+
+const ShaderProgram& GLTextRenderer::text_prog() const {
+    return text_prog_;
+}
+
+const Array_256_2& GLTextRenderer::text_texture_offsets() const {
+    return text_texture_offsets_;
+}
+
+const Array_256_2& GLTextRenderer::text_texture_advances() const {
+    return text_texture_advances_;
+}
+
+const Array_256_2& GLTextRenderer::text_texture_sizes() const {
+    return text_texture_sizes_;
+}
+
+const Array_256_2& GLTextRenderer::text_texture_tls() const {
+    return text_texture_tls_;
+}
+
+float GLTextRenderer::text_texture_width() const {
+    return text_texture_width_;
+}
+
+float GLTextRenderer::text_texture_height() const {
+    return text_texture_height_;
 }
 
 } // namespace oid

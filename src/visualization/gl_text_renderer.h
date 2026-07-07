@@ -36,26 +36,39 @@ namespace oid {
 
 class GLTextRenderer {
   public:
-    GLuint text_vbo{0};
-    GLuint text_tex{0};
-
-    Array_256_2 text_texture_offsets{};
-    Array_256_2 text_texture_advances{};
-    Array_256_2 text_texture_sizes{};
-    Array_256_2 text_texture_tls{};
-
     GLTextRenderer(const RenderCanvas& canvas, GlyphAtlas atlas);
     ~GLTextRenderer();
 
     [[nodiscard]] bool initialize();
 
-    ShaderProgram text_prog;
+    [[nodiscard]] GLuint text_vbo() const;
+    [[nodiscard]] GLuint text_tex() const;
 
-    float text_texture_width{0};
-    float text_texture_height{0};
+    [[nodiscard]] const ShaderProgram& text_prog() const;
+
+    [[nodiscard]] const Array_256_2& text_texture_offsets() const;
+    [[nodiscard]] const Array_256_2& text_texture_advances() const;
+    [[nodiscard]] const Array_256_2& text_texture_sizes() const;
+    [[nodiscard]] const Array_256_2& text_texture_tls() const;
+
+    [[nodiscard]] float text_texture_width() const;
+    [[nodiscard]] float text_texture_height() const;
 
   private:
     void upload_atlas();
+
+    GLuint text_vbo_{0};
+    GLuint text_tex_{0};
+
+    Array_256_2 text_texture_offsets_{};
+    Array_256_2 text_texture_advances_{};
+    Array_256_2 text_texture_sizes_{};
+    Array_256_2 text_texture_tls_{};
+
+    ShaderProgram text_prog_;
+
+    float text_texture_width_{0};
+    float text_texture_height_{0};
 
     const RenderCanvas& canvas_;
     GlyphAtlas atlas_;

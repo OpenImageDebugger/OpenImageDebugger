@@ -188,7 +188,7 @@ void draw_contrast_panel(const UiState& ui,
     // only its min/max fields stay editable (parity with the Qt app's
     // update_channel_labels, which greys out the other channel widgets).
     const bool single_channel = buffer->get_display_channel_mode() == 1;
-    const int channel_count = (std::min)(buffer->channels, 4);
+    const int channel_count = (std::min)(buffer->channels(), 4);
     const std::span<float> mins = buffer->min_buffer_values();
     const std::span<float> maxs = buffer->max_buffer_values();
 
