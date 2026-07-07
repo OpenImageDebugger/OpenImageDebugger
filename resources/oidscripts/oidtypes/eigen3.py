@@ -39,14 +39,24 @@ class EigenXX(interface.TypeInspectorInterface):
 
     def _oid_type_for(self, current_type):
         # Assign the OpenImageDebugger type according to underlying type
-        if current_type == 'short':
+        if current_type in ('unsigned char', 'uint8_t'):
+            type_value = symbols.OID_TYPES_UINT8
+        elif current_type in ('unsigned short', 'uint16_t'):
+            type_value = symbols.OID_TYPES_UINT16
+        elif current_type in ('short', 'int16_t'):
             type_value = symbols.OID_TYPES_INT16
         elif current_type == 'float':
             type_value = symbols.OID_TYPES_FLOAT32
         elif current_type == 'double':
             type_value = symbols.OID_TYPES_FLOAT64
-        elif current_type == 'int':
+        elif current_type in ('int', 'int32_t'):
             type_value = symbols.OID_TYPES_INT32
+        else:
+            # is_symbol_observable() matches any Eigen:: symbol, so
+            # unsupported scalar types can reach this point; fail with an
+            # actionable message instead of an UnboundLocalError.
+            raise ValueError(
+                'Unsupported Eigen scalar type: {}'.format(current_type))
 
         return type_value
 
