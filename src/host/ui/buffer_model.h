@@ -29,6 +29,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <memory>
 #include <string>
 #include <utility>
@@ -154,7 +155,7 @@ inline std::string type_label(const oid::BufferType type, const int channels) {
         base = "float64";
         break;
     }
-    return base + "x" + std::to_string(channels);
+    return std::format("{}x{}", base, channels);
 }
 
 // Builds the fixed set of mock buffers used by chrome development/tests:

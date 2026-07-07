@@ -29,6 +29,7 @@
 #include <bit>
 #include <cstddef>
 #include <deque>
+#include <format>
 #include <memory>
 #include <source_location>
 #include <span>
@@ -79,9 +80,10 @@ class SocketTimeoutError final : public std::runtime_error {
     explicit SocketTimeoutError(
         const char* operation,
         const std::source_location& loc = std::source_location::current())
-        : std::runtime_error(std::string{"Socket "} + operation +
-                             " timeout at " + loc.file_name() + ":" +
-                             std::to_string(loc.line())) {}
+        : std::runtime_error(std::format("Socket {} timeout at {}:{}",
+                                         operation,
+                                         loc.file_name(),
+                                         loc.line())) {}
 };
 
 // Helper function for error reporting with source location

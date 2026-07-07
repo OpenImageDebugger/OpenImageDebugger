@@ -27,6 +27,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <format>
 #include <iomanip>
 #include <optional>
 #include <sstream>
@@ -130,12 +131,14 @@ void draw_status_bar(const UiState& ui,
             }
         }
 
-        line = rec.display_name + "   [" + std::to_string(rec.width) + "x" +
-               std::to_string(rec.height) + "]   " +
-               type_label(rec.type, rec.channels);
+        line = std::format("{}   [{}x{}]   {}",
+                           rec.display_name,
+                           rec.width,
+                           rec.height,
+                           type_label(rec.type, rec.channels));
         if (zoom_pct >= 0.0f) {
-            line += "   zoom: " +
-                    std::to_string(static_cast<int>(zoom_pct + 0.5f)) + "%";
+            line +=
+                std::format("   zoom: {}%", static_cast<int>(zoom_pct + 0.5f));
         }
 
         // Pixel value under the (last-hovered) cursor — Qt parity with
