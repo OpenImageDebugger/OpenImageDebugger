@@ -129,7 +129,7 @@ void draw_buffer_list_row(const BufferListRowContext& ctx,
     const std::string label = row_label(ctx.model.at(i));
     const ImVec2 text_size = ImGui::CalcTextSize(label.c_str());
     const float row_h =
-        (std::max)(static_cast<float>(ThumbnailCache::kDisplayH), text_size.y);
+        (std::max)(static_cast<float>(ThumbnailCache::DISPLAY_H), text_size.y);
 
     // Full-width invisible Selectable submitted first: owns row's target
     // hover/selection highlight (Qt QListWidget parity — thumbnail, label,
@@ -160,15 +160,15 @@ void draw_buffer_list_row(const BufferListRowContext& ctx,
         ImGui::SetCursorScreenPos(
             ImVec2(row_start.x,
                    row_start.y +
-                       (row_h - static_cast<float>(ThumbnailCache::kDisplayH)) *
+                       (row_h - static_cast<float>(ThumbnailCache::DISPLAY_H)) *
                            0.5f));
         ImGui::Image(
             static_cast<ImTextureID>(static_cast<intptr_t>(tex)),
-            ImVec2(ThumbnailCache::kDisplayW, ThumbnailCache::kDisplayH));
+            ImVec2(ThumbnailCache::DISPLAY_W, ThumbnailCache::DISPLAY_H));
     }
 
     ImGui::SetCursorScreenPos(ImVec2(
-        row_start.x + ThumbnailCache::kDisplayW + ctx.style.ItemSpacing.x,
+        row_start.x + ThumbnailCache::DISPLAY_W + ctx.style.ItemSpacing.x,
         row_start.y + (row_h - text_size.y) * 0.5f));
     ImGui::TextUnformatted(label.c_str());
 

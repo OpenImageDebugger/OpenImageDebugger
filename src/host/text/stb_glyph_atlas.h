@@ -32,7 +32,7 @@
 
 namespace oid::host {
 
-// Bakes oid::kGlyphText at 128px height from the embedded Roboto-Regular
+// Bakes oid::GLYPH_TEXT at 128px height from the embedded Roboto-Regular
 // font (src/resources/fonts/Roboto-Regular.ttf) via stb_truetype into the
 // same strip->finalize_strip_atlas() pipeline the legacy Qt frontend's
 // QPainter baker used (see tag legacy-qt), so the ImGui frontend gets a

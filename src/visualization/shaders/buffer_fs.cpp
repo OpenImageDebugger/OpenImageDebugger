@@ -24,7 +24,7 @@
  */
 
 namespace oid::shader {
-extern auto const buff_frag_shader{R"glsl(
+extern auto const BUFF_FRAG_SHADER{R"glsl(
 
 uniform sampler2D sampler;
 uniform vec4 brightness_contrast[2];

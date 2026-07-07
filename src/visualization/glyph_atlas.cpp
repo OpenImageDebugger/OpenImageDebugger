@@ -118,7 +118,7 @@ GlyphAtlas finalize_strip_atlas(const std::uint8_t* strip,
                                 const int strip_h,
                                 const std::array<int, 256>& char_advances) {
     return finalize_strip_atlas(
-        strip, strip_w, strip_h, char_advances, kGlyphText);
+        strip, strip_w, strip_h, char_advances, GLYPH_TEXT);
 }
 
 } // namespace oid

@@ -639,7 +639,7 @@ if(OID_BUILD_IMGUI_FRONTEND)
     add_test(NAME GlyphAtlasTests COMMAND glyph_atlas_test)
 
     # Test stb_glyph_atlas() out of host/text/stb_glyph_atlas.cpp: bakes
-    # oid::kGlyphText from the embedded Roboto-Regular font (stb_truetype)
+    # oid::GLYPH_TEXT from the embedded Roboto-Regular font (stb_truetype)
     # through the same finalize_strip_atlas() pipeline glyph_atlas_test above
     # exercises via the Qt baker. Pure CPU (no GL/Qt/canvas types); needs the
     # SYSTEM stb include (this TU defines STB_TRUETYPE_IMPLEMENTATION).

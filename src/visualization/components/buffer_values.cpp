@@ -236,14 +236,14 @@ void BufferValues::draw(const mat4& projection, const mat4& view_inv) {
         if (channels == 1) {
             recenter_factors = {0.0f, 0.0f, 0.0f, 0.0f};
         } else if (channels == 2) {
-            const auto rfUp = padding_ / 3.0f / channels_f;
+            const auto rfUp = PADDING / 3.0f / channels_f;
             recenter_factors = {rfUp, -rfUp, 0.0f, 0.0f};
         } else if (channels == 3) {
-            const auto rfUp = padding_ / 2.0f / channels_f;
+            const auto rfUp = PADDING / 2.0f / channels_f;
             recenter_factors = {rfUp, 0.0f, -rfUp, 0.0f};
         } else if (channels == 4) {
-            const auto rfUp = 3.0f * padding_ / 5.0f / channels_f;
-            const auto rfDown = padding_ / 5.0f / channels_f;
+            const auto rfUp = 3.0f * PADDING / 5.0f / channels_f;
+            const auto rfDown = PADDING / 5.0f / channels_f;
             recenter_factors = {rfUp, rfDown, -rfDown, -rfUp};
         }
 
@@ -295,7 +295,7 @@ void BufferValues::draw_text(const DrawTextParams& params) {
         auto_buffer_contrast_brightness =
             buffer_component.auto_buffer_contrast_brightness();
     } else {
-        auto_buffer_contrast_brightness = Buffer::no_ac_params.data();
+        auto_buffer_contrast_brightness = Buffer::NO_AC_PARAMS.data();
     }
 
     text_renderer->text_prog().use();
@@ -340,7 +340,7 @@ void BufferValues::draw_text(const DrawTextParams& params) {
                               text_renderer->text_texture_sizes()[uchar][1]));
     }
 
-    constexpr auto paddingScale = 1.0f / (1.0f - 2.0f * padding_);
+    constexpr auto paddingScale = 1.0f / (1.0f - 2.0f * PADDING);
     text_pixel_scale_ =
         (std::max)(text_pixel_scale_,
                    (std::max)(boxW, boxH) * paddingScale * channels);
@@ -423,18 +423,18 @@ void BufferValues::draw_text(const DrawTextParams& params) {
 }
 
 void BufferValues::decrease_float_precision() {
-    if (min_float_precision_ < float_precision_) {
+    if (MIN_FLOAT_PRECISION < float_precision_) {
         float_precision_--;
         // reset text scaling
-        text_pixel_scale_ = default_text_scale_;
+        text_pixel_scale_ = DEFAULT_TEXT_SCALE;
     }
 }
 
 void BufferValues::increase_float_precision() {
-    if (max_float_precision_ > float_precision_) {
+    if (MAX_FLOAT_PRECISION > float_precision_) {
         float_precision_++;
         // reset text scaling
-        text_pixel_scale_ = default_text_scale_;
+        text_pixel_scale_ = DEFAULT_TEXT_SCALE;
     }
 }
 

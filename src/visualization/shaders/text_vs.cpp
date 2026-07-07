@@ -24,7 +24,7 @@
  */
 
 namespace oid::shader {
-extern auto const text_vert_shader{R"glsl(
+extern auto const TEXT_VERT_SHADER{R"glsl(
 
 attribute vec4 input_position;
 varying vec2 uv;

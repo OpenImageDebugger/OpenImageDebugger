@@ -63,8 +63,8 @@ void blend_glyph_into_strip(std::vector<std::uint8_t>& strip,
 std::optional<oid::GlyphAtlas> stb_glyph_atlas() {
     stbtt_fontinfo info;
     if (stbtt_InitFont(&info,
-                       fonts::kRobotoRegular,
-                       stbtt_GetFontOffsetForIndex(fonts::kRobotoRegular, 0)) ==
+                       fonts::ROBOTO_REGULAR,
+                       stbtt_GetFontOffsetForIndex(fonts::ROBOTO_REGULAR, 0)) ==
         0) {
         return std::nullopt;
     }
@@ -81,7 +81,7 @@ std::optional<oid::GlyphAtlas> stb_glyph_atlas() {
     std::array<int, 256> advances{};
     int strip_w = 0;
     for (const auto* p =
-             reinterpret_cast<const unsigned char*>(oid::kGlyphText);
+             reinterpret_cast<const unsigned char*>(oid::GLYPH_TEXT);
          *p;
          ++p) {
         int adv{};
@@ -95,7 +95,7 @@ std::optional<oid::GlyphAtlas> stb_glyph_atlas() {
                                     0);
     int pen_x = 0;
     for (const auto* p =
-             reinterpret_cast<const unsigned char*>(oid::kGlyphText);
+             reinterpret_cast<const unsigned char*>(oid::GLYPH_TEXT);
          *p;
          ++p) {
         int x0{};

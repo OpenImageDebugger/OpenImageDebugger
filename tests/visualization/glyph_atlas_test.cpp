@@ -43,7 +43,7 @@ TEST(GlyphAtlas, FinalizeComputesPow2AndTables) {
     }
     std::array<int, 256> adv{};
     adv['A'] = 6;
-    // kGlyphText drives table fill; for the test call a charset-parameterized
+    // GLYPH_TEXT drives table fill; for the test call a charset-parameterized
     // overload finalize_strip_atlas(strip, w, h, adv, "A"):
     const auto atlas = oid::finalize_strip_atlas(strip.data(), 6, 4, adv, "A");
     EXPECT_EQ(atlas.texture_width, 8.0f);  // pow2 of 6

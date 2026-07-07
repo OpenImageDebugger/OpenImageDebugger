@@ -52,13 +52,13 @@ void* imgui_owned_font_copy(const unsigned char* data, const std::size_t size) {
 
 void setup_ui_fonts(const float content_scale) {
     ImGuiIO& io = ImGui::GetIO();
-    const float px = kUiFontSizeBase * content_scale;
+    const float px = UI_FONT_SIZE_BASE * content_scale;
 
     ImFontConfig roboto_cfg{};
     io.Fonts->AddFontFromMemoryTTF(
-        imgui_owned_font_copy(fonts::kRobotoRegular,
-                              sizeof(fonts::kRobotoRegular)),
-        static_cast<int>(sizeof(fonts::kRobotoRegular)),
+        imgui_owned_font_copy(fonts::ROBOTO_REGULAR,
+                              sizeof(fonts::ROBOTO_REGULAR)),
+        static_cast<int>(sizeof(fonts::ROBOTO_REGULAR)),
         px,
         &roboto_cfg);
 
@@ -70,8 +70,8 @@ void setup_ui_fonts(const float content_scale) {
     ImFontConfig icon_cfg{};
     icon_cfg.MergeMode = true;
     io.Fonts->AddFontFromMemoryTTF(
-        imgui_owned_font_copy(fonts::kFontello, sizeof(fonts::kFontello)),
-        static_cast<int>(sizeof(fonts::kFontello)),
+        imgui_owned_font_copy(fonts::FONTELLO, sizeof(fonts::FONTELLO)),
+        static_cast<int>(sizeof(fonts::FONTELLO)),
         px,
         &icon_cfg,
         kIconRanges.data());

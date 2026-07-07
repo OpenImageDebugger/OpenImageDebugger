@@ -51,22 +51,24 @@ std::pair<const unsigned char*, std::size_t> svg_source_for(IconId id) {
     using enum IconId;
     switch (id) {
     case CHANNEL_RED:
-        return {icons::kLabelRedChannelSvg, sizeof(icons::kLabelRedChannelSvg)};
+        return {icons::LABEL_RED_CHANNEL_SVG,
+                sizeof(icons::LABEL_RED_CHANNEL_SVG)};
     case CHANNEL_GREEN:
-        return {icons::kLabelGreenChannelSvg,
-                sizeof(icons::kLabelGreenChannelSvg)};
+        return {icons::LABEL_GREEN_CHANNEL_SVG,
+                sizeof(icons::LABEL_GREEN_CHANNEL_SVG)};
     case CHANNEL_BLUE:
-        return {icons::kLabelBlueChannelSvg,
-                sizeof(icons::kLabelBlueChannelSvg)};
+        return {icons::LABEL_BLUE_CHANNEL_SVG,
+                sizeof(icons::LABEL_BLUE_CHANNEL_SVG)};
     case CHANNEL_ALPHA:
-        return {icons::kLabelAlphaChannelSvg,
-                sizeof(icons::kLabelAlphaChannelSvg)};
+        return {icons::LABEL_ALPHA_CHANNEL_SVG,
+                sizeof(icons::LABEL_ALPHA_CHANNEL_SVG)};
     case LOWER_UPPER_BOUND:
-        return {icons::kLowerUpperBoundSvg, sizeof(icons::kLowerUpperBoundSvg)};
+        return {icons::LOWER_UPPER_BOUND_SVG,
+                sizeof(icons::LOWER_UPPER_BOUND_SVG)};
     case GO_TO_X:
-        return {icons::kXSvg, sizeof(icons::kXSvg)};
+        return {icons::X_SVG, sizeof(icons::X_SVG)};
     case GO_TO_Y:
-        return {icons::kYSvg, sizeof(icons::kYSvg)};
+        return {icons::Y_SVG, sizeof(icons::Y_SVG)};
     }
     return {nullptr, 0};
 }

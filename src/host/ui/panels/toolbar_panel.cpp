@@ -74,9 +74,9 @@ void for_each_target(const UiState& ui,
 
 // Combo entries, in order, exactly matching the legacy Qt frontend's
 // PixelDisplayFormat/apply_format() (see tag legacy-qt).
-constexpr std::array<const char*, 5> kFormatLabels = {
+constexpr std::array<const char*, 5> FORMAT_LABELS = {
     "BGRA", "RGBA", "channel0", "channel1", "channel2"};
-constexpr int kFormatCount = static_cast<int>(kFormatLabels.size());
+constexpr int FORMAT_COUNT = static_cast<int>(FORMAT_LABELS.size());
 
 enum class PixelFormat {
     BGRA = 0,
@@ -158,7 +158,7 @@ void sync_selected_stage_contrast(const UiState& ui, StageManager& stages) {
 void draw_auto_contrast_controls(UiState& ui) {
     {
         bool ac_editor_visible = ui.ac_editor_visible();
-        if (icon_button(kIconAcEdit,
+        if (icon_button(ICON_AC_EDIT,
                         "Toggle min and max intensity editor",
                         &ac_editor_visible)) {
             ui.set_ac_editor_visible(!ui.ac_editor_visible());
@@ -168,7 +168,7 @@ void draw_auto_contrast_controls(UiState& ui) {
 
     {
         bool contrast_enabled = ui.contrast_enabled();
-        if (icon_button(kIconAcToggle,
+        if (icon_button(ICON_AC_TOGGLE,
                         "Toggle Contrast Modifications",
                         &contrast_enabled)) {
             ui.set_contrast_enabled(!ui.contrast_enabled());
@@ -184,7 +184,7 @@ void draw_recenter_button(const UiState& ui,
                           bool has_selection) {
     ImGui::BeginDisabled(!has_selection);
 
-    if (icon_button(kIconRecenter, "Reposition buffer to fit window")) {
+    if (icon_button(ICON_RECENTER, "Reposition buffer to fit window")) {
         for_each_target(ui, stages, model, [](oid::Stage& s) {
             if (oid::Camera* cam = camera_of(s); cam != nullptr) {
                 cam->recenter_camera();
@@ -199,7 +199,7 @@ void draw_recenter_button(const UiState& ui,
 // 4. linkViewsToggle. Plain UI-state toggle -- not gated on selection.
 void draw_link_views_toggle(UiState& ui) {
     if (const bool link_views = ui.link_views(); icon_button(
-            kIconLinkViews, "Move all buffers simultaneously", &link_views)) {
+            ICON_LINK_VIEWS, "Move all buffers simultaneously", &link_views)) {
         ui.set_link_views(!ui.link_views());
     }
     ImGui::SameLine();
@@ -212,7 +212,7 @@ void draw_rotation_buttons(const UiState& ui,
                            bool has_selection) {
     ImGui::BeginDisabled(!has_selection);
 
-    if (icon_button(kIconRotateCcw, "Rotate 90\xC2\xB0 counterclockwise")) {
+    if (icon_button(ICON_ROTATE_CCW, "Rotate 90\xC2\xB0 counterclockwise")) {
         for_each_target(ui, stages, model, [](oid::Stage& s) {
             if (oid::Buffer* buf = buffer_of(s); buf != nullptr) {
                 buf->rotate(-90.0f * std::numbers::pi_v<float> / 180.0f);
@@ -221,7 +221,7 @@ void draw_rotation_buttons(const UiState& ui,
     }
     ImGui::SameLine();
 
-    if (icon_button(kIconRotateCw, "Rotate 90\xC2\xB0 clockwise")) {
+    if (icon_button(ICON_ROTATE_CW, "Rotate 90\xC2\xB0 clockwise")) {
         for_each_target(ui, stages, model, [](oid::Stage& s) {
             if (oid::Buffer* buf = buffer_of(s); buf != nullptr) {
                 buf->rotate(90.0f * std::numbers::pi_v<float> / 180.0f);
@@ -237,7 +237,7 @@ void draw_rotation_buttons(const UiState& ui,
 void draw_goto_button(bool has_selection, bool& goto_open) {
     ImGui::BeginDisabled(!has_selection);
 
-    if (icon_button(kIconGoTo, "Go to pixel position")) {
+    if (icon_button(ICON_GO_TO, "Go to pixel position")) {
         goto_open = true;
     }
     ImGui::SameLine();
@@ -258,7 +258,7 @@ void draw_precision_buttons(const UiState& ui,
          model.at(ui.selected()).type == oid::BufferType::FLOAT64);
     ImGui::BeginDisabled(!float_selected);
 
-    if (icon_button(kIconPrecisionDown, "Decrease float precision")) {
+    if (icon_button(ICON_PRECISION_DOWN, "Decrease float precision")) {
         for_each_target(ui, stages, model, [](oid::Stage& s) {
             if (oid::BufferValues* vals = values_of(s); vals != nullptr) {
                 vals->decrease_float_precision();
@@ -267,7 +267,7 @@ void draw_precision_buttons(const UiState& ui,
     }
     ImGui::SameLine();
 
-    if (icon_button(kIconPrecisionUp, "Increase float precision")) {
+    if (icon_button(ICON_PRECISION_UP, "Increase float precision")) {
         for_each_target(ui, stages, model, [](oid::Stage& s) {
             if (oid::BufferValues* vals = values_of(s); vals != nullptr) {
                 vals->increase_float_precision();
@@ -298,7 +298,7 @@ void draw_format_combo(const UiState& ui, StageManager& stages) {
                           ? current_format_index(*selected_buffer)
                           : 0;
         ImGui::Combo(
-            "##pixel_format", &current, kFormatLabels.data(), kFormatCount) &&
+            "##pixel_format", &current, FORMAT_LABELS.data(), FORMAT_COUNT) &&
         selected_buffer != nullptr) {
         apply_format(*selected_buffer, current);
     }

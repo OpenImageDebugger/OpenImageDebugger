@@ -41,7 +41,7 @@ TEST(StbGlyphAtlas, BakesAllGlyphsDeterministically) {
               static_cast<std::size_t>(a->texture_width * a->texture_height));
     // Every charset glyph has positive advance and in-bounds offset.
     for (const auto* p =
-             reinterpret_cast<const unsigned char*>(oid::kGlyphText);
+             reinterpret_cast<const unsigned char*>(oid::GLYPH_TEXT);
          *p;
          ++p) {
         if (*p == ' ') {

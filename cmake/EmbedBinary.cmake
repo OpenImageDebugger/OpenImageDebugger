@@ -25,13 +25,13 @@
 #                  REL     <path under OID_GENERATED_DIR, e.g.
 #                           host/ui/icons/x_svg.h>
 #                  NAMESPACE <e.g. oid::host::icons>
-#                  SYMBOL    <e.g. kXSvg>
+#                  SYMBOL    <e.g. X_SVG>
 #                  PROVENANCE <human-readable source description>)
 #
 # Reads SOURCE at configure time and writes a byte-array header to
 # ${OID_GENERATED_DIR}/${REL} containing:
 #   inline constexpr unsigned char ${SYMBOL}[]     = { ... };
-#   inline constexpr std::size_t   ${SYMBOL}Size   = sizeof(${SYMBOL});
+#   inline constexpr std::size_t   ${SYMBOL}_SIZE   = sizeof(${SYMBOL});
 # inside namespace ${NAMESPACE}. The array is byte-array-identical to the
 # asset. copy_if_different avoids bumping the header mtime (and forcing a
 # recompile) when the asset is unchanged.
@@ -66,7 +66,7 @@ namespace ${A_NAMESPACE} {
 inline constexpr unsigned char ${A_SYMBOL}[] = {
 ${bytes}
 };
-inline constexpr std::size_t ${A_SYMBOL}Size = sizeof(${A_SYMBOL});
+inline constexpr std::size_t ${A_SYMBOL}_SIZE = sizeof(${A_SYMBOL});
 } // namespace ${A_NAMESPACE}
 #endif
 // clang-format on

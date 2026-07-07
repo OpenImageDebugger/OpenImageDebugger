@@ -250,11 +250,11 @@ void draw_canvas_pane(oid::host::GlfwCanvas& canvas,
 // Qt parity: the legacy Qt frontend's imageList minimumSize is 150
 // (width, 0 height; see tag legacy-qt); the left pane never shrinks
 // narrower than that.
-constexpr float kMinPaneW = 150.0f;
+constexpr float MIN_PANE_W = 150.0f;
 // Splitter handle width. The handle is flush against the list pane and
 // painted, so this whole band is both visible and grabbable -- wide
 // enough to make a comfortable, easy-to-see target.
-constexpr float kSplitterW = 12.0f;
+constexpr float SPLITTER_W = 12.0f;
 
 // Initializes the GLFW backend window (at the saved size/position) and the
 // ImGui layer, then seeds the canvas-pane logical size to the window's
@@ -471,14 +471,14 @@ void draw_main_ui(FrameContext& ctx, bool focus_symbol_search) {
         // dominated by the toolbar row (9 fixed-26px buttons +
         // "Format:" label + the 100px combo, with a spacing gap
         // between each of the 11 items). Reserve that width for the
-        // canvas pane instead of a flat kMinPaneW.
+        // canvas pane instead of a flat MIN_PANE_W.
         const float min_canvas_w = 9.0f * 26.0f +
                                    ImGui::CalcTextSize("Format:").x + 100.0f +
                                    10.0f * ImGui::GetStyle().ItemSpacing.x;
         const float max_pane_w = (std::max)(ImGui::GetContentRegionAvail().x -
-                                                min_canvas_w - kSplitterW,
-                                            kMinPaneW);
-        ctx.left_pane_w = std::clamp(ctx.left_pane_w, kMinPaneW, max_pane_w);
+                                                min_canvas_w - SPLITTER_W,
+                                            MIN_PANE_W);
+        ctx.left_pane_w = std::clamp(ctx.left_pane_w, MIN_PANE_W, max_pane_w);
 
         // Left pane: buffer list (icon thumbnails, text rows,
         // selection, delete -- see thumbnail_cache.h).
@@ -518,7 +518,7 @@ void draw_main_ui(FrameContext& ctx, bool focus_symbol_search) {
         // painting the handle (below) so there is something visible to
         // aim at.
         ImGui::SameLine(0.0f, 0.0f);
-        ImGui::InvisibleButton("##vsplit", ImVec2(kSplitterW, avail_h));
+        ImGui::InvisibleButton("##vsplit", ImVec2(SPLITTER_W, avail_h));
         const bool split_hot = ImGui::IsItemHovered() || ImGui::IsItemActive();
         if (split_hot) {
             ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
@@ -526,7 +526,7 @@ void draw_main_ui(FrameContext& ctx, bool focus_symbol_search) {
         if (ImGui::IsItemActive()) {
             ctx.left_pane_w =
                 std::clamp(ctx.left_pane_w + ImGui::GetIO().MouseDelta.x,
-                           kMinPaneW,
+                           MIN_PANE_W,
                            max_pane_w);
         }
         // Paint the handle so it reads as a grabbable divider.

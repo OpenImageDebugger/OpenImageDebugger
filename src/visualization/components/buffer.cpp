@@ -105,7 +105,7 @@ std::pair<int, int> get_channel_range(const int display_channel_mode,
 
 } // namespace
 
-constexpr std::array<float, 8> Buffer::no_ac_params{
+constexpr std::array<float, 8> Buffer::NO_AC_PARAMS{
     1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 
 Buffer::Buffer(const std::shared_ptr<GameObject>& game_object,
@@ -326,8 +326,8 @@ void Buffer::compute_contrast_brightness_parameters() {
 }
 
 int Buffer::sub_texture_id_at_coord(const int x, const int y) const {
-    const auto tx = x / max_texture_size;
-    const auto ty = y / max_texture_size;
+    const auto tx = x / MAX_TEXTURE_SIZE;
+    const auto ty = y / MAX_TEXTURE_SIZE;
     return static_cast<int>(buff_tex_[ty * num_textures_x_ + tx]);
 }
 
@@ -472,19 +472,19 @@ int Buffer::get_selected_channel_index() const {
 
 float Buffer::tile_coord_x(const int x) const {
     const auto buffer_width_i = static_cast<int>(buffer_width_f_);
-    const auto last_width = buffer_width_i % max_texture_size;
+    const auto last_width = buffer_width_i % MAX_TEXTURE_SIZE;
     const auto tile_width =
-        x > buffer_width_i - last_width ? last_width : max_texture_size;
-    return static_cast<float>(x % max_texture_size) /
+        x > buffer_width_i - last_width ? last_width : MAX_TEXTURE_SIZE;
+    return static_cast<float>(x % MAX_TEXTURE_SIZE) /
            static_cast<float>(tile_width - 1);
 }
 
 float Buffer::tile_coord_y(const int y) const {
     const auto buffer_height_i = static_cast<int>(buffer_height_f_);
-    const auto last_height = buffer_height_i % max_texture_size;
+    const auto last_height = buffer_height_i % MAX_TEXTURE_SIZE;
     const auto tile_height =
-        y > buffer_height_i - last_height ? last_height : max_texture_size;
-    return static_cast<float>(y % max_texture_size) /
+        y > buffer_height_i - last_height ? last_height : MAX_TEXTURE_SIZE;
+    return static_cast<float>(y % MAX_TEXTURE_SIZE) /
            static_cast<float>(tile_height - 1);
 }
 
@@ -563,8 +563,8 @@ bool Buffer::create_shader_program() {
         channel_type = ShaderProgram::TexelChannels::FORMAT_RGBA;
     }
 
-    return buff_prog_.create(shader::buff_vert_shader,
-                             shader::buff_frag_shader,
+    return buff_prog_.create(shader::BUFF_VERT_SHADER,
+                             shader::BUFF_FRAG_SHADER,
                              channel_type,
                              pixel_layout_,
                              {"mvp",
@@ -620,7 +620,7 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
         buff_prog_.uniform4fv(
             "brightness_contrast", 2, auto_buffer_contrast_brightness_.data());
     } else {
-        buff_prog_.uniform4fv("brightness_contrast", 2, no_ac_params.data());
+        buff_prog_.uniform4fv("brightness_contrast", 2, NO_AC_PARAMS.data());
     }
 
     const auto buffer_width_i = static_cast<int>(buffer_width_f_);
@@ -634,7 +634,7 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
     }
 
     for (int ty = 0; ty < num_textures_y_; ++ty) {
-        const auto buff_h = (std::min)(remaining_h, max_texture_size);
+        const auto buff_h = (std::min)(remaining_h, MAX_TEXTURE_SIZE);
         remaining_h -= buff_h;
 
         py += static_cast<float>(buff_h) / 2.0f;
@@ -650,7 +650,7 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
         }
 
         for (int tx = 0; tx < num_textures_x_; ++tx) {
-            const auto buff_w = (std::min)(remaining_w, max_texture_size);
+            const auto buff_w = (std::min)(remaining_w, MAX_TEXTURE_SIZE);
             remaining_w -= buff_w;
 
             gl_canvas_ref().glBindTexture(GL_TEXTURE_2D,
@@ -751,7 +751,7 @@ void Buffer::setup_gl_buffer() {
     reset_contrast_brightness_parameters();
 
     // Buffer texture
-    constexpr auto max_texture_size_f = static_cast<float>(max_texture_size);
+    constexpr auto max_texture_size_f = static_cast<float>(MAX_TEXTURE_SIZE);
     num_textures_x_ = static_cast<int>(
         std::ceil(static_cast<float>(buffer_width_i) / max_texture_size_f));
     num_textures_y_ = static_cast<int>(
@@ -795,21 +795,21 @@ void Buffer::setup_gl_buffer() {
     gl_canvas_ref().glPixelStorei(GL_UNPACK_ROW_LENGTH, step_);
 
     for (int ty = 0; ty < num_textures_y_; ++ty) {
-        const auto buff_h = (std::min)(remaining_h, max_texture_size);
+        const auto buff_h = (std::min)(remaining_h, MAX_TEXTURE_SIZE);
         remaining_h -= buff_h;
 
         auto remaining_w = buffer_width_i;
         for (int tx = 0; tx < num_textures_x_; ++tx) {
-            const auto buff_w = (std::min)(remaining_w, max_texture_size);
+            const auto buff_w = (std::min)(remaining_w, MAX_TEXTURE_SIZE);
             remaining_w -= buff_w;
 
             const auto tex_id = ty * num_textures_x_ + tx;
             gl_canvas_ref().glBindTexture(GL_TEXTURE_2D, buff_tex_[tex_id]);
 
             gl_canvas_ref().glPixelStorei(GL_UNPACK_SKIP_ROWS,
-                                          ty * max_texture_size);
+                                          ty * MAX_TEXTURE_SIZE);
             gl_canvas_ref().glPixelStorei(GL_UNPACK_SKIP_PIXELS,
-                                          tx * max_texture_size);
+                                          tx * MAX_TEXTURE_SIZE);
 
             gl_canvas_ref().glTexImage2D(GL_TEXTURE_2D,
                                          0,
