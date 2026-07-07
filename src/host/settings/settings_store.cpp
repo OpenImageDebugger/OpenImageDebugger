@@ -26,6 +26,7 @@
 #include "host/settings/settings_store.h"
 
 #include <atomic>
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -202,9 +203,8 @@ void SettingsStore::save(const AppSettings& s) const {
 #else
         const auto pid = static_cast<long>(getpid());
 #endif
-        const std::filesystem::path tmp =
-            file_.string() + "." + std::to_string(pid) + "." +
-            std::to_string(tmp_counter.fetch_add(1)) + ".tmp";
+        const std::filesystem::path tmp = std::format(
+            "{}.{}.{}.tmp", file_.string(), pid, tmp_counter.fetch_add(1));
         {
             std::ofstream os{tmp, std::ios::binary | std::ios::trunc};
             os << json;

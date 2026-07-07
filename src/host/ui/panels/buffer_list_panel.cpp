@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <string>
 
 #include <imgui.h>
@@ -46,9 +47,11 @@ namespace oid::host {
 namespace {
 
 std::string row_label(const BufferRecord& rec) {
-    return rec.display_name + "\n[" + std::to_string(rec.width) + "x" +
-           std::to_string(rec.height) + "]\n" +
-           type_label(rec.type, rec.channels);
+    return std::format("{}\n[{}x{}]\n{}",
+                       rec.display_name,
+                       rec.width,
+                       rec.height,
+                       type_label(rec.type, rec.channels));
 }
 
 // Up/Down move the selection through the buffer list while it is
