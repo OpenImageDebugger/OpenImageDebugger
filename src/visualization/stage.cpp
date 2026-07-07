@@ -193,9 +193,6 @@ void Stage::update() const {
 void Stage::draw() {
     auto ordered_components = std::set<Component*, CompareRenderOrder>{};
 
-    // TODO: use camera tags so I can have multiple cameras (useful for drawing
-    // GUI)
-
     const auto camera_it = all_game_objects.find("camera");
     if (camera_it == all_game_objects.end() || !camera_it->second)
         [[unlikely]] {

@@ -63,8 +63,8 @@ class ProcessImplUnix final : public ProcessImpl {
 
         posix_spawn(&pid_,
                     windowBinaryPath.c_str(),
-                    nullptr, // TODO consider passing something here
-                    nullptr, // and here
+                    nullptr,
+                    nullptr,
                     argv.data(),
                     environ);
     }

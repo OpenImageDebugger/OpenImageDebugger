@@ -171,9 +171,13 @@ class OidBridge {
             const PlotBufferRequestMessage* msg =
                 dynamic_cast<PlotBufferRequestMessage*>(
                     plot_request_message.get());
-            if (plot_callback_) {
-                // TODO: log error when callback fails
-                (void)plot_callback_(msg->buffer_name.c_str());
+            // The callback returns 1 when the plot request was queued and 0
+            // on failure (see plot_variable in the Python frontend).
+            if (plot_callback_ &&
+                plot_callback_(msg->buffer_name.c_str()) == 0) {
+                std::cerr << "[OpenImageDebugger] plot callback failed "
+                             "for buffer '"
+                          << msg->buffer_name << "'" << std::endl;
             }
         }
     }
