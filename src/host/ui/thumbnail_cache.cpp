@@ -138,7 +138,7 @@ void ThumbnailCache::evict_missing(const std::vector<std::string>& live_names) {
     const std::unordered_set<std::string> live(live_names.begin(),
                                                live_names.end());
     for (auto it = entries_.begin(); it != entries_.end();) {
-        if (live.find(it->first) == live.end()) {
+        if (!live.contains(it->first)) {
             if (it->second.tex != 0) {
                 canvas_.glDeleteTextures(1, &it->second.tex);
             }

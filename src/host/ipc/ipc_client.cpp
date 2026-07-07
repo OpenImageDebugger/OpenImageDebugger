@@ -100,10 +100,10 @@ void IpcClient::handle_set_available_symbols() {
         if (b.expiry_epoch_s <= now) {
             continue;
         }
-        if (!avail.count(b.variable_name)) {
+        if (!avail.contains(b.variable_name)) {
             continue;
         }
-        if (restore_requested_.count(b.variable_name)) {
+        if (restore_requested_.contains(b.variable_name)) {
             continue;
         }
         if (model_has(b.variable_name)) {

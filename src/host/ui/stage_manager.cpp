@@ -112,7 +112,7 @@ void StageManager::sync() {
     // destroys the Stage (and the span into its now-gone BufferRecord)
     // before any dangling reference could be observed.
     for (auto it = by_name_.begin(); it != by_name_.end();) {
-        if (live_names.find(it->first) == live_names.end()) {
+        if (!live_names.contains(it->first)) {
             it = by_name_.erase(it);
         } else {
             ++it;

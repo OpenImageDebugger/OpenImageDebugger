@@ -40,10 +40,10 @@ std::vector<PreviousBuffer> merge_previous_buffers(
         out.push_back({name, now_s + ttl_s}); // fresh expiry
     }
     for (const auto& b : prior) {
-        if (loaded.count(b.variable_name)) {
+        if (loaded.contains(b.variable_name)) {
             continue; // already added fresh
         }
-        if (seen_this_session.count(b.variable_name)) {
+        if (seen_this_session.contains(b.variable_name)) {
             continue; // user-deleted this run
         }
         if (b.expiry_epoch_s <= now_s) {
