@@ -28,7 +28,7 @@
 #include <algorithm>
 #include <array>
 #include <bit>
-#include <cstdio>
+#include <format>
 #include <string>
 
 #include <GL/glcorearb.h>
@@ -70,24 +70,37 @@ inline void pix2str(const PixelFormatParams& params) {
 
     if (type == Float32 || type == Float64) {
         const float fpix = std::bit_cast<const float*>(buffer)[pixel_pos];
-        snprintf(pix_label, label_length, "%.*f", float_precision, fpix);
+        const auto result = std::format_to_n(
+            pix_label, label_length - 1, "{:.{}f}", fpix, float_precision);
+        *result.out = '\0';
     } else if (type == UnsignedByte) {
-        snprintf(pix_label,
-                 label_length,
-                 "%d",
-                 static_cast<uint8_t>(buffer[pixel_pos]));
+        const auto result =
+            std::format_to_n(pix_label,
+                             label_length - 1,
+                             "{}",
+                             static_cast<uint8_t>(buffer[pixel_pos]));
+        *result.out = '\0';
     } else if (type == Short) {
         const short fpix = std::bit_cast<const short*>(buffer)[pixel_pos];
-        snprintf(pix_label, label_length, "%d", fpix);
+        const auto result =
+            std::format_to_n(pix_label, label_length - 1, "{}", fpix);
+        *result.out = '\0';
     } else if (type == UnsignedShort) {
         const unsigned short fpix =
             std::bit_cast<const unsigned short*>(buffer)[pixel_pos];
-        snprintf(pix_label, label_length, "%d", fpix);
+        const auto result =
+            std::format_to_n(pix_label, label_length - 1, "{}", fpix);
+        *result.out = '\0';
     } else if (type == Int32) {
         const int fpix = std::bit_cast<const int*>(buffer)[pixel_pos];
-        const auto written = snprintf(pix_label, label_length, "%d", fpix);
-        if (written > 0 && static_cast<size_t>(written) > 7) {
-            snprintf(pix_label, label_length, "%.3e", static_cast<float>(fpix));
+        auto result = std::format_to_n(pix_label, label_length - 1, "{}", fpix);
+        *result.out = '\0';
+        if (result.size > 7) {
+            result = std::format_to_n(pix_label,
+                                      label_length - 1,
+                                      "{:.3e}",
+                                      static_cast<float>(fpix));
+            *result.out = '\0';
         }
     }
 }
