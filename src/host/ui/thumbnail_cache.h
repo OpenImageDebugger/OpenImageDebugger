@@ -33,6 +33,8 @@
 
 #include <GL/gl.h>
 
+#include "host/ui/transparent_string_hash.h"
+
 namespace oid {
 class Stage;
 } // namespace oid
@@ -106,7 +108,11 @@ class ThumbnailCache {
     };
 
     GlfwCanvas& canvas_;
-    std::unordered_map<std::string, Entry> entries_;
+    std::unordered_map<std::string,
+                       Entry,
+                       TransparentStringHash,
+                       std::equal_to<>>
+        entries_;
     bool rendered_this_frame_{false};
     // Offscreen render size (Qt parity: the legacy Qt frontend's
     // ICON_WIDTH_BASE/ICON_HEIGHT_BASE == 100x75, see tag legacy-qt, scaled

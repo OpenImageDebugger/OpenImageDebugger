@@ -30,6 +30,7 @@
 
 #include "host/ui/symbol_filter.h"
 #include "host/ui/text_input.h"
+#include "host/ui/transparent_string_hash.h"
 
 namespace oid::host {
 
@@ -74,7 +75,11 @@ std::vector<std::size_t> UiState::filtered_indices() const {
     // display_name keep their original relative (index) order, so
     // popping from the front of each name's queue in match order pairs
     // each match with the correct, not-yet-consumed model index.
-    std::unordered_map<std::string, std::deque<std::size_t>> by_name;
+    std::unordered_map<std::string,
+                       std::deque<std::size_t>,
+                       TransparentStringHash,
+                       std::equal_to<>>
+        by_name;
     for (std::size_t i = 0; i < candidates.size(); ++i) {
         by_name[candidates[i]].push_back(i);
     }

@@ -33,6 +33,7 @@
 #include <unordered_map>
 
 #include "host/ui/buffer_model.h"
+#include "host/ui/transparent_string_hash.h"
 #include "visualization/render_canvas.h"
 #include "visualization/stage.h"
 
@@ -85,7 +86,11 @@ class StageManager {
 
     std::shared_ptr<RenderCanvas> canvas_;
     const BufferModel& model_;
-    std::unordered_map<std::string, Entry> by_name_;
+    std::unordered_map<std::string,
+                       Entry,
+                       TransparentStringHash,
+                       std::equal_to<>>
+        by_name_;
 };
 
 } // namespace oid::host

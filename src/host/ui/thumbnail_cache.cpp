@@ -28,6 +28,7 @@
 #include <unordered_set>
 
 #include "host/glfw_canvas.h"
+#include "host/ui/transparent_string_hash.h"
 #include "platform/gl_dialect.h"
 #include "visualization/stage.h"
 
@@ -135,8 +136,9 @@ GLuint ThumbnailCache::texture_for(const std::string& name,
 }
 
 void ThumbnailCache::evict_missing(const std::vector<std::string>& live_names) {
-    const std::unordered_set<std::string> live(live_names.begin(),
-                                               live_names.end());
+    const std::
+        unordered_set<std::string, TransparentStringHash, std::equal_to<>>
+            live(live_names.begin(), live_names.end());
     std::erase_if(entries_, [&live, this](const auto& kv) {
         if (!live.contains(kv.first)) {
             if (kv.second.tex != 0) {
