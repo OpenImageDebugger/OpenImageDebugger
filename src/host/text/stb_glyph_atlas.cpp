@@ -40,6 +40,26 @@
 
 namespace oid::host {
 
+namespace {
+
+void blend_glyph_into_strip(std::vector<std::uint8_t>& strip,
+                            int strip_w,
+                            int dst_x,
+                            int dst_y,
+                            const std::vector<std::uint8_t>& glyph,
+                            int gw,
+                            int gh) {
+    for (int y = 0; y < gh; ++y) {
+        for (int x = 0; x < gw; ++x) {
+            auto& dst = strip[static_cast<std::size_t>(dst_y + y) * strip_w +
+                              dst_x + x];
+            dst = (std::max)(dst, glyph[static_cast<std::size_t>(y) * gw + x]);
+        }
+    }
+}
+
+} // namespace
+
 std::optional<oid::GlyphAtlas> stb_glyph_atlas() {
     stbtt_fontinfo info;
     if (stbtt_InitFont(&info,
@@ -93,17 +113,8 @@ std::optional<oid::GlyphAtlas> stb_glyph_atlas() {
                                                 gh);
                 stbtt_MakeCodepointBitmap(
                     &info, glyph.data(), gw, gh, gw, scale, scale, *p);
-                for (int y = 0; y < gh; ++y) {
-                    for (int x = 0; x < gw; ++x) {
-                        auto& dst = strip[static_cast<std::size_t>(dst_y + y) *
-                                              strip_w +
-                                          dst_x + x];
-                        dst =
-                            (std::max)(dst,
-                                       glyph[static_cast<std::size_t>(y) * gw +
-                                             x]);
-                    }
-                }
+                blend_glyph_into_strip(
+                    strip, strip_w, dst_x, dst_y, glyph, gw, gh);
             }
         }
         pen_x += advances[*p];
