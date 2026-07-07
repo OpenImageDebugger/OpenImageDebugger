@@ -30,6 +30,8 @@
 #include <unordered_set>
 #include <utility>
 
+#include "host/ui/transparent_string_hash.h"
+
 namespace oid::host {
 
 namespace {
@@ -69,7 +71,8 @@ oid::Stage* StageManager::stage_for(std::size_t i) {
 }
 
 void StageManager::sync() {
-    std::unordered_set<std::string> live_names;
+    std::unordered_set<std::string, TransparentStringHash, std::equal_to<>>
+        live_names;
     live_names.reserve(model_.size());
 
     for (std::size_t i = 0; i < model_.size(); ++i) {
