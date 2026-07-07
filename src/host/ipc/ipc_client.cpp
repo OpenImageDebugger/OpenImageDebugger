@@ -52,29 +52,30 @@ void IpcClient::poll() {
 }
 
 void IpcClient::dispatch(oid::MessageType header) {
+    using enum oid::MessageType;
     switch (header) {
-    case oid::MessageType::SetAvailableSymbols:
+    case SetAvailableSymbols:
         handle_set_available_symbols();
         break;
-    case oid::MessageType::GetObservedSymbols:
+    case GetObservedSymbols:
         handle_get_observed_symbols();
         break;
-    case oid::MessageType::PlotBufferContents:
+    case PlotBufferContents:
         handle_plot_buffer_contents();
         break;
-    case oid::MessageType::PlotBufferBegin:
+    case PlotBufferBegin:
         handle_plot_buffer_begin();
         break;
-    case oid::MessageType::PlotBufferChunk:
+    case PlotBufferChunk:
         handle_plot_buffer_chunk();
         break;
-    case oid::MessageType::PlotBufferEnd:
+    case PlotBufferEnd:
         handle_plot_buffer_end();
         break;
-    case oid::MessageType::ApplySessionState:
+    case ApplySessionState:
         handle_apply_session_state();
         break;
-    case oid::MessageType::ExportSelectedBuffer:
+    case ExportSelectedBuffer:
         handle_export_selected_buffer();
         break;
     default:

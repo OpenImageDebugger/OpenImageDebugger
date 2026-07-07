@@ -102,14 +102,15 @@ void GameObject::mouse_move_event(const int mouse_x, const int mouse_y) const {
 }
 
 EventProcessCode GameObject::key_press_event(int key_code) const {
-    auto event_intercepted = EventProcessCode::IGNORED;
+    using enum EventProcessCode;
+    auto event_intercepted = IGNORED;
 
     for (const auto& comp : all_components_ | std::views::values) {
         const auto event_intercepted_component =
             comp->key_press_event(key_code);
 
-        if (event_intercepted_component == EventProcessCode::INTERCEPTED) {
-            event_intercepted = EventProcessCode::INTERCEPTED;
+        if (event_intercepted_component == INTERCEPTED) {
+            event_intercepted = INTERCEPTED;
         }
     }
 

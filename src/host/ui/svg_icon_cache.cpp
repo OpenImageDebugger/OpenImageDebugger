@@ -47,23 +47,24 @@ namespace {
 // {data, size}; every IconId has a matching array, so there is no
 // "not found" case.
 std::pair<const unsigned char*, std::size_t> svg_source_for(IconId id) {
+    using enum IconId;
     switch (id) {
-    case IconId::ChannelRed:
+    case ChannelRed:
         return {icons::kLabelRedChannelSvg, sizeof(icons::kLabelRedChannelSvg)};
-    case IconId::ChannelGreen:
+    case ChannelGreen:
         return {icons::kLabelGreenChannelSvg,
                 sizeof(icons::kLabelGreenChannelSvg)};
-    case IconId::ChannelBlue:
+    case ChannelBlue:
         return {icons::kLabelBlueChannelSvg,
                 sizeof(icons::kLabelBlueChannelSvg)};
-    case IconId::ChannelAlpha:
+    case ChannelAlpha:
         return {icons::kLabelAlphaChannelSvg,
                 sizeof(icons::kLabelAlphaChannelSvg)};
-    case IconId::LowerUpperBound:
+    case LowerUpperBound:
         return {icons::kLowerUpperBoundSvg, sizeof(icons::kLowerUpperBoundSvg)};
-    case IconId::GoToX:
+    case GoToX:
         return {icons::kXSvg, sizeof(icons::kXSvg)};
-    case IconId::GoToY:
+    case GoToY:
         return {icons::kYSvg, sizeof(icons::kYSvg)};
     }
     return {nullptr, 0};

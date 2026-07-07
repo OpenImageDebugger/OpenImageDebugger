@@ -132,24 +132,25 @@ class MockBufferModel : public BufferModel {
 // Human-readable type+channel label used by the buffer-list panel, e.g.
 // "uint8x3", "float32x1".
 inline std::string type_label(const oid::BufferType type, const int channels) {
+    using enum oid::BufferType;
     std::string base;
     switch (type) {
-    case oid::BufferType::UnsignedByte:
+    case UnsignedByte:
         base = "uint8";
         break;
-    case oid::BufferType::UnsignedShort:
+    case UnsignedShort:
         base = "uint16";
         break;
-    case oid::BufferType::Short:
+    case Short:
         base = "int16";
         break;
-    case oid::BufferType::Int32:
+    case Int32:
         base = "int32";
         break;
-    case oid::BufferType::Float32:
+    case Float32:
         base = "float32";
         break;
-    case oid::BufferType::Float64:
+    case Float64:
         base = "float64";
         break;
     }

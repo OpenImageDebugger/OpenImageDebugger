@@ -90,24 +90,25 @@ enum class PixelFormat {
 // apply_format() (see tag legacy-qt) exactly, including its
 // display-channel-mode / pixel-layout pairing.
 void apply_format(oid::Buffer& b, int sel) {
+    using enum PixelFormat;
     switch (sel) {
-    case static_cast<int>(PixelFormat::kBgra):
+    case static_cast<int>(kBgra):
         b.set_display_channel_mode(-1);
         b.set_pixel_layout("bgra");
         break;
-    case static_cast<int>(PixelFormat::kRgba):
+    case static_cast<int>(kRgba):
         b.set_display_channel_mode(-1);
         b.set_pixel_layout("rgba");
         break;
-    case static_cast<int>(PixelFormat::kChannel0):
+    case static_cast<int>(kChannel0):
         b.set_display_channel_mode(1);
         b.set_pixel_layout("rrra");
         break;
-    case static_cast<int>(PixelFormat::kChannel1):
+    case static_cast<int>(kChannel1):
         b.set_display_channel_mode(1);
         b.set_pixel_layout("ggga");
         break;
-    case static_cast<int>(PixelFormat::kChannel2):
+    case static_cast<int>(kChannel2):
         b.set_display_channel_mode(1);
         b.set_pixel_layout("bbba");
         break;
@@ -123,20 +124,19 @@ void apply_format(oid::Buffer& b, int sel) {
 // buffer's actual format instead of carrying over a stale index or
 // requiring extra per-buffer bookkeeping.
 int current_format_index(const oid::Buffer& b) {
+    using enum PixelFormat;
     const std::string layout = b.get_pixel_layout();
     if (b.get_display_channel_mode() == 1) {
         if (layout == "ggga") {
-            return static_cast<int>(PixelFormat::kChannel1);
+            return static_cast<int>(kChannel1);
         }
         if (layout == "bbba") {
-            return static_cast<int>(PixelFormat::kChannel2);
+            return static_cast<int>(kChannel2);
         }
-        return static_cast<int>(
-            PixelFormat::kChannel0); // "rrra", or any other single-channel
-                                     // layout
+        return static_cast<int>(kChannel0); // "rrra", or any other
+                                            // single-channel layout
     }
-    return static_cast<int>(layout == "rgba" ? PixelFormat::kRgba
-                                             : PixelFormat::kBgra);
+    return static_cast<int>(layout == "rgba" ? kRgba : kBgra);
 }
 
 } // namespace

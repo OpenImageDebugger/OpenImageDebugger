@@ -46,18 +46,19 @@ std::vector<std::byte>
 make_float_buffer_from_double(const std::vector<std::byte>& buff_double);
 
 [[nodiscard]] constexpr std::size_t type_size(const BufferType type) noexcept {
+    using enum BufferType;
     switch (type) {
-    case BufferType::Int32:
+    case Int32:
         return sizeof(std::int32_t);
-    case BufferType::Short:
+    case Short:
         [[fallthrough]];
-    case BufferType::UnsignedShort:
+    case UnsignedShort:
         return sizeof(std::int16_t);
-    case BufferType::Float32:
+    case Float32:
         return sizeof(float);
-    case BufferType::Float64:
+    case Float64:
         return sizeof(double);
-    case BufferType::UnsignedByte:
+    case UnsignedByte:
         [[fallthrough]];
     default:
         // All enum values are handled above, this should never be reached
