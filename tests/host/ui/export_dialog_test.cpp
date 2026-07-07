@@ -31,7 +31,7 @@
 
 #include "host/ui/export_dialog.h"
 
-#include <cstdio>
+#include <format>
 
 #include <gtest/gtest.h>
 
@@ -93,7 +93,9 @@ TEST(ExportDialog, FormatSwapReplacesExtensionWhenPathNotUserEdited) {
 
 TEST(ExportDialog, FormatSwapAppendsExtensionWhenPathHasNeither) {
     ExportDialogState st;
-    std::snprintf(st.path_buf.data(), st.path_buf.size(), "%s", "/exp/noext");
+    const auto res = std::format_to_n(
+        st.path_buf.data(), st.path_buf.size() - 1, "{}", "/exp/noext");
+    *res.out = '\0';
     st.format = OutputType::OctaveMatrix;
     apply_format_extension(st);
     EXPECT_STREQ(st.path_buf.data(), "/exp/noext.oct");
@@ -102,8 +104,9 @@ TEST(ExportDialog, FormatSwapAppendsExtensionWhenPathHasNeither) {
 TEST(ExportDialog, FormatSwapRespectsUserEditedPath) {
     ExportDialogState st;
     open_export_dialog(st, "buf", "/exp");
-    std::snprintf(
-        st.path_buf.data(), st.path_buf.size(), "%s", "/exp/custom.name");
+    const auto res = std::format_to_n(
+        st.path_buf.data(), st.path_buf.size() - 1, "{}", "/exp/custom.name");
+    *res.out = '\0';
     st.user_edited_path = true;
 
     st.format = OutputType::OctaveMatrix;
@@ -116,8 +119,9 @@ TEST(ExportDialog, OpenResetsFormatAndUserEditedFlagFromPriorOpen) {
     open_export_dialog(st, "first", "/exp");
     st.format = OutputType::OctaveMatrix;
     apply_format_extension(st);
-    std::snprintf(
-        st.path_buf.data(), st.path_buf.size(), "%s", "/exp/custom.name");
+    const auto res = std::format_to_n(
+        st.path_buf.data(), st.path_buf.size() - 1, "{}", "/exp/custom.name");
+    *res.out = '\0';
     st.user_edited_path = true;
 
     open_export_dialog(st, "second", "/exp");
