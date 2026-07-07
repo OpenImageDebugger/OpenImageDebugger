@@ -45,29 +45,29 @@ bool has_nonzero_alpha(const std::vector<unsigned char>& rgba) {
 TEST(SvgRaster, ChannelIconRasterizesAtQtSize) {
     // The legacy Qt frontend drew channel icons at 10x10 logical (see tag
     // legacy-qt); x2 = a 2.0 content scale.
-    const auto px =
-        oid::host::rasterize_svg(oid::host::icons::kLabelRedChannelSvg,
-                                 sizeof(oid::host::icons::kLabelRedChannelSvg),
-                                 20,
-                                 20);
+    const auto px = oid::host::rasterize_svg(
+        oid::host::icons::LABEL_RED_CHANNEL_SVG,
+        sizeof(oid::host::icons::LABEL_RED_CHANNEL_SVG),
+        20,
+        20);
     ASSERT_EQ(px.size(), 20u * 20u * 4u);
     EXPECT_TRUE(has_nonzero_alpha(px));
 }
 
 TEST(SvgRaster, LowerUpperBoundRasterizesNonSquare) {
     // Qt size 8x35 (setVectorIcon call), x2.
-    const auto px =
-        oid::host::rasterize_svg(oid::host::icons::kLowerUpperBoundSvg,
-                                 sizeof(oid::host::icons::kLowerUpperBoundSvg),
-                                 16,
-                                 70);
+    const auto px = oid::host::rasterize_svg(
+        oid::host::icons::LOWER_UPPER_BOUND_SVG,
+        sizeof(oid::host::icons::LOWER_UPPER_BOUND_SVG),
+        16,
+        70);
     ASSERT_EQ(px.size(), 16u * 70u * 4u);
     EXPECT_TRUE(has_nonzero_alpha(px));
 }
 
 TEST(SvgRaster, GoToXIconRasterizes) {
     const auto px = oid::host::rasterize_svg(
-        oid::host::icons::kXSvg, sizeof(oid::host::icons::kXSvg), 20, 20);
+        oid::host::icons::X_SVG, sizeof(oid::host::icons::X_SVG), 20, 20);
     ASSERT_EQ(px.size(), 20u * 20u * 4u);
     EXPECT_TRUE(has_nonzero_alpha(px));
 }
@@ -78,7 +78,7 @@ TEST(SvgRaster, GarbageInputReturnsEmpty) {
         oid::host::rasterize_svg(garbage, sizeof(garbage), 10, 10).empty());
     EXPECT_TRUE(
         oid::host::rasterize_svg(
-            oid::host::icons::kXSvg, sizeof(oid::host::icons::kXSvg), 0, 10)
+            oid::host::icons::X_SVG, sizeof(oid::host::icons::X_SVG), 0, 10)
             .empty());
 }
 

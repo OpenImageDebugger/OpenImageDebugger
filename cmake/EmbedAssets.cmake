@@ -32,46 +32,46 @@ set(RES "${CMAKE_SOURCE_DIR}/src/resources")
 # --- Fonts (namespace oid::host::fonts) ---
 oid_embed_binary(SOURCE ${RES}/fonts/Roboto-Regular.ttf
                  REL host/text/fonts/roboto_regular_ttf.h
-                 NAMESPACE oid::host::fonts SYMBOL kRobotoRegular
+                 NAMESPACE oid::host::fonts SYMBOL ROBOTO_REGULAR
                  PROVENANCE "src/resources/fonts/Roboto-Regular.ttf (Apache-2.0)")
 
 oid_embed_binary(SOURCE ${RES}/icons/fontello.ttf
                  REL host/text/fonts/fontello_ttf.h
-                 NAMESPACE oid::host::fonts SYMBOL kFontello
+                 NAMESPACE oid::host::fonts SYMBOL FONTELLO
                  PROVENANCE "src/resources/icons/fontello.ttf (license: src/resources/icons/LICENSE.txt)")
 
 # --- Icons (namespace oid::host::icons) ---
 oid_embed_binary(SOURCE ${RES}/icons/x.svg
                  REL host/ui/icons/x_svg.h
-                 NAMESPACE oid::host::icons SYMBOL kXSvg
+                 NAMESPACE oid::host::icons SYMBOL X_SVG
                  PROVENANCE "src/resources/icons/x.svg (license: src/resources/icons/LICENSE.txt)")
 
 oid_embed_binary(SOURCE ${RES}/icons/y.svg
                  REL host/ui/icons/y_svg.h
-                 NAMESPACE oid::host::icons SYMBOL kYSvg
+                 NAMESPACE oid::host::icons SYMBOL Y_SVG
                  PROVENANCE "src/resources/icons/y.svg (license: src/resources/icons/LICENSE.txt)")
 
 oid_embed_binary(SOURCE ${RES}/icons/label_red_channel.svg
                  REL host/ui/icons/label_red_channel_svg.h
-                 NAMESPACE oid::host::icons SYMBOL kLabelRedChannelSvg
+                 NAMESPACE oid::host::icons SYMBOL LABEL_RED_CHANNEL_SVG
                  PROVENANCE "src/resources/icons/label_red_channel.svg (license: src/resources/icons/LICENSE.txt)")
 
 oid_embed_binary(SOURCE ${RES}/icons/label_green_channel.svg
                  REL host/ui/icons/label_green_channel_svg.h
-                 NAMESPACE oid::host::icons SYMBOL kLabelGreenChannelSvg
+                 NAMESPACE oid::host::icons SYMBOL LABEL_GREEN_CHANNEL_SVG
                  PROVENANCE "src/resources/icons/label_green_channel.svg (license: src/resources/icons/LICENSE.txt)")
 
 oid_embed_binary(SOURCE ${RES}/icons/label_blue_channel.svg
                  REL host/ui/icons/label_blue_channel_svg.h
-                 NAMESPACE oid::host::icons SYMBOL kLabelBlueChannelSvg
+                 NAMESPACE oid::host::icons SYMBOL LABEL_BLUE_CHANNEL_SVG
                  PROVENANCE "src/resources/icons/label_blue_channel.svg (license: src/resources/icons/LICENSE.txt)")
 
 oid_embed_binary(SOURCE ${RES}/icons/label_alpha_channel.svg
                  REL host/ui/icons/label_alpha_channel_svg.h
-                 NAMESPACE oid::host::icons SYMBOL kLabelAlphaChannelSvg
+                 NAMESPACE oid::host::icons SYMBOL LABEL_ALPHA_CHANNEL_SVG
                  PROVENANCE "src/resources/icons/label_alpha_channel.svg (license: src/resources/icons/LICENSE.txt)")
 
 oid_embed_binary(SOURCE ${RES}/icons/lower_upper_bound.svg
                  REL host/ui/icons/lower_upper_bound_svg.h
-                 NAMESPACE oid::host::icons SYMBOL kLowerUpperBoundSvg
+                 NAMESPACE oid::host::icons SYMBOL LOWER_UPPER_BOUND_SVG
                  PROVENANCE "src/resources/icons/lower_upper_bound.svg (license: src/resources/icons/LICENSE.txt)")

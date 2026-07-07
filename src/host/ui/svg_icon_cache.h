@@ -90,11 +90,11 @@ class SvgIconCache {
 
     // Derived from the enum's last value so adding an IconId can never
     // silently index entries_ out of bounds.
-    static constexpr std::size_t kIconCount =
+    static constexpr std::size_t ICON_COUNT =
         static_cast<std::size_t>(IconId::GO_TO_Y) + 1;
 
     float content_scale_;
-    std::array<Entry, kIconCount> entries_{};
+    std::array<Entry, ICON_COUNT> entries_{};
 };
 
 } // namespace oid::host

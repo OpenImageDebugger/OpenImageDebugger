@@ -86,17 +86,17 @@ class BufferValues final : public Component {
     int get_float_precision() const;
 
   private:
-    static float constexpr padding_{0.125f}; // Must be smaller than 0.5
+    static float constexpr PADDING{0.125f}; // Must be smaller than 0.5
 
-    static int constexpr max_float_precision_{10};
+    static int constexpr MAX_FLOAT_PRECISION{10};
 
-    static int constexpr min_float_precision_{3};
+    static int constexpr MIN_FLOAT_PRECISION{3};
 
-    static float constexpr default_text_scale_{1.0f};
+    static float constexpr DEFAULT_TEXT_SCALE{1.0f};
 
-    int float_precision_{min_float_precision_};
+    int float_precision_{MIN_FLOAT_PRECISION};
 
-    float text_pixel_scale_{default_text_scale_};
+    float text_pixel_scale_{DEFAULT_TEXT_SCALE};
 
     void draw_text(const DrawTextParams& params);
 

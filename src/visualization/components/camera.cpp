@@ -253,7 +253,7 @@ void Camera::scale_at(const vec4& center_ndc, const float delta) {
 
         // Find the lowest allowed zoom power.
         const auto zoom_power_lowest =
-            std::log(zoom_lowest) / std::log(zoom_factor);
+            std::log(zoom_lowest) / std::log(ZOOM_FACTOR);
 
         // Find the lowest allowed delta.
         const auto delta_lowest = zoom_power_lowest - zoom_power_;
@@ -285,7 +285,7 @@ void Camera::scale_at(const vec4& center_ndc, const float delta) {
 
     const auto vp_inv = game_object_ref().get_pose() * projection_.inv();
 
-    const auto delta_zoom = std::pow(zoom_factor, -new_delta);
+    const auto delta_zoom = std::pow(ZOOM_FACTOR, -new_delta);
 
     const auto center_pos = scale_.inv() * vp_inv * center_ndc;
 
@@ -360,7 +360,7 @@ void Camera::set_initial_zoom() {
 }
 
 float Camera::compute_zoom() const {
-    return std::pow(zoom_factor, zoom_power_);
+    return std::pow(ZOOM_FACTOR, zoom_power_);
 }
 
 float Camera::get_zoom_power() const {

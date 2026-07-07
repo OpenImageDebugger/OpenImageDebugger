@@ -24,7 +24,7 @@
  */
 
 namespace oid::shader {
-extern auto const text_frag_shader{R"glsl(
+extern auto const TEXT_FRAG_SHADER{R"glsl(
 
 uniform sampler2D buff_sampler;
 uniform sampler2D text_sampler;

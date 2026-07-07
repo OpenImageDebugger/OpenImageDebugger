@@ -68,8 +68,8 @@ class ThumbnailCache {
     // higher-resolution render into this slot, the same way the legacy Qt
     // frontend scaled its 100x75 pixmap (its ICON_WIDTH_BASE/ICON_HEIGHT_BASE;
     // see tag legacy-qt) into the 67x50 icon.
-    static constexpr int kDisplayW = 67;
-    static constexpr int kDisplayH = 50;
+    static constexpr int DISPLAY_W = 67;
+    static constexpr int DISPLAY_H = 50;
 
     explicit ThumbnailCache(GlfwCanvas& canvas, float content_scale);
     ~ThumbnailCache(); // deletes all cached GL textures
@@ -117,7 +117,7 @@ class ThumbnailCache {
     // Offscreen render size (Qt parity: the legacy Qt frontend's
     // ICON_WIDTH_BASE/ICON_HEIGHT_BASE == 100x75, see tag legacy-qt, scaled
     // by the window's content scale so the
-    // texture that later gets downsampled into the kDisplayW x kDisplayH
+    // texture that later gets downsampled into the DISPLAY_W x DISPLAY_H
     // slot stays crisp on HiDPI displays). Set once in the ctor and fixed
     // for the life of this instance -- see texture_for()'s "same fixed
     // size every time" comment.

@@ -37,12 +37,12 @@ namespace oid::host {
 
 namespace {
 
-constexpr std::string_view kPngExt = ".png";
-constexpr std::string_view kOctExt = ".oct";
+constexpr std::string_view PNG_EXT = ".png";
+constexpr std::string_view OCT_EXT = ".oct";
 
 std::string_view extension_for(oid::BufferExporter::OutputType format) {
-    return format == oid::BufferExporter::OutputType::BITMAP ? kPngExt
-                                                             : kOctExt;
+    return format == oid::BufferExporter::OutputType::BITMAP ? PNG_EXT
+                                                             : OCT_EXT;
 }
 
 bool ends_with(std::string_view s, std::string_view suffix) {
@@ -86,9 +86,9 @@ void apply_format_extension(ExportDialogState& st) {
     std::string path(st.path_buf.data());
     const std::string_view target = extension_for(st.format);
 
-    if (ends_with(path, kPngExt) || ends_with(path, kOctExt)) {
+    if (ends_with(path, PNG_EXT) || ends_with(path, OCT_EXT)) {
         const std::string_view current =
-            ends_with(path, kPngExt) ? kPngExt : kOctExt;
+            ends_with(path, PNG_EXT) ? PNG_EXT : OCT_EXT;
         if (current != target) {
             path.resize(path.size() - current.size());
             path += target;

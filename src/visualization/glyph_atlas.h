@@ -36,7 +36,7 @@ namespace oid {
 using Array_256_2 = std::array<std::array<int, 2>, 256>;
 
 // Required characters for numbers, scientific notation (e), nan, inf.
-inline constexpr const char* kGlyphText = "0123456789., -+enaif";
+inline constexpr const char* GLYPH_TEXT = "0123456789., -+enaif";
 
 // Pure CPU-side glyph atlas data -- no GL, no Qt. Produced by
 // finalize_strip_atlas() below from a rendered single-line glyph strip, and
@@ -63,7 +63,7 @@ GlyphAtlas finalize_strip_atlas(const std::uint8_t* strip,
                                 const std::array<int, 256>& char_advances,
                                 const char* charset);
 
-// Convenience overload: charset = kGlyphText.
+// Convenience overload: charset = GLYPH_TEXT.
 GlyphAtlas finalize_strip_atlas(const std::uint8_t* strip,
                                 int strip_w,
                                 int strip_h,

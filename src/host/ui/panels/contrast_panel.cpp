@@ -154,7 +154,7 @@ void draw_channel_row_reset_button(int row,
                                    oid::Buffer* buffer) {
     ImGui::SetCursorScreenPos(ImVec2(row_pos.x + 4.0f * cell_pitch, row_pos.y));
     ImGui::PushID(100 + row);
-    if (icon_button(kIconAcReset,
+    if (icon_button(ICON_AC_RESET,
                     row == 0 ? "Reset minimum auto contrast levels to the "
                                "lowest values found in the buffer"
                              : "Reset maximum auto contrast levels to the "

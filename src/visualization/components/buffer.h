@@ -77,9 +77,9 @@ class Buffer final : public Component {
 
     Buffer& operator=(Buffer&&) = delete;
 
-    static constexpr int max_texture_size = BufferConstants::MAX_TEXTURE_SIZE;
+    static constexpr int MAX_TEXTURE_SIZE = BufferConstants::MAX_TEXTURE_SIZE;
 
-    static const std::array<float, 8> no_ac_params;
+    static const std::array<float, 8> NO_AC_PARAMS;
 
     [[nodiscard]] bool buffer_update() override;
 

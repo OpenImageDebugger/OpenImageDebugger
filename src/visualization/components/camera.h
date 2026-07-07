@@ -42,7 +42,7 @@ class Camera final : public Component {
 
     Camera& operator=(const Camera& cam);
 
-    static constexpr float zoom_factor{1.1f};
+    static constexpr float ZOOM_FACTOR{1.1f};
 
     [[nodiscard]] mat4& projection() noexcept {
         return projection_;

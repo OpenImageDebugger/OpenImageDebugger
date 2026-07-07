@@ -28,12 +28,12 @@
 
 namespace oid::shader {
 
-extern const char* const buff_frag_shader;
-extern const char* const buff_vert_shader;
-extern const char* const text_frag_shader;
-extern const char* const text_vert_shader;
-extern const char* const background_vert_shader;
-extern const char* const background_frag_shader;
+extern const char* const BUFF_FRAG_SHADER;
+extern const char* const BUFF_VERT_SHADER;
+extern const char* const TEXT_FRAG_SHADER;
+extern const char* const TEXT_VERT_SHADER;
+extern const char* const BACKGROUND_VERT_SHADER;
+extern const char* const BACKGROUND_FRAG_SHADER;
 
 } // namespace oid::shader
 

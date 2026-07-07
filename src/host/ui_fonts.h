@@ -28,23 +28,23 @@
 
 namespace oid::host {
 
-inline constexpr float kUiFontSizeBase = 13.0f; // Qt 10pt at 96dpi
+inline constexpr float UI_FONT_SIZE_BASE = 13.0f; // Qt 10pt at 96dpi
 
 // Fontello glyphs as UTF-8 literals (codepoints match the legacy Qt
 // frontend's setFontIcon calls; see tag legacy-qt):
-inline constexpr const char* kIconRecenter = "\xEE\xA0\x80";      // U+E800
-inline constexpr const char* kIconRotateCcw = "\xEE\xA0\x81";     // U+E801
-inline constexpr const char* kIconRotateCw = "\xEE\xA0\x82";      // U+E802
-inline constexpr const char* kIconAcEdit = "\xEE\xA0\x83";        // U+E803
-inline constexpr const char* kIconAcToggle = "\xEE\xA0\x84";      // U+E804
-inline constexpr const char* kIconLinkViews = "\xEE\xA0\x85";     // U+E805
-inline constexpr const char* kIconPrecisionDown = "\xEE\xA0\x86"; // U+E806
-inline constexpr const char* kIconPrecisionUp = "\xEE\xA0\x87";   // U+E807
-inline constexpr const char* kIconAcReset = "\xEE\xA0\x88";       // U+E808
-inline constexpr const char* kIconGoTo = "\xEF\x80\xB1";          // U+F031
+inline constexpr const char* ICON_RECENTER = "\xEE\xA0\x80";       // U+E800
+inline constexpr const char* ICON_ROTATE_CCW = "\xEE\xA0\x81";     // U+E801
+inline constexpr const char* ICON_ROTATE_CW = "\xEE\xA0\x82";      // U+E802
+inline constexpr const char* ICON_AC_EDIT = "\xEE\xA0\x83";        // U+E803
+inline constexpr const char* ICON_AC_TOGGLE = "\xEE\xA0\x84";      // U+E804
+inline constexpr const char* ICON_LINK_VIEWS = "\xEE\xA0\x85";     // U+E805
+inline constexpr const char* ICON_PRECISION_DOWN = "\xEE\xA0\x86"; // U+E806
+inline constexpr const char* ICON_PRECISION_UP = "\xEE\xA0\x87";   // U+E807
+inline constexpr const char* ICON_AC_RESET = "\xEE\xA0\x88";       // U+E808
+inline constexpr const char* ICON_GO_TO = "\xEF\x80\xB1";          // U+F031
 
 // Builds the ImGui font atlas: Roboto (UI font) + merged fontello glyphs,
-// rasterized at kUiFontSizeBase * content_scale physical px with
+// rasterized at UI_FONT_SIZE_BASE * content_scale physical px with
 // io.FontGlobalScale = 1/content_scale (crisp HiDPI). Call between
 // ImGui::CreateContext() and backend init.
 void setup_ui_fonts(float content_scale);

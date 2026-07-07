@@ -24,7 +24,7 @@
  */
 
 namespace oid::shader {
-extern auto const background_frag_shader{R"glsl(
+extern auto const BACKGROUND_FRAG_SHADER{R"glsl(
 
 void main()
 {
