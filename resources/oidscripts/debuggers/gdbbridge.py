@@ -20,7 +20,7 @@ class GdbBridge(BridgeInterface):
     """
     def __init__(self, type_bridge):
         self._type_bridge = type_bridge
-        self._commands = dict(plot=PlotterCommand(self))
+        self._commands = {"plot": PlotterCommand(self)}
         self._event_handler = None  # type: BridgeEventHandlerInterface
 
         self._pending_requests = []

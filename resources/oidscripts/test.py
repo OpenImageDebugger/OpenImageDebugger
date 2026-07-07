@@ -151,7 +151,7 @@ class DummyDebugger(BridgeInterface):
         width = 400
         height = 200
         self._buffers = _gen_buffers(width, height)
-        self._buffer_names = [name for name in self._buffers]
+        self._buffer_names = list(self._buffers)
 
         self._is_running = True
         self._incoming_request_queue = []
