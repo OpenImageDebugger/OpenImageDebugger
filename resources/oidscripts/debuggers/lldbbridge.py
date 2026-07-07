@@ -150,8 +150,20 @@ class LldbBridge(BridgeInterface):
             raise MemoryError('Invalid buffer size larger than available memory')
 
         buffer_metadata['variable_name'] = variable
-        buffer_metadata['pointer'] = memoryview(process.ReadMemory(
-            buffer_metadata['pointer'], bufsize, lldb.SBError()))
+
+        # ReadMemory returns None on failure (e.g. the address went stale
+        # after the frame changed); surface a descriptive error instead of
+        # letting memoryview() fail on the None.
+        read_error = lldb.SBError()
+        buffer_contents = process.ReadMemory(
+            buffer_metadata['pointer'], bufsize, read_error)
+        if read_error.Fail() or buffer_contents is None:
+            raise RuntimeError(
+                'Could not read buffer memory for "{}" at address {}'
+                ' ({} bytes): {}'.format(
+                    variable, buffer_metadata['pointer'], bufsize,
+                    read_error.GetCString() or 'unknown error'))
+        buffer_metadata['pointer'] = memoryview(buffer_contents)
 
         return buffer_metadata
 
