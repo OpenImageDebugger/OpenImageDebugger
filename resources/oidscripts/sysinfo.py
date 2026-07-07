@@ -6,7 +6,7 @@ System and memory related methods
 
 import subprocess
 import re
-from sys import platform
+from sys import maxsize, platform, stderr
 
 from oidscripts import symbols
 
@@ -70,8 +70,15 @@ def _get_available_memory_win32():
             super(MEMORYSTATUSEX, self).__init__()
 
     stat = MEMORYSTATUSEX()
-    # TODO: add a try-except block
-    ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat))
+    try:
+        ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat))
+    except OSError:
+        # Unknown availability. Return maxsize rather than 0: callers use
+        # this as a "buffer larger than a tenth of available memory" guard,
+        # and a 0 would reject every buffer instead of bypassing the guard.
+        stderr.write('[OpenImageDebugger] warning: could not query available'
+                     ' memory; skipping buffer size check\n')
+        return maxsize
     return int(stat.ullAvailPhys)
 
 def get_available_memory():
