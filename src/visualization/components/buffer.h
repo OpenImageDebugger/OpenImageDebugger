@@ -165,7 +165,7 @@ class Buffer final : public Component {
     int channels_{};
     int step_{};
 
-    BufferType type_{BufferType::UnsignedByte};
+    BufferType type_{BufferType::UNSIGNED_BYTE};
 
     std::span<const std::byte> buffer_{};
 

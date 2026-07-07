@@ -49,7 +49,7 @@ namespace {
 // against the two-row block like a Qt grid rowspan cell (label_minmax,
 // 8x35).
 void draw_min_max_icon(SvgIconCache& icons, float block_h) {
-    if (const GLuint lub = icons.texture_for(IconId::LowerUpperBound, 8, 35);
+    if (const GLuint lub = icons.texture_for(IconId::LOWER_UPPER_BOUND, 8, 35);
         lub != 0) {
         const float top_y = ImGui::GetCursorPosY();
         ImGui::SetCursorPosY(top_y +
@@ -71,7 +71,8 @@ void draw_channel_dot(SvgIconCache& icons,
                       float field_h,
                       float dot_w) {
     if (const GLuint ch = icons.texture_for(
-            static_cast<IconId>(static_cast<int>(IconId::ChannelRed) + channel),
+            static_cast<IconId>(static_cast<int>(IconId::CHANNEL_RED) +
+                                channel),
             10,
             10);
         ch != 0) {

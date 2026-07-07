@@ -94,9 +94,9 @@ TEST(AsioCodec, RoundTripPlotBufferRequest) {
     AsioTransport client("127.0.0.1", port);
     server.join();
 
-    // Send: PlotBufferRequest + "myVar" from the client.
+    // Send: PLOT_BUFFER_REQUEST + "myVar" from the client.
     MessageComposer composer;
-    composer.push(MessageType::PlotBufferRequest).push(std::string("myVar"));
+    composer.push(MessageType::PLOT_BUFFER_REQUEST).push(std::string("myVar"));
     composer.send(client);
 
     // Decode on the server side via a thin ITransport over raw_server.
@@ -124,7 +124,7 @@ TEST(AsioCodec, RoundTripPlotBufferRequest) {
     decoder.read(type);
     std::string name;
     decoder.read(name);
-    EXPECT_EQ(type, MessageType::PlotBufferRequest);
+    EXPECT_EQ(type, MessageType::PLOT_BUFFER_REQUEST);
     EXPECT_EQ(name, "myVar");
 }
 

@@ -46,7 +46,7 @@ TEST(BufferDecode, MapsFieldsAndStepEqualsStride) {
                                          .height = 2,
                                          .channels = 3,
                                          .stride = 6,
-                                         .type = oid::BufferType::UnsignedByte,
+                                         .type = oid::BufferType::UNSIGNED_BYTE,
                                          .bytes = std::move(bytes)});
     EXPECT_EQ(r.variable_name, "v");
     EXPECT_EQ(r.display_name, "disp");
@@ -56,7 +56,7 @@ TEST(BufferDecode, MapsFieldsAndStepEqualsStride) {
     EXPECT_EQ(r.height, 2);
     EXPECT_EQ(r.channels, 3);
     EXPECT_EQ(r.step, 6); // step == wire stride
-    EXPECT_EQ(r.type, oid::BufferType::UnsignedByte);
+    EXPECT_EQ(r.type, oid::BufferType::UNSIGNED_BYTE);
     EXPECT_EQ(r.bytes.size(), 12u);
 }
 
@@ -73,13 +73,13 @@ TEST(BufferDecode, Float64ConvertsToFloatBytes) {
                                          .height = 1,
                                          .channels = 1,
                                          .stride = 1,
-                                         .type = oid::BufferType::Float64,
+                                         .type = oid::BufferType::FLOAT64,
                                          .bytes = std::move(bytes)});
 
-    // Float64 payload of 1 double must convert down to 1 float (4 bytes).
+    // FLOAT64 payload of 1 double must convert down to 1 float (4 bytes).
     ASSERT_EQ(r.bytes.size(), sizeof(float));
-    // BufferRecord::type stays Float64, unchanged, matching the Qt path.
-    EXPECT_EQ(r.type, oid::BufferType::Float64);
+    // BufferRecord::type stays FLOAT64, unchanged, matching the Qt path.
+    EXPECT_EQ(r.type, oid::BufferType::FLOAT64);
 
     float decoded = 0.0F;
     std::memcpy(&decoded, r.bytes.data(), sizeof(float));
@@ -141,7 +141,7 @@ TEST(IpcClient, PlotBufferContentsUpsertsModel) {
     oid::host::IpcBufferModel model;
     MessageComposer c;
     std::vector<std::byte> bytes(12, std::byte{5});
-    c.push(MessageType::PlotBufferContents)
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
         .push(std::string("v"))
         .push(std::string("disp"))
         .push(std::string("rgb"))
@@ -150,7 +150,7 @@ TEST(IpcClient, PlotBufferContentsUpsertsModel) {
         .push(2)
         .push(3)
         .push(6)
-        .push(BufferType::UnsignedByte)
+        .push(BufferType::UNSIGNED_BYTE)
         .push(std::span<const std::byte>(bytes));
     t.feed(frame(c));
 
@@ -168,7 +168,7 @@ TEST(IpcClient, SetAvailableSymbolsPopulatesList) {
     oid::host::IpcBufferModel model;
     MessageComposer c;
     std::deque<std::string> syms{"a", "b"};
-    c.push(MessageType::SetAvailableSymbols).push(syms.size());
+    c.push(MessageType::SET_AVAILABLE_SYMBOLS).push(syms.size());
     for (const auto& s : syms) {
         c.push(s);
     }
@@ -190,16 +190,16 @@ TEST(IpcClient, GetObservedSymbolsRespondsWithModelNames) {
         model.upsert(std::move(r));
     }
     MessageComposer c;
-    c.push(MessageType::GetObservedSymbols);
+    c.push(MessageType::GET_OBSERVED_SYMBOLS);
     t.feed(frame(c));
 
     oid::host::IpcClient client(t, model);
     client.poll();
 
-    ASSERT_EQ(t.sends.size(), 1u); // sent a GetObservedSymbolsResponse
+    ASSERT_EQ(t.sends.size(), 1u); // sent a GET_OBSERVED_SYMBOLS_RESPONSE
     MessageType h{};
     std::memcpy(&h, t.sends[0].data(), sizeof(h));
-    EXPECT_EQ(h, MessageType::GetObservedSymbolsResponse);
+    EXPECT_EQ(h, MessageType::GET_OBSERVED_SYMBOLS_RESPONSE);
 }
 
 TEST(IpcClient, RequestPlotSends) {
@@ -211,7 +211,7 @@ TEST(IpcClient, RequestPlotSends) {
     ASSERT_EQ(t.sends.size(), 1u);
     MessageType h{};
     std::memcpy(&h, t.sends[0].data(), sizeof(h));
-    EXPECT_EQ(h, MessageType::PlotBufferRequest);
+    EXPECT_EQ(h, MessageType::PLOT_BUFFER_REQUEST);
 }
 
 TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
@@ -222,7 +222,7 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
 
     {
         MessageComposer c;
-        c.push(MessageType::PlotBufferBegin)
+        c.push(MessageType::PLOT_BUFFER_BEGIN)
             .push(std::string("v"))
             .push(std::string("disp"))
             .push(std::string("rgb"))
@@ -231,13 +231,13 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
             .push(2)
             .push(3)
             .push(12)
-            .push(static_cast<int>(BufferType::UnsignedByte))
+            .push(static_cast<int>(BufferType::UNSIGNED_BYTE))
             .push(total);
         t.feed(frame(c));
     }
     {
         MessageComposer c;
-        c.push(MessageType::PlotBufferChunk)
+        c.push(MessageType::PLOT_BUFFER_CHUNK)
             .push(std::string("v"))
             .push(std::size_t{0})
             .push(std::size_t{2})
@@ -246,7 +246,7 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
     }
     {
         MessageComposer c;
-        c.push(MessageType::PlotBufferEnd).push(std::string("v"));
+        c.push(MessageType::PLOT_BUFFER_END).push(std::string("v"));
         t.feed(frame(c));
     }
 
@@ -266,7 +266,7 @@ TEST(IpcClient, PollDoesNotThrowOnTruncatedMessage) {
     oid::host::IpcBufferModel model;
     std::vector<std::byte> bytes(12, std::byte{5});
     MessageComposer c;
-    c.push(MessageType::PlotBufferContents)
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
         .push(std::string("v"))
         .push(std::string("disp"))
         .push(std::string("rgb"))
@@ -275,7 +275,7 @@ TEST(IpcClient, PollDoesNotThrowOnTruncatedMessage) {
         .push(2)
         .push(3)
         .push(6)
-        .push(BufferType::UnsignedByte)
+        .push(BufferType::UNSIGNED_BYTE)
         .push(std::span<const std::byte>(bytes));
     const auto full_frame = frame(c);
 
@@ -302,20 +302,20 @@ TEST(IpcClient, RestoresAvailableUnexpiredBuffersOnSetAvailableSymbols) {
         {{"want", future}, {"expired", past}, {"absent", future}});
     MessageComposer c;
     std::deque<std::string> syms{"want", "expired", "other"};
-    c.push(MessageType::SetAvailableSymbols).push(syms.size());
+    c.push(MessageType::SET_AVAILABLE_SYMBOLS).push(syms.size());
     for (const auto& s : syms) {
         c.push(s);
     }
     t.feed(frame(c));
     client.poll();
-    // Exactly one PlotBufferRequest, for "want" (available + unexpired +
+    // Exactly one PLOT_BUFFER_REQUEST, for "want" (available + unexpired +
     // unloaded).
     int plot_reqs = 0;
     std::string requested;
     for (auto& snd : t.sends) {
         MessageType h{};
         std::memcpy(&h, snd.data(), sizeof(h));
-        if (h == MessageType::PlotBufferRequest) {
+        if (h == MessageType::PLOT_BUFFER_REQUEST) {
             ++plot_reqs;
             // name follows the 4-byte header + size_t length
             std::size_t len = 0;
@@ -339,21 +339,21 @@ TEST(IpcClient, RestoreRequestsOnlyOnceAcrossRepeatedSetAvailableSymbols) {
 
     MessageComposer c;
     std::deque<std::string> syms{"want"};
-    c.push(MessageType::SetAvailableSymbols).push(syms.size());
+    c.push(MessageType::SET_AVAILABLE_SYMBOLS).push(syms.size());
     for (const auto& s : syms) {
         c.push(s);
     }
     const auto f = frame(c);
     t.feed(f);
     client.poll();
-    t.feed(f); // same SetAvailableSymbols frame fed a second time
+    t.feed(f); // same SET_AVAILABLE_SYMBOLS frame fed a second time
     client.poll();
 
     int plot_reqs = 0;
     for (auto& snd : t.sends) {
         MessageType h{};
         std::memcpy(&h, snd.data(), sizeof(h));
-        if (h == MessageType::PlotBufferRequest) {
+        if (h == MessageType::PLOT_BUFFER_REQUEST) {
             ++plot_reqs;
         }
     }
@@ -374,7 +374,7 @@ TEST(IpcClient, ApplySessionStateInvokesCallbackWithJsonVerbatim) {
 
     const std::string json = R"({"window":{"w":800,"h":600}})";
     MessageComposer c;
-    c.push(MessageType::ApplySessionState).push(json);
+    c.push(MessageType::APPLY_SESSION_STATE).push(json);
     t.feed(frame(c));
     client.poll();
 
@@ -389,7 +389,7 @@ TEST(IpcClient, ApplySessionStateWithoutCallbackDoesNotThrow) {
     // No callback registered; message must still be fully consumed (not
     // left half-read desyncing the stream) and must not throw.
     MessageComposer c;
-    c.push(MessageType::ApplySessionState).push(std::string("{}"));
+    c.push(MessageType::APPLY_SESSION_STATE).push(std::string("{}"));
     t.feed(frame(c));
     EXPECT_NO_THROW(client.poll());
 }
@@ -402,7 +402,7 @@ TEST(IpcClient, ExportSelectedBufferInvokesCallback) {
     client.set_export_selected_callback([&calls] { ++calls; });
 
     MessageComposer c;
-    c.push(MessageType::ExportSelectedBuffer);
+    c.push(MessageType::EXPORT_SELECTED_BUFFER);
     t.feed(frame(c));
     client.poll();
 
@@ -414,7 +414,7 @@ TEST(IpcClient, ExportSelectedBufferWithoutCallbackDoesNotThrow) {
     oid::host::IpcBufferModel model;
     oid::host::IpcClient client(t, model);
     MessageComposer c;
-    c.push(MessageType::ExportSelectedBuffer);
+    c.push(MessageType::EXPORT_SELECTED_BUFFER);
     t.feed(frame(c));
     EXPECT_NO_THROW(client.poll());
 }
@@ -429,7 +429,7 @@ TEST(IpcClient, SendSessionStateChangedSendsTypeAndJsonVerbatim) {
     ASSERT_EQ(t.sends.size(), 1u);
     MessageType h{};
     std::memcpy(&h, t.sends[0].data(), sizeof(h));
-    EXPECT_EQ(h, MessageType::SessionStateChanged);
+    EXPECT_EQ(h, MessageType::SESSION_STATE_CHANGED);
 
     std::size_t len = 0;
     std::memcpy(&len, t.sends[0].data() + sizeof(h), sizeof(len));
@@ -452,7 +452,7 @@ TEST(IpcClient, SendExportBufferRequestRoundTripsFields) {
     decode_t.feed(t.sends[0]);
     MessageType h{};
     MessageDecoder{decode_t}.read(h);
-    EXPECT_EQ(h, MessageType::ExportBufferRequest);
+    EXPECT_EQ(h, MessageType::EXPORT_BUFFER_REQUEST);
 
     std::string name;
     int format{};
@@ -499,7 +499,7 @@ TEST(IpcClient, RestoreSkipsBufferAlreadyInModel) {
 
     MessageComposer c;
     std::deque<std::string> syms{"want"};
-    c.push(MessageType::SetAvailableSymbols).push(syms.size());
+    c.push(MessageType::SET_AVAILABLE_SYMBOLS).push(syms.size());
     for (const auto& s : syms) {
         c.push(s);
     }
@@ -510,7 +510,7 @@ TEST(IpcClient, RestoreSkipsBufferAlreadyInModel) {
     for (auto& snd : t.sends) {
         MessageType h{};
         std::memcpy(&h, snd.data(), sizeof(h));
-        if (h == MessageType::PlotBufferRequest) {
+        if (h == MessageType::PLOT_BUFFER_REQUEST) {
             ++plot_reqs;
         }
     }

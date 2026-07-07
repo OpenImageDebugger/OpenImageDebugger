@@ -68,15 +68,15 @@ bool draw_export_dialog(ExportDialogState& st) {
 
         if (ImGui::RadioButton("PNG image (.png)",
                                st.format ==
-                                   oid::BufferExporter::OutputType::Bitmap)) {
-            st.format = oid::BufferExporter::OutputType::Bitmap;
+                                   oid::BufferExporter::OutputType::BITMAP)) {
+            st.format = oid::BufferExporter::OutputType::BITMAP;
             apply_format_extension(st);
         }
         ImGui::SameLine();
         if (ImGui::RadioButton(
                 "Octave matrix (.oct)",
-                st.format == oid::BufferExporter::OutputType::OctaveMatrix)) {
-            st.format = oid::BufferExporter::OutputType::OctaveMatrix;
+                st.format == oid::BufferExporter::OutputType::OCTAVE_MATRIX)) {
+            st.format = oid::BufferExporter::OutputType::OCTAVE_MATRIX;
             apply_format_extension(st);
         }
 

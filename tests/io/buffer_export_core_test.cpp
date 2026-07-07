@@ -42,7 +42,7 @@ TEST(ExportCore, NormalizeUint8GrayIdentityContrast) {
     const std::uint8_t px[] = {0, 64, 128, 255};
     const auto img = oid::BufferExporter::normalize_to_rgba8_raw(
         px,
-        {.type = oid::BufferType::UnsignedByte,
+        {.type = oid::BufferType::UNSIGNED_BYTE,
          .width = 2,
          .height = 2,
          .channels = 1,
@@ -63,7 +63,7 @@ TEST(ExportCore, NormalizeFloatScalesTo255) {
                                      1.0f}; // width=2, height=1, 1ch, step=2
     const auto img = oid::BufferExporter::normalize_to_rgba8_raw(
         reinterpret_cast<const std::uint8_t*>(px.data()),
-        {.type = oid::BufferType::Float32,
+        {.type = oid::BufferType::FLOAT32,
          .width = 2,
          .height = 1,
          .channels = 1,
@@ -79,7 +79,7 @@ TEST(ExportCore, OctaveGoldenBytes) {
     const auto p = oid::test::scratch_dir() / "oid_p5_golden.oct";
     std::filesystem::remove(p);
     ASSERT_TRUE(oid::BufferExporter::export_octave_raw(
-        px, oid::BufferType::UnsignedByte, 3, 2, 1, 3, p.string()));
+        px, oid::BufferType::UNSIGNED_BYTE, 3, 2, 1, 3, p.string()));
     std::ifstream is{p, std::ios::binary};
     std::vector<char> got{std::istreambuf_iterator<char>(is), {}};
     // "uint8\n" + int32 LE height=2, width=3, channels=1 + 6 payload bytes

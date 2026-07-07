@@ -44,7 +44,7 @@ struct ExportDialogState {
     std::string buffer_name;           // target buffer's variable_name
     std::array<char, 1024> path_buf{}; // ImGui InputText storage
     oid::BufferExporter::OutputType format{
-        oid::BufferExporter::OutputType::Bitmap};
+        oid::BufferExporter::OutputType::BITMAP};
     // True once the user has typed into path_buf directly; gates
     // apply_format_extension() so switching the format radio button never
     // clobbers a path the user has customized themselves.
@@ -55,7 +55,7 @@ struct ExportDialogState {
 // composition, safe to unit test without touching disk: `last_export_dir`
 // if non-empty, else "<home_env>/Desktop" if `home_env` is non-null and
 // non-empty, else ".", then "/<buffer_name>" plus ".png" for
-// OutputType::Bitmap or ".oct" for OutputType::OctaveMatrix.
+// OutputType::BITMAP or ".oct" for OutputType::OCTAVE_MATRIX.
 std::string default_export_path(std::string_view last_export_dir,
                                 const char* home_env,
                                 const std::string& buffer_name,
@@ -68,7 +68,7 @@ std::string default_export_path(std::string_view last_export_dir,
 void apply_format_extension(ExportDialogState& st);
 
 // Opens the dialog for `buffer_name`: resets `st` (format back to the
-// Bitmap default, user_edited_path cleared) and seeds `path_buf` via
+// BITMAP default, user_edited_path cleared) and seeds `path_buf` via
 // default_export_path(last_export_dir, getenv("HOME"), buffer_name,
 // st.format).
 void open_export_dialog(ExportDialogState& st,
@@ -76,7 +76,7 @@ void open_export_dialog(ExportDialogState& st,
                         const std::string& last_export_dir);
 
 // Draws the "Export buffer" ImGui modal popup (implemented in
-// export_dialog_draw.cpp): a path field, Bitmap/OctaveMatrix radio
+// export_dialog_draw.cpp): a path field, BITMAP/OCTAVE_MATRIX radio
 // buttons, and Save/Cancel buttons.
 // Returns true the one frame Save is clicked (the destination path is
 // st.path_buf.data() at that point); closes the popup on both Save and

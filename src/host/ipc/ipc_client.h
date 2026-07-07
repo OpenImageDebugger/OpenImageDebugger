@@ -41,9 +41,9 @@
 namespace oid::host {
 
 // Qt-free port of the window-side of the Qt MessageHandler: decodes inbound
-// messages (SetAvailableSymbols, GetObservedSymbols, PlotBufferContents,
-// PlotBufferBegin/Chunk/End) into the IpcBufferModel + symbol list, and
-// sends outbound requests (PlotBufferRequest, BufferRemoved). The transport
+// messages (SET_AVAILABLE_SYMBOLS, GET_OBSERVED_SYMBOLS, PLOT_BUFFER_CONTENTS,
+// PLOT_BUFFER_BEGIN/Chunk/End) into the IpcBufferModel + symbol list, and
+// sends outbound requests (PLOT_BUFFER_REQUEST, BUFFER_REMOVED). The transport
 // is injected as oid::ITransport& so this is unit-testable against a fake
 // transport with no live socket.
 class IpcClient {
@@ -58,14 +58,14 @@ class IpcClient {
     void poll();
 
     // Outbound (from the chrome):
-    void request_plot(const std::string& variable_name);   // PlotBufferRequest
-    void notify_removed(const std::string& variable_name); // BufferRemoved
+    void request_plot(const std::string& variable_name); // PLOT_BUFFER_REQUEST
+    void notify_removed(const std::string& variable_name); // BUFFER_REMOVED
 
-    // Sends SessionStateChanged (type 7): a single JSON string, verbatim
+    // Sends SESSION_STATE_CHANGED (type 7): a single JSON string, verbatim
     // (no parsing/validation here -- the caller owns the JSON shape).
     void send_session_state_changed(const std::string& json);
 
-    // Sends ExportBufferRequest (type 5): variable name, export format, and
+    // Sends EXPORT_BUFFER_REQUEST (type 5): variable name, export format, and
     // an 8-entry contrast vector. Mirrors the Qt sender
     // (MessageHandler::request_export_buffer): entries beyond `contrast`'s
     // size are padded with 0.0f, and only the first 8 entries of `contrast`
@@ -74,7 +74,7 @@ class IpcClient {
                                     int format,
                                     const std::vector<float>& contrast);
 
-    // Registers the callback invoked when an inbound ApplySessionState
+    // Registers the callback invoked when an inbound APPLY_SESSION_STATE
     // (type 6) message is decoded; called with the JSON string verbatim.
     // Not required to be set: if unset, the message is still fully
     // consumed from the transport (so the stream isn't left desynced) and
@@ -82,18 +82,18 @@ class IpcClient {
     void
     set_session_state_callback(std::function<void(const std::string& json)> cb);
 
-    // Registers the callback invoked when an inbound ExportSelectedBuffer
-    // (type 8) message is decoded. ExportSelectedBuffer carries no payload
+    // Registers the callback invoked when an inbound EXPORT_SELECTED_BUFFER
+    // (type 8) message is decoded. EXPORT_SELECTED_BUFFER carries no payload
     // (mirrors the Qt side, which just emits exportSelectedBufferRequested()
     // with no arguments). Not required to be set.
     void set_export_selected_callback(std::function<void()> cb);
 
-    // Latest available-symbols list (from SetAvailableSymbols); UiState
+    // Latest available-symbols list (from SET_AVAILABLE_SYMBOLS); UiState
     // reads it.
     [[nodiscard]] const std::vector<std::string>& available_symbols() const;
 
     // Seed the previous-session buffers to auto-restore. On the next
-    // SetAvailableSymbols, each entry that is available, not already loaded,
+    // SET_AVAILABLE_SYMBOLS, each entry that is available, not already loaded,
     // not expired (now < expiry) is re-requested via request_plot.
     // Idempotent.
     void set_restore_buffers(std::vector<oid::host::PreviousBuffer> buffers);

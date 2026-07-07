@@ -36,13 +36,13 @@ namespace oid::host {
 // (src/host/ui/icons, files named *_svg.h), used to key SvgIconCache's
 // textures.
 enum class IconId {
-    ChannelRed,
-    ChannelGreen,
-    ChannelBlue,
-    ChannelAlpha,
-    LowerUpperBound,
-    GoToX,
-    GoToY,
+    CHANNEL_RED,
+    CHANNEL_GREEN,
+    CHANNEL_BLUE,
+    CHANNEL_ALPHA,
+    LOWER_UPPER_BOUND,
+    GO_TO_X,
+    GO_TO_Y,
 };
 
 // Lazily rasterizes and caches the embedded SVG icons as GL textures, the
@@ -91,7 +91,7 @@ class SvgIconCache {
     // Derived from the enum's last value so adding an IconId can never
     // silently index entries_ out of bounds.
     static constexpr std::size_t kIconCount =
-        static_cast<std::size_t>(IconId::GoToY) + 1;
+        static_cast<std::size_t>(IconId::GO_TO_Y) + 1;
 
     float content_scale_;
     std::array<Entry, kIconCount> entries_{};

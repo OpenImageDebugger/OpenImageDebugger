@@ -138,11 +138,11 @@ class OidBridge {
         assert(client_ != nullptr);
 
         auto message_composer = oid::MessageComposer{};
-        message_composer.push(oid::MessageType::GetObservedSymbols);
+        message_composer.push(oid::MessageType::GET_OBSERVED_SYMBOLS);
         send_to_window(message_composer);
 
         if (const auto response =
-                fetch_message(oid::MessageType::GetObservedSymbolsResponse);
+                fetch_message(oid::MessageType::GET_OBSERVED_SYMBOLS_RESPONSE);
             response != nullptr) {
             return dynamic_cast<GetObservedSymbolsResponseMessage*>(
                        response.get())
@@ -157,7 +157,7 @@ class OidBridge {
         assert(client_ != nullptr);
 
         auto message_composer = oid::MessageComposer{};
-        message_composer.push(oid::MessageType::SetAvailableSymbols)
+        message_composer.push(oid::MessageType::SET_AVAILABLE_SYMBOLS)
             .push(available_vars);
         send_to_window(message_composer);
     }
@@ -167,7 +167,7 @@ class OidBridge {
 
         auto plot_request_message = std::make_unique<UiMessage>();
         while ((plot_request_message = try_get_stored_message(
-                    oid::MessageType::PlotBufferRequest)) != nullptr) {
+                    oid::MessageType::PLOT_BUFFER_REQUEST)) != nullptr) {
             const PlotBufferRequestMessage* msg =
                 dynamic_cast<PlotBufferRequestMessage*>(
                     plot_request_message.get());
@@ -197,7 +197,7 @@ class OidBridge {
         assert(client_ != nullptr);
 
         auto message_composer = oid::MessageComposer{};
-        message_composer.push(oid::MessageType::PlotBufferContents)
+        message_composer.push(oid::MessageType::PLOT_BUFFER_CONTENTS)
             .push(variable_name_str)
             .push(display_name_str)
             .push(pixel_layout_str)
@@ -278,14 +278,14 @@ class OidBridge {
                 oid::MessageDecoder{*client_}.read(header);
 
                 switch (header) {
-                case oid::MessageType::PlotBufferRequest:
+                case oid::MessageType::PLOT_BUFFER_REQUEST:
                     received_messages_[header] = decode_plot_buffer_request();
                     break;
-                case oid::MessageType::GetObservedSymbolsResponse:
+                case oid::MessageType::GET_OBSERVED_SYMBOLS_RESPONSE:
                     received_messages_[header] =
                         decode_get_observed_symbols_response();
                     break;
-                case oid::MessageType::BufferRemoved: {
+                case oid::MessageType::BUFFER_REMOVED: {
                     auto removed_name = std::string{};
                     oid::MessageDecoder{*client_}.read(removed_name);
                     // The debugger side does not currently track removals;

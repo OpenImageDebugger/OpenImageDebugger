@@ -53,13 +53,13 @@ struct BufferRecordParams {
 };
 
 // Builds a BufferRecord from already-decoded wire fields. This is the
-// single funnel IpcClient's single-shot (PlotBufferContents) and
-// chunked (PlotBufferEnd) decode paths both call, mirroring the Qt
+// single funnel IpcClient's single-shot (PLOT_BUFFER_CONTENTS) and
+// chunked (PLOT_BUFFER_END) decode paths both call, mirroring the Qt
 // window's MessageHandler::plot_buffer_from_fields exactly: fields are
 // assigned straight across, `stride` becomes BufferRecord::step, and
-// Float64 payloads are converted to float bytes via
+// FLOAT64 payloads are converted to float bytes via
 // oid::make_float_buffer_from_double() (BufferRecord::type is left as
-// Float64, unchanged, matching the Qt path).
+// FLOAT64, unchanged, matching the Qt path).
 BufferRecord make_buffer_record(BufferRecordParams params);
 
 } // namespace oid::host

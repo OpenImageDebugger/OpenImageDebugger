@@ -43,27 +43,27 @@ constexpr double TEST_VALUE_5 = 5.0;
 } // namespace
 
 TEST(RawDataDecodeTest, TypeSizeUnsignedByte) {
-    EXPECT_EQ(type_size(BufferType::UnsignedByte), sizeof(std::uint8_t));
+    EXPECT_EQ(type_size(BufferType::UNSIGNED_BYTE), sizeof(std::uint8_t));
 }
 
 TEST(RawDataDecodeTest, TypeSizeUnsignedShort) {
-    EXPECT_EQ(type_size(BufferType::UnsignedShort), sizeof(std::int16_t));
+    EXPECT_EQ(type_size(BufferType::UNSIGNED_SHORT), sizeof(std::int16_t));
 }
 
 TEST(RawDataDecodeTest, TypeSizeShort) {
-    EXPECT_EQ(type_size(BufferType::Short), sizeof(std::int16_t));
+    EXPECT_EQ(type_size(BufferType::SHORT), sizeof(std::int16_t));
 }
 
 TEST(RawDataDecodeTest, TypeSizeInt32) {
-    EXPECT_EQ(type_size(BufferType::Int32), sizeof(std::int32_t));
+    EXPECT_EQ(type_size(BufferType::INT32), sizeof(std::int32_t));
 }
 
 TEST(RawDataDecodeTest, TypeSizeFloat32) {
-    EXPECT_EQ(type_size(BufferType::Float32), sizeof(float));
+    EXPECT_EQ(type_size(BufferType::FLOAT32), sizeof(float));
 }
 
 TEST(RawDataDecodeTest, TypeSizeFloat64) {
-    EXPECT_EQ(type_size(BufferType::Float64), sizeof(double));
+    EXPECT_EQ(type_size(BufferType::FLOAT64), sizeof(double));
 }
 
 TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_Empty) {

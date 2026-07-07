@@ -34,8 +34,8 @@ enum class EventProcessCode { IGNORED, INTERCEPTED };
 // implementation lives in events.cpp and reads ImGui's IO state.
 class KeyboardState {
   public:
-    enum class ModifierKey { Control, Alt, Shift };
-    enum class Key { Left, Right, Up, Down, Plus, Minus };
+    enum class ModifierKey { CONTROL, ALT, SHIFT };
+    enum class Key { LEFT, RIGHT, UP, DOWN, PLUS, MINUS };
 
     static bool is_modifier_key_pressed(ModifierKey key);
 

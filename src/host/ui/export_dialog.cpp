@@ -41,7 +41,7 @@ constexpr std::string_view kPngExt = ".png";
 constexpr std::string_view kOctExt = ".oct";
 
 std::string_view extension_for(oid::BufferExporter::OutputType format) {
-    return format == oid::BufferExporter::OutputType::Bitmap ? kPngExt
+    return format == oid::BufferExporter::OutputType::BITMAP ? kPngExt
                                                              : kOctExt;
 }
 
@@ -106,7 +106,7 @@ void open_export_dialog(ExportDialogState& st,
     st.open = true;
     st.buffer_name = buffer_name;
     st.user_edited_path = false;
-    st.format = oid::BufferExporter::OutputType::Bitmap;
+    st.format = oid::BufferExporter::OutputType::BITMAP;
     set_path_buf(
         st.path_buf,
         default_export_path(

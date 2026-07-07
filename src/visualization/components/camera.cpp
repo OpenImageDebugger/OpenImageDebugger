@@ -171,18 +171,18 @@ void Camera::handle_key_events() {
     // events.
     auto delta_pos = vec4{0.0f, 0.0f, 0.0f, 0.0f};
 
-    if (KeyboardState::is_key_pressed(Key::Up)) {
+    if (KeyboardState::is_key_pressed(Key::UP)) {
         delta_pos.y() = -1.0f;
         event_intercepted = EventProcessCode::INTERCEPTED;
-    } else if (KeyboardState::is_key_pressed(Key::Down)) {
+    } else if (KeyboardState::is_key_pressed(Key::DOWN)) {
         delta_pos.y() = 1.0f;
         event_intercepted = EventProcessCode::INTERCEPTED;
     }
 
-    if (KeyboardState::is_key_pressed(Key::Left)) {
+    if (KeyboardState::is_key_pressed(Key::LEFT)) {
         delta_pos.x() = -1.0f;
         event_intercepted = EventProcessCode::INTERCEPTED;
-    } else if (KeyboardState::is_key_pressed(Key::Right)) {
+    } else if (KeyboardState::is_key_pressed(Key::RIGHT)) {
         delta_pos.x() = 1.0f;
         event_intercepted = EventProcessCode::INTERCEPTED;
     }
@@ -209,19 +209,19 @@ EventProcessCode Camera::key_press_event(int) {
     auto event_intercepted = IGNORED;
 
     if (KeyboardState::is_modifier_key_pressed(
-            KeyboardState::ModifierKey::Control)) {
-        if (KeyboardState::is_key_pressed(Plus)) {
+            KeyboardState::ModifierKey::CONTROL)) {
+        if (KeyboardState::is_key_pressed(PLUS)) {
             scale_at(screen_center, 1.0f);
 
             event_intercepted = INTERCEPTED;
-        } else if (KeyboardState::is_key_pressed(Minus)) {
+        } else if (KeyboardState::is_key_pressed(MINUS)) {
             scale_at(screen_center, -1.0f);
 
             event_intercepted = INTERCEPTED;
-        } else if (KeyboardState::is_key_pressed(Left) ||
-                   KeyboardState::is_key_pressed(Right) ||
-                   KeyboardState::is_key_pressed(Up) ||
-                   KeyboardState::is_key_pressed(Down)) {
+        } else if (KeyboardState::is_key_pressed(LEFT) ||
+                   KeyboardState::is_key_pressed(RIGHT) ||
+                   KeyboardState::is_key_pressed(UP) ||
+                   KeyboardState::is_key_pressed(DOWN)) {
             // Prevent the arrow keys to propagate
             event_intercepted = INTERCEPTED;
         }

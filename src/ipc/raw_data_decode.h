@@ -34,12 +34,12 @@
 namespace oid {
 
 enum class BufferType {
-    UnsignedByte = 0,
-    UnsignedShort = 2,
-    Short = 3,
-    Int32 = 4,
-    Float32 = 5,
-    Float64 = 6
+    UNSIGNED_BYTE = 0,
+    UNSIGNED_SHORT = 2,
+    SHORT = 3,
+    INT32 = 4,
+    FLOAT32 = 5,
+    FLOAT64 = 6
 };
 
 std::vector<std::byte>
@@ -48,17 +48,17 @@ make_float_buffer_from_double(const std::vector<std::byte>& buff_double);
 [[nodiscard]] constexpr std::size_t type_size(const BufferType type) noexcept {
     using enum BufferType;
     switch (type) {
-    case Int32:
+    case INT32:
         return sizeof(std::int32_t);
-    case Short:
+    case SHORT:
         [[fallthrough]];
-    case UnsignedShort:
+    case UNSIGNED_SHORT:
         return sizeof(std::int16_t);
-    case Float32:
+    case FLOAT32:
         return sizeof(float);
-    case Float64:
+    case FLOAT64:
         return sizeof(double);
-    case UnsignedByte:
+    case UNSIGNED_BYTE:
         [[fallthrough]];
     default:
         // All enum values are handled above, this should never be reached

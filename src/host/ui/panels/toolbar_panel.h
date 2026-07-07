@@ -45,7 +45,7 @@ class BufferModel;
 // `ui.link_views()` is true, mirroring the Qt app's link-views behavior.
 // Action buttons are disabled (not hidden) when `!ui.has_selection()`; the
 // float-precision buttons are additionally disabled unless the selected
-// buffer's type is Float32/Float64 (parity with Qt). The three checkable
+// buffer's type is FLOAT32/FLOAT64 (parity with Qt). The three checkable
 // buttons (acEdit, acToggle, linkViewsToggle) stay interactive regardless,
 // since they're plain UI-state toggles.
 //

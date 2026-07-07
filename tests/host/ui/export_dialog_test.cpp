@@ -42,28 +42,28 @@ using oid::host::ExportDialogState;
 using oid::host::open_export_dialog;
 
 TEST(ExportDialog, DefaultPathPrefersLastExportDir) {
-    EXPECT_EQ(default_export_path("/exp", "/home/x", "buf", OutputType::Bitmap),
+    EXPECT_EQ(default_export_path("/exp", "/home/x", "buf", OutputType::BITMAP),
               "/exp/buf.png");
-    EXPECT_EQ(
-        default_export_path("/exp", "/home/x", "buf", OutputType::OctaveMatrix),
-        "/exp/buf.oct");
+    EXPECT_EQ(default_export_path(
+                  "/exp", "/home/x", "buf", OutputType::OCTAVE_MATRIX),
+              "/exp/buf.oct");
 }
 
 TEST(ExportDialog, DefaultPathFallsBackToHomeDesktop) {
-    EXPECT_EQ(default_export_path("", "/home/x", "buf", OutputType::Bitmap),
+    EXPECT_EQ(default_export_path("", "/home/x", "buf", OutputType::BITMAP),
               "/home/x/Desktop/buf.png");
 }
 
 TEST(ExportDialog, DefaultPathFallsBackToDotWhenHomeUnset) {
-    EXPECT_EQ(default_export_path("", nullptr, "buf", OutputType::Bitmap),
+    EXPECT_EQ(default_export_path("", nullptr, "buf", OutputType::BITMAP),
               "./buf.png");
-    EXPECT_EQ(default_export_path("", "", "buf", OutputType::OctaveMatrix),
+    EXPECT_EQ(default_export_path("", "", "buf", OutputType::OCTAVE_MATRIX),
               "./buf.oct");
 }
 
 TEST(ExportDialog, DefaultPathStripsTrailingSlashFromDir) {
     EXPECT_EQ(
-        default_export_path("/exp/", "/home/x", "buf", OutputType::Bitmap),
+        default_export_path("/exp/", "/home/x", "buf", OutputType::BITMAP),
         "/exp/buf.png");
 }
 
@@ -73,7 +73,7 @@ TEST(ExportDialog, OpenExportDialogSeedsStateFromBufferAndDir) {
     EXPECT_TRUE(st.open);
     EXPECT_EQ(st.buffer_name, "buf");
     EXPECT_FALSE(st.user_edited_path);
-    EXPECT_EQ(st.format, OutputType::Bitmap);
+    EXPECT_EQ(st.format, OutputType::BITMAP);
     EXPECT_STREQ(st.path_buf.data(), "/exp/buf.png");
 }
 
@@ -82,11 +82,11 @@ TEST(ExportDialog, FormatSwapReplacesExtensionWhenPathNotUserEdited) {
     open_export_dialog(st, "buf", "/exp");
     ASSERT_STREQ(st.path_buf.data(), "/exp/buf.png");
 
-    st.format = OutputType::OctaveMatrix;
+    st.format = OutputType::OCTAVE_MATRIX;
     apply_format_extension(st);
     EXPECT_STREQ(st.path_buf.data(), "/exp/buf.oct");
 
-    st.format = OutputType::Bitmap;
+    st.format = OutputType::BITMAP;
     apply_format_extension(st);
     EXPECT_STREQ(st.path_buf.data(), "/exp/buf.png");
 }
@@ -96,7 +96,7 @@ TEST(ExportDialog, FormatSwapAppendsExtensionWhenPathHasNeither) {
     const auto res = std::format_to_n(
         st.path_buf.data(), st.path_buf.size() - 1, "{}", "/exp/noext");
     *res.out = '\0';
-    st.format = OutputType::OctaveMatrix;
+    st.format = OutputType::OCTAVE_MATRIX;
     apply_format_extension(st);
     EXPECT_STREQ(st.path_buf.data(), "/exp/noext.oct");
 }
@@ -109,7 +109,7 @@ TEST(ExportDialog, FormatSwapRespectsUserEditedPath) {
     *res.out = '\0';
     st.user_edited_path = true;
 
-    st.format = OutputType::OctaveMatrix;
+    st.format = OutputType::OCTAVE_MATRIX;
     apply_format_extension(st);
     EXPECT_STREQ(st.path_buf.data(), "/exp/custom.name");
 }
@@ -117,7 +117,7 @@ TEST(ExportDialog, FormatSwapRespectsUserEditedPath) {
 TEST(ExportDialog, OpenResetsFormatAndUserEditedFlagFromPriorOpen) {
     ExportDialogState st;
     open_export_dialog(st, "first", "/exp");
-    st.format = OutputType::OctaveMatrix;
+    st.format = OutputType::OCTAVE_MATRIX;
     apply_format_extension(st);
     const auto res = std::format_to_n(
         st.path_buf.data(), st.path_buf.size() - 1, "{}", "/exp/custom.name");
@@ -127,6 +127,6 @@ TEST(ExportDialog, OpenResetsFormatAndUserEditedFlagFromPriorOpen) {
     open_export_dialog(st, "second", "/exp");
     EXPECT_EQ(st.buffer_name, "second");
     EXPECT_FALSE(st.user_edited_path);
-    EXPECT_EQ(st.format, OutputType::Bitmap);
+    EXPECT_EQ(st.format, OutputType::BITMAP);
     EXPECT_STREQ(st.path_buf.data(), "/exp/second.png");
 }

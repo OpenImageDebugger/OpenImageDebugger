@@ -50,22 +50,22 @@ namespace {
 std::pair<const unsigned char*, std::size_t> svg_source_for(IconId id) {
     using enum IconId;
     switch (id) {
-    case ChannelRed:
+    case CHANNEL_RED:
         return {icons::kLabelRedChannelSvg, sizeof(icons::kLabelRedChannelSvg)};
-    case ChannelGreen:
+    case CHANNEL_GREEN:
         return {icons::kLabelGreenChannelSvg,
                 sizeof(icons::kLabelGreenChannelSvg)};
-    case ChannelBlue:
+    case CHANNEL_BLUE:
         return {icons::kLabelBlueChannelSvg,
                 sizeof(icons::kLabelBlueChannelSvg)};
-    case ChannelAlpha:
+    case CHANNEL_ALPHA:
         return {icons::kLabelAlphaChannelSvg,
                 sizeof(icons::kLabelAlphaChannelSvg)};
-    case LowerUpperBound:
+    case LOWER_UPPER_BOUND:
         return {icons::kLowerUpperBoundSvg, sizeof(icons::kLowerUpperBoundSvg)};
-    case GoToX:
+    case GO_TO_X:
         return {icons::kXSvg, sizeof(icons::kXSvg)};
-    case GoToY:
+    case GO_TO_Y:
         return {icons::kYSvg, sizeof(icons::kYSvg)};
     }
     return {nullptr, 0};

@@ -42,8 +42,8 @@ namespace oid::host {
 [[nodiscard]] bool export_rgba_png(const oid::BufferExporter::RgbaImage& image,
                                    const std::string& path);
 
-// Exports a live Buffer to `path`: Bitmap normalizes to RGBA8 and PNG-encodes
-// it; OctaveMatrix writes the shared raw Octave-matrix format. Never throws.
+// Exports a live Buffer to `path`: BITMAP normalizes to RGBA8 and PNG-encodes
+// it; OCTAVE_MATRIX writes the shared raw Octave-matrix format. Never throws.
 [[nodiscard]] bool export_buffer_imgui(const oid::Buffer& buffer,
                                        const std::string& path,
                                        oid::BufferExporter::OutputType type);

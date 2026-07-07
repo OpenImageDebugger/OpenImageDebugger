@@ -52,7 +52,7 @@ struct BufferRecord {
     int height{};
     int channels{};
     int step{};
-    oid::BufferType type{oid::BufferType::UnsignedByte};
+    oid::BufferType type{oid::BufferType::UNSIGNED_BYTE};
     std::vector<std::byte> bytes;
 };
 
@@ -136,22 +136,22 @@ inline std::string type_label(const oid::BufferType type, const int channels) {
     using enum oid::BufferType;
     std::string base;
     switch (type) {
-    case UnsignedByte:
+    case UNSIGNED_BYTE:
         base = "uint8";
         break;
-    case UnsignedShort:
+    case UNSIGNED_SHORT:
         base = "uint16";
         break;
-    case Short:
+    case SHORT:
         base = "int16";
         break;
-    case Int32:
+    case INT32:
         base = "int32";
         break;
-    case Float32:
+    case FLOAT32:
         base = "float32";
         break;
-    case Float64:
+    case FLOAT64:
         base = "float64";
         break;
     }
@@ -160,7 +160,7 @@ inline std::string type_label(const oid::BufferType type, const int channels) {
 
 // Builds the fixed set of mock buffers used by chrome development/tests:
 // a 64x64 RGB8 gradient, a 32x32 RGBA8 checkerboard, and a 16x16
-// single-channel Float32 ramp. All three are generated purely from pixel
+// single-channel FLOAT32 ramp. All three are generated purely from pixel
 // index -- no randomness -- so the result is reproducible across runs.
 inline MockBufferModel make_default_mock_model() {
     std::vector<std::unique_ptr<BufferRecord>> records;
@@ -190,7 +190,7 @@ inline MockBufferModel make_default_mock_model() {
             .height = h,
             .channels = channels,
             .step = w,
-            .type = oid::BufferType::UnsignedByte,
+            .type = oid::BufferType::UNSIGNED_BYTE,
             .bytes = std::move(pixels),
         }));
     }
@@ -224,12 +224,12 @@ inline MockBufferModel make_default_mock_model() {
             .height = h,
             .channels = channels,
             .step = w,
-            .type = oid::BufferType::UnsignedByte,
+            .type = oid::BufferType::UNSIGNED_BYTE,
             .bytes = std::move(pixels),
         }));
     }
 
-    // 16x16 single-channel Float32 diagonal ramp, values in [0, 1].
+    // 16x16 single-channel FLOAT32 diagonal ramp, values in [0, 1].
     {
         constexpr int w = 16;
         constexpr int h = 16;
@@ -252,7 +252,7 @@ inline MockBufferModel make_default_mock_model() {
             .height = h,
             .channels = channels,
             .step = w,
-            .type = oid::BufferType::Float32,
+            .type = oid::BufferType::FLOAT32,
             .bytes = std::move(pixels),
         }));
     }

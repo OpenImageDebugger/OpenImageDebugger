@@ -66,22 +66,22 @@ void format_pixel_value(std::stringstream& message,
                         const int pos) {
     using enum BufferType;
     switch (type) {
-    case Float32:
+    case FLOAT32:
         message << std::bit_cast<const float*>(buffer.data())[pos];
         break;
-    case Float64:
+    case FLOAT64:
         message << std::bit_cast<const double*>(buffer.data())[pos];
         break;
-    case UnsignedByte:
+    case UNSIGNED_BYTE:
         message << static_cast<short>(static_cast<uint8_t>(buffer[pos]));
         break;
-    case Short:
+    case SHORT:
         message << std::bit_cast<const short*>(buffer.data())[pos];
         break;
-    case UnsignedShort:
+    case UNSIGNED_SHORT:
         message << std::bit_cast<const unsigned short*>(buffer.data())[pos];
         break;
-    case Int32:
+    case INT32:
         message << std::bit_cast<const int*>(buffer.data())[pos];
         break;
     }
@@ -168,24 +168,24 @@ void Buffer::update_min_color_value(float* lowest,
                                     const int i,
                                     const int c) const {
     using enum BufferType;
-    if (type_ == Float32 || type_ == Float64) {
+    if (type_ == FLOAT32 || type_ == FLOAT64) {
         lowest[c] = (std::min)(lowest[c],
                                std::bit_cast<const float*>(
                                    buffer_.data())[channels_ * i + c]);
-    } else if (type_ == UnsignedByte) {
+    } else if (type_ == UNSIGNED_BYTE) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(static_cast<uint8_t>(
                                    buffer_[channels_ * i + c])));
-    } else if (type_ == Short) {
+    } else if (type_ == SHORT) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(std::bit_cast<const short*>(
                                    buffer_.data())[channels_ * i + c]));
-    } else if (type_ == UnsignedShort) {
+    } else if (type_ == UNSIGNED_SHORT) {
         lowest[c] =
             (std::min)(lowest[c],
                        static_cast<float>(std::bit_cast<const unsigned short*>(
                            buffer_.data())[channels_ * i + c]));
-    } else if (type_ == Int32) {
+    } else if (type_ == INT32) {
         lowest[c] = (std::min)(lowest[c],
                                static_cast<float>(std::bit_cast<const int*>(
                                    buffer_.data())[channels_ * i + c]));
@@ -221,24 +221,24 @@ void Buffer::update_max_color_value(float* upper,
                                     const int i,
                                     const int c) const {
     using enum BufferType;
-    if (type_ == Float32 || type_ == Float64) {
+    if (type_ == FLOAT32 || type_ == FLOAT64) {
         upper[c] = (std::max)(upper[c],
                               std::bit_cast<const float*>(
                                   buffer_.data())[channels_ * i + c]);
-    } else if (type_ == UnsignedByte) {
+    } else if (type_ == UNSIGNED_BYTE) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(static_cast<uint8_t>(
                                   buffer_[channels_ * i + c])));
-    } else if (type_ == Short) {
+    } else if (type_ == SHORT) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(std::bit_cast<const short*>(
                                   buffer_.data())[channels_ * i + c]));
-    } else if (type_ == UnsignedShort) {
+    } else if (type_ == UNSIGNED_SHORT) {
         upper[c] =
             (std::max)(upper[c],
                        static_cast<float>(std::bit_cast<const unsigned short*>(
                            buffer_.data())[channels_ * i + c]));
-    } else if (type_ == Int32) {
+    } else if (type_ == INT32) {
         upper[c] = (std::max)(upper[c],
                               static_cast<float>(std::bit_cast<const int*>(
                                   buffer_.data())[channels_ * i + c]));
@@ -287,19 +287,19 @@ void Buffer::compute_contrast_brightness_parameters() {
 
     for (int c = 0; c < channels_; ++c) {
         auto maxIntensity = 1.0f;
-        if (type_ == UnsignedByte) {
+        if (type_ == UNSIGNED_BYTE) {
             maxIntensity = 255.0f;
-        } else if (type_ == Short) {
+        } else if (type_ == SHORT) {
             // All non-real values have max color 255
             maxIntensity =
                 static_cast<float>((std::numeric_limits<short>::max)());
-        } else if (type_ == UnsignedShort) {
+        } else if (type_ == UNSIGNED_SHORT) {
             maxIntensity = static_cast<float>(
                 (std::numeric_limits<unsigned short>::max)());
-        } else if (type_ == Int32) {
+        } else if (type_ == INT32) {
             maxIntensity =
                 static_cast<float>((std::numeric_limits<int>::max)());
-        } else if (type_ == Float32 || type_ == Float64) {
+        } else if (type_ == FLOAT32 || type_ == FLOAT64) {
             maxIntensity = 1.0f;
         }
         const auto upp_minus_low = upper[c] - lowest[c];
@@ -554,13 +554,13 @@ bool Buffer::create_shader_program() {
 
     auto channel_type = ShaderProgram::TexelChannels{};
     if (effective_channels == 1) {
-        channel_type = ShaderProgram::TexelChannels::FormatR;
+        channel_type = ShaderProgram::TexelChannels::FORMAT_R;
     } else if (effective_channels == 2) {
-        channel_type = ShaderProgram::TexelChannels::FormatRG;
+        channel_type = ShaderProgram::TexelChannels::FORMAT_RG;
     } else if (effective_channels == 3) {
-        channel_type = ShaderProgram::TexelChannels::FormatRGB;
+        channel_type = ShaderProgram::TexelChannels::FORMAT_RGB;
     } else {
-        channel_type = ShaderProgram::TexelChannels::FormatRGBA;
+        channel_type = ShaderProgram::TexelChannels::FORMAT_RGBA;
     }
 
     return buff_prog_.create(shader::buff_vert_shader,
@@ -764,15 +764,15 @@ void Buffer::setup_gl_buffer() {
     auto tex_type = GLuint{GL_UNSIGNED_BYTE};
     auto tex_format = GLuint{GL_RED};
 
-    if (type_ == BufferType::Float32 || type_ == BufferType::Float64) {
+    if (type_ == BufferType::FLOAT32 || type_ == BufferType::FLOAT64) {
         tex_type = GL_FLOAT;
-    } else if (type_ == BufferType::UnsignedByte) {
+    } else if (type_ == BufferType::UNSIGNED_BYTE) {
         tex_type = GL_UNSIGNED_BYTE;
-    } else if (type_ == BufferType::Short) {
+    } else if (type_ == BufferType::SHORT) {
         tex_type = GL_SHORT;
-    } else if (type_ == BufferType::UnsignedShort) {
+    } else if (type_ == BufferType::UNSIGNED_SHORT) {
         tex_type = GL_UNSIGNED_SHORT;
-    } else if (type_ == BufferType::Int32) {
+    } else if (type_ == BufferType::INT32) {
         tex_type = GL_INT;
     }
 
