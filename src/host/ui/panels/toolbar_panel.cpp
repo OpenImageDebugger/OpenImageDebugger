@@ -139,27 +139,23 @@ int current_format_index(const oid::Buffer& b) {
     return static_cast<int>(layout == "rgba" ? kRgba : kBgra);
 }
 
-} // namespace
-
-void draw_toolbar(UiState& ui,
-                  StageManager& stages,
-                  const BufferModel& model,
-                  bool& goto_open) {
-    const bool has_selection = ui.has_selection();
-
-    // Auto-contrast is global UI state. Sync the selected Stage to it every
-    // frame (not only on click): a Stage's own contrast flag defaults to off
-    // and is otherwise never told about the toggle, so without this the
-    // toggle and the actual render disagree at startup and after buffer
-    // switches / newly-created Stages. AC is global, so syncing the currently
-    // displayed Stage is sufficient -- any buffer shows the toggle's state
-    // when viewed.
+// Auto-contrast is global UI state. Sync the selected Stage to it every
+// frame (not only on click): a Stage's own contrast flag defaults to off
+// and is otherwise never told about the toggle, so without this the
+// toggle and the actual render disagree at startup and after buffer
+// switches / newly-created Stages. AC is global, so syncing the currently
+// displayed Stage is sufficient -- any buffer shows the toggle's state
+// when viewed.
+void sync_selected_stage_contrast(const UiState& ui, StageManager& stages) {
     if (oid::Stage* s = stages.selected_stage(ui.selected()); s != nullptr) {
         s->set_contrast_enabled(ui.contrast_enabled());
     }
+}
 
-    // 1. acEdit: shows/hides the min/max intensity editor (contrast panel).
-    // Plain UI-state toggle -- not gated on selection.
+// 1. acEdit / 2. acToggle: shows/hides the min/max intensity editor and
+// enables/disables contrast modifications. Plain UI-state toggles -- not
+// gated on selection.
+void draw_auto_contrast_controls(UiState& ui) {
     {
         bool ac_editor_visible = ui.ac_editor_visible();
         if (icon_button(kIconAcEdit,
@@ -170,8 +166,6 @@ void draw_toolbar(UiState& ui,
     }
     ImGui::SameLine();
 
-    // 2. acToggle: enables/disables contrast modifications. Plain UI-state
-    // toggle -- not gated on selection.
     {
         bool contrast_enabled = ui.contrast_enabled();
         if (icon_button(kIconAcToggle,
@@ -181,10 +175,15 @@ void draw_toolbar(UiState& ui,
         }
     }
     ImGui::SameLine();
+}
 
+// 3. reposition_buffer (recenter). Gated on selection.
+void draw_recenter_button(const UiState& ui,
+                          StageManager& stages,
+                          const BufferModel& model,
+                          bool has_selection) {
     ImGui::BeginDisabled(!has_selection);
 
-    // 3. reposition_buffer (recenter). Gated on selection.
     if (icon_button(kIconRecenter, "Reposition buffer to fit window")) {
         for_each_target(ui, stages, model, [](oid::Stage& s) {
             if (oid::Camera* cam = camera_of(s); cam != nullptr) {
@@ -195,21 +194,24 @@ void draw_toolbar(UiState& ui,
     ImGui::SameLine();
 
     ImGui::EndDisabled();
+}
 
-    // 4. linkViewsToggle. Plain UI-state toggle -- not gated on selection.
-    {
-        bool link_views = ui.link_views();
-        if (icon_button(kIconLinkViews,
-                        "Move all buffers simultaneously",
-                        &link_views)) {
-            ui.set_link_views(!ui.link_views());
-        }
+// 4. linkViewsToggle. Plain UI-state toggle -- not gated on selection.
+void draw_link_views_toggle(UiState& ui) {
+    if (const bool link_views = ui.link_views(); icon_button(
+            kIconLinkViews, "Move all buffers simultaneously", &link_views)) {
+        ui.set_link_views(!ui.link_views());
     }
     ImGui::SameLine();
+}
 
+// 5. rotate_90_ccw / 6. rotate_90_cw. Gated on selection.
+void draw_rotation_buttons(const UiState& ui,
+                           StageManager& stages,
+                           const BufferModel& model,
+                           bool has_selection) {
     ImGui::BeginDisabled(!has_selection);
 
-    // 5. rotate_90_ccw. Gated on selection.
     if (icon_button(kIconRotateCcw, "Rotate 90\xC2\xB0 counterclockwise")) {
         for_each_target(ui, stages, model, [](oid::Stage& s) {
             if (oid::Buffer* buf = buffer_of(s); buf != nullptr) {
@@ -219,7 +221,6 @@ void draw_toolbar(UiState& ui,
     }
     ImGui::SameLine();
 
-    // 6. rotate_90_cw. Gated on selection.
     if (icon_button(kIconRotateCw, "Rotate 90\xC2\xB0 clockwise")) {
         for_each_target(ui, stages, model, [](oid::Stage& s) {
             if (oid::Buffer* buf = buffer_of(s); buf != nullptr) {
@@ -229,24 +230,34 @@ void draw_toolbar(UiState& ui,
     }
     ImGui::SameLine();
 
-    // 7. go_to_pixel. Gated on selection.
+    ImGui::EndDisabled();
+}
+
+// 7. go_to_pixel. Gated on selection.
+void draw_goto_button(bool has_selection, bool& goto_open) {
+    ImGui::BeginDisabled(!has_selection);
+
     if (icon_button(kIconGoTo, "Go to pixel position")) {
         goto_open = true;
     }
     ImGui::SameLine();
 
     ImGui::EndDisabled();
+}
 
-    // Precision buttons additionally gated on the selected buffer's type
-    // being float (parity with the legacy Qt frontend's per-selection
-    // updates; see tag legacy-qt).
+// 8. decrease_float_precision / 9. increase_float_precision. Gated on
+// selection AND float type (parity with the legacy Qt frontend's
+// per-selection updates; see tag legacy-qt).
+void draw_precision_buttons(const UiState& ui,
+                            StageManager& stages,
+                            const BufferModel& model,
+                            bool has_selection) {
     const bool float_selected =
         has_selection &&
         (model.at(ui.selected()).type == oid::BufferType::Float32 ||
          model.at(ui.selected()).type == oid::BufferType::Float64);
     ImGui::BeginDisabled(!float_selected);
 
-    // 8. decrease_float_precision. Gated on selection AND float type.
     if (icon_button(kIconPrecisionDown, "Decrease float precision")) {
         for_each_target(ui, stages, model, [](oid::Stage& s) {
             if (oid::BufferValues* vals = values_of(s); vals != nullptr) {
@@ -256,7 +267,6 @@ void draw_toolbar(UiState& ui,
     }
     ImGui::SameLine();
 
-    // 9. increase_float_precision. Gated on selection AND float type.
     if (icon_button(kIconPrecisionUp, "Increase float precision")) {
         for_each_target(ui, stages, model, [](oid::Stage& s) {
             if (oid::BufferValues* vals = values_of(s); vals != nullptr) {
@@ -267,10 +277,12 @@ void draw_toolbar(UiState& ui,
     ImGui::SameLine();
 
     ImGui::EndDisabled();
+}
 
-    // Format combo: operates on the selected stage's buffer only (the legacy
-    // Qt frontend's selector acted on the selected buffer only via
-    // apply_format(); see tag legacy-qt), no link-views fan-out.
+// Format combo: operates on the selected stage's buffer only (the legacy
+// Qt frontend's selector acted on the selected buffer only via
+// apply_format(); see tag legacy-qt), no link-views fan-out.
+void draw_format_combo(const UiState& ui, StageManager& stages) {
     ImGui::TextUnformatted("Format:");
     ImGui::SameLine();
 
@@ -292,6 +304,24 @@ void draw_toolbar(UiState& ui,
     }
     ImGui::SetItemTooltip("Select pixel channel layout");
     ImGui::EndDisabled();
+}
+
+} // namespace
+
+void draw_toolbar(UiState& ui,
+                  StageManager& stages,
+                  const BufferModel& model,
+                  bool& goto_open) {
+    const bool has_selection = ui.has_selection();
+
+    sync_selected_stage_contrast(ui, stages);
+    draw_auto_contrast_controls(ui);
+    draw_recenter_button(ui, stages, model, has_selection);
+    draw_link_views_toggle(ui);
+    draw_rotation_buttons(ui, stages, model, has_selection);
+    draw_goto_button(has_selection, goto_open);
+    draw_precision_buttons(ui, stages, model, has_selection);
+    draw_format_combo(ui, stages);
 }
 
 } // namespace oid::host
