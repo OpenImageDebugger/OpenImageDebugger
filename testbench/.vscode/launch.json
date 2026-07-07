@@ -1,0 +1,29 @@
+{
+    // CodeLLDB (vadimcn.vscode-lldb) debug configs for the testbench.
+    // Used by both VS Code and Cursor (both read this .vscode folder).
+    // Set breakpoints in the editor gutter; the preRunCommands below also
+    // seed one at main.cpp:351 as an example (CodeLLDB has no "initBreakpoints").
+    //
+    // initCommands runs BEFORE the target loads and regenerates the .dSYM debug
+    // bundle. On macOS/Clang debug info lives in the .o files (a "debug map");
+    // if a .o is rebuilt without relinking, LLDB rejects the stale debug map
+    // ("object file changed ... debug info will not be loaded") and breakpoints
+    // fail to resolve. A fresh standalone .dSYM sidesteps that entirely.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(CodeLLDB) Launch testbench (no build)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/testbench",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "initCommands": [
+                "platform shell dsymutil ${workspaceFolder}/build/testbench"
+            ],
+            "preRunCommands": [
+                "breakpoint set --file main.cpp --line 351"
+            ]
+        }
+    ]
+}
