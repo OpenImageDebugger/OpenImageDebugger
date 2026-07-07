@@ -29,31 +29,22 @@
 
 namespace oid::host {
 
-BufferRecord make_buffer_record(std::string variable_name,
-                                std::string display_name,
-                                std::string pixel_layout,
-                                bool transpose,
-                                int width,
-                                int height,
-                                int channels,
-                                int stride,
-                                oid::BufferType type,
-                                std::vector<std::byte> bytes) {
+BufferRecord make_buffer_record(BufferRecordParams params) {
     BufferRecord record;
-    record.variable_name = std::move(variable_name);
-    record.display_name = std::move(display_name);
-    record.pixel_layout = std::move(pixel_layout);
-    record.transpose = transpose;
-    record.width = width;
-    record.height = height;
-    record.channels = channels;
-    record.step = stride;
-    record.type = type;
+    record.variable_name = std::move(params.variable_name);
+    record.display_name = std::move(params.display_name);
+    record.pixel_layout = std::move(params.pixel_layout);
+    record.transpose = params.transpose;
+    record.width = params.width;
+    record.height = params.height;
+    record.channels = params.channels;
+    record.step = params.stride;
+    record.type = params.type;
 
-    if (type == oid::BufferType::Float64) {
-        record.bytes = oid::make_float_buffer_from_double(bytes);
+    if (params.type == oid::BufferType::Float64) {
+        record.bytes = oid::make_float_buffer_from_double(params.bytes);
     } else {
-        record.bytes = std::move(bytes);
+        record.bytes = std::move(params.bytes);
     }
 
     return record;

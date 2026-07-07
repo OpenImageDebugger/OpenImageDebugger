@@ -99,26 +99,34 @@ void draw_buffer_row_context_menu(ExportDialogState& export_dialog,
     }
 }
 
-void draw_buffer_list_row(UiState& ui,
-                          const IpcBufferModel& model,
-                          StageManager& stages,
-                          ThumbnailCache& thumbs,
-                          ExportDialogState& export_dialog,
-                          const std::string& last_export_dir,
-                          const ImGuiStyle& style,
+// Stable UI context shared by every row drawn this frame, grouped so
+// draw_buffer_list_row() stays under Sonar's parameter-count limit. Holds
+// references only; the per-row `i` and `nav_moved` stay plain parameters
+// since they change on every call.
+struct BufferListRowContext {
+    UiState& ui;
+    const IpcBufferModel& model;
+    StageManager& stages;
+    ThumbnailCache& thumbs;
+    ExportDialogState& export_dialog;
+    const std::string& last_export_dir;
+    const ImGuiStyle& style;
+};
+
+void draw_buffer_list_row(const BufferListRowContext& ctx,
                           std::size_t i,
                           bool nav_moved) {
     ImGui::PushID(static_cast<int>(i));
 
     const ImVec2 row_start = ImGui::GetCursorScreenPos();
 
-    const std::string& name = model.variable_name_of(i);
-    const GLuint tex =
-        thumbs.texture_for(name, model.revision_of(i), stages.stage_for(i));
+    const std::string& name = ctx.model.variable_name_of(i);
+    const GLuint tex = ctx.thumbs.texture_for(
+        name, ctx.model.revision_of(i), ctx.stages.stage_for(i));
 
     // The 3-line label can be taller than the icon (HiDPI font scaling),
     // so the row takes whichever is taller; both overlays center in it.
-    const std::string label = row_label(model.at(i));
+    const std::string label = row_label(ctx.model.at(i));
     const ImVec2 text_size = ImGui::CalcTextSize(label.c_str());
     const float row_h =
         (std::max)(static_cast<float>(ThumbnailCache::kDisplayH), text_size.y);
@@ -129,20 +137,20 @@ void draw_buffer_list_row(UiState& ui,
     // afterwards as non-interactive items, Selectable underneath keeps
     // hover and click.
     if (ImGui::Selectable("##row",
-                          ui.selected() == i,
+                          ctx.ui.selected() == i,
                           ImGuiSelectableFlags_AllowDoubleClick,
                           ImVec2(0, row_h))) {
-        ui.select(i);
+        ctx.ui.select(i);
     }
 
     // Keep the row Up/Down just landed on visible; only when keyboard
     // navigation moved the selection this frame, so mouse scrolling isn't
     // yanked back to the selected row.
-    if (nav_moved && ui.selected() == i) {
+    if (nav_moved && ctx.ui.selected() == i) {
         ImGui::SetScrollHereY(0.5f);
     }
 
-    draw_buffer_row_context_menu(export_dialog, name, last_export_dir);
+    draw_buffer_row_context_menu(ctx.export_dialog, name, ctx.last_export_dir);
 
     // Where the Selectable's layout put the next row — restored after
     // the overlays so consecutive rows stack without extra gaps.
@@ -159,9 +167,9 @@ void draw_buffer_list_row(UiState& ui,
             ImVec2(ThumbnailCache::kDisplayW, ThumbnailCache::kDisplayH));
     }
 
-    ImGui::SetCursorScreenPos(
-        ImVec2(row_start.x + ThumbnailCache::kDisplayW + style.ItemSpacing.x,
-               row_start.y + (row_h - text_size.y) * 0.5f));
+    ImGui::SetCursorScreenPos(ImVec2(
+        row_start.x + ThumbnailCache::kDisplayW + ctx.style.ItemSpacing.x,
+        row_start.y + (row_h - text_size.y) * 0.5f));
     ImGui::TextUnformatted(label.c_str());
 
     ImGui::SetCursorScreenPos(after_row);
@@ -240,16 +248,15 @@ void draw_buffer_list(UiState& ui,
     // the thumbnail/label
     // horizontal spacing used above (style.ItemSpacing.x) is unaffected.
     ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 1.0f);
+    const BufferListRowContext row_ctx{.ui = ui,
+                                       .model = model,
+                                       .stages = stages,
+                                       .thumbs = thumbs,
+                                       .export_dialog = export_dialog,
+                                       .last_export_dir = last_export_dir,
+                                       .style = style};
     for (std::size_t i = 0; i < model.size(); ++i) {
-        draw_buffer_list_row(ui,
-                             model,
-                             stages,
-                             thumbs,
-                             export_dialog,
-                             last_export_dir,
-                             style,
-                             i,
-                             nav_moved);
+        draw_buffer_list_row(row_ctx, i, nav_moved);
     }
     ImGui::PopStyleVar();
 

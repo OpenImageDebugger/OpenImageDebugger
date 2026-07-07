@@ -42,13 +42,13 @@ TEST(ExportCore, NormalizeUint8GrayIdentityContrast) {
     const std::uint8_t px[] = {0, 64, 128, 255};
     const auto img = oid::BufferExporter::normalize_to_rgba8_raw(
         px,
-        oid::BufferType::UnsignedByte,
-        2,
-        2,
-        1,
-        2,
-        {1, 1, 1, 1, 0, 0, 0, 0},
-        "rgba");
+        {.type = oid::BufferType::UnsignedByte,
+         .width = 2,
+         .height = 2,
+         .channels = 1,
+         .step = 2,
+         .pixel_layout = "rgba"},
+        {1, 1, 1, 1, 0, 0, 0, 0});
     ASSERT_EQ(img.width, 2);
     ASSERT_EQ(img.height, 2);
     ASSERT_EQ(img.pixels.size(), 16u);
@@ -63,13 +63,13 @@ TEST(ExportCore, NormalizeFloatScalesTo255) {
                                      1.0f}; // width=2, height=1, 1ch, step=2
     const auto img = oid::BufferExporter::normalize_to_rgba8_raw(
         reinterpret_cast<const std::uint8_t*>(px.data()),
-        oid::BufferType::Float32,
-        2,
-        1,
-        1,
-        2,
-        {1, 1, 1, 1, 0, 0, 0, 0},
-        "rgba");
+        {.type = oid::BufferType::Float32,
+         .width = 2,
+         .height = 1,
+         .channels = 1,
+         .step = 2,
+         .pixel_layout = "rgba"},
+        {1, 1, 1, 1, 0, 0, 0, 0});
     EXPECT_EQ(img.pixels[0], 0);   // 0.0 * 255
     EXPECT_EQ(img.pixels[4], 255); // 1.0 * 255
 }

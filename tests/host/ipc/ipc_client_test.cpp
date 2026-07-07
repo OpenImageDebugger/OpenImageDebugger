@@ -38,16 +38,16 @@ namespace oid::host {
 
 TEST(BufferDecode, MapsFieldsAndStepEqualsStride) {
     std::vector<std::byte> bytes(12, std::byte{7});
-    BufferRecord r = make_buffer_record("v",
-                                        "disp",
-                                        "rgb",
-                                        false,
-                                        2,
-                                        2,
-                                        3,
-                                        6,
-                                        oid::BufferType::UnsignedByte,
-                                        std::move(bytes));
+    BufferRecord r = make_buffer_record({.variable_name = "v",
+                                         .display_name = "disp",
+                                         .pixel_layout = "rgb",
+                                         .transpose = false,
+                                         .width = 2,
+                                         .height = 2,
+                                         .channels = 3,
+                                         .stride = 6,
+                                         .type = oid::BufferType::UnsignedByte,
+                                         .bytes = std::move(bytes)});
     EXPECT_EQ(r.variable_name, "v");
     EXPECT_EQ(r.display_name, "disp");
     EXPECT_EQ(r.pixel_layout, "rgb");
@@ -65,16 +65,16 @@ TEST(BufferDecode, Float64ConvertsToFloatBytes) {
     std::vector<std::byte> bytes(sizeof(double));
     std::memcpy(bytes.data(), &value, sizeof(double));
 
-    BufferRecord r = make_buffer_record("v",
-                                        "disp",
-                                        "",
-                                        false,
-                                        1,
-                                        1,
-                                        1,
-                                        1,
-                                        oid::BufferType::Float64,
-                                        std::move(bytes));
+    BufferRecord r = make_buffer_record({.variable_name = "v",
+                                         .display_name = "disp",
+                                         .pixel_layout = "",
+                                         .transpose = false,
+                                         .width = 1,
+                                         .height = 1,
+                                         .channels = 1,
+                                         .stride = 1,
+                                         .type = oid::BufferType::Float64,
+                                         .bytes = std::move(bytes)});
 
     // Float64 payload of 1 double must convert down to 1 float (4 bytes).
     ASSERT_EQ(r.bytes.size(), sizeof(float));

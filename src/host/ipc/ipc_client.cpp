@@ -147,16 +147,16 @@ void IpcClient::handle_plot_buffer_contents() {
         .read(stride)
         .read(type)
         .read(bytes);
-    model_.upsert(make_buffer_record(std::move(variable_name),
-                                     std::move(display_name),
-                                     std::move(pixel_layout),
-                                     transpose,
-                                     width,
-                                     height,
-                                     channels,
-                                     stride,
-                                     type,
-                                     std::move(bytes)));
+    model_.upsert(make_buffer_record({.variable_name = std::move(variable_name),
+                                      .display_name = std::move(display_name),
+                                      .pixel_layout = std::move(pixel_layout),
+                                      .transpose = transpose,
+                                      .width = width,
+                                      .height = height,
+                                      .channels = channels,
+                                      .stride = stride,
+                                      .type = type,
+                                      .bytes = std::move(bytes)}));
 }
 
 void IpcClient::handle_plot_buffer_begin() {
@@ -195,17 +195,17 @@ void IpcClient::handle_plot_buffer_end() {
     oid::MessageDecoder{transport_}.read(name);
     auto assembled = assembler_.end(name);
     if (assembled) {
-        model_.upsert(
-            make_buffer_record(std::move(assembled->variable_name),
-                               std::move(assembled->display_name),
-                               std::move(assembled->pixel_layout),
-                               assembled->transpose,
-                               assembled->width,
-                               assembled->height,
-                               assembled->channels,
-                               assembled->stride,
-                               static_cast<oid::BufferType>(assembled->type),
-                               std::move(assembled->bytes)));
+        model_.upsert(make_buffer_record(
+            {.variable_name = std::move(assembled->variable_name),
+             .display_name = std::move(assembled->display_name),
+             .pixel_layout = std::move(assembled->pixel_layout),
+             .transpose = assembled->transpose,
+             .width = assembled->width,
+             .height = assembled->height,
+             .channels = assembled->channels,
+             .stride = assembled->stride,
+             .type = static_cast<oid::BufferType>(assembled->type),
+             .bytes = std::move(assembled->bytes)}));
     }
 }
 
