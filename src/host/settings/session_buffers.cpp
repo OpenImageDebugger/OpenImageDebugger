@@ -37,7 +37,7 @@ std::vector<PreviousBuffer> merge_previous_buffers(
     std::set<std::string, std::less<>> loaded{current_loaded.begin(),
                                               current_loaded.end()};
     for (const auto& name : current_loaded) {
-        out.push_back({name, now_s + ttl_s}); // fresh expiry
+        out.emplace_back(name, now_s + ttl_s); // fresh expiry
     }
     for (const auto& b : prior) {
         if (loaded.contains(b.variable_name)) {
