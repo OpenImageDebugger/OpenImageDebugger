@@ -142,9 +142,9 @@ AppSettings settings_from_json(std::string_view json) {
                     !entry.at("expiry").is_number_integer()) {
                     continue; // skip malformed entry, keep the rest
                 }
-                out.previous_buffers.push_back(
-                    PreviousBuffer{entry.at("name").get<std::string>(),
-                                   entry.at("expiry").get<std::int64_t>()});
+                out.previous_buffers.emplace_back(
+                    entry.at("name").get<std::string>(),
+                    entry.at("expiry").get<std::int64_t>());
             }
         }
 
