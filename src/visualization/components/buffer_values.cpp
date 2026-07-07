@@ -68,30 +68,30 @@ inline void pix2str(const PixelFormatParams& params) {
     const auto float_precision = params.float_precision;
     const auto pixel_pos = pos + channel;
 
-    if (type == Float32 || type == Float64) {
+    if (type == FLOAT32 || type == FLOAT64) {
         const float fpix = std::bit_cast<const float*>(buffer)[pixel_pos];
         const auto result = std::format_to_n(
             pix_label, label_length - 1, "{:.{}f}", fpix, float_precision);
         *result.out = '\0';
-    } else if (type == UnsignedByte) {
+    } else if (type == UNSIGNED_BYTE) {
         const auto result =
             std::format_to_n(pix_label,
                              label_length - 1,
                              "{}",
                              static_cast<uint8_t>(buffer[pixel_pos]));
         *result.out = '\0';
-    } else if (type == Short) {
+    } else if (type == SHORT) {
         const short fpix = std::bit_cast<const short*>(buffer)[pixel_pos];
         const auto result =
             std::format_to_n(pix_label, label_length - 1, "{}", fpix);
         *result.out = '\0';
-    } else if (type == UnsignedShort) {
+    } else if (type == UNSIGNED_SHORT) {
         const unsigned short fpix =
             std::bit_cast<const unsigned short*>(buffer)[pixel_pos];
         const auto result =
             std::format_to_n(pix_label, label_length - 1, "{}", fpix);
         *result.out = '\0';
-    } else if (type == Int32) {
+    } else if (type == INT32) {
         const int fpix = std::bit_cast<const int*>(buffer)[pixel_pos];
         auto result = std::format_to_n(pix_label, label_length - 1, "{}", fpix);
         *result.out = '\0';

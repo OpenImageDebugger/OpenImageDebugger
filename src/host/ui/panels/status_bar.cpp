@@ -136,8 +136,8 @@ std::string format_pixel_value_text(const oid::Buffer& buffer,
     pixel << std::fixed << std::setprecision(3);
     pixel << "(" << px << ", " << py << ") val=";
     buffer.get_pixel_info(pixel, px, py);
-    if (oid::BufferType::Float64 == buffer.type() ||
-        oid::BufferType::Float32 == buffer.type()) {
+    if (oid::BufferType::FLOAT64 == buffer.type() ||
+        oid::BufferType::FLOAT32 == buffer.type()) {
         if (const oid::BufferValues* values = values_of(stage);
             values != nullptr) {
             pixel << " precision=[" << values->get_float_precision() << "]";

@@ -37,7 +37,7 @@ const GlDialect& the_dialect() {
         .version_directive = "#version 150\n",
         .fragment_preamble = "out vec4 oid_fragColor;\n",
         .uses_out_color = true,
-        .icon_image_format = IconImageFormat::Rgba8888,
+        .icon_image_format = IconImageFormat::RGBA8888,
         .icon_bytes_per_pixel = 4,
         .has_texture_wrap_r = true,
         .icon_gl_internal_format = GL_RGBA8,

@@ -39,11 +39,11 @@ bool KeyboardState::is_modifier_key_pressed(const ModifierKey key) {
     using enum ModifierKey;
     const ImGuiIO& io = ImGui::GetIO();
     switch (key) {
-    case Alt:
+    case ALT:
         return io.KeyAlt;
-    case Control:
+    case CONTROL:
         return io.KeyCtrl;
-    case Shift:
+    case SHIFT:
         return io.KeyShift;
     default:
         return false;
@@ -60,19 +60,19 @@ bool KeyboardState::is_key_pressed(const Key key) {
         return false;
     }
     switch (key) {
-    case Left:
+    case LEFT:
         return ImGui::IsKeyDown(ImGuiKey_LeftArrow);
-    case Right:
+    case RIGHT:
         return ImGui::IsKeyDown(ImGuiKey_RightArrow);
-    case Up:
+    case UP:
         return ImGui::IsKeyDown(ImGuiKey_UpArrow);
-    case Down:
+    case DOWN:
         return ImGui::IsKeyDown(ImGuiKey_DownArrow);
-    case Plus:
+    case PLUS:
         // US layout: '+' is Shift+'='; also accept the keypad '+'.
         return ImGui::IsKeyDown(ImGuiKey_Equal) ||
                ImGui::IsKeyDown(ImGuiKey_KeypadAdd);
-    case Minus:
+    case MINUS:
         return ImGui::IsKeyDown(ImGuiKey_Minus) ||
                ImGui::IsKeyDown(ImGuiKey_KeypadSubtract);
     default:

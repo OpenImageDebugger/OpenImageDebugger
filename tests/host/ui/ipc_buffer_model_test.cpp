@@ -41,7 +41,7 @@ rec(std::string_view name, std::byte fill, std::size_t n = 4) {
     r.height = 2;
     r.channels = 1;
     r.step = 2;
-    r.type = oid::BufferType::UnsignedByte;
+    r.type = oid::BufferType::UNSIGNED_BYTE;
     r.bytes.assign(n, fill);
     return r;
 }

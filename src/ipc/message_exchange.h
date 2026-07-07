@@ -44,19 +44,19 @@
 namespace oid {
 
 enum class MessageType {
-    GetObservedSymbols = 0,
-    GetObservedSymbolsResponse = 1,
-    SetAvailableSymbols = 2,
-    PlotBufferContents = 3,
-    PlotBufferRequest = 4,
-    ExportBufferRequest = 5,
-    ApplySessionState = 6,
-    SessionStateChanged = 7,
-    ExportSelectedBuffer = 8,
-    BufferRemoved = 9,
-    PlotBufferBegin = 10,
-    PlotBufferChunk = 11,
-    PlotBufferEnd = 12
+    GET_OBSERVED_SYMBOLS = 0,
+    GET_OBSERVED_SYMBOLS_RESPONSE = 1,
+    SET_AVAILABLE_SYMBOLS = 2,
+    PLOT_BUFFER_CONTENTS = 3,
+    PLOT_BUFFER_REQUEST = 4,
+    EXPORT_BUFFER_REQUEST = 5,
+    APPLY_SESSION_STATE = 6,
+    SESSION_STATE_CHANGED = 7,
+    EXPORT_SELECTED_BUFFER = 8,
+    BUFFER_REMOVED = 9,
+    PLOT_BUFFER_BEGIN = 10,
+    PLOT_BUFFER_CHUNK = 11,
+    PLOT_BUFFER_END = 12
 };
 
 // C++20 concept to replace SFINAE for primitive type checking

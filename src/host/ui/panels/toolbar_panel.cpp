@@ -79,11 +79,11 @@ constexpr std::array<const char*, 5> kFormatLabels = {
 constexpr int kFormatCount = static_cast<int>(kFormatLabels.size());
 
 enum class PixelFormat {
-    kBgra = 0,
-    kRgba = 1,
-    kChannel0 = 2,
-    kChannel1 = 3,
-    kChannel2 = 4
+    BGRA = 0,
+    RGBA = 1,
+    CHANNEL0 = 2,
+    CHANNEL1 = 3,
+    CHANNEL2 = 4
 };
 
 // Applies the combo selection to `b`, mirroring the legacy Qt frontend's
@@ -92,23 +92,23 @@ enum class PixelFormat {
 void apply_format(oid::Buffer& b, int sel) {
     using enum PixelFormat;
     switch (sel) {
-    case static_cast<int>(kBgra):
+    case static_cast<int>(BGRA):
         b.set_display_channel_mode(-1);
         b.set_pixel_layout("bgra");
         break;
-    case static_cast<int>(kRgba):
+    case static_cast<int>(RGBA):
         b.set_display_channel_mode(-1);
         b.set_pixel_layout("rgba");
         break;
-    case static_cast<int>(kChannel0):
+    case static_cast<int>(CHANNEL0):
         b.set_display_channel_mode(1);
         b.set_pixel_layout("rrra");
         break;
-    case static_cast<int>(kChannel1):
+    case static_cast<int>(CHANNEL1):
         b.set_display_channel_mode(1);
         b.set_pixel_layout("ggga");
         break;
-    case static_cast<int>(kChannel2):
+    case static_cast<int>(CHANNEL2):
         b.set_display_channel_mode(1);
         b.set_pixel_layout("bbba");
         break;
@@ -128,15 +128,15 @@ int current_format_index(const oid::Buffer& b) {
     const std::string layout = b.get_pixel_layout();
     if (b.get_display_channel_mode() == 1) {
         if (layout == "ggga") {
-            return static_cast<int>(kChannel1);
+            return static_cast<int>(CHANNEL1);
         }
         if (layout == "bbba") {
-            return static_cast<int>(kChannel2);
+            return static_cast<int>(CHANNEL2);
         }
-        return static_cast<int>(kChannel0); // "rrra", or any other
-                                            // single-channel layout
+        return static_cast<int>(CHANNEL0); // "rrra", or any other
+                                           // single-channel layout
     }
-    return static_cast<int>(layout == "rgba" ? kRgba : kBgra);
+    return static_cast<int>(layout == "rgba" ? RGBA : BGRA);
 }
 
 // Auto-contrast is global UI state. Sync the selected Stage to it every
@@ -254,8 +254,8 @@ void draw_precision_buttons(const UiState& ui,
                             bool has_selection) {
     const bool float_selected =
         has_selection &&
-        (model.at(ui.selected()).type == oid::BufferType::Float32 ||
-         model.at(ui.selected()).type == oid::BufferType::Float64);
+        (model.at(ui.selected()).type == oid::BufferType::FLOAT32 ||
+         model.at(ui.selected()).type == oid::BufferType::FLOAT64);
     ImGui::BeginDisabled(!float_selected);
 
     if (icon_button(kIconPrecisionDown, "Decrease float precision")) {

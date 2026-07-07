@@ -43,7 +43,7 @@ GLTextRenderer::~GLTextRenderer() {
 bool GLTextRenderer::initialize() {
     if (!text_prog_.create(shader::text_vert_shader,
                            shader::text_frag_shader,
-                           ShaderProgram::TexelChannels::FormatR,
+                           ShaderProgram::TexelChannels::FORMAT_R,
                            "rgba",
                            {"mvp",
                             "buff_sampler",

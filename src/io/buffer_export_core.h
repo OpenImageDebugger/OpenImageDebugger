@@ -39,7 +39,7 @@ class Buffer;
 
 namespace oid::BufferExporter {
 
-enum class OutputType { Bitmap, OctaveMatrix };
+enum class OutputType { BITMAP, OCTAVE_MATRIX };
 
 struct RgbaImage {
     int width{0};

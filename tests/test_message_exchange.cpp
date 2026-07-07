@@ -161,20 +161,20 @@ TEST_F(MessageExchangeTest, MessageComposerPushPrimitive) {
 TEST_F(MessageExchangeTest, MessageComposerSendCoalescesBlocks) {
     RecordingTransport transport;
     MessageComposer composer;
-    composer.push(MessageType::PlotBufferRequest)
+    composer.push(MessageType::PLOT_BUFFER_REQUEST)
         .push(std::string("TestField"));
     composer.send(transport);
     ASSERT_EQ(transport.sends.size(), 1u);
     ASSERT_GE(transport.sends[0].size(), 12u);
     MessageType type{};
     std::memcpy(&type, transport.sends[0].data(), sizeof(type));
-    EXPECT_EQ(type, MessageType::PlotBufferRequest);
+    EXPECT_EQ(type, MessageType::PLOT_BUFFER_REQUEST);
 }
 
 TEST_F(MessageExchangeTest, WireFormatGoldenPlotBufferRequest) {
     RecordingTransport transport;
     MessageComposer composer;
-    composer.push(MessageType::PlotBufferRequest).push(std::string("abc"));
+    composer.push(MessageType::PLOT_BUFFER_REQUEST).push(std::string("abc"));
     composer.send(transport);
     ASSERT_EQ(transport.sends.size(), 1u);
     // MessageType(int=4, 4 bytes LE) | size_t length(3, 8 bytes LE) | "abc"
@@ -369,20 +369,20 @@ TEST_F(MessageExchangeTest, RoundTripComplexMessage) {
     const auto test_buffer_name = std::string(TEST_STRING_BUFFER);
 
     MessageComposer composer;
-    composer.push(MessageType::PlotBufferContents)
+    composer.push(MessageType::PLOT_BUFFER_CONTENTS)
         .push(test_int_value)
         .push(test_bool_value)
         .push(test_buffer_name);
     composer.send(*client_transport_);
 
     MessageDecoder decoder(*server_transport_);
-    MessageType type = MessageType::PlotBufferContents;
+    MessageType type = MessageType::PLOT_BUFFER_CONTENTS;
     int value = 0;
     bool flag = false;
     std::string name;
     decoder.read(type).read(value).read(flag).read(name);
 
-    EXPECT_EQ(type, MessageType::PlotBufferContents);
+    EXPECT_EQ(type, MessageType::PLOT_BUFFER_CONTENTS);
     EXPECT_EQ(value, test_int_value);
     EXPECT_EQ(flag, test_bool_value);
     EXPECT_EQ(name, test_buffer_name);

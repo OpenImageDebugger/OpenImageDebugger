@@ -46,7 +46,7 @@ class IpcClient;
 // (UiState::model_index_of() has a value), it just selects that buffer via
 // UiState::select(); otherwise it requests the debugger plot it via
 // `ipc.request_plot()`, and the buffer will appear once the
-// PlotBufferContents/Chunk response arrives on a later IpcClient::poll()`.
+// PLOT_BUFFER_CONTENTS/Chunk response arrives on a later IpcClient::poll()`.
 //
 // `focus_request` mirrors the Qt app's Ctrl+K shortcut
 // (symbolList->setFocus()): when true, the field grabs keyboard focus this

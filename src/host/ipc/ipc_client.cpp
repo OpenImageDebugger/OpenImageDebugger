@@ -54,32 +54,32 @@ void IpcClient::poll() {
 void IpcClient::dispatch(oid::MessageType header) {
     using enum oid::MessageType;
     switch (header) {
-    case SetAvailableSymbols:
+    case SET_AVAILABLE_SYMBOLS:
         handle_set_available_symbols();
         break;
-    case GetObservedSymbols:
+    case GET_OBSERVED_SYMBOLS:
         handle_get_observed_symbols();
         break;
-    case PlotBufferContents:
+    case PLOT_BUFFER_CONTENTS:
         handle_plot_buffer_contents();
         break;
-    case PlotBufferBegin:
+    case PLOT_BUFFER_BEGIN:
         handle_plot_buffer_begin();
         break;
-    case PlotBufferChunk:
+    case PLOT_BUFFER_CHUNK:
         handle_plot_buffer_chunk();
         break;
-    case PlotBufferEnd:
+    case PLOT_BUFFER_END:
         handle_plot_buffer_end();
         break;
-    case ApplySessionState:
+    case APPLY_SESSION_STATE:
         handle_apply_session_state();
         break;
-    case ExportSelectedBuffer:
+    case EXPORT_SELECTED_BUFFER:
         handle_export_selected_buffer();
         break;
     default:
-        // Remaining message types (e.g. BufferRemoved) are only sent, never
+        // Remaining message types (e.g. BUFFER_REMOVED) are only sent, never
         // received, by this side; ignore.
         break;
     }
@@ -117,7 +117,7 @@ void IpcClient::handle_set_available_symbols() {
 
 void IpcClient::handle_get_observed_symbols() {
     oid::MessageComposer composer;
-    composer.push(oid::MessageType::GetObservedSymbolsResponse)
+    composer.push(oid::MessageType::GET_OBSERVED_SYMBOLS_RESPONSE)
         .push(model_.size());
     for (std::size_t i = 0; i < model_.size(); ++i) {
         composer.push(model_.variable_name_of(i));
@@ -228,19 +228,19 @@ void IpcClient::handle_export_selected_buffer() const {
 
 void IpcClient::request_plot(const std::string& variable_name) {
     oid::MessageComposer composer;
-    composer.push(oid::MessageType::PlotBufferRequest).push(variable_name);
+    composer.push(oid::MessageType::PLOT_BUFFER_REQUEST).push(variable_name);
     composer.send(transport_);
 }
 
 void IpcClient::notify_removed(const std::string& variable_name) {
     oid::MessageComposer composer;
-    composer.push(oid::MessageType::BufferRemoved).push(variable_name);
+    composer.push(oid::MessageType::BUFFER_REMOVED).push(variable_name);
     composer.send(transport_);
 }
 
 void IpcClient::send_session_state_changed(const std::string& json) {
     oid::MessageComposer composer;
-    composer.push(oid::MessageType::SessionStateChanged).push(json);
+    composer.push(oid::MessageType::SESSION_STATE_CHANGED).push(json);
     composer.send(transport_);
 }
 
@@ -248,7 +248,7 @@ void IpcClient::send_export_buffer_request(const std::string& variable_name,
                                            int format,
                                            const std::vector<float>& contrast) {
     oid::MessageComposer composer;
-    composer.push(oid::MessageType::ExportBufferRequest)
+    composer.push(oid::MessageType::EXPORT_BUFFER_REQUEST)
         .push(variable_name)
         .push(format);
     // Fixed 8-float contrast layout on the wire (mirrors the Qt sender,

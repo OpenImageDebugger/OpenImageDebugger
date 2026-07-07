@@ -194,13 +194,13 @@ void ShaderProgram::use() const {
 const char* ShaderProgram::get_texel_format_define() const {
     using enum TexelChannels;
     switch (texel_format_) {
-    case FormatR:
+    case FORMAT_R:
         return "#define FORMAT_R\n";
-    case FormatRG:
+    case FORMAT_RG:
         return "#define FORMAT_RG\n";
-    case FormatRGB:
+    case FORMAT_RGB:
         return "#define FORMAT_RGB\n";
-    case FormatRGBA:
+    case FORMAT_RGBA:
         return "#define FORMAT_RGBA\n";
     default:
         return "";

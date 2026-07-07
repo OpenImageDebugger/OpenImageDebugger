@@ -32,7 +32,7 @@
 
 namespace oid {
 
-enum class IconImageFormat { Rgb888, Rgba8888 };
+enum class IconImageFormat { RGB888, RGBA8888 };
 
 struct GlDialect {
     std::string_view version_directive;

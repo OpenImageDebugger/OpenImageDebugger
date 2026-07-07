@@ -218,7 +218,7 @@ RgbaImage normalize_to_rgba8_raw(const std::uint8_t* data,
                                  const std::array<float, 8>& bc_comp) {
     using enum BufferType;
     switch (desc.type) {
-    case UnsignedByte:
+    case UNSIGNED_BYTE:
         return normalize_to_rgba8_impl<std::uint8_t>(data,
                                                      desc.width,
                                                      desc.height,
@@ -226,7 +226,7 @@ RgbaImage normalize_to_rgba8_raw(const std::uint8_t* data,
                                                      desc.step,
                                                      bc_comp,
                                                      desc.pixel_layout);
-    case UnsignedShort:
+    case UNSIGNED_SHORT:
         return normalize_to_rgba8_impl<std::uint16_t>(data,
                                                       desc.width,
                                                       desc.height,
@@ -234,7 +234,7 @@ RgbaImage normalize_to_rgba8_raw(const std::uint8_t* data,
                                                       desc.step,
                                                       bc_comp,
                                                       desc.pixel_layout);
-    case Short:
+    case SHORT:
         return normalize_to_rgba8_impl<std::int16_t>(data,
                                                      desc.width,
                                                      desc.height,
@@ -242,7 +242,7 @@ RgbaImage normalize_to_rgba8_raw(const std::uint8_t* data,
                                                      desc.step,
                                                      bc_comp,
                                                      desc.pixel_layout);
-    case Int32:
+    case INT32:
         return normalize_to_rgba8_impl<std::int32_t>(data,
                                                      desc.width,
                                                      desc.height,
@@ -250,9 +250,9 @@ RgbaImage normalize_to_rgba8_raw(const std::uint8_t* data,
                                                      desc.step,
                                                      bc_comp,
                                                      desc.pixel_layout);
-    case Float32:
+    case FLOAT32:
         [[fallthrough]];
-    case Float64:
+    case FLOAT64:
         return normalize_to_rgba8_impl<float>(data,
                                               desc.width,
                                               desc.height,
@@ -273,21 +273,21 @@ bool export_octave_raw(const std::uint8_t* data,
                        const std::string& path) {
     using enum BufferType;
     switch (type) {
-    case UnsignedByte:
+    case UNSIGNED_BYTE:
         return export_octave_impl<std::uint8_t>(
             data, width, height, channels, step, path);
-    case UnsignedShort:
+    case UNSIGNED_SHORT:
         return export_octave_impl<std::uint16_t>(
             data, width, height, channels, step, path);
-    case Short:
+    case SHORT:
         return export_octave_impl<std::int16_t>(
             data, width, height, channels, step, path);
-    case Int32:
+    case INT32:
         return export_octave_impl<std::int32_t>(
             data, width, height, channels, step, path);
-    case Float32:
+    case FLOAT32:
         [[fallthrough]];
-    case Float64:
+    case FLOAT64:
         return export_octave_impl<float>(
             data, width, height, channels, step, path);
     }

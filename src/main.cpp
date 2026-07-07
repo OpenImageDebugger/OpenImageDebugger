@@ -763,7 +763,7 @@ int main(int argc, char** argv) {
             prev_buffers = s.previous_buffers;
             // Seed the previous-session buffer list; IpcClient auto-re-requests
             // each one (if still available and not expired) the next time the
-            // bridge sends SetAvailableSymbols, so previously-plotted buffers
+            // bridge sends SET_AVAILABLE_SYMBOLS, so previously-plotted buffers
             // reappear once the debugger reconnects.
             ipc.set_restore_buffers(s.previous_buffers);
         };

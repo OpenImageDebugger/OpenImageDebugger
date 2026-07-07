@@ -40,7 +40,7 @@ namespace oid {
 
 class ShaderProgram {
   public:
-    enum class TexelChannels { FormatR, FormatRG, FormatRGB, FormatRGBA };
+    enum class TexelChannels { FORMAT_R, FORMAT_RG, FORMAT_RGB, FORMAT_RGBA };
 
     explicit ShaderProgram(const RenderCanvas& gl_canvas);
 

@@ -74,8 +74,8 @@ TEST(MockBufferModel, VariableNameAndRevisionOf) {
 }
 
 TEST(TypeLabel, FormatsTypeAndChannels) {
-    EXPECT_EQ(type_label(oid::BufferType::UnsignedByte, 3), "uint8x3");
-    EXPECT_EQ(type_label(oid::BufferType::Float32, 1), "float32x1");
+    EXPECT_EQ(type_label(oid::BufferType::UNSIGNED_BYTE, 3), "uint8x3");
+    EXPECT_EQ(type_label(oid::BufferType::FLOAT32, 1), "float32x1");
 }
 
 // MockBufferModel stores BufferRecords behind unique_ptr specifically so

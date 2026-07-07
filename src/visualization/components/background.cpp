@@ -46,7 +46,7 @@ Background::~Background() noexcept {
 bool Background::initialize() {
     if (!background_prog.create(shader::background_vert_shader,
                                 shader::background_frag_shader,
-                                ShaderProgram::TexelChannels::FormatR,
+                                ShaderProgram::TexelChannels::FORMAT_R,
                                 "rgba",
                                 {})) {
         return false;
