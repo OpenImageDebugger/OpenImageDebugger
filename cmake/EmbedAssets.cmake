@@ -75,3 +75,8 @@ oid_embed_binary(SOURCE ${RES}/icons/lower_upper_bound.svg
                  REL host/ui/icons/lower_upper_bound_svg.h
                  NAMESPACE oid::host::icons SYMBOL LOWER_UPPER_BOUND_SVG
                  PROVENANCE "src/resources/icons/lower_upper_bound.svg (license: src/resources/icons/LICENSE.txt)")
+
+oid_embed_binary(SOURCE ${RES}/icons/app_icon.png
+                 REL host/ui/icons/app_icon_png.h
+                 NAMESPACE oid::host::icons SYMBOL APP_ICON_PNG
+                 PROVENANCE "src/resources/icons/app_icon.png (OpenImageDebugger application icon)")
