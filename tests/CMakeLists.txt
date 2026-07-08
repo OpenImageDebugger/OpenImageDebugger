@@ -526,11 +526,22 @@ if(OID_BUILD_IMGUI_FRONTEND)
     add_executable(glfw_geometry_test
         host/glfw_geometry_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/glfw_host_backend.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/app_icon.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/app_icon_decode.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/platform/window_hints.cpp
     )
 
+    # glfw_host_backend.cpp calls oid::host::set_window_icon(), so this target
+    # must also compile app_icon.cpp (and its decode helper). On the real
+    # (non-Apple) path app_icon.cpp pulls in the generated icon header and the
+    # SYSTEM stb resize header, so mirror those include dirs here too.
     target_include_directories(glfw_geometry_test
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+        PRIVATE ${OID_GENERATED_DIR}
+    )
+
+    target_include_directories(glfw_geometry_test SYSTEM
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/thirdparty/stb
     )
 
     target_link_libraries(glfw_geometry_test
