@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <iostream>
 
+#include "host/app_icon.h"
 #include "platform/window_hints.h"
 
 // macOS's system OpenGL headers (pulled in transitively by glfw3.h) mark the
@@ -74,6 +75,7 @@ bool GlfwHostBackend::initialize(const char* title, int width, int height) {
         glfwTerminate();
         return false;
     }
+    set_window_icon(window_);
     glfwMakeContextCurrent(window_);
     glfwSwapInterval(1); // vsync
     return true;

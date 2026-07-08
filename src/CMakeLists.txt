@@ -103,6 +103,8 @@ if(OID_BUILD_IMGUI_FRONTEND)
 
   set(IMGUI_FRONTEND_SOURCES
     main.cpp
+    host/app_icon.cpp
+    host/app_icon_decode.cpp
     host/glfw_host_backend.cpp
     host/imgui_layer.cpp
     host/ui_fonts.cpp
