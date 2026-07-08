@@ -29,8 +29,7 @@
 
 struct GLFWwindow;
 
-namespace oid::host
-{
+namespace oid::host {
 
 // Sets the application window icon on `window` from the embedded logo
 // PNG, downscaled to 256/48/32/16 sizes so the window manager can pick a

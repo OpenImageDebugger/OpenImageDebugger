@@ -36,14 +36,13 @@
 
 #include "host/ui/icons/app_icon_png.h"
 
-namespace oid::host
-{
+namespace oid::host {
 
-void set_macos_dock_icon()
-{
+void set_macos_dock_icon() {
     @autoreleasepool {
-        NSData* data = [NSData dataWithBytes:oid::host::icons::APP_ICON_PNG
-                                      length:oid::host::icons::APP_ICON_PNG_SIZE];
+        NSData* data =
+            [NSData dataWithBytes:oid::host::icons::APP_ICON_PNG
+                           length:oid::host::icons::APP_ICON_PNG_SIZE];
         NSImage* source = [[NSImage alloc] initWithData:data];
         if (source == nil) {
             return;
@@ -55,17 +54,20 @@ void set_macos_dock_icon()
         // continuous-corner radius of ~22.37% of the content edge. Compositing
         // the artwork into that shape makes the Dock tile match the size and
         // rounded silhouette of every other app instead of a raw square.
-        constexpr CGFloat CANVAS  = 1024.0;
-        constexpr CGFloat MARGIN  = 100.0;
+        constexpr CGFloat CANVAS = 1024.0;
+        constexpr CGFloat MARGIN = 100.0;
         constexpr CGFloat CONTENT = CANVAS - (2.0 * MARGIN);
-        constexpr CGFloat RADIUS  = CONTENT * 0.2237;
+        constexpr CGFloat RADIUS = CONTENT * 0.2237;
 
-        NSImage* icon = [[NSImage alloc] initWithSize:NSMakeSize(CANVAS, CANVAS)];
+        NSImage* icon =
+            [[NSImage alloc] initWithSize:NSMakeSize(CANVAS, CANVAS)];
         [icon lockFocus];
-        const NSRect content_rect = NSMakeRect(MARGIN, MARGIN, CONTENT, CONTENT);
-        NSBezierPath* clip = [NSBezierPath bezierPathWithRoundedRect:content_rect
-                                                            xRadius:RADIUS
-                                                            yRadius:RADIUS];
+        const NSRect content_rect =
+            NSMakeRect(MARGIN, MARGIN, CONTENT, CONTENT);
+        NSBezierPath* clip =
+            [NSBezierPath bezierPathWithRoundedRect:content_rect
+                                            xRadius:RADIUS
+                                            yRadius:RADIUS];
         [clip addClip];
         [source drawInRect:content_rect
                   fromRect:NSZeroRect

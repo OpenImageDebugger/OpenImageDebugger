@@ -30,14 +30,12 @@
 #include <cstddef>
 #include <vector>
 
-namespace oid::host
-{
+namespace oid::host {
 
 // A decoded RGBA8 image. On decode failure width/height are 0 and rgba is
 // empty; on success rgba.size() == width * height * 4 (tightly packed, no
 // row padding).
-struct DecodedImage
-{
+struct DecodedImage {
     int width;
     int height;
     std::vector<unsigned char> rgba;
