@@ -35,27 +35,21 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-namespace oid::host
-{
+namespace oid::host {
 
-DecodedImage decode_png_rgba(const unsigned char* data, const std::size_t size)
-{
+DecodedImage decode_png_rgba(const unsigned char* data,
+                             const std::size_t size) {
     if (data == nullptr || size == 0) {
         return DecodedImage{0, 0, {}};
     }
 
-    int width    = 0;
-    int height   = 0;
+    int width = 0;
+    int height = 0;
     int channels = 0;
     constexpr int RGBA = 4;
 
-    unsigned char* pixels =
-        stbi_load_from_memory(data,
-                               static_cast<int>(size),
-                               &width,
-                               &height,
-                               &channels,
-                               RGBA);
+    unsigned char* pixels = stbi_load_from_memory(
+        data, static_cast<int>(size), &width, &height, &channels, RGBA);
     if (pixels == nullptr || width <= 0 || height <= 0) {
         if (pixels != nullptr) {
             stbi_image_free(pixels);
@@ -64,7 +58,7 @@ DecodedImage decode_png_rgba(const unsigned char* data, const std::size_t size)
     }
 
     const auto byte_count = static_cast<std::size_t>(width) *
-                             static_cast<std::size_t>(height) * RGBA;
+                            static_cast<std::size_t>(height) * RGBA;
     DecodedImage image{
         width, height, std::vector<unsigned char>(pixels, pixels + byte_count)};
 

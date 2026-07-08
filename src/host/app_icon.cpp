@@ -47,11 +47,9 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include <stb_image_resize2.h>
 
-namespace oid::host
-{
+namespace oid::host {
 
-void set_window_icon(GLFWwindow* const window)
-{
+void set_window_icon(GLFWwindow* const window) {
     if (window == nullptr) {
         return;
     }
@@ -60,7 +58,7 @@ void set_window_icon(GLFWwindow* const window)
         decode_png_rgba(icons::APP_ICON_PNG, icons::APP_ICON_PNG_SIZE);
     if (base.rgba.empty()) {
         std::cerr << "[Warning] application icon could not be decoded; "
-                      "window icon not set\n";
+                     "window icon not set\n";
         return;
     }
 
@@ -76,11 +74,17 @@ void set_window_icon(GLFWwindow* const window)
         if (size == base.width && size == base.height) {
             pixel_buffers.push_back(base.rgba);
         } else {
-            std::vector<unsigned char> scaled(
-                static_cast<std::size_t>(size) * size * 4);
-            const unsigned char* ok = stbir_resize_uint8_srgb(
-                base.rgba.data(), base.width, base.height, 0,
-                scaled.data(), size, size, 0, STBIR_RGBA);
+            std::vector<unsigned char> scaled(static_cast<std::size_t>(size) *
+                                              size * 4);
+            const unsigned char* ok = stbir_resize_uint8_srgb(base.rgba.data(),
+                                                              base.width,
+                                                              base.height,
+                                                              0,
+                                                              scaled.data(),
+                                                              size,
+                                                              size,
+                                                              0,
+                                                              STBIR_RGBA);
             if (ok == nullptr) {
                 continue;
             }
@@ -99,15 +103,13 @@ void set_window_icon(GLFWwindow* const window)
 
 #elif defined(__APPLE__)
 
-namespace oid::host
-{
+namespace oid::host {
 
 // Defined in app_icon_mac.mm (Objective-C++). macOS has no per-window
 // title-bar icon, so the application icon is set on the Dock tile instead.
 void set_macos_dock_icon();
 
-void set_window_icon(GLFWwindow* /*window*/)
-{
+void set_window_icon(GLFWwindow* /*window*/) {
     set_macos_dock_icon();
 }
 
@@ -117,8 +119,7 @@ void set_window_icon(GLFWwindow* /*window*/)
 
 struct GLFWwindow;
 
-namespace oid::host
-{
+namespace oid::host {
 
 // There is no window icon concept on the web, so this is a no-op.
 void set_window_icon(GLFWwindow* /*window*/) {}
