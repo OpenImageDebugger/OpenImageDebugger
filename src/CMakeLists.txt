@@ -165,6 +165,17 @@ if(OID_BUILD_IMGUI_FRONTEND)
   target_sources(oidwindow PRIVATE
     $<$<BOOL:${WIN32}>:${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app_icon.rc>)
 
+  # On macOS the runtime icon is set on the Dock tile via AppKit (there is no
+  # per-window title-bar icon); the Objective-C++ helper needs ARC and the
+  # AppKit/Foundation frameworks.
+  if(APPLE)
+    target_sources(oidwindow PRIVATE host/app_icon_mac.mm)
+    set_source_files_properties(host/app_icon_mac.mm
+      PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    target_link_libraries(oidwindow PRIVATE "-framework AppKit"
+                                            "-framework Foundation")
+  endif()
+
   target_compile_definitions(oidwindow PRIVATE OID_IMGUI_FRONTEND)
   target_include_directories(oidwindow PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${OID_GENERATED_DIR})
