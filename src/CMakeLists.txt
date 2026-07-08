@@ -159,6 +159,12 @@ if(OID_BUILD_IMGUI_FRONTEND)
   endif()
 
   add_executable(oidwindow ${IMGUI_FRONTEND_SOURCES})
+
+  # Embeds the application icon into the Windows executable; contributes no
+  # sources on other platforms.
+  target_sources(oidwindow PRIVATE
+    $<$<BOOL:${WIN32}>:${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app_icon.rc>)
+
   target_compile_definitions(oidwindow PRIVATE OID_IMGUI_FRONTEND)
   target_include_directories(oidwindow PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${OID_GENERATED_DIR})

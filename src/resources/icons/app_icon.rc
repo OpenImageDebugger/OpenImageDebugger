@@ -1,0 +1,2 @@
+// OpenImageDebugger application icon (embedded into Windows executable).
+IDI_ICON1 ICON "app_icon.ico"
