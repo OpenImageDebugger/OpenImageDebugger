@@ -126,17 +126,38 @@ std::pair<int, int> GlfwHostBackend::window_size() const {
     return {w, h};
 }
 
+namespace {
+
+// Wayland deliberately hides a window's global position from the client, so
+// its GLFW backend implements neither glfwGetWindowPos nor glfwSetWindowPos:
+// calling them does nothing and raises GLFW_FEATURE_UNIMPLEMENTED (error
+// 65548, "The platform does not provide the window position"). Skip those
+// calls there so we don't spam the error callback and can't act on a bogus
+// {0,0} readback. The Emscripten GLFW shim has no glfwGetPlatform and no
+// movable OS window, so treat it as position-less too. Must be called only
+// after glfwInit() (glfwGetPlatform requires it) -- guaranteed here since a
+// non-null window_ implies a successful initialize().
+bool platform_supports_window_position() {
+#if defined(__EMSCRIPTEN__)
+    return false;
+#else
+    return glfwGetPlatform() != GLFW_PLATFORM_WAYLAND;
+#endif
+}
+
+} // namespace
+
 std::pair<int, int> GlfwHostBackend::window_position() const {
     int x = 0;
     int y = 0;
-    if (window_ != nullptr) {
+    if (window_ != nullptr && platform_supports_window_position()) {
         glfwGetWindowPos(window_, &x, &y);
     }
     return {x, y};
 }
 
 void GlfwHostBackend::set_window_position(int x, int y) {
-    if (window_ != nullptr) {
+    if (window_ != nullptr && platform_supports_window_position()) {
         glfwSetWindowPos(window_, x, y);
     }
 }
