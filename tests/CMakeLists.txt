@@ -666,6 +666,32 @@ if(OID_BUILD_IMGUI_FRONTEND)
 
     add_test(NAME StbGlyphAtlasTests COMMAND stb_glyph_atlas_test)
 
+    # Test decode_png_rgba() out of host/app_icon_decode.cpp: decodes the
+    # embedded application icon PNG (oid::host::icons::APP_ICON_PNG) into an
+    # RGBA8 buffer. Pure CPU (no GL/GLFW); needs the SYSTEM stb include (this
+    # TU defines STB_IMAGE_IMPLEMENTATION).
+    add_executable(app_icon_decode_test
+        host/app_icon_decode_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/app_icon_decode.cpp
+    )
+
+    target_include_directories(app_icon_decode_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+        PRIVATE ${OID_GENERATED_DIR}
+    )
+
+    target_include_directories(app_icon_decode_test SYSTEM
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/thirdparty/stb
+    )
+
+    target_link_libraries(app_icon_decode_test
+        PRIVATE
+        GTest::gtest_main
+        GTest::gtest
+    )
+
+    add_test(NAME AppIconDecodeTests COMMAND app_icon_decode_test)
+
     # Test rasterize_svg() out of host/ui/svg_raster.cpp: the nanosvg-backed
     # SVG-to-RGBA8 raster core the ImGui toolbar/label icons are baked with
     # once at startup, same role stb_glyph_atlas_test's font baking plays for
