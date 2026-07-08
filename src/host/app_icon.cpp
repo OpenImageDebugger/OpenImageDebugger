@@ -97,17 +97,32 @@ void set_window_icon(GLFWwindow* const window)
 
 } // namespace oid::host
 
-#else // __APPLE__ || __EMSCRIPTEN__
+#elif defined(__APPLE__)
+
+namespace oid::host
+{
+
+// Defined in app_icon_mac.mm (Objective-C++). macOS has no per-window
+// title-bar icon, so the application icon is set on the Dock tile instead.
+void set_macos_dock_icon();
+
+void set_window_icon(GLFWwindow* /*window*/)
+{
+    set_macos_dock_icon();
+}
+
+} // namespace oid::host
+
+#else // __EMSCRIPTEN__
 
 struct GLFWwindow;
 
 namespace oid::host
 {
 
-// Window icons are unavailable on macOS (GLFW) and there is no window icon
-// concept on the web (Emscripten), so this is a no-op there.
+// There is no window icon concept on the web, so this is a no-op.
 void set_window_icon(GLFWwindow* /*window*/) {}
 
 } // namespace oid::host
 
-#endif // !__APPLE__ && !__EMSCRIPTEN__
+#endif // platform branch

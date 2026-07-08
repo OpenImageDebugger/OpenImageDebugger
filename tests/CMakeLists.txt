@@ -544,6 +544,18 @@ if(OID_BUILD_IMGUI_FRONTEND)
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/thirdparty/stb
     )
 
+    # app_icon.cpp's macOS branch calls into the AppKit Dock-icon helper, so
+    # this target must also compile app_icon_mac.mm and link AppKit there.
+    if(APPLE)
+        target_sources(glfw_geometry_test
+            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/app_icon_mac.mm)
+        set_source_files_properties(
+            ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/app_icon_mac.mm
+            PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+        target_link_libraries(glfw_geometry_test
+            PRIVATE "-framework AppKit" "-framework Foundation")
+    endif()
+
     target_link_libraries(glfw_geometry_test
         PRIVATE
         oid_imgui
