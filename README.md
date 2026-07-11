@@ -140,22 +140,33 @@ brew install python3 llvm
 ```
 
 Make sure `python3` resolves to the Homebrew one — run `which python3` and
-confirm it points somewhere under `/opt/homebrew` (the standard Homebrew install
-puts `/opt/homebrew/bin` on your `PATH`), rather than a pyenv, conda or
-system Python.
+confirm it points under the Homebrew prefix (`/opt/homebrew` on Apple Silicon,
+`/usr/local` on Intel; `brew --prefix` prints it), rather than a pyenv, conda or
+system Python. The standard Homebrew install puts that prefix's `bin` on your
+`PATH`.
 
 Then debug your program using the Homebrew LLDB, for example:
 
 ```bash
-/opt/homebrew/opt/llvm/bin/lldb /path/to/your/executable
+BREW_PREFIX=$(brew --prefix)
+"$BREW_PREFIX"/opt/llvm/bin/lldb /path/to/your/executable
 ```
 
 ### Testing your installation
 
-After compiling the plugin, you can test it by running the following command:
+After compiling the plugin, you can test it by running the following command
+(use the same Python 3 interpreter CMake found when building):
 
 ```bash
-python /path/to/OpenImageDebugger/oid.py --test
+python3 /path/to/OpenImageDebugger/oid.py --test
+```
+
+On MacOS, invoke the test with the full path to the Homebrew `python3`, for
+example:
+
+```bash
+BREW_PREFIX=$(brew --prefix)
+"$BREW_PREFIX"/bin/python3 /path/to/OpenImageDebugger/oid.py --test
 ```
 
 If the installation was succesful, you should see the Open Image Debugger window
