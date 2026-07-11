@@ -87,7 +87,7 @@ VS Code and compatible forks (Cursor, VSCodium, Windsurf, and others):
 * [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=OpenImageDebugger.openimagedebugger-vscode)
 * [Open VSX](https://open-vsx.org/extension/openimagedebugger/openimagedebugger-vscode)
 
-If you'd rather build and integrate the plugin manually, follow the steps below.
+If you'd rather build and integrate the desktop version manually, follow the steps below.
 
 ### Ubuntu Linux dependencies
 
