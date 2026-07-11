@@ -1,11 +1,20 @@
 # Open Image Debugger: Enabling visualization of in-memory buffers on GDB/LLDB
 
+[![VS Code Marketplace](https://vsmarketplacebadges.dev/version/OpenImageDebugger.openimagedebugger-vscode.svg?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=OpenImageDebugger.openimagedebugger-vscode)
+[![Open VSX](https://img.shields.io/open-vsx/v/openimagedebugger/openimagedebugger-vscode?label=Open%20VSX)](https://open-vsx.org/extension/openimagedebugger/openimagedebugger-vscode)
+
 Open Image Debugger is a tool for visualizing in-memory buffers during debug
 sessions, compatible with both GDB and LLDB. It works out of the box with
 instances of the OpenCV `Mat` class and `Eigen` matrices, but can also be
 customized to work with any arbitrary data structure.
 
 ![Sample window](doc/sample_window.png)
+
+> **Prefer VS Code or a fork (Cursor, VSCodium, Windsurf, …)?** Skip the manual
+> build — install the extension from the
+> [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=OpenImageDebugger.openimagedebugger-vscode)
+> or [Open VSX](https://open-vsx.org/extension/openimagedebugger/openimagedebugger-vscode).
+> See [Installation](#vs-code-and-forks) below.
 
 # Download (experimental) [![OID Eternal Download Count](https://img.shields.io/github/downloads/openimagedebugger/openimagedebugger/total.svg)](https://tooomm.github.io/github-release-stats/?username=OpenImageDebugger&repository=OpenImageDebugger&search=0)
 ## A bit experimental, better to compile manually
@@ -69,6 +78,16 @@ All other third-party libraries are bundled as git submodules and built from sou
 Note: this list might get out-of-date by accident. For a more accurate list of requirements, please check what is used in <https://github.com/OpenImageDebugger/OpenImageDebugger/blob/main/.github/workflows/build.yml> and in the CI container images defined in <https://github.com/OpenImageDebugger/dockerfiles>.
 
 ## Installation
+
+### VS Code and forks
+
+The quickest way to get started is the Open Image Debugger extension, available for
+VS Code and compatible forks (Cursor, VSCodium, Windsurf, and others):
+
+* [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=OpenImageDebugger.openimagedebugger-vscode)
+* [Open VSX](https://open-vsx.org/extension/openimagedebugger/openimagedebugger-vscode)
+
+If you'd rather build and integrate the plugin manually, follow the steps below.
 
 ### Ubuntu Linux dependencies
 
