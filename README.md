@@ -131,10 +131,6 @@ command script import /path/to/OpenImageDebugger/oid.py
 
 ### MacOS Installation
 
-For information on how to build the plugin on MacOS, refer to the wiki page
-[Building on
-MacOS](https://github.com/OpenImageDebugger/OpenImageDebugger/wiki/Building-on-MacOS).
-
 At the moment, the MacOS build is only known to work with `python3` and `lldb`
 installed from [Homebrew](https://brew.sh/) (the system-provided LLDB from the
 Xcode Command Line Tools is not supported). Install them with:
