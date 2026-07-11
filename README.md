@@ -135,6 +135,25 @@ For information on how to build the plugin on MacOS, refer to the wiki page
 [Building on
 MacOS](https://github.com/OpenImageDebugger/OpenImageDebugger/wiki/Building-on-MacOS).
 
+At the moment, the MacOS build is only known to work with `python3` and `lldb`
+installed from [Homebrew](https://brew.sh/) (the system-provided LLDB from the
+Xcode Command Line Tools is not supported). Install them with:
+
+```bash
+brew install python3 llvm
+```
+
+Make sure `python3` resolves to the Homebrew one — run `which python3` and
+confirm it points somewhere under `/opt/homebrew` (the standard Homebrew install
+puts `/opt/homebrew/bin` on your `PATH`), rather than a pyenv, conda or
+system Python.
+
+Then debug your program using the Homebrew LLDB, for example:
+
+```bash
+/opt/homebrew/opt/llvm/bin/lldb /path/to/your/executable
+```
+
 ### Testing your installation
 
 After compiling the plugin, you can test it by running the following command:
