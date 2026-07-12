@@ -114,6 +114,12 @@ class IpcClient {
 
     [[nodiscard]] bool model_has(std::string_view variable_name) const;
 
+    // Sends `composer` over transport_, catching and swallowing
+    // std::runtime_error. Mirrors poll()'s tolerance of transport errors on
+    // the inbound side: if the peer is gone (e.g. viewer opened with no
+    // debugger attached), an outbound send must not crash the viewer.
+    void send_guarded(const oid::MessageComposer& composer);
+
     oid::ITransport& transport_;
     IpcBufferModel& model_;
     oid::BufferAssembler assembler_;

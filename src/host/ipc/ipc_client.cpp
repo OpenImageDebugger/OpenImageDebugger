@@ -122,7 +122,7 @@ void IpcClient::handle_get_observed_symbols() {
     for (std::size_t i = 0; i < model_.size(); ++i) {
         composer.push(model_.variable_name_of(i));
     }
-    composer.send(transport_);
+    send_guarded(composer);
 }
 
 void IpcClient::handle_plot_buffer_contents() {
@@ -229,19 +229,19 @@ void IpcClient::handle_export_selected_buffer() const {
 void IpcClient::request_plot(const std::string& variable_name) {
     oid::MessageComposer composer;
     composer.push(oid::MessageType::PLOT_BUFFER_REQUEST).push(variable_name);
-    composer.send(transport_);
+    send_guarded(composer);
 }
 
 void IpcClient::notify_removed(const std::string& variable_name) {
     oid::MessageComposer composer;
     composer.push(oid::MessageType::BUFFER_REMOVED).push(variable_name);
-    composer.send(transport_);
+    send_guarded(composer);
 }
 
 void IpcClient::send_session_state_changed(const std::string& json) {
     oid::MessageComposer composer;
     composer.push(oid::MessageType::SESSION_STATE_CHANGED).push(json);
-    composer.send(transport_);
+    send_guarded(composer);
 }
 
 void IpcClient::send_export_buffer_request(const std::string& variable_name,
@@ -259,7 +259,7 @@ void IpcClient::send_export_buffer_request(const std::string& variable_name,
             static_cast<std::size_t>(i) < contrast.size() ? contrast[i] : 0.0F;
         composer.push(value);
     }
-    composer.send(transport_);
+    send_guarded(composer);
 }
 
 void IpcClient::set_session_state_callback(
@@ -287,6 +287,17 @@ bool IpcClient::model_has(std::string_view variable_name) const {
         }
     }
     return false;
+}
+
+void IpcClient::send_guarded(const oid::MessageComposer& composer) {
+    try {
+        composer.send(transport_);
+    } catch (const std::runtime_error&) {
+        // Transport is closed or peer is gone (e.g. viewer opened with no
+        // debugger attached). Inbound poll() already tolerates this;
+        // outbound sends must too, so a stray IPC message never crashes the
+        // viewer.
+    }
 }
 
 } // namespace oid::host

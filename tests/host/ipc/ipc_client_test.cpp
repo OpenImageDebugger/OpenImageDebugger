@@ -30,6 +30,7 @@
 #include <array>
 #include <cstring>
 #include <deque>
+#include <stdexcept>
 #include <string_view>
 
 #include <gtest/gtest.h>
@@ -117,6 +118,22 @@ struct FakeTransport final : ITransport {
     }
 };
 
+// Transport whose send() always throws, simulating a dead/closed peer (e.g.
+// the viewer opened with no debugger attached).
+struct ThrowingTransport final : ITransport {
+    void send(std::span<const std::byte>) override {
+        throw std::runtime_error("transport is dead");
+    }
+
+    std::size_t receive(std::span<std::byte>) override {
+        return 0;
+    }
+
+    bool has_data() const override {
+        return false;
+    }
+};
+
 // Captures the bytes a MessageComposer would send, without a real socket.
 static std::vector<std::byte> frame(const MessageComposer& c) {
     struct Cap final : ITransport {
@@ -200,6 +217,22 @@ TEST(IpcClient, GetObservedSymbolsRespondsWithModelNames) {
     MessageType h{};
     std::memcpy(&h, t.sends[0].data(), sizeof(h));
     EXPECT_EQ(h, MessageType::GET_OBSERVED_SYMBOLS_RESPONSE);
+}
+
+TEST(IpcClient, NotifyRemovedSurvivesDeadTransport) {
+    ThrowingTransport t;
+    oid::host::IpcBufferModel model;
+    oid::host::IpcClient client(t, model);
+
+    EXPECT_NO_THROW(client.notify_removed("some_buffer"));
+}
+
+TEST(IpcClient, RequestPlotSurvivesDeadTransport) {
+    ThrowingTransport t;
+    oid::host::IpcBufferModel model;
+    oid::host::IpcClient client(t, model);
+
+    EXPECT_NO_THROW(client.request_plot("some_buffer"));
 }
 
 TEST(IpcClient, RequestPlotSends) {
