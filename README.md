@@ -2,6 +2,7 @@
 
 [![VS Code Marketplace Downloads](https://vsmarketplacebadges.dev/downloads-short/OpenImageDebugger.openimagedebugger-vscode.svg?label=VS%20Code%20Marketplace%20Downloads&color=007ACC)](https://marketplace.visualstudio.com/items?itemName=OpenImageDebugger.openimagedebugger-vscode)
 [![Open VSX Downloads](https://img.shields.io/open-vsx/dt/openimagedebugger/openimagedebugger-vscode?label=Open%20VSX%20Downloads&color=a60ee5)](https://open-vsx.org/extension/openimagedebugger/openimagedebugger-vscode)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/OpenImageDebugger/OpenImageDebugger/badge)](https://scorecard.dev/viewer/?uri=github.com/OpenImageDebugger/OpenImageDebugger)
 
 Open Image Debugger is a tool for visualizing in-memory buffers during debug
 sessions, compatible with both GDB and LLDB. It works out of the box with
