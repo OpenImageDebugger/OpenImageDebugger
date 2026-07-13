@@ -28,20 +28,21 @@
 #include "host/ui/export_dialog.h"
 
 #include <algorithm>
+#include <array>
 #include <cstdlib>
+#include <span>
 #include <string_view>
 
 namespace oid::host {
 
 namespace {
 
-constexpr std::string_view PNG_EXT = ".png";
-constexpr std::string_view OCT_EXT = ".oct";
-
-std::string_view extension_for(oid::BufferExporter::OutputType format) {
-    return format == oid::BufferExporter::OutputType::BITMAP ? PNG_EXT
-                                                             : OCT_EXT;
-}
+// Anonymous-namespace export-format registry; see export_formats() below for
+// the public accessor. Adding a format (e.g. NumPy .npy) is one row here.
+constexpr std::array<ExportFormat, 2> EXPORT_FORMATS{{
+    {oid::BufferExporter::OutputType::BITMAP, ".png", "PNG image"},
+    {oid::BufferExporter::OutputType::OCTAVE_MATRIX, ".oct", "Octave matrix"},
+}};
 
 bool ends_with(std::string_view s, std::string_view suffix) {
     return s.size() >= suffix.size() &&
@@ -57,6 +58,19 @@ void set_path_buf(std::array<char, 1024>& buf, std::string_view s) {
 }
 
 } // namespace
+
+std::span<const ExportFormat> export_formats() {
+    return EXPORT_FORMATS;
+}
+
+std::string_view extension_for(oid::BufferExporter::OutputType format) {
+    for (const auto& fmt : EXPORT_FORMATS) {
+        if (fmt.type == format) {
+            return fmt.extension;
+        }
+    }
+    return EXPORT_FORMATS.front().extension; // PNG
+}
 
 std::string default_export_path(std::string_view last_export_dir,
                                 const char* home_env,
@@ -89,9 +103,12 @@ void open_export_dialog(ExportDialogState& st,
 }
 
 oid::BufferExporter::OutputType classify_export_format(std::string_view path) {
-    return ends_with(path, OCT_EXT)
-               ? oid::BufferExporter::OutputType::OCTAVE_MATRIX
-               : oid::BufferExporter::OutputType::BITMAP;
+    for (const auto& fmt : EXPORT_FORMATS) {
+        if (ends_with(path, fmt.extension)) {
+            return fmt.type;
+        }
+    }
+    return EXPORT_FORMATS.front().type; // BITMAP/PNG
 }
 
 std::string ensure_export_extension(std::string path,

@@ -27,6 +27,7 @@
 #define HOST_UI_EXPORT_DIALOG_H_
 
 #include <array>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -63,6 +64,26 @@ std::string default_export_path(std::string_view last_export_dir,
 void open_export_dialog(ExportDialogState& st,
                         const std::string& buffer_name,
                         const std::string& last_export_dir);
+
+// One row per supported export format. `extension` includes the leading dot
+// (".png"); `label` is the name shown in the OS save dialog's format filter.
+// Stored as const char* so the nfd filter list (which needs null-terminated C
+// strings) and the string_view-based helpers below can both use it directly.
+// Adding a format is one row in the registry, plus its OutputType enumerator
+// and encoder branch in export_buffer_imgui().
+struct ExportFormat {
+    oid::BufferExporter::OutputType type;
+    const char* extension; // ".png"
+    const char* label;     // "PNG image"
+};
+
+// The export-format registry, in dialog-filter order (first row is the
+// default format that classify_export_format() falls back to).
+std::span<const ExportFormat> export_formats();
+
+// Returns the extension (with leading dot) for `format`, per the registry;
+// returns the default format's extension if `format` is somehow not listed.
+std::string_view extension_for(oid::BufferExporter::OutputType format);
 
 // Returns OCTAVE_MATRIX when `path` ends in ".oct" (case-sensitive),
 // otherwise BITMAP. Used to derive the export format from the path chosen in
