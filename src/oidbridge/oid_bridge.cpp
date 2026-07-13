@@ -111,9 +111,10 @@ class OidBridge {
         // as part of its construction.
         const auto portStdString = std::to_string(acceptor_.port());
 
-        // The viewer parses only -h/-p. Process::start() takes a non-const
-        // reference (it builds a mutable argv from the strings' data()), so
-        // command cannot be const here.
+        // The viewer accepts --host/--hostname/-h for the host, --port/-p
+        // for the port, and -o/--open to open files. Process::start() takes
+        // a non-const reference (it builds a mutable argv from the strings'
+        // data()), so command cannot be const here.
         std::vector<std::string> command = {
             oid_path_ + "/oidwindow", "-p", portStdString};
 
