@@ -53,6 +53,8 @@ bool export_buffer_imgui(const oid::Buffer& buffer,
         }
         case OCTAVE_MATRIX:
             return oid::BufferExporter::export_octave(buffer, path);
+        case NUMPY_ARRAY:
+            return oid::BufferExporter::export_npy(buffer, path);
         }
         return false;
     } catch (const std::exception& e) {

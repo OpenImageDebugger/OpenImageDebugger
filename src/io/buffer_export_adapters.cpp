@@ -61,4 +61,15 @@ bool export_octave(const Buffer& buffer, const std::string& path) {
         path);
 }
 
+bool export_npy(const Buffer& buffer, const std::string& path) {
+    return export_npy_raw(
+        std::bit_cast<const std::uint8_t*>(buffer.buffer().data()),
+        buffer.type(),
+        static_cast<int>(buffer.buffer_width_f()),
+        static_cast<int>(buffer.buffer_height_f()),
+        buffer.channels(),
+        buffer.step(),
+        path);
+}
+
 } // namespace oid::BufferExporter
