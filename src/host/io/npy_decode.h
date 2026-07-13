@@ -27,11 +27,11 @@
 #define HOST_IO_NPY_DECODE_H_
 
 #include <cstddef>
-#include <expected>
 #include <span>
 #include <string>
 #include <vector>
 
+#include "host/io/expected.h"
 #include "ipc/raw_data_decode.h"
 
 namespace oid {
@@ -50,8 +50,7 @@ struct NpyArray {
 // C- or Fortran-order 2-D, C-order 3-D). Returns an error string on any
 // unsupported or malformed input. FLOAT64 payloads are returned as raw
 // double bytes; downstream conversion to float32 happens in the loader.
-[[nodiscard]] std::expected<NpyArray, std::string>
-decode_npy(std::span<const std::byte> data);
+[[nodiscard]] Expected<NpyArray> decode_npy(std::span<const std::byte> data);
 
 } // namespace oid
 
