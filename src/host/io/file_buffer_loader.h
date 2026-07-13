@@ -36,7 +36,7 @@
 namespace oid::host {
 
 // Cap on the file size the "open file" viewer will read into memory.
-inline constexpr std::size_t MAX_OPEN_FILE_BYTES = 512ull * 1024 * 1024;
+inline constexpr std::size_t MAX_OPEN_FILE_BYTES = 512ULL * 1024 * 1024;
 
 // Decode already-read file bytes into a BufferRecord tagged LOCAL_FILE.
 // Dispatches to the .npy decoder (on npy magic) or the stb image decoder.

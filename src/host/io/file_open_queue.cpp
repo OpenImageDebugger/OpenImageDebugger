@@ -43,24 +43,4 @@ bool FileOpenQueue::empty() const {
     return pending_.empty();
 }
 
-FileOpenOutcome FileOpenQueue::drain(const Loader& loader,
-                                     const Upsert& upsert) {
-    FileOpenOutcome outcome;
-    while (!pending_.empty()) {
-        const std::string path = std::move(pending_.front());
-        pending_.pop_front();
-
-        oid::Expected<BufferRecord> record = loader(path);
-        if (record) {
-            outcome.last_success = record->display_name;
-            upsert(std::move(*record));
-            ++outcome.succeeded;
-        } else {
-            outcome.last_error = record.error();
-            ++outcome.failed;
-        }
-    }
-    return outcome;
-}
-
 } // namespace oid::host

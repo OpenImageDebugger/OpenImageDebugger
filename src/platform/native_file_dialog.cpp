@@ -25,9 +25,37 @@
 
 #include "platform/app_services.h"
 
+#include <array>
+
 #include <nfd.h>
 
 namespace oid::platform {
+
+namespace {
+
+// Copies every path out of a successful NFD multi-select result, freeing each
+// NFD-owned string as it goes. Kept separate so request_open_files stays flat.
+std::vector<std::string> collect_paths(const nfdpathset_t* path_set) {
+    std::vector<std::string> paths;
+
+    nfdpathsetsize_t count = 0;
+    if (NFD_PathSet_GetCount(path_set, &count) != NFD_OKAY) {
+        return paths;
+    }
+
+    for (nfdpathsetsize_t i = 0; i < count; ++i) {
+        nfdu8char_t* path = nullptr;
+        if (NFD_PathSet_GetPathU8(path_set, i, &path) == NFD_OKAY &&
+            path != nullptr) {
+            paths.emplace_back(path);
+            NFD_PathSet_FreePathU8(path);
+        }
+    }
+
+    return paths;
+}
+
+} // namespace
 
 // Deliberately unparented: nfd-extended's parented dialogs need a
 // platform-specific window handle (nfd_glfw3.h on GLFW builds), which this
@@ -35,38 +63,26 @@ namespace oid::platform {
 // with callers that hold a GLFWwindow* (and possible future use), but the
 // dialog is shown without a parent either way.
 std::vector<std::string> request_open_files(GLFWwindow* /*window*/) {
-    std::vector<std::string> paths;
-
     if (NFD_Init() != NFD_OKAY) {
-        return paths;
+        return {};
     }
 
-    const nfdu8filteritem_t filters[]{
+    const std::array<nfdu8filteritem_t, 2> filters{{
         {"Images", "png,jpg,jpeg,bmp,tga,gif,psd,hdr,ppm,pgm,pnm"},
         {"NumPy array", "npy"},
-    };
+    }};
 
     nfdopendialogu8args_t args{};
-    args.filterList = filters;
-    args.filterCount = 2;
+    args.filterList = filters.data();
+    args.filterCount = static_cast<nfdfiltersize_t>(filters.size());
     args.defaultPath = nullptr;
     args.parentWindow = {};
 
+    std::vector<std::string> paths;
     const nfdpathset_t* path_set = nullptr;
-    const nfdresult_t result = NFD_OpenDialogMultipleU8_With(&path_set, &args);
-
-    if (result == NFD_OKAY && path_set != nullptr) {
-        nfdpathsetsize_t count = 0;
-        if (NFD_PathSet_GetCount(path_set, &count) == NFD_OKAY) {
-            for (nfdpathsetsize_t i = 0; i < count; ++i) {
-                nfdu8char_t* path = nullptr;
-                if (NFD_PathSet_GetPathU8(path_set, i, &path) == NFD_OKAY &&
-                    path != nullptr) {
-                    paths.emplace_back(path);
-                    NFD_PathSet_FreePathU8(path);
-                }
-            }
-        }
+    if (NFD_OpenDialogMultipleU8_With(&path_set, &args) == NFD_OKAY &&
+        path_set != nullptr) {
+        paths = collect_paths(path_set);
         NFD_PathSet_Free(path_set);
     }
 

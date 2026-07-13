@@ -28,6 +28,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <new>
 #include <utility>
@@ -87,7 +88,7 @@ BufferRecordParams params_from_npy(NpyArray npy,
 // Kept local so this translation unit (compiled for the non-native build too)
 // does not pull in the GL-backed buffer.h. A file whose header claims more than
 // this is rejected before any pixel memory is allocated.
-constexpr int kMaxImageDimension = 131072;                        // 2^17
+constexpr int kMaxImageDimension = 131072;                             // 2^17
 constexpr std::uint64_t kMaxDecodedBytes = 16ULL * 1024 * 1024 * 1024; // 16 GB
 
 // Number of decoded scalar elements (pixels * channels) in the image.
@@ -114,7 +115,7 @@ Expected<BufferRecordParams> decode_stb(std::span<const std::byte> bytes,
         return make_error("image: file too large for decoder");
     }
     const auto* data = reinterpret_cast<const stbi_uc*>(bytes.data());
-    const int len = static_cast<int>(bytes.size());
+    const auto len = static_cast<int>(bytes.size());
 
     // Preflight the header before decoding: stbi_info reads the dimensions
     // without allocating pixel memory, so a small compressed file that claims
@@ -126,8 +127,8 @@ Expected<BufferRecordParams> decode_stb(std::span<const std::byte> bytes,
     if (stbi_info_from_memory(data, len, &width, &height, &channels) == 0) {
         return make_error(std::string{"image: "} + stbi_failure_reason());
     }
-    if (width < 1 || height < 1 || channels < 1 ||
-        width > kMaxImageDimension || height > kMaxImageDimension) {
+    if (width < 1 || height < 1 || channels < 1 || width > kMaxImageDimension ||
+        height > kMaxImageDimension) {
         return make_error("image: dimensions out of range");
     }
     // Upper-bound the decode with the widest element (float, 4 bytes) using
@@ -171,8 +172,8 @@ Expected<BufferRecordParams> decode_stb(std::span<const std::byte> bytes,
             stbi_image_free(pixels);
             params.type = BufferType::UNSIGNED_SHORT;
         } else {
-            stbi_uc* pixels = stbi_load_from_memory(
-                data, len, &width, &height, &channels, 0);
+            stbi_uc* pixels =
+                stbi_load_from_memory(data, len, &width, &height, &channels, 0);
             if (pixels == nullptr) {
                 return make_error(std::string{"image: "} +
                                   stbi_failure_reason());
@@ -232,9 +233,9 @@ Expected<BufferRecord> load_buffer_from_file(const std::string& path,
         return make_error("cannot stat file: " + path);
     }
     if (size > max_bytes) {
-        return make_error("file exceeds " +
-                          std::to_string(max_bytes / (1024 * 1024)) +
-                          " MB open limit: " + path);
+        return make_error(std::format("file exceeds {} MB open limit: {}",
+                                      max_bytes / (1024 * 1024),
+                                      path));
     }
 
     std::ifstream stream{fs_path, std::ios::binary};

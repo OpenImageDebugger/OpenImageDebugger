@@ -25,6 +25,7 @@
 
 #include "host/cli_options.h"
 
+#include <array>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -40,8 +41,9 @@ CliOptions parse(const std::vector<const char*>& args) {
 } // namespace
 
 TEST(CliOptionsTest, DefaultsWhenNoArgs) {
-    const char* argv[] = {"oidwindow"};
-    const CliOptions options = parse_cli(1, argv);
+    const std::array<const char*, 1> argv = {"oidwindow"};
+    const CliOptions options =
+        parse_cli(static_cast<int>(argv.size()), argv.data());
     EXPECT_EQ(options.hostname, "127.0.0.1");
     EXPECT_EQ(options.port, 9588);
     EXPECT_TRUE(options.open_files.empty());

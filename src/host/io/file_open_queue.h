@@ -27,8 +27,8 @@
 #define HOST_IO_FILE_OPEN_QUEUE_H_
 
 #include <deque>
-#include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "host/io/expected.h"
@@ -47,17 +47,33 @@ struct FileOpenOutcome {
 // Not thread-safe: push from and drain on the render thread.
 class FileOpenQueue {
   public:
-    using Loader =
-        std::function<oid::Expected<BufferRecord>(const std::string&)>;
-    using Upsert = std::function<void(BufferRecord)>;
-
     void push(std::string path);
     void push_all(const std::vector<std::string>& paths);
     [[nodiscard]] bool empty() const;
 
-    // Load and upsert every pending path, clearing the queue. Loader failures
-    // are counted and their message retained but do not stop the drain.
-    FileOpenOutcome drain(const Loader& loader, const Upsert& upsert);
+    // Load and upsert every pending path, clearing the queue. `loader` maps a
+    // path to an oid::Expected<BufferRecord>; `upsert` consumes each
+    // successfully loaded record. Loader failures are counted and their message
+    // retained but do not stop the drain.
+    template <typename Loader, typename Upsert>
+    FileOpenOutcome drain(const Loader& loader, const Upsert& upsert) {
+        FileOpenOutcome outcome;
+        while (!pending_.empty()) {
+            const std::string path = std::move(pending_.front());
+            pending_.pop_front();
+
+            oid::Expected<BufferRecord> record = loader(path);
+            if (record) {
+                outcome.last_success = record->display_name;
+                upsert(std::move(*record));
+                ++outcome.succeeded;
+            } else {
+                outcome.last_error = record.error();
+                ++outcome.failed;
+            }
+        }
+        return outcome;
+    }
 
   private:
     std::deque<std::string> pending_;
