@@ -776,12 +776,6 @@ if(OID_BUILD_IMGUI_FRONTEND)
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/io/npy_decode.cpp
     )
 
-    # decode_npy()'s std::expected<NpyArray, std::string> result type needs
-    # C++23; the rest of the project (and this test binary's dependents)
-    # stay on the common.cmake-wide C++20 standard, so this is scoped to
-    # just this target rather than bumping CMAKE_CXX_STANDARD globally.
-    set_target_properties(npy_decode_test PROPERTIES CXX_STANDARD 23)
-
     target_include_directories(npy_decode_test
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
     )

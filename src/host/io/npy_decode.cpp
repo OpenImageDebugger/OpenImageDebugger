@@ -34,10 +34,6 @@ namespace oid {
 
 namespace {
 
-std::unexpected<std::string> err(std::string message) {
-    return std::unexpected<std::string>{std::move(message)};
-}
-
 std::uint16_t read_u16le(std::span<const std::byte> data, std::size_t offset) {
     return static_cast<std::uint16_t>(
         static_cast<std::uint16_t>(
@@ -64,17 +60,17 @@ struct DType {
     int itemsize;
 };
 
-std::expected<DType, std::string> map_dtype(std::string_view descr) {
+Expected<DType> map_dtype(std::string_view descr) {
     if (descr.size() < 3) {
-        return err("npy: dtype descriptor too short: '" + std::string{descr} +
-                   "'");
+        return make_error("npy: dtype descriptor too short: '" +
+                          std::string{descr} + "'");
     }
     const char byteorder = descr[0];
     const char kind = descr[1];
     const std::string_view size_text = descr.substr(2);
 
     if (byteorder == '>') {
-        return err("npy: big-endian dtypes are not supported");
+        return make_error("npy: big-endian dtypes are not supported");
     }
     // '<', '|', '=' are all treated as little-endian on our LE targets.
 
@@ -82,8 +78,8 @@ std::expected<DType, std::string> map_dtype(std::string_view descr) {
     const auto [ptr, ec] = std::from_chars(
         size_text.data(), size_text.data() + size_text.size(), itemsize);
     if (ec != std::errc{} || ptr != size_text.data() + size_text.size()) {
-        return err("npy: unparseable dtype itemsize in '" + std::string{descr} +
-                   "'");
+        return make_error("npy: unparseable dtype itemsize in '" +
+                          std::string{descr} + "'");
     }
 
     if (kind == 'u' && itemsize == 1) {
@@ -104,31 +100,33 @@ std::expected<DType, std::string> map_dtype(std::string_view descr) {
     if (kind == 'f' && itemsize == 8) {
         return DType{BufferType::FLOAT64, 8};
     }
-    return err("npy: unsupported dtype '" + std::string{descr} + "'");
+    return make_error("npy: unsupported dtype '" + std::string{descr} + "'");
 }
 
 // Find value of key like 'descr' between quotes.
-std::expected<std::string_view, std::string>
-extract_quoted(std::string_view header, std::string_view key) {
+Expected<std::string_view> extract_quoted(std::string_view header,
+                                          std::string_view key) {
     const std::size_t key_pos = header.find(key);
     if (key_pos == std::string_view::npos) {
-        return err("npy: missing key '" + std::string{key} + "'");
+        return make_error("npy: missing key '" + std::string{key} + "'");
     }
     std::size_t quote = header.find('\'', key_pos + key.size());
     if (quote == std::string_view::npos) {
-        return err("npy: malformed value for '" + std::string{key} + "'");
+        return make_error("npy: malformed value for '" + std::string{key} +
+                          "'");
     }
     const std::size_t end = header.find('\'', quote + 1);
     if (end == std::string_view::npos) {
-        return err("npy: unterminated value for '" + std::string{key} + "'");
+        return make_error("npy: unterminated value for '" + std::string{key} +
+                          "'");
     }
     return header.substr(quote + 1, end - (quote + 1));
 }
 
-std::expected<bool, std::string> extract_fortran(std::string_view header) {
+Expected<bool> extract_fortran(std::string_view header) {
     const std::size_t key_pos = header.find("'fortran_order'");
     if (key_pos == std::string_view::npos) {
-        return err("npy: missing 'fortran_order'");
+        return make_error("npy: missing 'fortran_order'");
     }
     if (header.find("True", key_pos) != std::string_view::npos &&
         header.find("True", key_pos) < header.find(',', key_pos)) {
@@ -137,16 +135,15 @@ std::expected<bool, std::string> extract_fortran(std::string_view header) {
     return false;
 }
 
-std::expected<std::vector<int>, std::string>
-extract_shape(std::string_view header) {
+Expected<std::vector<int>> extract_shape(std::string_view header) {
     const std::size_t key_pos = header.find("'shape'");
     if (key_pos == std::string_view::npos) {
-        return err("npy: missing 'shape'");
+        return make_error("npy: missing 'shape'");
     }
     const std::size_t open = header.find('(', key_pos);
     const std::size_t close = header.find(')', open);
     if (open == std::string_view::npos || close == std::string_view::npos) {
-        return err("npy: malformed shape tuple");
+        return make_error("npy: malformed shape tuple");
     }
     const std::string_view inner = header.substr(open + 1, close - (open + 1));
 
@@ -163,7 +160,7 @@ extract_shape(std::string_view header) {
         const auto [ptr, ec] = std::from_chars(
             inner.data() + i, inner.data() + inner.size(), value);
         if (ec != std::errc{}) {
-            return err("npy: unparseable shape dimension");
+            return make_error("npy: unparseable shape dimension");
         }
         dims.push_back(value);
         i = static_cast<std::size_t>(ptr - inner.data());
@@ -173,17 +170,16 @@ extract_shape(std::string_view header) {
 
 } // namespace
 
-std::expected<NpyArray, std::string>
-decode_npy(std::span<const std::byte> data) {
+Expected<NpyArray> decode_npy(std::span<const std::byte> data) {
     static constexpr std::array<unsigned char, 6> kMagic = {
         0x93, 'N', 'U', 'M', 'P', 'Y'};
 
     if (data.size() < 10) {
-        return err("npy: buffer too small for header");
+        return make_error("npy: buffer too small for header");
     }
     for (std::size_t i = 0; i < kMagic.size(); ++i) {
         if (std::to_integer<std::uint8_t>(data[i]) != kMagic[i]) {
-            return err("npy: bad magic");
+            return make_error("npy: bad magic");
         }
     }
 
@@ -196,19 +192,19 @@ decode_npy(std::span<const std::byte> data) {
         data_off = 10;
     } else if (major >= 2) {
         if (data.size() < 12) {
-            return err("npy: buffer too small for v2 header");
+            return make_error("npy: buffer too small for v2 header");
         }
         header_len = read_u32le(data, 8);
         data_off = 12;
     } else {
-        return err("npy: unsupported major version");
+        return make_error("npy: unsupported major version");
     }
 
     if (header_len > 65536) {
-        return err("npy: header too large");
+        return make_error("npy: header too large");
     }
     if (data_off + header_len > data.size()) {
-        return err("npy: header extends past buffer");
+        return make_error("npy: header extends past buffer");
     }
 
     const std::string_view header{
@@ -216,19 +212,19 @@ decode_npy(std::span<const std::byte> data) {
 
     const auto descr = extract_quoted(header, "'descr'");
     if (!descr) {
-        return err(descr.error());
+        return make_error(descr.error());
     }
     const auto dtype = map_dtype(*descr);
     if (!dtype) {
-        return err(dtype.error());
+        return make_error(dtype.error());
     }
     const auto fortran = extract_fortran(header);
     if (!fortran) {
-        return err(fortran.error());
+        return make_error(fortran.error());
     }
     const auto shape = extract_shape(header);
     if (!shape) {
-        return err(shape.error());
+        return make_error(shape.error());
     }
 
     NpyArray out;
@@ -250,7 +246,8 @@ decode_npy(std::span<const std::byte> data) {
         out.channels = 1;
     } else if (dims.size() == 3) {
         if (*fortran) {
-            return err("npy: Fortran-order 3-D arrays are not supported");
+            return make_error(
+                "npy: Fortran-order 3-D arrays are not supported");
         }
         out.height = dims[0];
         out.width = dims[1];
@@ -258,21 +255,21 @@ decode_npy(std::span<const std::byte> data) {
         out.step = dims[1];
         out.transpose = false;
     } else {
-        return err("npy: only 2-D and 3-D arrays are supported");
+        return make_error("npy: only 2-D and 3-D arrays are supported");
     }
 
     if (out.width < 1 || out.width > 131072 || out.height < 1 ||
         out.height > 131072) {
-        return err("npy: width/height out of range");
+        return make_error("npy: width/height out of range");
     }
     if (out.channels < 1 || out.channels > 4) {
-        return err("npy: channel count out of range");
+        return make_error("npy: channel count out of range");
     }
 
     std::size_t element_count = 1;
     for (int d : dims) {
         if (d < 0) {
-            return err("npy: negative shape dimension");
+            return make_error("npy: negative shape dimension");
         }
         element_count *= static_cast<std::size_t>(d);
     }
@@ -280,7 +277,7 @@ decode_npy(std::span<const std::byte> data) {
         element_count * static_cast<std::size_t>(dtype->itemsize);
     const std::size_t available = data.size() - (data_off + header_len);
     if (available != expected_bytes) {
-        return err("npy: payload size mismatch");
+        return make_error("npy: payload size mismatch");
     }
 
     const std::byte* payload = data.data() + data_off + header_len;
