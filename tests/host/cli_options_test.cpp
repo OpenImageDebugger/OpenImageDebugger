@@ -54,6 +54,14 @@ TEST(CliOptionsTest, ParsesPortAndHost) {
     EXPECT_EQ(options.port, 1234);
 }
 
+TEST(CliOptionsTest, AcceptsLegacyHostAliases) {
+    const CliOptions short_opt = parse({"oidwindow", "-h", "myhost"});
+    EXPECT_EQ(short_opt.hostname, "myhost");
+
+    const CliOptions long_opt = parse({"oidwindow", "--hostname", "myhost"});
+    EXPECT_EQ(long_opt.hostname, "myhost");
+}
+
 TEST(CliOptionsTest, CollectsRepeatableOpenFlags) {
     const CliOptions options =
         parse({"oidwindow", "-o", "a.png", "--open", "b.npy", "-o", "c.jpg"});

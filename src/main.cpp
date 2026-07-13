@@ -452,10 +452,11 @@ bool process_menu_and_shortcuts(FrameContext& ctx) {
     return focus_symbol_search;
 }
 
-// Decodes and upserts every file path queued via `-o`/`--open` (CLI startup
-// args seed the queue once; nothing else pushes to it yet). Reports the
-// outcome on the status bar (success) or stderr (failures), mirroring the
-// FileOpenQueue unit tests' succeeded/failed/last_error/last_success fields.
+// Decodes and upserts every file path queued so far, whether seeded once
+// from the `-o`/`--open` CLI flags or pushed by File > Open / Ctrl+O on any
+// later frame. Reports the outcome on the status bar (success) or stderr
+// (failures), mirroring the FileOpenQueue unit tests'
+// succeeded/failed/last_error/last_success fields.
 void process_pending_file_opens(FrameContext& ctx) {
     if (ctx.file_open_queue.empty()) {
         return;
@@ -905,9 +906,9 @@ int main(int argc, char** argv) {
                                    settings_backend.make_save_sink(ipc)};
     std::set<std::string, std::less<>> seen_this_session;
 
-    // Seeded once from the -o/--open CLI flags; process_pending_file_opens
-    // drains it (decode + upsert) on the first frame. Nothing else pushes to
-    // it yet.
+    // Seeded once from the -o/--open CLI flags; File > Open / Ctrl+O also
+    // push into it later (see process_menu_and_shortcuts above), and
+    // process_pending_file_opens drains it (decode + upsert) every frame.
     oid::host::FileOpenQueue file_open_queue;
     file_open_queue.push_all(cli.open_files);
 

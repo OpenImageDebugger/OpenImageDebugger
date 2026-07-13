@@ -67,8 +67,7 @@ void format_pixel_value(std::stringstream& message,
     using enum BufferType;
     switch (type) {
     case FLOAT32:
-        message << std::bit_cast<const float*>(buffer.data())[pos];
-        break;
+        [[fallthrough]];
     case FLOAT64:
         message << std::bit_cast<const float*>(buffer.data())[pos];
         break;

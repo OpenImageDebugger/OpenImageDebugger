@@ -49,7 +49,8 @@ CliOptions parse_cli(int argc, const char* const* argv) {
             if (has_next) {
                 options.open_files.emplace_back(argv[++i]);
             }
-        } else if (std::strcmp(arg, "--host") == 0) {
+        } else if (matches(arg, "-h", "--hostname") ||
+                   std::strcmp(arg, "--host") == 0) {
             if (has_next) {
                 options.hostname = argv[++i];
             }
