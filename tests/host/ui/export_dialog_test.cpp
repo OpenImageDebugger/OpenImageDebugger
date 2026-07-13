@@ -111,6 +111,8 @@ TEST(ExportDialog, EnsureExtensionAppendsWhenMissing) {
               "/a/buf.png");
     EXPECT_EQ(ensure_export_extension("/a/buf", OutputType::OCTAVE_MATRIX),
               "/a/buf.oct");
+    EXPECT_EQ(ensure_export_extension("/a/buf", OutputType::NUMPY_ARRAY),
+              "/a/buf.npy");
 }
 
 TEST(ExportDialog, EnsureExtensionNoOpWhenPresent) {

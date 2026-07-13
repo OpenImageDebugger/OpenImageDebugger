@@ -45,8 +45,7 @@ struct ExportDialogState {
     bool open{false};
     std::string buffer_name;           // target buffer's variable_name
     std::array<char, 1024> path_buf{}; // fixed-size destination path buffer
-    oid::BufferExporter::OutputType format{
-        oid::BufferExporter::OutputType::BITMAP};
+    BufferExporter::OutputType format{BufferExporter::OutputType::BITMAP};
 };
 
 // Composes a default export path with no filesystem checks -- pure string
@@ -57,7 +56,7 @@ struct ExportDialogState {
 std::string default_export_path(std::string_view last_export_dir,
                                 const char* home_env,
                                 const std::string& buffer_name,
-                                oid::BufferExporter::OutputType format);
+                                BufferExporter::OutputType format);
 
 // Opens the dialog for `buffer_name`: resets `st` (format back to the
 // BITMAP default) and seeds `path_buf` via default_export_path(
@@ -73,7 +72,7 @@ void open_export_dialog(ExportDialogState& st,
 // Adding a format is one row in the registry, plus its OutputType enumerator
 // and encoder branch in export_buffer_imgui().
 struct ExportFormat {
-    oid::BufferExporter::OutputType type;
+    BufferExporter::OutputType type;
     const char* extension; // ".png"
     const char* label;     // "PNG image"
 };
@@ -84,7 +83,7 @@ std::span<const ExportFormat> export_formats();
 
 // Returns the extension (with leading dot) for `format`, per the registry;
 // returns the default format's extension if `format` is somehow not listed.
-std::string_view extension_for(oid::BufferExporter::OutputType format);
+std::string_view extension_for(BufferExporter::OutputType format);
 
 // Returns the type of the first export_formats() row whose extension `path`
 // ends with (case-insensitively); falls back to the default first row
@@ -92,13 +91,13 @@ std::string_view extension_for(oid::BufferExporter::OutputType format);
 // format from the
 // path chosen in the native save dialog (nfd appends the selected filter's
 // extension).
-oid::BufferExporter::OutputType classify_export_format(std::string_view path);
+BufferExporter::OutputType classify_export_format(std::string_view path);
 
 // Appends the registry extension for `format` to `path` if it is not
 // already there; returns `path` unchanged otherwise. Safety net for when the
 // chosen path lacks a recognized extension.
 std::string ensure_export_extension(std::string path,
-                                    oid::BufferExporter::OutputType format);
+                                    BufferExporter::OutputType format);
 
 // Copies `path` into `st.path_buf` as a null-terminated C string, truncating
 // to fit the 1024-byte buffer. Used once a destination path has been

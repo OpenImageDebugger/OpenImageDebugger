@@ -54,6 +54,9 @@ struct RgbaImage {
 // Octave raw-matrix writer. Returns false on stream failure.
 bool export_octave(const Buffer& buffer, const std::string& path);
 
+// NumPy .npy writer. Returns false on stream failure.
+bool export_npy(const Buffer& buffer, const std::string& path);
+
 // Buffer geometry/typing, grouped so normalize_to_rgba8_raw() stays under
 // Sonar's parameter-count limit. `data` and `bc_comp` stay separate
 // parameters: they're the payload being normalized, not buffer shape.
@@ -80,9 +83,6 @@ bool export_octave_raw(const std::uint8_t* data,
                        int channels,
                        int step,
                        const std::string& path);
-
-// NumPy .npy writer. Returns false on stream failure.
-bool export_npy(const Buffer& buffer, const std::string& path);
 
 bool export_npy_raw(const std::uint8_t* data,
                     BufferType type,
