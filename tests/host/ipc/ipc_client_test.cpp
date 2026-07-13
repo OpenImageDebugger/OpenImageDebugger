@@ -27,6 +27,7 @@
 #include "host/ipc/ipc_client.h"
 #include "ipc/message_exchange.h"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <deque>
@@ -217,6 +218,61 @@ TEST(IpcClient, GetObservedSymbolsRespondsWithModelNames) {
     MessageType h{};
     std::memcpy(&h, t.sends[0].data(), sizeof(h));
     EXPECT_EQ(h, MessageType::GET_OBSERVED_SYMBOLS_RESPONSE);
+}
+
+// LOCAL_FILE-tagged records (Task 3+: buffers opened directly from a local
+// file, not owned by the debugger) must never be advertised back via
+// GET_OBSERVED_SYMBOLS_RESPONSE -- only DEBUGGER_SYMBOL records belong in
+// that reply.
+TEST(IpcClient, GetObservedSymbolsExcludesLOCAL_FILEBuffers) {
+    FakeTransport t;
+    oid::host::IpcBufferModel model;
+    {
+        oid::host::BufferRecord r;
+        r.variable_name = "debugger_var";
+        r.kind = oid::host::BufferKind::DEBUGGER_SYMBOL;
+        model.upsert(std::move(r));
+    }
+    {
+        oid::host::BufferRecord r;
+        r.variable_name = "local_file.png";
+        r.kind = oid::host::BufferKind::LOCAL_FILE;
+        model.upsert(std::move(r));
+    }
+
+    MessageComposer c;
+    c.push(MessageType::GET_OBSERVED_SYMBOLS);
+    t.feed(frame(c));
+
+    oid::host::IpcClient client(t, model);
+    client.poll();
+
+    ASSERT_EQ(t.sends.size(), 1u); // sent a GET_OBSERVED_SYMBOLS_RESPONSE
+
+    // Decode reply: [MessageType][size_t count][string...]. MessageDecoder
+    // only decodes off a live ITransport, so re-feed the captured send
+    // through a fresh FakeTransport (mirrors
+    // SendExportBufferRequestRoundTripsFields above).
+    FakeTransport decode_t;
+    decode_t.feed(t.sends[0]);
+    MessageType reply_type{};
+    MessageDecoder{decode_t}.read(reply_type);
+    EXPECT_EQ(reply_type, MessageType::GET_OBSERVED_SYMBOLS_RESPONSE);
+
+    std::size_t count = 0;
+    MessageDecoder decoder{decode_t};
+    decoder.read(count);
+    std::vector<std::string> names;
+    for (std::size_t i = 0; i < count; ++i) {
+        std::string name;
+        decoder.read(name);
+        names.push_back(name);
+    }
+
+    EXPECT_EQ(names.size(), 1u);
+    EXPECT_EQ(names.front(), "debugger_var");
+    EXPECT_TRUE(std::find(names.begin(), names.end(), "local_file.png") ==
+                names.end());
 }
 
 TEST(IpcClient, NotifyRemovedSurvivesDeadTransport) {

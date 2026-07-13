@@ -39,6 +39,16 @@
 
 namespace oid::host {
 
+// Distinguishes buffers backed by a debugger symbol (advertised back to
+// the debugger via GET_OBSERVED_SYMBOLS, eligible for session restore)
+// from buffers opened directly from a local file: those are never
+// advertised back -- the debugger never owned them and re-plotting one
+// would be meaningless -- and never persisted in session state.
+enum class BufferKind : std::uint8_t {
+    DEBUGGER_SYMBOL,
+    LOCAL_FILE,
+};
+
 // One buffer as the UI chrome sees it: enough metadata to render a
 // buffer-list row and build a Stage, plus the raw pixel bytes ready for
 // GlCanvas upload. IpcBufferModel populates these from IPC-decoded
@@ -54,6 +64,7 @@ struct BufferRecord {
     int step{};
     oid::BufferType type{oid::BufferType::UNSIGNED_BYTE};
     std::vector<std::byte> bytes;
+    BufferKind kind{BufferKind::DEBUGGER_SYMBOL};
 };
 
 // Read-only view over the set of buffers the chrome should list.
