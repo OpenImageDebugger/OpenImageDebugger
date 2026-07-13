@@ -75,4 +75,9 @@ std::vector<std::string> request_open_files(GLFWwindow* /*window*/) {
     return paths;
 }
 
+void register_file_open_sink(oid::host::IpcBufferModel& /*model*/) {
+    // Native opens files itself (OS dialog + the frame-loop file-open queue);
+    // there is no external byte sink to register.
+}
+
 } // namespace oid::platform

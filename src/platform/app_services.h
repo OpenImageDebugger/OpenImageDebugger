@@ -41,6 +41,7 @@ class Buffer;
 
 namespace oid::host {
 class IpcClient;
+class IpcBufferModel;
 struct ExportDialogState;
 } // namespace oid::host
 
@@ -57,6 +58,13 @@ struct Endpoint {
 // Non-native: wire the inbound message hook (must run before transport
 // polling starts). Native: no-op.
 void install_platform_hooks();
+
+// Non-native: register `model` as the sink for file bytes an embedding host
+// pushes in (the host reads the file and hands the viewer the bytes to
+// decode). Native: no-op -- the native build opens files itself via the OS
+// dialog and the frame-loop file-open queue. Call once, after the model is
+// constructed and before the main loop starts.
+void register_file_open_sink(oid::host::IpcBufferModel& model);
 
 // Settings persistence backend. Native: on-disk JSON store at the platform
 // config path. Non-native: no local file -- load() yields defaults (real
