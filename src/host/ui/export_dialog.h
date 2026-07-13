@@ -75,6 +75,22 @@ void open_export_dialog(ExportDialogState& st,
                         const std::string& buffer_name,
                         const std::string& last_export_dir);
 
+// Returns OCTAVE_MATRIX when `path` ends in ".oct" (case-sensitive),
+// otherwise BITMAP. Used to derive the export format from the path chosen in
+// the native save dialog (nfd appends the selected filter's extension).
+oid::BufferExporter::OutputType classify_export_format(std::string_view path);
+
+// Appends the format's extension (".png"/".oct") to `path` if it is not
+// already there; returns `path` unchanged otherwise. Safety net for when the
+// chosen path lacks a recognized extension.
+std::string ensure_export_extension(std::string path,
+                                    oid::BufferExporter::OutputType format);
+
+// Copies `path` into `st.path_buf` as a null-terminated C string, truncating
+// to fit the 1024-byte buffer. Used once a destination path has been
+// confirmed; perform_export() reads it back via st.path_buf.data().
+void set_export_path(ExportDialogState& st, std::string_view path);
+
 // Draws the "Export buffer" ImGui modal popup (implemented in
 // export_dialog_draw.cpp): a path field, BITMAP/OCTAVE_MATRIX radio
 // buttons, and Save/Cancel buttons.

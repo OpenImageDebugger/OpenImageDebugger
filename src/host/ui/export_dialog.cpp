@@ -113,4 +113,23 @@ void open_export_dialog(ExportDialogState& st,
             last_export_dir, std::getenv("HOME"), buffer_name, st.format));
 }
 
+oid::BufferExporter::OutputType classify_export_format(std::string_view path) {
+    return ends_with(path, OCT_EXT)
+               ? oid::BufferExporter::OutputType::OCTAVE_MATRIX
+               : oid::BufferExporter::OutputType::BITMAP;
+}
+
+std::string ensure_export_extension(std::string path,
+                                    oid::BufferExporter::OutputType format) {
+    const std::string_view ext = extension_for(format);
+    if (!ends_with(path, ext)) {
+        path += ext;
+    }
+    return path;
+}
+
+void set_export_path(ExportDialogState& st, std::string_view path) {
+    set_path_buf(st.path_buf, path);
+}
+
 } // namespace oid::host

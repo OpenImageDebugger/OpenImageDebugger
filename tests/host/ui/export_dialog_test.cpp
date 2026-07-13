@@ -32,14 +32,18 @@
 #include "host/ui/export_dialog.h"
 
 #include <format>
+#include <string_view>
 
 #include <gtest/gtest.h>
 
 using oid::BufferExporter::OutputType;
 using oid::host::apply_format_extension;
+using oid::host::classify_export_format;
 using oid::host::default_export_path;
+using oid::host::ensure_export_extension;
 using oid::host::ExportDialogState;
 using oid::host::open_export_dialog;
+using oid::host::set_export_path;
 
 TEST(ExportDialog, DefaultPathPrefersLastExportDir) {
     EXPECT_EQ(default_export_path("/exp", "/home/x", "buf", OutputType::BITMAP),
@@ -129,4 +133,32 @@ TEST(ExportDialog, OpenResetsFormatAndUserEditedFlagFromPriorOpen) {
     EXPECT_FALSE(st.user_edited_path);
     EXPECT_EQ(st.format, OutputType::BITMAP);
     EXPECT_STREQ(st.path_buf.data(), "/exp/second.png");
+}
+
+TEST(ExportDialog, ClassifyFormatFromExtension) {
+    EXPECT_EQ(classify_export_format("/a/buf.oct"), OutputType::OCTAVE_MATRIX);
+    EXPECT_EQ(classify_export_format("/a/buf.png"), OutputType::BITMAP);
+    EXPECT_EQ(classify_export_format("/a/buf"), OutputType::BITMAP);
+    EXPECT_EQ(classify_export_format("buf.OCT"),
+              OutputType::BITMAP); // case-sensitive
+}
+
+TEST(ExportDialog, EnsureExtensionAppendsWhenMissing) {
+    EXPECT_EQ(ensure_export_extension("/a/buf", OutputType::BITMAP),
+              "/a/buf.png");
+    EXPECT_EQ(ensure_export_extension("/a/buf", OutputType::OCTAVE_MATRIX),
+              "/a/buf.oct");
+}
+
+TEST(ExportDialog, EnsureExtensionNoOpWhenPresent) {
+    EXPECT_EQ(ensure_export_extension("/a/buf.png", OutputType::BITMAP),
+              "/a/buf.png");
+    EXPECT_EQ(ensure_export_extension("/a/buf.oct", OutputType::OCTAVE_MATRIX),
+              "/a/buf.oct");
+}
+
+TEST(ExportDialog, SetExportPathCopiesIntoBuffer) {
+    ExportDialogState st;
+    set_export_path(st, "/exp/img.png");
+    EXPECT_STREQ(st.path_buf.data(), "/exp/img.png");
 }
