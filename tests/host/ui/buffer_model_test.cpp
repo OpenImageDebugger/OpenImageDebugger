@@ -44,10 +44,10 @@ TEST(MockBufferModel, HoldsDeterministicBuffers) {
     EXPECT_FALSE(r.variable_name.empty());
 }
 
-// Locally-opened buffers (Task 3+) are tagged BufferKind::LOCAL_FILE so they
-// can be excluded from GET_OBSERVED_SYMBOLS; every other record -- including
-// these deterministic mock buffers -- defaults to DEBUGGER_SYMBOL.
-TEST(MockBufferModel, DefaultRecordKindIsDEBUGGER_SYMBOL) {
+// Locally-opened buffers are tagged BufferKind::LOCAL_FILE so they can be
+// excluded from GET_OBSERVED_SYMBOLS; every other record -- including these
+// deterministic mock buffers -- defaults to DEBUGGER_SYMBOL.
+TEST(MockBufferModel, DefaultRecordKindIsDebuggerSymbol) {
     MockBufferModel m = make_default_mock_model();
     ASSERT_GE(m.size(), 1u);
     EXPECT_EQ(m.at(0).kind, BufferKind::DEBUGGER_SYMBOL);
