@@ -155,7 +155,15 @@ std::optional<std::string> request_save_path(const std::string& default_dir,
         NSString* path = panel.URL.path;
         if (selected < [extensions count]) {
             NSString* ext = extensions[selected]; // ".png"
-            if (![path hasSuffix:ext]) {
+            // Case-insensitive suffix test: a user-typed "IMG.PNG" already
+            // carries the extension, so don't append a second one. Anchoring
+            // the backwards search to the end makes this a hasSuffix that
+            // ignores case, matching classify_export_format() upstream.
+            const NSRange tail =
+                [path rangeOfString:ext
+                            options:NSCaseInsensitiveSearch |
+                                    NSBackwardsSearch | NSAnchoredSearch];
+            if (tail.location == NSNotFound) {
                 path = [path stringByAppendingString:ext];
             }
         }

@@ -97,8 +97,10 @@ TEST(ExportDialog, ClassifyFormatFromExtension) {
     EXPECT_EQ(classify_export_format("/a/buf.oct"), OutputType::OCTAVE_MATRIX);
     EXPECT_EQ(classify_export_format("/a/buf.png"), OutputType::BITMAP);
     EXPECT_EQ(classify_export_format("/a/buf"), OutputType::BITMAP);
-    EXPECT_EQ(classify_export_format("buf.OCT"),
-              OutputType::BITMAP); // case-sensitive
+    // Extension matching is case-insensitive, so a user-typed uppercase
+    // extension still classifies to the right format.
+    EXPECT_EQ(classify_export_format("buf.OCT"), OutputType::OCTAVE_MATRIX);
+    EXPECT_EQ(classify_export_format("/a/buf.PNG"), OutputType::BITMAP);
 }
 
 TEST(ExportDialog, EnsureExtensionAppendsWhenMissing) {
@@ -113,6 +115,15 @@ TEST(ExportDialog, EnsureExtensionNoOpWhenPresent) {
               "/a/buf.png");
     EXPECT_EQ(ensure_export_extension("/a/buf.oct", OutputType::OCTAVE_MATRIX),
               "/a/buf.oct");
+}
+
+TEST(ExportDialog, EnsureExtensionNoDoubleAppendForUppercase) {
+    // A user-typed uppercase extension already matches case-insensitively, so
+    // no second extension is appended (no "buf.PNG.png").
+    EXPECT_EQ(ensure_export_extension("/a/buf.PNG", OutputType::BITMAP),
+              "/a/buf.PNG");
+    EXPECT_EQ(ensure_export_extension("/a/buf.OCT", OutputType::OCTAVE_MATRIX),
+              "/a/buf.OCT");
 }
 
 TEST(ExportDialog, SetExportPathCopiesIntoBuffer) {
