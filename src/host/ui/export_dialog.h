@@ -87,8 +87,9 @@ std::span<const ExportFormat> export_formats();
 std::string_view extension_for(oid::BufferExporter::OutputType format);
 
 // Returns the type of the first export_formats() row whose extension `path`
-// ends with (case-sensitive); falls back to the default first row (currently
-// BITMAP/PNG) when none matches. Used to derive the export format from the
+// ends with (case-insensitively); falls back to the default first row
+// (currently BITMAP/PNG) when none matches. Used to derive the export
+// format from the
 // path chosen in the native save dialog (nfd appends the selected filter's
 // extension).
 oid::BufferExporter::OutputType classify_export_format(std::string_view path);

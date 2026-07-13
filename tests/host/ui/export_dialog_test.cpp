@@ -101,6 +101,9 @@ TEST(ExportDialog, ClassifyFormatFromExtension) {
     // extension still classifies to the right format.
     EXPECT_EQ(classify_export_format("buf.OCT"), OutputType::OCTAVE_MATRIX);
     EXPECT_EQ(classify_export_format("/a/buf.PNG"), OutputType::BITMAP);
+    EXPECT_EQ(classify_export_format("/a/buf.npy"), OutputType::NUMPY_ARRAY);
+    EXPECT_EQ(classify_export_format("/a/buf.NPY"),
+              OutputType::NUMPY_ARRAY); // case-insensitive
 }
 
 TEST(ExportDialog, EnsureExtensionAppendsWhenMissing) {
