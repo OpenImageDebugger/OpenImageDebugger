@@ -35,15 +35,16 @@
 
 namespace oid::host {
 
-// State for the "Export buffer" modal opened from the buffer list's
-// right-click context menu: which buffer to export, the
-// destination path (backing an ImGui InputText, hence the fixed-size
-// buffer), and which BufferExporter::OutputType to write. Owned once by
-// main.cpp and reused across every open/close cycle.
+// Transient state seeded by the buffer list's right-click "Export buffer"
+// item (open_export_dialog) and consumed by the platform's confirm_export/
+// perform_export seam, which shows the native OS save dialog. Carries the
+// target buffer_name, the seeded default destination in path_buf, and the
+// chosen OutputType format. Owned once by main.cpp and reused across every
+// open/close cycle.
 struct ExportDialogState {
     bool open{false};
     std::string buffer_name;           // target buffer's variable_name
-    std::array<char, 1024> path_buf{}; // ImGui InputText storage
+    std::array<char, 1024> path_buf{}; // fixed-size destination path buffer
     oid::BufferExporter::OutputType format{
         oid::BufferExporter::OutputType::BITMAP};
 };
@@ -51,8 +52,8 @@ struct ExportDialogState {
 // Composes a default export path with no filesystem checks -- pure string
 // composition, safe to unit test without touching disk: `last_export_dir`
 // if non-empty, else "<home_env>/Desktop" if `home_env` is non-null and
-// non-empty, else ".", then "/<buffer_name>" plus ".png" for
-// OutputType::BITMAP or ".oct" for OutputType::OCTAVE_MATRIX.
+// non-empty, else ".", then "/<buffer_name>" plus the registry extension
+// for `format` (see extension_for).
 std::string default_export_path(std::string_view last_export_dir,
                                 const char* home_env,
                                 const std::string& buffer_name,
@@ -85,12 +86,14 @@ std::span<const ExportFormat> export_formats();
 // returns the default format's extension if `format` is somehow not listed.
 std::string_view extension_for(oid::BufferExporter::OutputType format);
 
-// Returns OCTAVE_MATRIX when `path` ends in ".oct" (case-sensitive),
-// otherwise BITMAP. Used to derive the export format from the path chosen in
-// the native save dialog (nfd appends the selected filter's extension).
+// Returns the type of the first export_formats() row whose extension `path`
+// ends with (case-sensitive); falls back to the default first row (currently
+// BITMAP/PNG) when none matches. Used to derive the export format from the
+// path chosen in the native save dialog (nfd appends the selected filter's
+// extension).
 oid::BufferExporter::OutputType classify_export_format(std::string_view path);
 
-// Appends the format's extension (".png"/".oct") to `path` if it is not
+// Appends the registry extension for `format` to `path` if it is not
 // already there; returns `path` unchanged otherwise. Safety net for when the
 // chosen path lacks a recognized extension.
 std::string ensure_export_extension(std::string path,

@@ -30,6 +30,7 @@
 
 #include "host/ui/export_dialog.h"
 
+#include <cstring>
 #include <span>
 #include <string>
 #include <string_view>
@@ -128,8 +129,19 @@ TEST(ExportDialog, RegistryIsSelfConsistent) {
 
         EXPECT_EQ(classify_export_format(std::string{"/x/buf"} + fmt.extension),
                   fmt.type);
+
+        ASSERT_NE(fmt.extension[0], '\0'); // non-empty
+        EXPECT_EQ(fmt.extension[0], '.');  // starts with the dot nfd strips
     }
 
     EXPECT_EQ(classify_export_format("/x/noext"),
               export_formats().front().type);
+}
+
+TEST(ExportDialog, SetExportPathTruncatesOverlongPath) {
+    ExportDialogState st;
+    const std::string long_path(4000, 'a');
+    set_export_path(st, long_path);
+    // path_buf is a fixed 1024-byte buffer: result is NUL-terminated and fits.
+    EXPECT_EQ(std::strlen(st.path_buf.data()), st.path_buf.size() - 1);
 }

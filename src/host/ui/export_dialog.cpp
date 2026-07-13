@@ -95,7 +95,8 @@ void open_export_dialog(ExportDialogState& st,
                         const std::string& last_export_dir) {
     st.open = true;
     st.buffer_name = buffer_name;
-    st.format = oid::BufferExporter::OutputType::BITMAP;
+    // default format = the registry's first row
+    st.format = export_formats().front().type;
     set_path_buf(
         st.path_buf,
         default_export_path(

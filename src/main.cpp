@@ -664,12 +664,13 @@ void export_confirmed_buffer(FrameContext& ctx, std::string& status) {
         *buffer, ctx.export_dialog, ctx.ipc, status, ctx.last_export_dir);
 }
 
-// Export dialog: drawn outside the host-body window (a modal popup
-// doesn't need to be nested inside one). On Save, exports the selected
-// buffer and records the outcome in the status bar. A successful export
-// also updates `last_export_dir` from the saved file's parent directory,
-// so the next dialog open (and the persisted settings snapshot) default
-// to it.
+// Export request pump: an ImGui action queues a pending export request,
+// then confirm_export shows the native OS save dialog (native) or consumes
+// the request (non-native); on confirmation the selected buffer is
+// exported and the outcome is recorded in the status bar. A successful
+// export also updates `last_export_dir` from the saved file's parent
+// directory, so the next dialog open (and the persisted settings snapshot)
+// default to it.
 void handle_export_requests(FrameContext& ctx) {
     if (!oid::platform::confirm_export(ctx.export_dialog)) {
         return;
