@@ -198,15 +198,19 @@ if(OID_BUILD_IMGUI_FRONTEND)
   target_sources(oidwindow PRIVATE
     $<$<BOOL:${WIN32}>:${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/app_icon.rc>)
 
-  # On macOS the runtime icon is set on the Dock tile via AppKit (there is no
-  # per-window title-bar icon); the Objective-C++ helper needs ARC and the
-  # AppKit/Foundation frameworks.
+  # macOS Objective-C++ helpers (ARC): the Dock-tile icon (app_icon_mac.mm)
+  # and the native save dialog with its format-selector accessory view
+  # (native_file_dialog_mac.mm, which replaces the nfd save dialog on macOS).
+  # They need AppKit/Foundation, plus UniformTypeIdentifiers for UTType.
   if(APPLE)
-    target_sources(oidwindow PRIVATE host/app_icon_mac.mm)
+    target_sources(oidwindow PRIVATE host/app_icon_mac.mm
+                                     platform/native_file_dialog_mac.mm)
     set_source_files_properties(host/app_icon_mac.mm
+                                platform/native_file_dialog_mac.mm
       PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
     target_link_libraries(oidwindow PRIVATE "-framework AppKit"
-                                            "-framework Foundation")
+                                            "-framework Foundation"
+                                            "-framework UniformTypeIdentifiers")
   endif()
 
   target_compile_definitions(oidwindow PRIVATE OID_IMGUI_FRONTEND)
