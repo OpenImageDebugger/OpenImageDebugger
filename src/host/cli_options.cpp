@@ -27,15 +27,27 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <initializer_list>
 #include <optional>
 
 namespace oid::host {
 
 namespace {
 
-bool matches(const char* arg, const char* a, const char* b) {
-    return arg != nullptr &&
-           (std::strcmp(arg, a) == 0 || std::strcmp(arg, b) == 0);
+// True if `arg` equals any of the given flag spellings. Null-safe: a null
+// arg (which cannot occur for an in-range argv entry, but the analyzer cannot
+// prove that) simply matches nothing. Routing every alias through here keeps
+// std::strcmp off any unguarded pointer.
+bool matches(const char* arg, std::initializer_list<const char*> names) {
+    if (arg == nullptr) {
+        return false;
+    }
+    for (const char* name : names) {
+        if (std::strcmp(arg, name) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Parses a TCP port, accepting only the valid 1..65535 range; anything outside
@@ -62,15 +74,14 @@ CliOptions parse_cli(int argc, const char* const* argv) {
         const char* arg = argv[i];
         const char* value = (i + 1) < argc ? argv[i + 1] : nullptr;
 
-        if (matches(arg, "-o", "--open") && value != nullptr) {
+        if (matches(arg, {"-o", "--open"}) && value != nullptr) {
             options.open_files.emplace_back(value);
             i += 2;
-        } else if ((matches(arg, "-h", "--hostname") ||
-                    std::strcmp(arg, "--host") == 0) &&
+        } else if (matches(arg, {"-h", "--hostname", "--host"}) &&
                    value != nullptr) {
             options.hostname = value;
             i += 2;
-        } else if (matches(arg, "-p", "--port") && value != nullptr) {
+        } else if (matches(arg, {"-p", "--port"}) && value != nullptr) {
             if (const auto port = parse_port(value); port.has_value()) {
                 options.port = *port;
             }
