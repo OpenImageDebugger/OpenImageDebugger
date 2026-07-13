@@ -83,6 +83,15 @@ TEST(CliOptionsTest, InvalidPortLeavesDefault) {
     EXPECT_EQ(options.port, 9588);
 }
 
+TEST(CliOptionsTest, RejectsOutOfRangePort) {
+    // A port that does not fit in the 1..65535 TCP range must not be narrowed
+    // into a wrong port; keep the default instead.
+    EXPECT_EQ(parse({"oidwindow", "--port", "70000"}).port, 9588);
+    EXPECT_EQ(parse({"oidwindow", "--port", "65536"}).port, 9588);
+    // The upper bound itself is still accepted.
+    EXPECT_EQ(parse({"oidwindow", "--port", "65535"}).port, 65535);
+}
+
 TEST(CliOptionsTest, OpenFlagWithoutValueIsIgnored) {
     const CliOptions options = parse({"oidwindow", "-o"});
     EXPECT_TRUE(options.open_files.empty());

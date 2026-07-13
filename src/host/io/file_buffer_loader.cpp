@@ -29,7 +29,9 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <new>
 #include <utility>
+#include <vector>
 
 #include <stb_image.h>
 
@@ -81,6 +83,29 @@ BufferRecordParams params_from_npy(NpyArray npy,
     return params;
 }
 
+// Preflight caps for decoded images, mirroring the renderer's BufferConstants.
+// Kept local so this translation unit (compiled for the non-native build too)
+// does not pull in the GL-backed buffer.h. A file whose header claims more than
+// this is rejected before any pixel memory is allocated.
+constexpr int kMaxImageDimension = 131072;                        // 2^17
+constexpr std::uint64_t kMaxDecodedBytes = 16ULL * 1024 * 1024 * 1024; // 16 GB
+
+// Number of decoded scalar elements (pixels * channels) in the image.
+std::size_t element_count(int width, int height, int channels) {
+    return static_cast<std::size_t>(width) * static_cast<std::size_t>(height) *
+           static_cast<std::size_t>(channels);
+}
+
+// Copies `count` elements of type T (as returned by stb) into a byte vector.
+// The end pointer is computed in T-space (pixels + count) and only then cast to
+// bytes, so element size never enters the pointer arithmetic.
+template <typename T>
+std::vector<std::byte> pixels_to_bytes(const T* pixels, std::size_t count) {
+    const auto* first = reinterpret_cast<const std::byte*>(pixels);
+    const auto* last = reinterpret_cast<const std::byte*>(pixels + count);
+    return std::vector<std::byte>(first, last);
+}
+
 // Decodes stb-supported image bytes into BufferRecordParams.
 Expected<BufferRecordParams> decode_stb(std::span<const std::byte> bytes,
                                         std::string variable_name,
@@ -91,51 +116,74 @@ Expected<BufferRecordParams> decode_stb(std::span<const std::byte> bytes,
     const auto* data = reinterpret_cast<const stbi_uc*>(bytes.data());
     const int len = static_cast<int>(bytes.size());
 
+    // Preflight the header before decoding: stbi_info reads the dimensions
+    // without allocating pixel memory, so a small compressed file that claims
+    // enormous dimensions (a decompression bomb) is rejected here instead of
+    // triggering a huge allocation during the decode below.
     int width = 0;
     int height = 0;
     int channels = 0;
+    if (stbi_info_from_memory(data, len, &width, &height, &channels) == 0) {
+        return make_error(std::string{"image: "} + stbi_failure_reason());
+    }
+    if (width < 1 || height < 1 || channels < 1 ||
+        width > kMaxImageDimension || height > kMaxImageDimension) {
+        return make_error("image: dimensions out of range");
+    }
+    // Upper-bound the decode with the widest element (float, 4 bytes) using
+    // 64-bit math so the check is well-formed on 32-bit builds.
+    if (const std::uint64_t decoded_bytes =
+            static_cast<std::uint64_t>(width) *
+            static_cast<std::uint64_t>(height) *
+            static_cast<std::uint64_t>(channels) * sizeof(float);
+        decoded_bytes > kMaxDecodedBytes) {
+        return make_error("image: decoded dimensions exceed the size limit");
+    }
 
     BufferRecordParams params;
     params.variable_name = std::move(variable_name);
     params.display_name = std::move(display_name);
     params.transpose = false;
 
-    if (stbi_is_hdr_from_memory(data, len) != 0) {
-        float* pixels =
-            stbi_loadf_from_memory(data, len, &width, &height, &channels, 0);
-        if (pixels == nullptr) {
-            return make_error(std::string{"image: "} + stbi_failure_reason());
+    // Even a bounded decode can fail to allocate; turn a bad_alloc into an
+    // error instead of letting it escape and crash the viewer.
+    try {
+        if (stbi_is_hdr_from_memory(data, len) != 0) {
+            float* pixels = stbi_loadf_from_memory(
+                data, len, &width, &height, &channels, 0);
+            if (pixels == nullptr) {
+                return make_error(std::string{"image: "} +
+                                  stbi_failure_reason());
+            }
+            params.bytes =
+                pixels_to_bytes(pixels, element_count(width, height, channels));
+            stbi_image_free(pixels);
+            params.type = BufferType::FLOAT32;
+        } else if (stbi_is_16_bit_from_memory(data, len) != 0) {
+            stbi_us* pixels = stbi_load_16_from_memory(
+                data, len, &width, &height, &channels, 0);
+            if (pixels == nullptr) {
+                return make_error(std::string{"image: "} +
+                                  stbi_failure_reason());
+            }
+            params.bytes =
+                pixels_to_bytes(pixels, element_count(width, height, channels));
+            stbi_image_free(pixels);
+            params.type = BufferType::UNSIGNED_SHORT;
+        } else {
+            stbi_uc* pixels = stbi_load_from_memory(
+                data, len, &width, &height, &channels, 0);
+            if (pixels == nullptr) {
+                return make_error(std::string{"image: "} +
+                                  stbi_failure_reason());
+            }
+            params.bytes =
+                pixels_to_bytes(pixels, element_count(width, height, channels));
+            stbi_image_free(pixels);
+            params.type = BufferType::UNSIGNED_BYTE;
         }
-        const std::size_t count =
-            static_cast<std::size_t>(width) * height * channels;
-        const auto* raw = reinterpret_cast<const std::byte*>(pixels);
-        params.bytes.assign(raw, raw + count * sizeof(float));
-        stbi_image_free(pixels);
-        params.type = BufferType::FLOAT32;
-    } else if (stbi_is_16_bit_from_memory(data, len) != 0) {
-        stbi_us* pixels =
-            stbi_load_16_from_memory(data, len, &width, &height, &channels, 0);
-        if (pixels == nullptr) {
-            return make_error(std::string{"image: "} + stbi_failure_reason());
-        }
-        const std::size_t count =
-            static_cast<std::size_t>(width) * height * channels;
-        const auto* raw = reinterpret_cast<const std::byte*>(pixels);
-        params.bytes.assign(raw, raw + count * sizeof(std::uint16_t));
-        stbi_image_free(pixels);
-        params.type = BufferType::UNSIGNED_SHORT;
-    } else {
-        stbi_uc* pixels =
-            stbi_load_from_memory(data, len, &width, &height, &channels, 0);
-        if (pixels == nullptr) {
-            return make_error(std::string{"image: "} + stbi_failure_reason());
-        }
-        const std::size_t count =
-            static_cast<std::size_t>(width) * height * channels;
-        const auto* raw = reinterpret_cast<const std::byte*>(pixels);
-        params.bytes.assign(raw, raw + count);
-        stbi_image_free(pixels);
-        params.type = BufferType::UNSIGNED_BYTE;
+    } catch (const std::bad_alloc&) {
+        return make_error("image: not enough memory to decode");
     }
 
     params.width = width;

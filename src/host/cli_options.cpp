@@ -56,8 +56,11 @@ CliOptions parse_cli(int argc, const char* const* argv) {
             }
         } else if (matches(arg, "-p", "--port")) {
             if (has_next) {
-                const int parsed = std::atoi(argv[++i]);
-                if (parsed > 0) {
+                // Only accept a valid TCP port; anything outside 1..65535 would
+                // be narrowed to the wrong unsigned short later, so keep the
+                // default instead.
+                if (const int parsed = std::atoi(argv[++i]);
+                    parsed > 0 && parsed <= 65535) {
                     options.port = parsed;
                 }
             }
