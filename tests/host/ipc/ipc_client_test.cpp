@@ -220,11 +220,11 @@ TEST(IpcClient, GetObservedSymbolsRespondsWithModelNames) {
     EXPECT_EQ(h, MessageType::GET_OBSERVED_SYMBOLS_RESPONSE);
 }
 
-// LOCAL_FILE-tagged records (Task 3+: buffers opened directly from a local
-// file, not owned by the debugger) must never be advertised back via
+// LOCAL_FILE-tagged records (buffers opened directly from a local file, not
+// owned by the debugger) must never be advertised back via
 // GET_OBSERVED_SYMBOLS_RESPONSE -- only DEBUGGER_SYMBOL records belong in
 // that reply.
-TEST(IpcClient, GetObservedSymbolsExcludesLOCAL_FILEBuffers) {
+TEST(IpcClient, GetObservedSymbolsExcludesLocalFileBuffers) {
     FakeTransport t;
     oid::host::IpcBufferModel model;
     {
