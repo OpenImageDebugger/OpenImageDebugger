@@ -26,6 +26,7 @@
 #include "platform/app_services.h"
 
 #include <filesystem>
+#include <optional>
 #include <string>
 
 #include "host/io/imgui_buffer_exporter.h"
@@ -69,7 +70,31 @@ SessionBridge::SessionBridge(
     const std::function<void()>& /*open_export*/) {}
 
 bool confirm_export(oid::host::ExportDialogState& dialog) {
-    return oid::host::draw_export_dialog(dialog);
+    // A pending open request (set by open_export_dialog from the buffer-list
+    // context menu) resolves this frame via the blocking OS save dialog, so
+    // the one-shot flag is consumed up front. Runs from handle_export_requests
+    // -- the same top-level ImGui point after panels draw -- as the
+    // request_open_files call for File > Open.
+    if (!dialog.open) {
+        return false;
+    }
+    dialog.open = false;
+
+    // open_export_dialog seeded path_buf with "<dir>/<name>.<ext>"; split it
+    // back into what the nfd save dialog wants as defaults.
+    const std::filesystem::path seeded{dialog.path_buf.data()};
+
+    const std::optional<std::string> chosen = request_save_path(
+        seeded.parent_path().string(), seeded.filename().string());
+    if (!chosen.has_value()) {
+        return false;
+    }
+
+    dialog.format = oid::host::classify_export_format(*chosen);
+    oid::host::set_export_path(
+        dialog, oid::host::ensure_export_extension(*chosen, dialog.format));
+
+    return true;
 }
 
 bool perform_export(const oid::Buffer& buffer,
