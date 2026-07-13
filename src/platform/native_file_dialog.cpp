@@ -25,15 +25,22 @@
 
 #include "platform/app_services.h"
 
-#include "host/ui/export_dialog.h"
-
 #include <array>
-#include <optional>
-#include <span>
 #include <string>
 #include <vector>
 
 #include <nfd.h>
+
+// Used only by the non-macOS request_save_path() below; on macOS the save
+// dialog (with its format-selector accessory view) lives in
+// native_file_dialog_mac.mm and this translation unit compiles only the open
+// dialog.
+#if !defined(__APPLE__)
+#include "host/ui/export_dialog.h"
+
+#include <optional>
+#include <span>
+#endif // !defined(__APPLE__)
 
 namespace oid::platform {
 
@@ -97,6 +104,12 @@ std::vector<std::string> request_open_files(GLFWwindow* /*window*/) {
     return paths;
 }
 
+// On macOS the save dialog is implemented in native_file_dialog_mac.mm, which
+// adds a format-selector accessory view that nfd-extended's cocoa save backend
+// omits (it drops the friendly labels and shows no picker). Everywhere else nfd
+// renders the filter list as a native format dropdown, so the nfd save dialog
+// is used directly.
+#if !defined(__APPLE__)
 std::optional<std::string> request_save_path(const std::string& default_dir,
                                              const std::string& default_name) {
     if (NFD_Init() != NFD_OKAY) {
@@ -131,6 +144,7 @@ std::optional<std::string> request_save_path(const std::string& default_dir,
 
     return result;
 }
+#endif // !defined(__APPLE__)
 
 void register_file_open_sink(oid::host::IpcBufferModel& /*model*/) {
     // Native opens files itself (OS dialog + the frame-loop file-open queue);
