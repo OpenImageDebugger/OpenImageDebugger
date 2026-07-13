@@ -34,7 +34,8 @@ namespace oid::host {
 namespace {
 
 bool matches(const char* arg, const char* a, const char* b) {
-    return std::strcmp(arg, a) == 0 || std::strcmp(arg, b) == 0;
+    return arg != nullptr &&
+           (std::strcmp(arg, a) == 0 || std::strcmp(arg, b) == 0);
 }
 
 // Parses a TCP port, accepting only the valid 1..65535 range; anything outside
@@ -70,7 +71,7 @@ CliOptions parse_cli(int argc, const char* const* argv) {
             options.hostname = value;
             i += 2;
         } else if (matches(arg, "-p", "--port") && value != nullptr) {
-            if (const auto port = parse_port(value)) {
+            if (const auto port = parse_port(value); port.has_value()) {
                 options.port = *port;
             }
             i += 2;
