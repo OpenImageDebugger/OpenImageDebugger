@@ -178,6 +178,37 @@ When the debugger hits a breakpoint, the Open Image Debugger window will be
 opened. You only need to type the name of the buffer to be watched in the
 "add symbols" input, and press `<enter>`.
 
+### Opening image files directly
+
+You can also open an image or NumPy array in the viewer without a debugger
+session at all, either from the **File → Open** menu (shortcut `Ctrl+O`) or
+from the command line.
+
+From the command line, pass one or more files with the repeatable `-o` /
+`--open` flag:
+
+```bash
+oidwindow --open path/to/image.png --open path/to/array.npy
+```
+
+Supported formats:
+
+| Category | Extensions |
+| --- | --- |
+| Images (via stb_image) | `png`, `jpg`/`jpeg`, `bmp`, `tga`, `gif`, `psd`, `hdr`, `ppm`/`pgm`/`pnm` |
+| NumPy arrays | `npy` (little-endian `uint8`/`uint16`/`int16`/`int32`/`float32`/`float64`; 2-D grayscale or 3-D with 1&ndash;4 channels) |
+
+Files opened this way are shown alongside any debugger buffers, but they are
+never reported back to a debugger and are not saved as session state.
+
+> **Linux build note:** the native file dialog requires GTK 3
+> (`libgtk-3-dev`) at build time, or configure with `-DNFD_PORTAL=ON` to use
+> the xdg-desktop-portal (D-Bus) backend instead. MacOS and Windows need no
+> extra packages.
+
+Open Image Debugger does not register itself as a system handler for these
+file types; use the **File → Open** menu or the `--open` flag to load them.
+
 ### <img src="doc/auto-contrast.svg" width="20"/> Auto-contrast and manual contrast
 
 The (min) and (max) fields on top of the buffer view can be changed to control
