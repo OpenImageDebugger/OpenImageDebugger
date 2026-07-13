@@ -394,7 +394,8 @@ void poll_ipc_and_update_thumbnails(FrameContext& ctx) {
 // acts on it).
 bool process_menu_and_shortcuts(FrameContext& ctx) {
     bool request_quit = false;
-    oid::host::draw_menu_bar(request_quit);
+    bool request_open = false;
+    oid::host::draw_menu_bar(request_quit, request_open);
     if (request_quit) {
         glfwSetWindowShouldClose(ctx.backend.window(), 1);
     }
@@ -423,6 +424,18 @@ bool process_menu_and_shortcuts(FrameContext& ctx) {
     }
     oid::host::draw_goto_panel(
         ctx.ui, ctx.stages, ctx.goto_open, ctx.svg_icons);
+
+    // Ctrl+O (Cmd+O on macOS) opens the native file dialog, same as
+    // File > Open. Like Ctrl+L, it fires regardless of keyboard capture
+    // and reuses the same platform modifier (shortcut_mod).
+    if (oid::host::should_fire_ctrl_shortcut(
+            shortcut_mod, ImGui::IsKeyPressed(ImGuiKey_O, /*repeat=*/false))) {
+        request_open = true;
+    }
+    if (request_open) {
+        ctx.file_open_queue.push_all(
+            oid::platform::request_open_files(ctx.backend.window()));
+    }
 
     // Ctrl+K (Cmd+K on macOS) focuses the symbol search box
     // (parity with the Qt app's global QShortcut calling

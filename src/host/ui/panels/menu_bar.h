@@ -30,12 +30,15 @@ namespace oid::host {
 
 // Draws the top-of-viewport main menu bar (ImGui::BeginMainMenuBar), the
 // ImGui frontend's parity replacement for the Qt app's QMenuBar. Minimal by
-// design: File > Quit and Help > About only, matching this phase's scope.
+// design: File > Open, File > Quit, and Help > About only, matching this
+// phase's scope.
 //
 // Sets `request_quit` to true when File > Quit is chosen; the caller is
 // responsible for actually tearing down the window loop (BeginMainMenuBar
-// itself has no notion of "quit").
-void draw_menu_bar(bool& request_quit);
+// itself has no notion of "quit"). Sets `request_open` to true when
+// File > Open is chosen; the caller is responsible for showing the native
+// file dialog and queuing the chosen paths.
+void draw_menu_bar(bool& request_quit, bool& request_open);
 
 } // namespace oid::host
 

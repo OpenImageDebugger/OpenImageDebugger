@@ -66,6 +66,18 @@ if(OID_BUILD_IMGUI_FRONTEND)
   # emscripten sysroot, and there is no vendored glfw target to build or
   # link against.
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+    # On Apple, GLFW's own CMakeLists enables the OBJC language itself (for
+    # its Cocoa backend), but nativefiledialog-extended's nfd_cocoa.m relies
+    # on OBJC already being enabled rather than enabling it itself. CMake's
+    # per-directory-scope language bookkeeping does not reliably reconcile
+    # one subdirectory explicitly enabling a language with a sibling
+    # subdirectory implicitly depending on it via source file extension
+    # alone (observed: "CMAKE_OBJC_COMPILE_OBJECT" missing during Generate).
+    # Enabling OBJC here, before either subdirectory is added, avoids that.
+    if(APPLE)
+      enable_language(OBJC)
+    endif()
+
     set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(GLFW_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
     set(GLFW_BUILD_DOCS     OFF CACHE BOOL "" FORCE)
@@ -75,6 +87,23 @@ if(OID_BUILD_IMGUI_FRONTEND)
     # tests/CMakeLists.txt for the same pattern applied to googletest).
     if(TARGET glfw)
       target_compile_options(glfw PRIVATE
+        $<$<C_COMPILER_ID:AppleClang,Clang,GNU>:-w>
+        $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-w>
+        $<$<C_COMPILER_ID:MSVC>:/w>
+        $<$<CXX_COMPILER_ID:MSVC>:/w>)
+    endif()
+
+    # nativefiledialog-extended: native-only, same as GLFW above. Skip its
+    # own tests/install targets -- this project only needs the `nfd` library.
+    set(NFD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(NFD_BUILD_SDL2_TESTS OFF CACHE BOOL "" FORCE)
+    set(NFD_INSTALL OFF CACHE BOOL "" FORCE)
+    add_subdirectory(thirdparty/nativefiledialog-extended)
+
+    # Vendored code is not held to this project's -Werror policy (see
+    # tests/CMakeLists.txt for the same pattern applied to googletest).
+    if(TARGET nfd)
+      target_compile_options(nfd PRIVATE
         $<$<C_COMPILER_ID:AppleClang,Clang,GNU>:-w>
         $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-w>
         $<$<C_COMPILER_ID:MSVC>:/w>
@@ -159,6 +188,7 @@ if(OID_BUILD_IMGUI_FRONTEND)
       platform/window_hints.cpp
       platform/display_env.cpp
       platform/app_services.cpp
+      platform/native_file_dialog.cpp
     )
   endif()
 
@@ -235,6 +265,7 @@ if(OID_BUILD_IMGUI_FRONTEND)
   else()
     target_link_libraries(oidwindow PRIVATE
       glfw
+      nfd
       ${OPENGL_gl_LIBRARY}
       Threads::Threads)
   endif()
