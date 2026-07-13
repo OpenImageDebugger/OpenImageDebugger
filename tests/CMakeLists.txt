@@ -840,5 +840,24 @@ if(OID_BUILD_IMGUI_FRONTEND)
     )
 
     add_test(NAME FileOpenQueueTests COMMAND file_open_queue_test)
+
+    # Test parse_cli() out of host/cli_options.cpp: pure argv-in/struct-out
+    # command-line parsing. No GL/disk dependency.
+    add_executable(cli_options_test
+        host/cli_options_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/cli_options.cpp
+    )
+
+    target_include_directories(cli_options_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    )
+
+    target_link_libraries(cli_options_test
+        PRIVATE
+        GTest::gtest_main
+        GTest::gtest
+    )
+
+    add_test(NAME CliOptionsTests COMMAND cli_options_test)
 endif()
 

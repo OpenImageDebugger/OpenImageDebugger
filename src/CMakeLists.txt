@@ -103,6 +103,7 @@ if(OID_BUILD_IMGUI_FRONTEND)
 
   set(IMGUI_FRONTEND_SOURCES
     main.cpp
+    host/cli_options.cpp
     host/app_icon.cpp
     host/app_icon_decode.cpp
     host/glfw_host_backend.cpp
@@ -140,6 +141,9 @@ if(OID_BUILD_IMGUI_FRONTEND)
     io/buffer_export_adapters.cpp
     host/io/imgui_buffer_exporter.cpp
     host/io/imgui_buffer_exporter_glue.cpp
+    host/io/file_buffer_loader.cpp
+    host/io/file_open_queue.cpp
+    host/io/npy_decode.cpp
     host/ui/svg_raster.cpp
     ${VIZ_SOURCES}
   )

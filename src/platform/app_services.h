@@ -51,10 +51,6 @@ struct Endpoint {
     unsigned short port{9588};
 };
 
-// Native: parse -h/--hostname and -p/--port. Non-native: arguments do not
-// exist; returns defaults (the postMessage transport ignores them anyway).
-Endpoint parse_endpoint(int argc, char** argv);
-
 // Non-native: wire the inbound message hook (must run before transport
 // polling starts). Native: no-op.
 void install_platform_hooks();
