@@ -62,7 +62,7 @@ customized to work with any arbitrary data structure.
 * CMake **3.28.3+**
 * Python **3.12.3+** development packages
 * OpenGL **2.1+** support
-* Linux only: Wayland and X11 development packages, needed to build the bundled GLFW (see the `apt install` command below)
+* Linux only: Wayland and X11 development packages (needed to build the bundled GLFW) and GTK 3 development packages (needed by the native file-open dialog); see the `apt install` command below. Alternatively, configure with `-DNFD_PORTAL=ON` to use the xdg-desktop-portal (D-Bus) dialog backend instead of GTK.
 
 All other third-party libraries are bundled as git submodules and built from source, so they don't need to be installed:
 
@@ -71,8 +71,9 @@ All other third-party libraries are bundled as git submodules and built from sou
 * [Eigen](https://gitlab.com/libeigen/eigen) — linear algebra for the visualization layer
 * [Asio](https://github.com/chriskohlhoff/asio) (standalone) — IPC between the debugger bridge and the viewer
 * [nlohmann/json](https://github.com/nlohmann/json) — settings persistence
-* [stb](https://github.com/nothings/stb) — PNG export and text rendering (`stb_image_write`, `stb_truetype`)
+* [stb](https://github.com/nothings/stb) — image decoding for opening files, plus PNG export and text rendering (`stb_image`, `stb_image_write`, `stb_truetype`)
 * [nanosvg](https://github.com/memononen/nanosvg) — toolbar icon rasterization
+* [nativefiledialog-extended](https://github.com/btzy/nativefiledialog-extended) — native OS dialog for File → Open (native builds only)
 * [GoogleTest](https://github.com/google/googletest) — unit tests
 
 Note: this list might get out-of-date by accident. For a more accurate list of requirements, please check what is used in <https://github.com/OpenImageDebugger/OpenImageDebugger/blob/main/.github/workflows/build.yml> and in the CI container images defined in <https://github.com/OpenImageDebugger/dockerfiles>.
@@ -94,9 +95,9 @@ If you'd rather build and integrate the desktop version manually, follow the ste
 On Ubuntu, you can install most of the dependencies with the following command:
 
 ```bash
-sudo apt install build-essential cmake libgl1-mesa-dev libpython3-dev python3-dev \
-    libwayland-dev libxcursor-dev libxi-dev libxinerama-dev libxkbcommon-dev \
-    libxrandr-dev pkg-config
+sudo apt install build-essential cmake libgl1-mesa-dev libgtk-3-dev libpython3-dev \
+    python3-dev libwayland-dev libxcursor-dev libxi-dev libxinerama-dev \
+    libxkbcommon-dev libxrandr-dev pkg-config
 ```
 
 ### Building the Open Image Debugger
