@@ -25,6 +25,7 @@
 
 #include "host/cli_options.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <initializer_list>
@@ -39,15 +40,10 @@ namespace {
 // prove that) simply matches nothing. Routing every alias through here keeps
 // std::strcmp off any unguarded pointer.
 bool matches(const char* arg, std::initializer_list<const char*> names) {
-    if (arg == nullptr) {
-        return false;
-    }
-    for (const char* name : names) {
-        if (std::strcmp(arg, name) == 0) {
-            return true;
-        }
-    }
-    return false;
+    return arg != nullptr &&
+           std::ranges::any_of(names, [arg](const char* name) {
+               return std::strcmp(arg, name) == 0;
+           });
 }
 
 // Parses a TCP port, accepting only the valid 1..65535 range; anything outside
