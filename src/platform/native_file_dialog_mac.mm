@@ -98,16 +98,16 @@ std::optional<std::string> request_save_path(const std::string& default_dir,
 
         OidSaveFormatController* controller =
             [[OidSaveFormatController alloc] init];
-        controller.panel        = panel;
+        controller.panel = panel;
         controller.contentTypes = types;
 
         // Start on the first (default) format. Must precede
         // setNameFieldStringValue, which can otherwise override the extension.
         panel.allowedContentTypes = @[ types[0] ];
-        panel.extensionHidden     = NO;
+        panel.extensionHidden = NO;
 
-        // A format picker is only meaningful when there is more than one choice;
-        // with a single format the panel already enforces it.
+        // A format picker is only meaningful when there is more than one
+        // choice; with a single format the panel already enforces it.
         NSPopUpButton* popup = nil;
         if ([labels count] > 1) {
             popup =
@@ -119,11 +119,11 @@ std::optional<std::string> request_save_path(const std::string& default_dir,
 
             NSTextField* caption =
                 [[NSTextField alloc] initWithFrame:NSMakeRect(4, 7, 52, 22)];
-            caption.editable       = NO;
-            caption.bordered       = NO;
-            caption.bezeled        = NO;
+            caption.editable = NO;
+            caption.bordered = NO;
+            caption.bezeled = NO;
             caption.drawsBackground = NO;
-            caption.stringValue    = @"Format:";
+            caption.stringValue = @"Format:";
 
             NSView* accessory =
                 [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 220, 34)];
@@ -133,8 +133,8 @@ std::optional<std::string> request_save_path(const std::string& default_dir,
         }
 
         if (!default_dir.empty()) {
-            panel.directoryURL =
-                [NSURL fileURLWithPath:@(default_dir.c_str()) isDirectory:YES];
+            panel.directoryURL = [NSURL fileURLWithPath:@(default_dir.c_str())
+                                            isDirectory:YES];
         }
         if (!default_name.empty()) {
             panel.nameFieldStringValue = @(default_name.c_str());
