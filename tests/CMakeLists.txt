@@ -819,5 +819,26 @@ if(OID_BUILD_IMGUI_FRONTEND)
     )
 
     add_test(NAME FileBufferLoaderTests COMMAND file_buffer_loader_test)
+
+    # Test FileOpenQueue out of host/io/file_open_queue.cpp: the FIFO of
+    # pending open-file paths the frame loop drains each frame, loading via
+    # an injected Loader and inserting via an injected Upsert. Pure logic --
+    # no GL/disk dependency, since both callables are supplied by the test.
+    add_executable(file_open_queue_test
+        host/io/file_open_queue_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/io/file_open_queue.cpp
+    )
+
+    target_include_directories(file_open_queue_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    )
+
+    target_link_libraries(file_open_queue_test
+        PRIVATE
+        GTest::gtest_main
+        GTest::gtest
+    )
+
+    add_test(NAME FileOpenQueueTests COMMAND file_open_queue_test)
 endif()
 
