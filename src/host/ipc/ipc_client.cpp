@@ -116,11 +116,22 @@ void IpcClient::handle_set_available_symbols() {
 }
 
 void IpcClient::handle_get_observed_symbols() {
+    // LOCAL_FILE-tagged buffers were opened directly from a local file and
+    // are never owned by the debugger, so they must never be advertised
+    // back via GET_OBSERVED_SYMBOLS_RESPONSE (re-plotting one would be
+    // meaningless and they must never be persisted in session state).
+    std::vector<std::string> observed;
+    for (std::size_t i = 0; i < model_.size(); ++i) {
+        if (model_.at(i).kind == BufferKind::DEBUGGER_SYMBOL) {
+            observed.push_back(model_.variable_name_of(i));
+        }
+    }
+
     oid::MessageComposer composer;
     composer.push(oid::MessageType::GET_OBSERVED_SYMBOLS_RESPONSE)
-        .push(model_.size());
-    for (std::size_t i = 0; i < model_.size(); ++i) {
-        composer.push(model_.variable_name_of(i));
+        .push(observed.size());
+    for (const std::string& name : observed) {
+        composer.push(name);
     }
     send_guarded(composer);
 }
