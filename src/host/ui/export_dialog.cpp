@@ -114,8 +114,8 @@ oid::BufferExporter::OutputType classify_export_format(std::string_view path) {
 
 std::string ensure_export_extension(std::string path,
                                     oid::BufferExporter::OutputType format) {
-    const std::string_view ext = extension_for(format);
-    if (!ends_with(path, ext)) {
+    if (const std::string_view ext = extension_for(format);
+        !ends_with(path, ext)) {
         path += ext;
     }
     return path;
