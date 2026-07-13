@@ -40,28 +40,28 @@
 TEST(ExportCore, NormalizeUint8GrayIdentityContrast) {
     // 2x2 single-channel uint8, bc = {1,1,1,1, 0,0,0,0} (gain 1, bias 0),
     // layout "rgba"
-    const std::uint8_t px[] = {0, 64, 128, 255};
-    const auto img = oid::BufferExporter::normalize_to_rgba8_raw(
-        px,
-        {.type = oid::BufferType::UNSIGNED_BYTE,
-         .width = 2,
-         .height = 2,
-         .channels = 1,
-         .step = 2,
-         .pixel_layout = "rgba"},
-        {1, 1, 1, 1, 0, 0, 0, 0});
-    ASSERT_EQ(img.width, 2);
-    ASSERT_EQ(img.height, 2);
-    ASSERT_EQ(img.pixels.size(), 16u);
+    constexpr std::uint8_t px[] = {0, 64, 128, 255};
+    const auto [width, height, pixels] =
+        oid::BufferExporter::normalize_to_rgba8_raw(
+            px,
+            {.type = oid::BufferType::UNSIGNED_BYTE,
+             .width = 2,
+             .height = 2,
+             .channels = 1,
+             .step = 2,
+             .pixel_layout = "rgba"},
+            {1, 1, 1, 1, 0, 0, 0, 0});
+    ASSERT_EQ(width, 2);
+    ASSERT_EQ(height, 2);
+    ASSERT_EQ(pixels.size(), 16u);
     // Grayscale repeats ch0 into G,B; A=255.
     const std::uint8_t expected[] = {
         0, 0, 0, 255, 64, 64, 64, 255, 128, 128, 128, 255, 255, 255, 255, 255};
-    EXPECT_TRUE(std::equal(img.pixels.begin(), img.pixels.end(), expected));
+    EXPECT_TRUE(std::equal(pixels.begin(), pixels.end(), expected));
 }
 
 TEST(ExportCore, NormalizeFloatScalesTo255) {
-    const std::array<float, 2> px = {0.0f,
-                                     1.0f}; // width=2, height=1, 1ch, step=2
+    constexpr std::array px = {0.0f, 1.0f}; // width=2, height=1, 1ch, step=2
     const auto img = oid::BufferExporter::normalize_to_rgba8_raw(
         reinterpret_cast<const std::uint8_t*>(px.data()),
         {.type = oid::BufferType::FLOAT32,
@@ -84,8 +84,9 @@ TEST(ExportCore, OctaveGoldenBytes) {
     std::ifstream is{p, std::ios::binary};
     std::vector<char> got{std::istreambuf_iterator<char>(is), {}};
     // "uint8\n" + int32 LE height=2, width=3, channels=1 + 6 payload bytes
-    const char expected[] = {'u', 'i', 'n', 't', '8', '\n', 2, 0, 0, 0, 3, 0,
-                             0,   0,   1,   0,   0,   0,    1, 2, 3, 4, 5, 6};
+    constexpr char expected[] = {'u', 'i', 'n', 't', '8', '\n', 2, 0,
+                                 0,   0,   3,   0,   0,   0,    1, 0,
+                                 0,   0,   1,   2,   3,   4,    5, 6};
     ASSERT_EQ(got.size(), sizeof(expected));
     EXPECT_TRUE(std::equal(got.begin(), got.end(), expected));
 }
@@ -117,23 +118,28 @@ TEST(ExportCore, NpyGoldenBytes) {
 
 TEST(ExportCore, NpyPayloadEqualsOctavePayload) {
     // .npy and .oct share the same tightly-packed raw data region.
-    const std::uint16_t px[] = {10, 20, 30, 40, 50, 60}; // 3x2, 1ch, step=3
+    const std::array<std::uint16_t, 6> px = {
+        10, 20, 30, 40, 50, 60}; // 3x2, 1ch
     const auto oct = oid::test::scratch_dir() / "oid_cmp.oct";
     const auto npy = oid::test::scratch_dir() / "oid_cmp.npy";
     std::filesystem::remove(oct);
     std::filesystem::remove(npy);
-    const auto* bytes = reinterpret_cast<const std::uint8_t*>(px);
+    const auto* bytes = reinterpret_cast<const std::uint8_t*>(px.data());
     ASSERT_TRUE(oid::BufferExporter::export_octave_raw(
         bytes, oid::BufferType::UNSIGNED_SHORT, 3, 2, 1, 3, oct.string()));
     ASSERT_TRUE(oid::BufferExporter::export_npy_raw(
         bytes, oid::BufferType::UNSIGNED_SHORT, 3, 2, 1, 3, npy.string()));
     const auto read = [](const std::filesystem::path& p) {
         std::ifstream is{p, std::ios::binary};
-        return std::vector<char>{std::istreambuf_iterator<char>(is), {}};
+        std::vector<std::byte> vector;
+        for (std::istreambuf_iterator<char> it{is}, end; it != end; ++it) {
+            vector.push_back(static_cast<std::byte>(*it));
+        }
+        return vector;
     };
-    const std::vector<char> o = read(oct);
-    const std::vector<char> n = read(npy);
-    const char* payload = reinterpret_cast<const char*>(px);
+    const std::vector<std::byte> o = read(oct);
+    const std::vector<std::byte> n = read(npy);
+    const auto* payload = reinterpret_cast<const std::byte*>(px.data());
     ASSERT_GE(o.size(), 12u);
     ASSERT_GE(n.size(), 12u);
     EXPECT_TRUE(std::equal(o.end() - 12, o.end(), payload));
@@ -151,7 +157,7 @@ TEST(ExportCore, NpyDescrForAllDtypes) {
         ASSERT_TRUE(oid::BufferExporter::export_npy_raw(
             px.data(), type, width, height, 1, width, p.string()));
         std::ifstream is{p, std::ios::binary};
-        const std::string data{std::istreambuf_iterator<char>(is), {}};
+        const std::string data{std::istreambuf_iterator(is), {}};
         EXPECT_NE(data.find(expected_descr), std::string::npos)
             << "missing " << expected_descr;
     };
@@ -173,11 +179,11 @@ TEST(ExportCore, NpyDescrForAllDtypes) {
 }
 
 TEST(ExportCore, NpyRoundTripsThroughReader) {
-    const float px[] = {1.5f, -2.0f, 3.25f, 4.0f}; // 2x2, 1ch, step=2
+    constexpr std::array px = {1.5f, -2.0f, 3.25f, 4.0f}; // 2x2, 1ch
     const auto p = oid::test::scratch_dir() / "oid_rt.npy";
     std::filesystem::remove(p);
     ASSERT_TRUE(oid::BufferExporter::export_npy_raw(
-        reinterpret_cast<const std::uint8_t*>(px),
+        reinterpret_cast<const std::uint8_t*>(px.data()),
         oid::BufferType::FLOAT32,
         2,
         2,
@@ -198,7 +204,7 @@ TEST(ExportCore, NpyRoundTripsThroughReader) {
     EXPECT_EQ(arr->bytes.size(), sizeof(px));
     EXPECT_TRUE(std::equal(arr->bytes.begin(),
                            arr->bytes.end(),
-                           reinterpret_cast<const std::byte*>(px)));
+                           reinterpret_cast<const std::byte*>(px.data())));
 }
 
 TEST(ExportCore, NpyMultiChannelShapeIs3D) {
@@ -208,7 +214,7 @@ TEST(ExportCore, NpyMultiChannelShapeIs3D) {
     ASSERT_TRUE(oid::BufferExporter::export_npy_raw(
         px, oid::BufferType::UNSIGNED_BYTE, 2, 2, 2, 2, p.string()));
     std::ifstream is{p, std::ios::binary};
-    const std::string data{std::istreambuf_iterator<char>(is), {}};
+    const std::string data{std::istreambuf_iterator(is), {}};
     EXPECT_NE(data.find("'shape': (2, 2, 2)"), std::string::npos);
 }
 

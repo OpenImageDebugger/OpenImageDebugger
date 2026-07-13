@@ -31,6 +31,7 @@
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <limits>
 
@@ -211,7 +212,7 @@ bool export_octave_impl(const std::uint8_t* data,
     return ofs.good();
 }
 
-std::string npy_descr(BufferType type) {
+std::string npy_descr(const BufferType type) {
     using enum BufferType;
     switch (type) {
     case UNSIGNED_BYTE:
@@ -233,16 +234,16 @@ std::string npy_descr(BufferType type) {
 // space-padded, '\n'-terminated dict so that (10 + header_len) % 64 == 0.
 void write_npy_header(std::ofstream& ofs,
                       const std::string& descr,
-                      int height,
-                      int width,
-                      int channels) {
+                      const int height,
+                      const int width,
+                      const int channels) {
     const std::string shape =
-        channels == 1
-            ? "(" + std::to_string(height) + ", " + std::to_string(width) + ")"
-            : "(" + std::to_string(height) + ", " + std::to_string(width) +
-                  ", " + std::to_string(channels) + ")";
-    std::string dict = "{'descr': '" + descr +
-                       "', 'fortran_order': False, 'shape': " + shape + ", }";
+        channels == 1 ? std::format("({}, {})", height, width)
+                      : std::format("({}, {}, {})", height, width, channels);
+    std::string dict =
+        std::format("{{'descr': '{}', 'fortran_order': False, 'shape': {}, }}",
+                    descr,
+                    shape);
 
     // 10 bytes precede the dict (6 magic + 2 version + 2 length); the dict
     // carries a trailing '\n'. Pad with spaces up to the next 64-byte boundary.
@@ -251,35 +252,41 @@ void write_npy_header(std::ofstream& ofs,
     dict.append(padded - unpadded, ' ');
     dict.push_back('\n');
 
+    // The .npy spec fixes the header length as two little-endian bytes,
+    // independent of host byte order, so emit them explicitly.
     const auto header_len = static_cast<std::uint16_t>(dict.size());
+    const std::array len_le = {static_cast<char>(header_len & 0xFF),
+                               static_cast<char>((header_len >> 8) & 0xFF)};
+    constexpr std::array<char, 2> version = {1, 0};
     ofs.write("\x93NUMPY", 6);
-    const char version[2] = {1, 0};
-    ofs.write(version, sizeof(version));
-    ofs.write(reinterpret_cast<const char*>(&header_len), sizeof(header_len));
+    ofs.write(version.data(), version.size());
+    ofs.write(len_le.data(), len_le.size());
     ofs.write(dict.data(), static_cast<std::streamsize>(dict.size()));
 }
 
 template <typename T>
 bool export_npy_impl(const std::uint8_t* data,
-                     BufferType type,
-                     int width,
-                     int height,
-                     int channels_i,
-                     int step,
+                     const BufferType type,
+                     const int width,
+                     const int height,
+                     const int channels_i,
+                     const int step,
                      const std::string& path) {
     const auto width_i = static_cast<std::size_t>(width);
     const auto height_i = static_cast<std::size_t>(height);
-    const auto in_ptr = std::bit_cast<const T*>(data);
+    const auto channels = static_cast<std::size_t>(channels_i);
+    const auto step_i = static_cast<std::size_t>(step);
 
     auto ofs = std::ofstream{std::filesystem::path{path}, std::ios::binary};
     write_npy_header(ofs, npy_descr(type), height, width, channels_i);
 
-    const auto row_bytes =
-        sizeof(T) * static_cast<std::size_t>(channels_i) * width_i;
+    // step is measured in pixels; each pixel spans channels * sizeof(T) bytes.
+    // Offsetting the byte pointer directly avoids assuming the input is an
+    // aligned, live T[] sequence.
+    const auto row_bytes = sizeof(T) * channels * width_i;
+    const auto row_stride = sizeof(T) * channels * step_i;
     for (std::size_t y = 0; y < height_i; ++y) {
-        ofs.write(reinterpret_cast<const char*>(
-                      in_ptr + y * static_cast<std::size_t>(step) *
-                                   static_cast<std::size_t>(channels_i)),
+        ofs.write(reinterpret_cast<const char*>(data + y * row_stride),
                   static_cast<std::streamsize>(row_bytes));
     }
     return ofs.good();

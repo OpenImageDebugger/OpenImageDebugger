@@ -37,7 +37,7 @@ namespace oid::BufferExporter {
 RgbaImage normalize_to_rgba8(const Buffer& buffer) {
     const auto* bc = buffer.auto_buffer_contrast_brightness();
     auto bc_comp = std::array<float, 8>{};
-    std::copy(bc, bc + 8, bc_comp.begin());
+    std::copy_n(bc, 8, bc_comp.begin());
 
     return normalize_to_rgba8_raw(
         std::bit_cast<const std::uint8_t*>(buffer.buffer().data()),

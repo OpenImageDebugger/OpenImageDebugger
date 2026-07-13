@@ -55,11 +55,13 @@ bool ends_with_ci(std::string_view s, std::string_view suffix) {
         return false;
     }
     const std::string_view tail = s.substr(s.size() - suffix.size());
-    return std::equal(
-        tail.begin(), tail.end(), suffix.begin(), [](char a, char b) {
-            return std::tolower(static_cast<unsigned char>(a)) ==
-                   std::tolower(static_cast<unsigned char>(b));
-        });
+    return std::equal(tail.begin(),
+                      tail.end(),
+                      suffix.begin(),
+                      [](const char a, const char b) {
+                          return std::tolower(static_cast<unsigned char>(a)) ==
+                                 std::tolower(static_cast<unsigned char>(b));
+                      });
 }
 
 // Copies `s` into `buf` as a null-terminated C string, truncating to fit

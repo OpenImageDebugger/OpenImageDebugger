@@ -41,20 +41,20 @@
 
 namespace oid::host {
 
-bool export_buffer_imgui(const oid::Buffer& buffer,
+bool export_buffer_imgui(const Buffer& buffer,
                          const std::string& path,
-                         oid::BufferExporter::OutputType type) {
+                         BufferExporter::OutputType type) {
     try {
-        using enum oid::BufferExporter::OutputType;
+        using enum BufferExporter::OutputType;
         switch (type) {
         case BITMAP: {
-            const auto image = oid::BufferExporter::normalize_to_rgba8(buffer);
+            const auto image = BufferExporter::normalize_to_rgba8(buffer);
             return export_rgba_png(image, path);
         }
         case OCTAVE_MATRIX:
-            return oid::BufferExporter::export_octave(buffer, path);
+            return BufferExporter::export_octave(buffer, path);
         case NUMPY_ARRAY:
-            return oid::BufferExporter::export_npy(buffer, path);
+            return BufferExporter::export_npy(buffer, path);
         }
         return false;
     } catch (const std::exception& e) {
