@@ -29,6 +29,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdlib>
 #include <span>
 #include <string_view>
@@ -44,9 +45,20 @@ constexpr std::array<ExportFormat, 2> EXPORT_FORMATS{{
     {oid::BufferExporter::OutputType::OCTAVE_MATRIX, ".oct", "Octave matrix"},
 }};
 
-bool ends_with(std::string_view s, std::string_view suffix) {
-    return s.size() >= suffix.size() &&
-           s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
+// Case-insensitive ASCII suffix test. Export extensions are ASCII, so a
+// byte-wise tolower comparison is enough (and locale-independent); it lets a
+// user-typed ".PNG"/".OCT" match the registry's canonical ".png"/".oct" so the
+// format is classified correctly and no second extension is appended.
+bool ends_with_ci(std::string_view s, std::string_view suffix) {
+    if (s.size() < suffix.size()) {
+        return false;
+    }
+    const std::string_view tail = s.substr(s.size() - suffix.size());
+    return std::equal(
+        tail.begin(), tail.end(), suffix.begin(), [](char a, char b) {
+            return std::tolower(static_cast<unsigned char>(a)) ==
+                   std::tolower(static_cast<unsigned char>(b));
+        });
 }
 
 // Copies `s` into `buf` as a null-terminated C string, truncating to fit
@@ -105,7 +117,7 @@ void open_export_dialog(ExportDialogState& st,
 
 oid::BufferExporter::OutputType classify_export_format(std::string_view path) {
     for (const auto& fmt : EXPORT_FORMATS) {
-        if (ends_with(path, fmt.extension)) {
+        if (ends_with_ci(path, fmt.extension)) {
             return fmt.type;
         }
     }
@@ -115,7 +127,7 @@ oid::BufferExporter::OutputType classify_export_format(std::string_view path) {
 std::string ensure_export_extension(std::string path,
                                     oid::BufferExporter::OutputType format) {
     if (const std::string_view ext = extension_for(format);
-        !ends_with(path, ext)) {
+        !ends_with_ci(path, ext)) {
         path += ext;
     }
     return path;
