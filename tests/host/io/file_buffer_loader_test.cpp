@@ -61,6 +61,50 @@ std::vector<std::byte> make_png_rgb(int width, int height) {
     return g_sink;
 }
 
+// Encode an 8-bit RGBA PNG (width x height) in memory.
+std::vector<std::byte> make_png_rgba(int width, int height) {
+    std::vector<unsigned char> pixels(static_cast<std::size_t>(width) * height *
+                                      4);
+    for (std::size_t i = 0; i < pixels.size(); ++i) {
+        pixels[i] = static_cast<unsigned char>(i & 0xFF);
+    }
+    g_sink.clear();
+    stbi_write_png_to_func(
+        sink_write, nullptr, width, height, 4, pixels.data(), width * 4);
+    return g_sink;
+}
+
+// A PNG signature + IHDR claiming the given dimensions, followed by an empty
+// IDAT header and no pixel data -- what a decompression bomb looks like: a tiny
+// file whose header advertises an enormous image. stbi_info reads the claimed
+// dimensions from IHDR and stops at the IDAT without decoding, which is what the
+// size preflight inspects. (stb keeps scanning past IHDR for a tRNS chunk, so
+// the IDAT is required for the header scan to terminate; stb does not verify the
+// zero CRCs.)
+std::vector<std::byte> make_png_header(std::uint32_t w, std::uint32_t h) {
+    std::vector<std::byte> b;
+    auto push = [&b](std::initializer_list<int> xs) {
+        for (const int x : xs) {
+            b.push_back(static_cast<std::byte>(x & 0xFF));
+        }
+    };
+    auto push_be32 = [&push](std::uint32_t v) {
+        push({static_cast<int>((v >> 24) & 0xFF),
+              static_cast<int>((v >> 16) & 0xFF),
+              static_cast<int>((v >> 8) & 0xFF), static_cast<int>(v & 0xFF)});
+    };
+    push({0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}); // signature
+    push_be32(13);                                       // IHDR data length
+    push({'I', 'H', 'D', 'R'});
+    push_be32(w);
+    push_be32(h);
+    push({8, 2, 0, 0, 0}); // 8-bit, RGB, deflate, no filter, no interlace
+    push_be32(0);          // IHDR CRC placeholder (stb does not validate it)
+    push_be32(0);          // empty IDAT data length
+    push({'I', 'D', 'A', 'T'}); // header scan stops here with the claimed dims
+    return b;
+}
+
 // Encode an HDR (float RGB) image in memory.
 std::vector<std::byte> make_hdr_rgb(int width, int height) {
     std::vector<float> pixels(static_cast<std::size_t>(width) * height * 3,
@@ -162,6 +206,30 @@ TEST(FileBufferLoaderTest, RejectsGarbageBytes) {
     const std::vector<std::byte> junk(32, std::byte{0x7F});
     const auto result = decode_file_bytes(junk, "x.bin", "x.bin");
     EXPECT_FALSE(result.has_value());
+}
+
+TEST(FileBufferLoaderTest, DecodesNarrowRgba) {
+    // A 2x2 RGBA image has width (2) < channels (4). The decoder must produce a
+    // valid record (step == width), which the renderer must accept.
+    const auto bytes = make_png_rgba(2, 2);
+    const auto result = decode_file_bytes(bytes, "n.png", "n.png");
+    ASSERT_TRUE(result.has_value()) << result.error();
+    EXPECT_EQ(result->width, 2);
+    EXPECT_EQ(result->channels, 4);
+    EXPECT_EQ(result->step, 2); // pixels-per-row == width, i.e. step < channels
+    EXPECT_EQ(result->pixel_layout, "rgba");
+}
+
+TEST(FileBufferLoaderTest, RejectsOversizeImageDimensions) {
+    // A tiny file claiming a width past the decode cap (a decompression bomb)
+    // must be rejected up front from the header, not attempted and crashed.
+    // (Dimensions stay within stb's own overflow guard so stbi_info reports
+    // them and our cap is what does the rejecting.)
+    const auto bytes = make_png_header(200000, 100);
+    const auto result = decode_file_bytes(bytes, "bomb.png", "bomb.png");
+    ASSERT_FALSE(result.has_value());
+    EXPECT_NE(result.error().find("dimension"), std::string::npos)
+        << result.error();
 }
 
 TEST(FileBufferLoaderTest, RejectsMissingFile) {

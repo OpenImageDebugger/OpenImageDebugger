@@ -362,10 +362,13 @@ void Buffer::configure(const BufferParams& params) {
         return;
     }
 
-    // Validate step (must be positive and at least as large as channels)
-    if (params.step < params.channels) {
+    // Validate step. `step` is pixels per row (GL_UNPACK_ROW_LENGTH, see
+    // below), so it must be at least the row width -- not the channel count.
+    // A narrow multi-channel image (e.g. a 2x2 RGBA buffer, width 2 < 4
+    // channels) is valid and must not be rejected here.
+    if (params.step < params.buffer_width_i) {
         std::cerr << "[Error] Invalid step: " << params.step
-                  << " (must be >= channels: " << params.channels << ")"
+                  << " (must be >= width: " << params.buffer_width_i << ")"
                   << std::endl;
         return;
     }
