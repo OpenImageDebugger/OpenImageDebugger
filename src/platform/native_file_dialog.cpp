@@ -79,8 +79,8 @@ std::vector<std::string> request_open_files(GLFWwindow* /*window*/) {
     args.parentWindow = {};
 
     std::vector<std::string> paths;
-    const nfdpathset_t* path_set = nullptr;
-    if (NFD_OpenDialogMultipleU8_With(&path_set, &args) == NFD_OKAY &&
+    if (const nfdpathset_t* path_set = nullptr;
+        NFD_OpenDialogMultipleU8_With(&path_set, &args) == NFD_OKAY &&
         path_set != nullptr) {
         paths = collect_paths(path_set);
         NFD_PathSet_Free(path_set);
