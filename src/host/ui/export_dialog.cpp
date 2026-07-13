@@ -40,9 +40,10 @@ namespace {
 
 // Anonymous-namespace export-format registry; see export_formats() below for
 // the public accessor. Adding a format (e.g. NumPy .npy) is one row here.
-constexpr std::array<ExportFormat, 2> EXPORT_FORMATS{{
+constexpr std::array<ExportFormat, 3> EXPORT_FORMATS{{
     {oid::BufferExporter::OutputType::BITMAP, ".png", "PNG image"},
     {oid::BufferExporter::OutputType::OCTAVE_MATRIX, ".oct", "Octave matrix"},
+    {oid::BufferExporter::OutputType::NUMPY_ARRAY, ".npy", "NumPy array"},
 }};
 
 // Case-insensitive ASCII suffix test. Export extensions are ASCII, so a
