@@ -37,24 +37,6 @@
 
 namespace oid::platform {
 
-Endpoint parse_endpoint(int argc, char** argv) {
-    Endpoint ep;
-    int i = 1;
-    while (i + 1 < argc) {
-        const std::string arg = argv[i];
-        if (arg == "-h" || arg == "--hostname") {
-            ep.host = argv[i + 1];
-            i += 2;
-        } else if (arg == "-p" || arg == "--port") {
-            ep.port = static_cast<unsigned short>(std::stoi(argv[i + 1]));
-            i += 2;
-        } else {
-            ++i;
-        }
-    }
-    return ep;
-}
-
 // No-op on native: there is no inbound host message hook to wire here --
 // that only exists for the non-native (postMessage) embedding, which must
 // install it before its transport starts polling.

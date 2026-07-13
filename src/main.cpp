@@ -25,6 +25,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
+#include <format>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -40,10 +42,13 @@
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 
+#include "host/cli_options.h"
 #include "host/frame_loop.h"
 #include "host/glfw_canvas.h"
 #include "host/glfw_host_backend.h"
 #include "host/imgui_layer.h"
+#include "host/io/file_buffer_loader.h"
+#include "host/io/file_open_queue.h"
 #include "host/ipc/ipc_client.h"
 #include "host/settings/app_settings.h"
 #include "host/settings/session_buffers.h"
@@ -357,6 +362,7 @@ struct FrameContext {
     std::vector<oid::host::PreviousBuffer>& prev_buffers;
     oid::platform::SessionBridge& session_bridge;
     oid::host::SettingsSaver& saver;
+    oid::host::FileOpenQueue& file_open_queue;
 };
 
 // Drains inbound IPC and reconciles the buffer-list thumbnail cache for
@@ -431,6 +437,40 @@ bool process_menu_and_shortcuts(FrameContext& ctx) {
         focus_symbol_search = true;
     }
     return focus_symbol_search;
+}
+
+// Decodes and upserts every file path queued via `-o`/`--open` (CLI startup
+// args seed the queue once; nothing else pushes to it yet). Reports the
+// outcome on the status bar (success) or stderr (failures), mirroring the
+// FileOpenQueue unit tests' succeeded/failed/last_error/last_success fields.
+void process_pending_file_opens(FrameContext& ctx) {
+    if (ctx.file_open_queue.empty()) {
+        return;
+    }
+
+    const oid::host::FileOpenOutcome outcome = ctx.file_open_queue.drain(
+        [](const std::string& path) {
+            return oid::host::load_buffer_from_file(path);
+        },
+        [&](oid::host::BufferRecord record) {
+            ctx.model.upsert(std::move(record));
+        });
+
+    if (outcome.failed > 0) {
+        std::fprintf(stderr,
+                     "OpenImageDebugger: failed to open %d file(s); last "
+                     "error: %s\n",
+                     outcome.failed,
+                     outcome.last_error.c_str());
+    }
+
+    if (outcome.succeeded > 0) {
+        ctx.ui.set_status_message(std::format(
+            "Opened {} ({} total)", outcome.last_success, outcome.succeeded));
+    } else if (outcome.failed > 0) {
+        ctx.ui.set_status_message(
+            std::format("Failed to open file: {}", outcome.last_error));
+    }
 }
 
 // Draws the app-chrome host body: menu-bar-adjacent layout math, the left
@@ -641,11 +681,17 @@ void persist_settings_if_dirty(FrameContext& ctx) {
     // of currently-loaded buffers, no I/O unless the saver decides
     // to flush.
     for (std::size_t i = 0; i < ctx.model.size(); ++i) {
+        if (ctx.model.at(i).kind == oid::host::BufferKind::LOCAL_FILE) {
+            continue;
+        }
         ctx.seen_this_session.insert(ctx.model.variable_name_of(i));
     }
     std::vector<std::string> loaded_names;
     loaded_names.reserve(ctx.model.size());
     for (std::size_t i = 0; i < ctx.model.size(); ++i) {
+        if (ctx.model.at(i).kind == oid::host::BufferKind::LOCAL_FILE) {
+            continue;
+        }
         loaded_names.push_back(ctx.model.variable_name_of(i));
     }
     const auto now_s = static_cast<std::int64_t>(
@@ -680,13 +726,15 @@ void persist_settings_if_dirty(FrameContext& ctx) {
 } // namespace
 
 int main(int argc, char** argv) {
-    // Qt-free host/port parse (mirrors the Qt app's --hostname/--port flags,
-    // see parse_connection_settings() in src/main.cpp -- not reused here
-    // since it's Qt-coupled). Defaults match the bridge's default listen
-    // port. Unrecognized args (e.g. a stray "-style fusion" the bridge may
-    // still pass on the Qt side) are ignored.
-    const oid::platform::Endpoint endpoint =
-        oid::platform::parse_endpoint(argc, argv);
+    // Qt-free CLI parse (mirrors the Qt app's --hostname/--port flags, see
+    // parse_connection_settings() in src/main.cpp -- not reused here since
+    // it's Qt-coupled), plus the repeatable -o/--open file-open flags this
+    // frontend adds on top. Defaults match the bridge's default listen port.
+    // Unrecognized args (e.g. a stray "-style fusion" the bridge may still
+    // pass on the Qt side) are ignored.
+    const oid::host::CliOptions cli = oid::host::parse_cli(argc, argv);
+    const oid::platform::Endpoint endpoint{
+        cli.hostname, static_cast<unsigned short>(cli.port)};
 
     // Wires the inbound message hook (non-native only; no-op native) so the
     // embedding host can push buffer data into the module; must be installed
@@ -844,6 +892,12 @@ int main(int argc, char** argv) {
                                    settings_backend.make_save_sink(ipc)};
     std::set<std::string, std::less<>> seen_this_session;
 
+    // Seeded once from the -o/--open CLI flags; process_pending_file_opens
+    // drains it (decode + upsert) on the first frame. Nothing else pushes to
+    // it yet.
+    oid::host::FileOpenQueue file_open_queue;
+    file_open_queue.push_all(cli.open_files);
+
     // FrameContext bundles the frame loop's state so the frame lambda's body
     // (originally one ~180-line block under a 19-entry capture list) can be
     // split into named helpers instead of re-threading each one's own
@@ -867,7 +921,8 @@ int main(int argc, char** argv) {
                      seen_this_session,
                      prev_buffers,
                      session_bridge,
-                     saver};
+                     saver,
+                     file_open_queue};
 
     oid::host::FrameLoop loop{backend, [&ctx, &imgui] {
                                   poll_ipc_and_update_thumbnails(ctx);
@@ -883,6 +938,7 @@ int main(int argc, char** argv) {
 
                                   const bool focus_symbol_search =
                                       process_menu_and_shortcuts(ctx);
+                                  process_pending_file_opens(ctx);
                                   draw_main_ui(ctx, focus_symbol_search);
                                   handle_export_requests(ctx);
 
