@@ -25,6 +25,7 @@
 
 #include "host/io/npy_decode.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -62,10 +63,10 @@ std::vector<std::byte> make_npy(const std::string& descr,
     dict.append(padded - unpadded, ' ');
     dict.push_back('\n');
 
-    const std::uint16_t header_len = static_cast<std::uint16_t>(dict.size());
+    const auto header_len = static_cast<std::uint16_t>(dict.size());
 
     std::vector<std::byte> blob;
-    const unsigned char magic[6] = {0x93, 'N', 'U', 'M', 'P', 'Y'};
+    const std::array<unsigned char, 6> magic = {0x93, 'N', 'U', 'M', 'P', 'Y'};
     for (unsigned char c : magic) {
         blob.push_back(static_cast<std::byte>(c));
     }

@@ -26,6 +26,7 @@
 #include "host/io/file_open_queue.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "host/io/expected.h"
@@ -36,10 +37,10 @@ using namespace oid::host;
 
 namespace {
 
-BufferRecord record_named(const std::string& name) {
+BufferRecord record_named(std::string_view name) {
     BufferRecord record;
-    record.variable_name = name;
-    record.display_name = name;
+    record.variable_name = std::string(name);
+    record.display_name = std::string(name);
     record.kind = BufferKind::LOCAL_FILE;
     return record;
 }
@@ -61,7 +62,9 @@ TEST(FileOpenQueueTest, DrainLoadsAndUpsertsEach) {
         [](const std::string& path) -> oid::Expected<BufferRecord> {
             return record_named(path);
         },
-        [&](BufferRecord record) { upserted.push_back(record.variable_name); });
+        [&upserted](const BufferRecord& record) {
+            upserted.push_back(record.variable_name);
+        });
 
     EXPECT_TRUE(queue.empty());
     EXPECT_EQ(outcome.succeeded, 2);
@@ -84,7 +87,7 @@ TEST(FileOpenQueueTest, DrainRecordsFailuresAndContinues) {
             }
             return record_named(path);
         },
-        [&](BufferRecord) { ++upsert_calls; });
+        [&upsert_calls](const BufferRecord&) { ++upsert_calls; });
 
     EXPECT_EQ(outcome.succeeded, 1);
     EXPECT_EQ(outcome.failed, 1);
@@ -96,11 +99,11 @@ TEST(FileOpenQueueTest, DrainOfEmptyQueueIsNoop) {
     FileOpenQueue queue;
     int loader_calls = 0;
     const auto outcome = queue.drain(
-        [&](const std::string&) -> oid::Expected<BufferRecord> {
+        [&loader_calls](const std::string&) -> oid::Expected<BufferRecord> {
             ++loader_calls;
             return record_named("x");
         },
-        [](BufferRecord) {});
+        [](const BufferRecord&) { /* empty queue never upserts */ });
     EXPECT_EQ(loader_calls, 0);
     EXPECT_EQ(outcome.succeeded, 0);
     EXPECT_EQ(outcome.failed, 0);

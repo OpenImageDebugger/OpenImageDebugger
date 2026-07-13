@@ -122,7 +122,7 @@ struct FakeTransport final : ITransport {
 // Transport whose send() always throws, simulating a dead/closed peer (e.g.
 // the viewer opened with no debugger attached).
 struct ThrowingTransport final : ITransport {
-    void send(std::span<const std::byte>) override {
+    [[noreturn]] void send(std::span<const std::byte>) override {
         throw std::runtime_error("transport is dead");
     }
 

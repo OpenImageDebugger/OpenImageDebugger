@@ -466,7 +466,7 @@ void process_pending_file_opens(FrameContext& ctx) {
         [](const std::string& path) {
             return oid::host::load_buffer_from_file(path);
         },
-        [&](oid::host::BufferRecord record) {
+        [&ctx](oid::host::BufferRecord record) {
             ctx.model.upsert(std::move(record));
         });
 

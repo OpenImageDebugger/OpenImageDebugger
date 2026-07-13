@@ -168,9 +168,16 @@ Expected<std::vector<int>> extract_shape(std::string_view header) {
     return dims;
 }
 
-} // namespace
+// The magic, version and header-length prefix parsed off the front of a .npy
+// blob: the ASCII header dict plus the offset at which the payload begins.
+struct NpyHeader {
+    std::string_view text;
+    std::size_t payload_offset;
+};
 
-Expected<NpyArray> decode_npy(std::span<const std::byte> data) {
+// Validate the magic and version prefix and locate the header dict. Handles the
+// differing header-length widths of v1 (2-byte) and v2+ (4-byte) formats.
+Expected<NpyHeader> parse_header_span(std::span<const std::byte> data) {
     static constexpr std::array<unsigned char, 6> kMagic = {
         0x93, 'N', 'U', 'M', 'P', 'Y'};
 
@@ -207,8 +214,71 @@ Expected<NpyArray> decode_npy(std::span<const std::byte> data) {
         return make_error("npy: header extends past buffer");
     }
 
-    const std::string_view header{
-        reinterpret_cast<const char*>(data.data() + data_off), header_len};
+    return NpyHeader{
+        std::string_view{reinterpret_cast<const char*>(data.data() + data_off),
+                         header_len},
+        data_off + header_len};
+}
+
+// The image geometry a shape tuple maps to (channels folded in for 3-D).
+struct NpyLayout {
+    int width;
+    int height;
+    int channels;
+    int step;
+    bool transpose;
+};
+
+// Turn a 2-D or 3-D shape (plus Fortran order) into image geometry, rejecting
+// unsupported ranks/orders and out-of-range dimensions.
+Expected<NpyLayout> layout_from_shape(const std::vector<int>& dims,
+                                      bool fortran) {
+    NpyLayout layout{};
+    if (dims.size() == 2) {
+        if (fortran) {
+            layout.width = dims[0];
+            layout.height = dims[1];
+            layout.step = dims[0];
+            layout.transpose = true;
+        } else {
+            layout.height = dims[0];
+            layout.width = dims[1];
+            layout.step = dims[1];
+            layout.transpose = false;
+        }
+        layout.channels = 1;
+    } else if (dims.size() == 3) {
+        if (fortran) {
+            return make_error(
+                "npy: Fortran-order 3-D arrays are not supported");
+        }
+        layout.height = dims[0];
+        layout.width = dims[1];
+        layout.channels = dims[2];
+        layout.step = dims[1];
+        layout.transpose = false;
+    } else {
+        return make_error("npy: only 2-D and 3-D arrays are supported");
+    }
+
+    if (layout.width < 1 || layout.width > 131072 || layout.height < 1 ||
+        layout.height > 131072) {
+        return make_error("npy: width/height out of range");
+    }
+    if (layout.channels < 1 || layout.channels > 4) {
+        return make_error("npy: channel count out of range");
+    }
+    return layout;
+}
+
+} // namespace
+
+Expected<NpyArray> decode_npy(std::span<const std::byte> data) {
+    const auto parsed = parse_header_span(data);
+    if (!parsed) {
+        return make_error(parsed.error());
+    }
+    const std::string_view header = parsed->text;
 
     const auto descr = extract_quoted(header, "'descr'");
     if (!descr) {
@@ -227,47 +297,21 @@ Expected<NpyArray> decode_npy(std::span<const std::byte> data) {
         return make_error(shape.error());
     }
 
+    const auto layout = layout_from_shape(*shape, *fortran);
+    if (!layout) {
+        return make_error(layout.error());
+    }
+
     NpyArray out;
     out.type = dtype->type;
-
-    const std::vector<int>& dims = *shape;
-    if (dims.size() == 2) {
-        if (*fortran) {
-            out.width = dims[0];
-            out.height = dims[1];
-            out.step = dims[0];
-            out.transpose = true;
-        } else {
-            out.height = dims[0];
-            out.width = dims[1];
-            out.step = dims[1];
-            out.transpose = false;
-        }
-        out.channels = 1;
-    } else if (dims.size() == 3) {
-        if (*fortran) {
-            return make_error(
-                "npy: Fortran-order 3-D arrays are not supported");
-        }
-        out.height = dims[0];
-        out.width = dims[1];
-        out.channels = dims[2];
-        out.step = dims[1];
-        out.transpose = false;
-    } else {
-        return make_error("npy: only 2-D and 3-D arrays are supported");
-    }
-
-    if (out.width < 1 || out.width > 131072 || out.height < 1 ||
-        out.height > 131072) {
-        return make_error("npy: width/height out of range");
-    }
-    if (out.channels < 1 || out.channels > 4) {
-        return make_error("npy: channel count out of range");
-    }
+    out.width = layout->width;
+    out.height = layout->height;
+    out.channels = layout->channels;
+    out.step = layout->step;
+    out.transpose = layout->transpose;
 
     std::size_t element_count = 1;
-    for (int d : dims) {
+    for (const int d : *shape) {
         if (d < 0) {
             return make_error("npy: negative shape dimension");
         }
@@ -275,12 +319,12 @@ Expected<NpyArray> decode_npy(std::span<const std::byte> data) {
     }
     const std::size_t expected_bytes =
         element_count * static_cast<std::size_t>(dtype->itemsize);
-    const std::size_t available = data.size() - (data_off + header_len);
-    if (available != expected_bytes) {
+    if (const std::size_t available = data.size() - parsed->payload_offset;
+        available != expected_bytes) {
         return make_error("npy: payload size mismatch");
     }
 
-    const std::byte* payload = data.data() + data_off + header_len;
+    const std::byte* payload = data.data() + parsed->payload_offset;
     out.bytes.assign(payload, payload + expected_bytes);
     return out;
 }

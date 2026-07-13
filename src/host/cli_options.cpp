@@ -27,6 +27,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 namespace oid::host {
 
@@ -36,36 +37,48 @@ bool matches(const char* arg, const char* a, const char* b) {
     return std::strcmp(arg, a) == 0 || std::strcmp(arg, b) == 0;
 }
 
+// Parses a TCP port, accepting only the valid 1..65535 range; anything outside
+// it would be narrowed to the wrong unsigned short later, so it is rejected and
+// the caller keeps the default.
+std::optional<int> parse_port(const char* text) {
+    if (const int value = std::atoi(text); value > 0 && value <= 65535) {
+        return value;
+    }
+    return std::nullopt;
+}
+
 } // namespace
 
 CliOptions parse_cli(int argc, const char* const* argv) {
     CliOptions options;
 
-    for (int i = 1; i < argc; ++i) {
+    // Index-advancing walk: value-taking flags consume the following token and
+    // advance by two, while bare or unknown flags advance by one. Keeping the
+    // advance explicit (rather than ++i inside argv[]) makes the flag/value
+    // pairing clear and avoids mutating the loop counter mid-expression.
+    int i = 1;
+    while (i < argc) {
         const char* arg = argv[i];
-        const bool has_next = (i + 1) < argc;
+        const char* value = (i + 1) < argc ? argv[i + 1] : nullptr;
 
-        if (matches(arg, "-o", "--open")) {
-            if (has_next) {
-                options.open_files.emplace_back(argv[++i]);
+        if (matches(arg, "-o", "--open") && value != nullptr) {
+            options.open_files.emplace_back(value);
+            i += 2;
+        } else if ((matches(arg, "-h", "--hostname") ||
+                    std::strcmp(arg, "--host") == 0) &&
+                   value != nullptr) {
+            options.hostname = value;
+            i += 2;
+        } else if (matches(arg, "-p", "--port") && value != nullptr) {
+            if (const auto port = parse_port(value)) {
+                options.port = *port;
             }
-        } else if (matches(arg, "-h", "--hostname") ||
-                   std::strcmp(arg, "--host") == 0) {
-            if (has_next) {
-                options.hostname = argv[++i];
-            }
-        } else if (matches(arg, "-p", "--port")) {
-            if (has_next) {
-                // Only accept a valid TCP port; anything outside 1..65535 would
-                // be narrowed to the wrong unsigned short later, so keep the
-                // default instead.
-                if (const int parsed = std::atoi(argv[++i]);
-                    parsed > 0 && parsed <= 65535) {
-                    options.port = parsed;
-                }
-            }
+            i += 2;
+        } else {
+            // Bare/unknown flags, and value-taking flags with no following
+            // token, are ignored.
+            ++i;
         }
-        // Unknown arguments are ignored.
     }
 
     return options;

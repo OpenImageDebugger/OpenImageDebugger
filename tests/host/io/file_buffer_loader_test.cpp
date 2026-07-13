@@ -25,6 +25,7 @@
 
 #include "host/io/file_buffer_loader.h"
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -41,11 +42,11 @@ using namespace oid::host;
 
 namespace {
 
-std::vector<std::byte> g_sink;
-
-void sink_write(void* /*context*/, void* data, int size) {
+// stb write callback: appends bytes to the std::vector passed as `context`.
+void sink_write(void* context, void* data, int size) {
+    auto* sink = static_cast<std::vector<std::byte>*>(context);
     const auto* p = static_cast<const std::byte*>(data);
-    g_sink.insert(g_sink.end(), p, p + size);
+    sink->insert(sink->end(), p, p + size);
 }
 
 // Encode an 8-bit RGB PNG (width x height) in memory.
@@ -55,10 +56,10 @@ std::vector<std::byte> make_png_rgb(int width, int height) {
     for (std::size_t i = 0; i < pixels.size(); ++i) {
         pixels[i] = static_cast<unsigned char>(i & 0xFF);
     }
-    g_sink.clear();
+    std::vector<std::byte> sink;
     stbi_write_png_to_func(
-        sink_write, nullptr, width, height, 3, pixels.data(), width * 3);
-    return g_sink;
+        sink_write, &sink, width, height, 3, pixels.data(), width * 3);
+    return sink;
 }
 
 // Encode an 8-bit RGBA PNG (width x height) in memory.
@@ -68,19 +69,19 @@ std::vector<std::byte> make_png_rgba(int width, int height) {
     for (std::size_t i = 0; i < pixels.size(); ++i) {
         pixels[i] = static_cast<unsigned char>(i & 0xFF);
     }
-    g_sink.clear();
+    std::vector<std::byte> sink;
     stbi_write_png_to_func(
-        sink_write, nullptr, width, height, 4, pixels.data(), width * 4);
-    return g_sink;
+        sink_write, &sink, width, height, 4, pixels.data(), width * 4);
+    return sink;
 }
 
 // A PNG signature + IHDR claiming the given dimensions, followed by an empty
 // IDAT header and no pixel data -- what a decompression bomb looks like: a tiny
 // file whose header advertises an enormous image. stbi_info reads the claimed
-// dimensions from IHDR and stops at the IDAT without decoding, which is what the
-// size preflight inspects. (stb keeps scanning past IHDR for a tRNS chunk, so
-// the IDAT is required for the header scan to terminate; stb does not verify the
-// zero CRCs.)
+// dimensions from IHDR and stops at the IDAT without decoding, which is what
+// the size preflight inspects. (stb keeps scanning past IHDR for a tRNS chunk,
+// so the IDAT is required for the header scan to terminate; stb does not verify
+// the zero CRCs.)
 std::vector<std::byte> make_png_header(std::uint32_t w, std::uint32_t h) {
     std::vector<std::byte> b;
     auto push = [&b](std::initializer_list<int> xs) {
@@ -91,7 +92,8 @@ std::vector<std::byte> make_png_header(std::uint32_t w, std::uint32_t h) {
     auto push_be32 = [&push](std::uint32_t v) {
         push({static_cast<int>((v >> 24) & 0xFF),
               static_cast<int>((v >> 16) & 0xFF),
-              static_cast<int>((v >> 8) & 0xFF), static_cast<int>(v & 0xFF)});
+              static_cast<int>((v >> 8) & 0xFF),
+              static_cast<int>(v & 0xFF)});
     };
     push({0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}); // signature
     push_be32(13);                                       // IHDR data length
@@ -109,10 +111,9 @@ std::vector<std::byte> make_png_header(std::uint32_t w, std::uint32_t h) {
 std::vector<std::byte> make_hdr_rgb(int width, int height) {
     std::vector<float> pixels(static_cast<std::size_t>(width) * height * 3,
                               0.5f);
-    g_sink.clear();
-    stbi_write_hdr_to_func(
-        sink_write, nullptr, width, height, 3, pixels.data());
-    return g_sink;
+    std::vector<std::byte> sink;
+    stbi_write_hdr_to_func(sink_write, &sink, width, height, 3, pixels.data());
+    return sink;
 }
 
 // Build a minimal v1 .npy blob: magic, version 1.0, header, payload.
@@ -143,7 +144,7 @@ std::vector<std::byte> make_npy(const std::string& descr,
     const auto header_len = static_cast<std::uint16_t>(dict.size());
 
     std::vector<std::byte> blob;
-    const unsigned char magic[6] = {0x93, 'N', 'U', 'M', 'P', 'Y'};
+    const std::array<unsigned char, 6> magic = {0x93, 'N', 'U', 'M', 'P', 'Y'};
     for (unsigned char c : magic) {
         blob.push_back(static_cast<std::byte>(c));
     }
