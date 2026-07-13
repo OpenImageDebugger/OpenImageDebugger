@@ -787,5 +787,37 @@ if(OID_BUILD_IMGUI_FRONTEND)
     )
 
     add_test(NAME NpyDecodeTests COMMAND npy_decode_test)
+
+    # Test the file-open pipeline out of host/io/file_buffer_loader.cpp:
+    # decode_file_bytes() dispatching between decode_npy() and stb_image,
+    # funnelled through host/ipc/buffer_decode.cpp's make_buffer_record(), plus
+    # load_buffer_from_file()'s disk-read/size-cap wrapper. This test TU
+    # supplies the STB_IMAGE_IMPLEMENTATION file_buffer_loader.cpp's
+    # `#include <stb_image.h>` only declares, and separately synthesizes PNG/
+    # HDR fixtures in memory via STB_IMAGE_WRITE_IMPLEMENTATION, mirroring
+    # imgui_buffer_exporter_test's macro discipline above.
+    add_executable(file_buffer_loader_test
+        host/io/file_buffer_loader_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/io/file_buffer_loader.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/io/npy_decode.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/ipc/buffer_decode.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/raw_data_decode.cpp
+    )
+
+    target_include_directories(file_buffer_loader_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    )
+
+    target_include_directories(file_buffer_loader_test SYSTEM
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/thirdparty/stb
+    )
+
+    target_link_libraries(file_buffer_loader_test
+        PRIVATE
+        GTest::gtest_main
+        GTest::gtest
+    )
+
+    add_test(NAME FileBufferLoaderTests COMMAND file_buffer_loader_test)
 endif()
 
