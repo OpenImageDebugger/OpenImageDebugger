@@ -25,7 +25,13 @@
 
 #include "platform/app_services.h"
 
+#include "host/ui/export_dialog.h"
+
 #include <array>
+#include <optional>
+#include <span>
+#include <string>
+#include <vector>
 
 #include <nfd.h>
 
@@ -97,10 +103,14 @@ std::optional<std::string> request_save_path(const std::string& default_dir,
         return std::nullopt;
     }
 
-    const std::array<nfdu8filteritem_t, 2> filters{{
-        {"PNG image", "png"},
-        {"Octave matrix", "oct"},
-    }};
+    const std::span<const oid::host::ExportFormat> formats =
+        oid::host::export_formats();
+    std::vector<nfdu8filteritem_t> filters;
+    filters.reserve(formats.size());
+    for (const auto& fmt : formats) {
+        // fmt.extension has a leading dot (".png"); nfd wants "png".
+        filters.push_back({fmt.label, fmt.extension + 1});
+    }
 
     nfdsavedialogu8args_t args{};
     args.filterList = filters.data();

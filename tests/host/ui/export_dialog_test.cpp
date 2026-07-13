@@ -30,6 +30,8 @@
 
 #include "host/ui/export_dialog.h"
 
+#include <span>
+#include <string>
 #include <string_view>
 
 #include <gtest/gtest.h>
@@ -38,7 +40,9 @@ using oid::BufferExporter::OutputType;
 using oid::host::classify_export_format;
 using oid::host::default_export_path;
 using oid::host::ensure_export_extension;
+using oid::host::export_formats;
 using oid::host::ExportDialogState;
+using oid::host::extension_for;
 using oid::host::open_export_dialog;
 using oid::host::set_export_path;
 
@@ -114,4 +118,18 @@ TEST(ExportDialog, SetExportPathCopiesIntoBuffer) {
     ExportDialogState st;
     set_export_path(st, "/exp/img.png");
     EXPECT_STREQ(st.path_buf.data(), "/exp/img.png");
+}
+
+TEST(ExportDialog, RegistryIsSelfConsistent) {
+    ASSERT_FALSE(export_formats().empty());
+
+    for (const auto& fmt : export_formats()) {
+        EXPECT_EQ(extension_for(fmt.type), std::string_view{fmt.extension});
+
+        EXPECT_EQ(classify_export_format(std::string{"/x/buf"} + fmt.extension),
+                  fmt.type);
+    }
+
+    EXPECT_EQ(classify_export_format("/x/noext"),
+              export_formats().front().type);
 }
