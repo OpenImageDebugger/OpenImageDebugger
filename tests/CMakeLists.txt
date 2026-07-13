@@ -766,5 +766,32 @@ if(OID_BUILD_IMGUI_FRONTEND)
     )
 
     add_test(NAME ExportDialogTests COMMAND export_dialog_test)
+
+    # Test decode_npy() out of host/io/npy_decode.cpp: the pure byte-in/
+    # struct-out NumPy .npy header+payload decoder. No GL/filesystem
+    # dependency -- its only header dependency (ipc/raw_data_decode.h's
+    # BufferType) is header-only, so no extra source/link beyond gtest.
+    add_executable(npy_decode_test
+        host/io/npy_decode_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/io/npy_decode.cpp
+    )
+
+    # decode_npy()'s std::expected<NpyArray, std::string> result type needs
+    # C++23; the rest of the project (and this test binary's dependents)
+    # stay on the common.cmake-wide C++20 standard, so this is scoped to
+    # just this target rather than bumping CMAKE_CXX_STANDARD globally.
+    set_target_properties(npy_decode_test PROPERTIES CXX_STANDARD 23)
+
+    target_include_directories(npy_decode_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    )
+
+    target_link_libraries(npy_decode_test
+        PRIVATE
+        GTest::gtest_main
+        GTest::gtest
+    )
+
+    add_test(NAME NpyDecodeTests COMMAND npy_decode_test)
 endif()
 
