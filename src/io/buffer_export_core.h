@@ -39,7 +39,7 @@ class Buffer;
 
 namespace oid::BufferExporter {
 
-enum class OutputType { BITMAP, OCTAVE_MATRIX };
+enum class OutputType { BITMAP, OCTAVE_MATRIX, NUMPY_ARRAY };
 
 struct RgbaImage {
     int width{0};
@@ -80,6 +80,17 @@ bool export_octave_raw(const std::uint8_t* data,
                        int channels,
                        int step,
                        const std::string& path);
+
+// NumPy .npy writer. Returns false on stream failure.
+bool export_npy(const Buffer& buffer, const std::string& path);
+
+bool export_npy_raw(const std::uint8_t* data,
+                    BufferType type,
+                    int width,
+                    int height,
+                    int channels,
+                    int step,
+                    const std::string& path);
 
 } // namespace oid::BufferExporter
 

@@ -582,6 +582,7 @@ if(OID_BUILD_IMGUI_FRONTEND)
     add_executable(buffer_export_core_test
         io/buffer_export_core_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/io/buffer_export_core.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/io/npy_decode.cpp
     )
 
     target_compile_definitions(buffer_export_core_test PRIVATE OID_IMGUI_FRONTEND)

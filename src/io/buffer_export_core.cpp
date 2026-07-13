@@ -211,6 +211,80 @@ bool export_octave_impl(const std::uint8_t* data,
     return ofs.good();
 }
 
+std::string npy_descr(BufferType type) {
+    using enum BufferType;
+    switch (type) {
+    case UNSIGNED_BYTE:
+        return "|u1";
+    case UNSIGNED_SHORT:
+        return "<u2";
+    case SHORT:
+        return "<i2";
+    case INT32:
+        return "<i4";
+    case FLOAT32:
+    case FLOAT64: // OID stores doubles as float32
+        return "<f4";
+    }
+    return "|u1";
+}
+
+// Writes the .npy v1.0 header: magic, version, uint16-LE length, then a
+// space-padded, '\n'-terminated dict so that (10 + header_len) % 64 == 0.
+void write_npy_header(std::ofstream& ofs,
+                      const std::string& descr,
+                      int height,
+                      int width,
+                      int channels) {
+    const std::string shape =
+        channels == 1
+            ? "(" + std::to_string(height) + ", " + std::to_string(width) + ")"
+            : "(" + std::to_string(height) + ", " + std::to_string(width) +
+                  ", " + std::to_string(channels) + ")";
+    std::string dict = "{'descr': '" + descr +
+                       "', 'fortran_order': False, 'shape': " + shape + ", }";
+
+    // 10 bytes precede the dict (6 magic + 2 version + 2 length); the dict
+    // carries a trailing '\n'. Pad with spaces up to the next 64-byte boundary.
+    const std::size_t unpadded = 10 + dict.size() + 1;
+    const std::size_t padded = ((unpadded + 63) / 64) * 64;
+    dict.append(padded - unpadded, ' ');
+    dict.push_back('\n');
+
+    const auto header_len = static_cast<std::uint16_t>(dict.size());
+    ofs.write("\x93NUMPY", 6);
+    const char version[2] = {1, 0};
+    ofs.write(version, sizeof(version));
+    ofs.write(reinterpret_cast<const char*>(&header_len), sizeof(header_len));
+    ofs.write(dict.data(), static_cast<std::streamsize>(dict.size()));
+}
+
+template <typename T>
+bool export_npy_impl(const std::uint8_t* data,
+                     BufferType type,
+                     int width,
+                     int height,
+                     int channels_i,
+                     int step,
+                     const std::string& path) {
+    const auto width_i = static_cast<std::size_t>(width);
+    const auto height_i = static_cast<std::size_t>(height);
+    const auto in_ptr = std::bit_cast<const T*>(data);
+
+    auto ofs = std::ofstream{std::filesystem::path{path}, std::ios::binary};
+    write_npy_header(ofs, npy_descr(type), height, width, channels_i);
+
+    const auto row_bytes =
+        sizeof(T) * static_cast<std::size_t>(channels_i) * width_i;
+    for (std::size_t y = 0; y < height_i; ++y) {
+        ofs.write(reinterpret_cast<const char*>(
+                      in_ptr + y * static_cast<std::size_t>(step) *
+                                   static_cast<std::size_t>(channels_i)),
+                  static_cast<std::streamsize>(row_bytes));
+    }
+    return ofs.good();
+}
+
 } // namespace
 
 RgbaImage normalize_to_rgba8_raw(const std::uint8_t* data,
@@ -290,6 +364,36 @@ bool export_octave_raw(const std::uint8_t* data,
     case FLOAT64:
         return export_octave_impl<float>(
             data, width, height, channels, step, path);
+    }
+    return false;
+}
+
+bool export_npy_raw(const std::uint8_t* data,
+                    const BufferType type,
+                    const int width,
+                    const int height,
+                    const int channels,
+                    const int step,
+                    const std::string& path) {
+    using enum BufferType;
+    switch (type) {
+    case UNSIGNED_BYTE:
+        return export_npy_impl<std::uint8_t>(
+            data, type, width, height, channels, step, path);
+    case UNSIGNED_SHORT:
+        return export_npy_impl<std::uint16_t>(
+            data, type, width, height, channels, step, path);
+    case SHORT:
+        return export_npy_impl<std::int16_t>(
+            data, type, width, height, channels, step, path);
+    case INT32:
+        return export_npy_impl<std::int32_t>(
+            data, type, width, height, channels, step, path);
+    case FLOAT32:
+        [[fallthrough]];
+    case FLOAT64:
+        return export_npy_impl<float>(
+            data, type, width, height, channels, step, path);
     }
     return false;
 }
