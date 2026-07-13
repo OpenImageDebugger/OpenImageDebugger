@@ -70,7 +70,7 @@ void format_pixel_value(std::stringstream& message,
         message << std::bit_cast<const float*>(buffer.data())[pos];
         break;
     case FLOAT64:
-        message << std::bit_cast<const double*>(buffer.data())[pos];
+        message << std::bit_cast<const float*>(buffer.data())[pos];
         break;
     case UNSIGNED_BYTE:
         message << static_cast<short>(static_cast<uint8_t>(buffer[pos]));
