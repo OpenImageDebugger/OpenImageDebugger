@@ -134,8 +134,42 @@ TEST(ExportCore, NpyPayloadEqualsOctavePayload) {
     const std::vector<char> o = read(oct);
     const std::vector<char> n = read(npy);
     const char* payload = reinterpret_cast<const char*>(px);
+    ASSERT_GE(o.size(), 12u);
+    ASSERT_GE(n.size(), 12u);
     EXPECT_TRUE(std::equal(o.end() - 12, o.end(), payload));
     EXPECT_TRUE(std::equal(n.end() - 12, n.end(), payload));
+}
+
+TEST(ExportCore, NpyDescrForAllDtypes) {
+    const auto check = [](oid::BufferType type,
+                          const std::vector<std::uint8_t>& px,
+                          int width,
+                          int height,
+                          const std::string& expected_descr) {
+        const auto p = oid::test::scratch_dir() / "oid_descr.npy";
+        std::filesystem::remove(p);
+        ASSERT_TRUE(oid::BufferExporter::export_npy_raw(
+            px.data(), type, width, height, 1, width, p.string()));
+        std::ifstream is{p, std::ios::binary};
+        const std::string data{std::istreambuf_iterator<char>(is), {}};
+        EXPECT_NE(data.find(expected_descr), std::string::npos)
+            << "missing " << expected_descr;
+    };
+
+    // SHORT, 1x1, itemsize=2.
+    check(oid::BufferType::SHORT, {0x34, 0x12}, 1, 1, "'descr': '<i2'");
+    // INT32, 2x1, itemsize=4, 2 elements => 8 bytes.
+    check(oid::BufferType::INT32,
+          {0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00},
+          2,
+          1,
+          "'descr': '<i4'");
+    // FLOAT64, 1x1, itemsize=8.
+    check(oid::BufferType::FLOAT64,
+          {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0x3f},
+          1,
+          1,
+          "'descr': '<f4'");
 }
 
 TEST(ExportCore, NpyRoundTripsThroughReader) {
@@ -176,4 +210,27 @@ TEST(ExportCore, NpyMultiChannelShapeIs3D) {
     std::ifstream is{p, std::ios::binary};
     const std::string data{std::istreambuf_iterator<char>(is), {}};
     EXPECT_NE(data.find("'shape': (2, 2, 2)"), std::string::npos);
+}
+
+TEST(ExportCore, NpyMultiChannelRoundTripsThroughReader) {
+    const std::uint8_t px[] = {1, 2, 3, 4, 5, 6, 7, 8}; // 2x2, 2ch, step=2
+    const auto p = oid::test::scratch_dir() / "oid_rt_3d.npy";
+    std::filesystem::remove(p);
+    ASSERT_TRUE(oid::BufferExporter::export_npy_raw(
+        px, oid::BufferType::UNSIGNED_BYTE, 2, 2, 2, 2, p.string()));
+    std::ifstream is{p, std::ios::binary};
+    std::vector<std::byte> raw;
+    for (std::istreambuf_iterator<char> it{is}, end; it != end; ++it) {
+        raw.push_back(static_cast<std::byte>(*it));
+    }
+    const auto arr = oid::decode_npy(raw);
+    ASSERT_TRUE(arr.has_value());
+    EXPECT_EQ(arr->type, oid::BufferType::UNSIGNED_BYTE);
+    EXPECT_EQ(arr->width, 2);
+    EXPECT_EQ(arr->height, 2);
+    EXPECT_EQ(arr->channels, 2);
+    EXPECT_EQ(arr->bytes.size(), sizeof(px));
+    EXPECT_TRUE(std::equal(arr->bytes.begin(),
+                           arr->bytes.end(),
+                           reinterpret_cast<const std::byte*>(px)));
 }
