@@ -91,6 +91,37 @@ std::vector<std::string> request_open_files(GLFWwindow* /*window*/) {
     return paths;
 }
 
+std::optional<std::string> request_save_path(const std::string& default_dir,
+                                             const std::string& default_name) {
+    if (NFD_Init() != NFD_OKAY) {
+        return std::nullopt;
+    }
+
+    const std::array<nfdu8filteritem_t, 2> filters{{
+        {"PNG image", "png"},
+        {"Octave matrix", "oct"},
+    }};
+
+    nfdsavedialogu8args_t args{};
+    args.filterList = filters.data();
+    args.filterCount = static_cast<nfdfiltersize_t>(filters.size());
+    args.defaultPath = default_dir.empty() ? nullptr : default_dir.c_str();
+    args.defaultName = default_name.empty() ? nullptr : default_name.c_str();
+    args.parentWindow = {};
+
+    std::optional<std::string> result;
+    if (nfdu8char_t* out_path = nullptr;
+        NFD_SaveDialogU8_With(&out_path, &args) == NFD_OKAY &&
+        out_path != nullptr) {
+        result = out_path;
+        NFD_FreePathU8(out_path);
+    }
+
+    NFD_Quit();
+
+    return result;
+}
+
 void register_file_open_sink(oid::host::IpcBufferModel& /*model*/) {
     // Native opens files itself (OS dialog + the frame-loop file-open queue);
     // there is no external byte sink to register.

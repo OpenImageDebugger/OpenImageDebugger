@@ -28,6 +28,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -135,6 +136,16 @@ bool perform_export(const oid::Buffer& buffer,
 // paths, or an empty vector if the user cancels. `window` may be null; the
 // dialog is shown unparented either way.
 [[nodiscard]] std::vector<std::string> request_open_files(GLFWwindow* window);
+
+// Shows the native OS save dialog filtered to the two export formats (PNG,
+// Octave matrix), seeded with `default_dir` as the folder and `default_name`
+// as the filename. Returns the chosen absolute path, or std::nullopt if the
+// user cancels or the dialog cannot open. Native-only: the non-native port
+// neither implements nor calls this (its confirm_export delegates the save
+// dialog to the embedding host).
+[[nodiscard]] std::optional<std::string>
+request_save_path(const std::string& default_dir,
+                  const std::string& default_name);
 
 } // namespace oid::platform
 
