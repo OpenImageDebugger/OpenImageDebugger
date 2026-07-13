@@ -23,21 +23,18 @@
  * IN THE SOFTWARE.
  */
 
-// Exercises only the pure helpers (default_export_path,
-// apply_format_extension, open_export_dialog) declared in
-// host/ui/export_dialog.h. draw_export_dialog() lives in a separate TU
-// (export_dialog_draw.cpp, see its comment) precisely so this test binary
-// never needs to link ImGui/GL at all.
+// Exercises the pure export-path helpers (default_export_path,
+// open_export_dialog, classify_export_format, ensure_export_extension,
+// set_export_path) declared in host/ui/export_dialog.h. None of them touch
+// ImGui/GL, so this test binary never needs to link either.
 
 #include "host/ui/export_dialog.h"
 
-#include <format>
 #include <string_view>
 
 #include <gtest/gtest.h>
 
 using oid::BufferExporter::OutputType;
-using oid::host::apply_format_extension;
 using oid::host::classify_export_format;
 using oid::host::default_export_path;
 using oid::host::ensure_export_extension;
@@ -76,61 +73,17 @@ TEST(ExportDialog, OpenExportDialogSeedsStateFromBufferAndDir) {
     open_export_dialog(st, "buf", "/exp");
     EXPECT_TRUE(st.open);
     EXPECT_EQ(st.buffer_name, "buf");
-    EXPECT_FALSE(st.user_edited_path);
     EXPECT_EQ(st.format, OutputType::BITMAP);
     EXPECT_STREQ(st.path_buf.data(), "/exp/buf.png");
 }
 
-TEST(ExportDialog, FormatSwapReplacesExtensionWhenPathNotUserEdited) {
-    ExportDialogState st;
-    open_export_dialog(st, "buf", "/exp");
-    ASSERT_STREQ(st.path_buf.data(), "/exp/buf.png");
-
-    st.format = OutputType::OCTAVE_MATRIX;
-    apply_format_extension(st);
-    EXPECT_STREQ(st.path_buf.data(), "/exp/buf.oct");
-
-    st.format = OutputType::BITMAP;
-    apply_format_extension(st);
-    EXPECT_STREQ(st.path_buf.data(), "/exp/buf.png");
-}
-
-TEST(ExportDialog, FormatSwapAppendsExtensionWhenPathHasNeither) {
-    ExportDialogState st;
-    const auto res = std::format_to_n(
-        st.path_buf.data(), st.path_buf.size() - 1, "{}", "/exp/noext");
-    *res.out = '\0';
-    st.format = OutputType::OCTAVE_MATRIX;
-    apply_format_extension(st);
-    EXPECT_STREQ(st.path_buf.data(), "/exp/noext.oct");
-}
-
-TEST(ExportDialog, FormatSwapRespectsUserEditedPath) {
-    ExportDialogState st;
-    open_export_dialog(st, "buf", "/exp");
-    const auto res = std::format_to_n(
-        st.path_buf.data(), st.path_buf.size() - 1, "{}", "/exp/custom.name");
-    *res.out = '\0';
-    st.user_edited_path = true;
-
-    st.format = OutputType::OCTAVE_MATRIX;
-    apply_format_extension(st);
-    EXPECT_STREQ(st.path_buf.data(), "/exp/custom.name");
-}
-
-TEST(ExportDialog, OpenResetsFormatAndUserEditedFlagFromPriorOpen) {
+TEST(ExportDialog, OpenResetsStateFromPriorOpen) {
     ExportDialogState st;
     open_export_dialog(st, "first", "/exp");
     st.format = OutputType::OCTAVE_MATRIX;
-    apply_format_extension(st);
-    const auto res = std::format_to_n(
-        st.path_buf.data(), st.path_buf.size() - 1, "{}", "/exp/custom.name");
-    *res.out = '\0';
-    st.user_edited_path = true;
 
     open_export_dialog(st, "second", "/exp");
     EXPECT_EQ(st.buffer_name, "second");
-    EXPECT_FALSE(st.user_edited_path);
     EXPECT_EQ(st.format, OutputType::BITMAP);
     EXPECT_STREQ(st.path_buf.data(), "/exp/second.png");
 }

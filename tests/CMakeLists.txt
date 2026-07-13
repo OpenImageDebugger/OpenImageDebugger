@@ -744,11 +744,10 @@ if(OID_BUILD_IMGUI_FRONTEND)
     add_test(NAME SvgRasterTests COMMAND svg_raster_test)
 
     # Test the pure helpers out of host/ui/export_dialog.cpp
-    # (default_export_path, apply_format_extension, open_export_dialog).
-    # Deliberately does NOT compile host/ui/export_dialog_draw.cpp (the
-    # draw_export_dialog() ImGui modal, smoke-tested only) so this target
-    # never needs to link ImGui/GL at all; export_dialog.h itself only pulls
-    # in the header-only io/buffer_export_core.h for
+    # (default_export_path, open_export_dialog, classify_export_format,
+    # ensure_export_extension, set_export_path). None of them touch
+    # ImGui/GL, so this target never needs to link either; export_dialog.h
+    # itself only pulls in the header-only io/buffer_export_core.h for
     # BufferExporter::OutputType.
     add_executable(export_dialog_test
         host/ui/export_dialog_test.cpp

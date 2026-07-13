@@ -23,9 +23,7 @@
  * IN THE SOFTWARE.
  */
 
-// Pure (no ImGui/GL) helpers only -- see export_dialog_draw.cpp for
-// draw_export_dialog(), kept in its own TU so this one -- and the unit test
-// that links it -- never needs to pull in <imgui.h>.
+// Pure (no ImGui/GL) helpers for composing and validating export paths.
 
 #include "host/ui/export_dialog.h"
 
@@ -78,34 +76,11 @@ std::string default_export_path(std::string_view last_export_dir,
     return dir + "/" + buffer_name + std::string(extension_for(format));
 }
 
-void apply_format_extension(ExportDialogState& st) {
-    if (st.user_edited_path) {
-        return;
-    }
-
-    std::string path(st.path_buf.data());
-    const std::string_view target = extension_for(st.format);
-
-    if (ends_with(path, PNG_EXT) || ends_with(path, OCT_EXT)) {
-        const std::string_view current =
-            ends_with(path, PNG_EXT) ? PNG_EXT : OCT_EXT;
-        if (current != target) {
-            path.resize(path.size() - current.size());
-            path += target;
-        }
-    } else {
-        path += target;
-    }
-
-    set_path_buf(st.path_buf, path);
-}
-
 void open_export_dialog(ExportDialogState& st,
                         const std::string& buffer_name,
                         const std::string& last_export_dir) {
     st.open = true;
     st.buffer_name = buffer_name;
-    st.user_edited_path = false;
     st.format = oid::BufferExporter::OutputType::BITMAP;
     set_path_buf(
         st.path_buf,

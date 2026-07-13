@@ -45,10 +45,6 @@ struct ExportDialogState {
     std::array<char, 1024> path_buf{}; // ImGui InputText storage
     oid::BufferExporter::OutputType format{
         oid::BufferExporter::OutputType::BITMAP};
-    // True once the user has typed into path_buf directly; gates
-    // apply_format_extension() so switching the format radio button never
-    // clobbers a path the user has customized themselves.
-    bool user_edited_path{false};
 };
 
 // Composes a default export path with no filesystem checks -- pure string
@@ -61,16 +57,9 @@ std::string default_export_path(std::string_view last_export_dir,
                                 const std::string& buffer_name,
                                 oid::BufferExporter::OutputType format);
 
-// Keeps `st.path_buf`'s extension in sync with `st.format`: replaces a
-// trailing ".png"/".oct" with the extension matching the current format,
-// or appends the extension if the path has neither. A no-op once the user
-// has edited the path directly (`st.user_edited_path == true`).
-void apply_format_extension(ExportDialogState& st);
-
 // Opens the dialog for `buffer_name`: resets `st` (format back to the
-// BITMAP default, user_edited_path cleared) and seeds `path_buf` via
-// default_export_path(last_export_dir, getenv("HOME"), buffer_name,
-// st.format).
+// BITMAP default) and seeds `path_buf` via default_export_path(
+// last_export_dir, getenv("HOME"), buffer_name, st.format).
 void open_export_dialog(ExportDialogState& st,
                         const std::string& buffer_name,
                         const std::string& last_export_dir);
@@ -90,14 +79,6 @@ std::string ensure_export_extension(std::string path,
 // to fit the 1024-byte buffer. Used once a destination path has been
 // confirmed; perform_export() reads it back via st.path_buf.data().
 void set_export_path(ExportDialogState& st, std::string_view path);
-
-// Draws the "Export buffer" ImGui modal popup (implemented in
-// export_dialog_draw.cpp): a path field, BITMAP/OCTAVE_MATRIX radio
-// buttons, and Save/Cancel buttons.
-// Returns true the one frame Save is clicked (the destination path is
-// st.path_buf.data() at that point); closes the popup on both Save and
-// Cancel. A no-op (returns false) while `st.open` is false.
-bool draw_export_dialog(ExportDialogState& st);
 
 } // namespace oid::host
 

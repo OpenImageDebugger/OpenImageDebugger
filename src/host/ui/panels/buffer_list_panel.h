@@ -49,7 +49,7 @@ struct ExportDialogState;
 // Right-clicking a row opens a context menu with an "Export buffer" item
 // that opens `export_dialog` for that row's buffer via
 // open_export_dialog() (see export_dialog.h); the caller is responsible for
-// drawing the dialog itself (draw_export_dialog()) once per frame.
+// confirming the export via the native save dialog.
 //
 // Takes `model` non-const and `ipc` so Delete can both notify the debugger
 // bridge (ipc.notify_removed()) and drop the buffer locally

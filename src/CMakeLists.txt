@@ -153,7 +153,6 @@ if(OID_BUILD_IMGUI_FRONTEND)
     host/ui/svg_icon_cache.cpp
     host/ui/thumbnail_cache.cpp
     host/ui/export_dialog.cpp
-    host/ui/export_dialog_draw.cpp
     host/ui/panels/buffer_list_panel.cpp
     host/ui/panels/contrast_panel.cpp
     host/ui/panels/goto_panel.cpp
