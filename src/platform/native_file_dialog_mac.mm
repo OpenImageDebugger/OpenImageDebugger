@@ -34,6 +34,11 @@
 // it, driven by the export-format registry. Native (non-Emscripten) macOS only;
 // every other platform keeps the nfd save dialog in native_file_dialog.cpp.
 // Compiled with ARC (see src/CMakeLists.txt).
+//
+// TODO: this format-picker accessory view really belongs upstream in
+// nativefiledialog-extended's cocoa save backend, next to the Windows/Linux
+// dropdowns it already renders. Contributing it there would let macOS use the
+// plain nfd save dialog like every other platform and retire this file.
 
 #import <AppKit/AppKit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
