@@ -29,11 +29,15 @@
 
 namespace oid::host {
 
-void draw_menu_bar(bool& request_quit) {
+void draw_menu_bar(bool& request_quit, bool& request_open) {
     bool open_about = false;
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Open Image...", "Ctrl+O")) {
+                request_open = true;
+            }
+            ImGui::Separator();
             if (ImGui::MenuItem("Quit")) {
                 request_quit = true;
             }

@@ -24,3 +24,6 @@
 [submodule "src/thirdparty/nanosvg"]
 	path = src/thirdparty/nanosvg
 	url = https://github.com/memononen/nanosvg.git
+[submodule "src/thirdparty/nativefiledialog-extended"]
+	path = src/thirdparty/nativefiledialog-extended
+	url = https://github.com/btzy/nativefiledialog-extended.git

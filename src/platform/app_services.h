@@ -29,8 +29,11 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "host/settings/app_settings.h"
+
+struct GLFWwindow;
 
 namespace oid {
 class Buffer;
@@ -118,6 +121,12 @@ bool perform_export(const oid::Buffer& buffer,
                     oid::host::IpcClient& ipc,
                     std::string& status_message,
                     std::string& last_export_dir);
+
+// Shows a native OS file-selection dialog (multi-select) filtered to the
+// image and .npy formats the viewer supports. Returns the chosen absolute
+// paths, or an empty vector if the user cancels. `window` may be null; the
+// dialog is shown unparented either way.
+[[nodiscard]] std::vector<std::string> request_open_files(GLFWwindow* window);
 
 } // namespace oid::platform
 
