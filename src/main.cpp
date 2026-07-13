@@ -778,6 +778,10 @@ int main(int argc, char** argv) {
     }
 
     oid::host::IpcBufferModel model;
+    // Register the model as the sink for file bytes an embedding host pushes
+    // in (non-native only; no-op native). Must run before the loop so an
+    // early host-driven open finds the sink installed.
+    oid::platform::register_file_open_sink(model);
     // Transport platform seam: Asio TCP on native, PostMessageTransport on
     // non-native builds. Connects (bounded, non-throwing) in its ctor; if the
     // bridge isn't listening yet (or ever), the transport just marks itself
