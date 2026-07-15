@@ -5,6 +5,12 @@ live gdb/lldb session: list observable symbols at a breakpoint, view
 renderings, read exact values, dump lossless `.npy` copies, and mirror
 buffers into the human viewer.
 
+> ⚠️ **Experimental.** This is a new, experimental feature — the control
+> protocol, tool surface, and behavior may change without notice, and it
+> is not yet covered by any stability guarantee. It is opt-in
+> (`OID_AGENT=1`) and exposes debuggee memory to local processes; enable
+> it only in trusted, local development. Feedback welcome.
+
 ## Setup
 
 1. Start your debugger with the agent endpoint enabled and OID loaded:
