@@ -49,9 +49,14 @@ def _recv_exact(sock, size):
     return b''.join(chunks)
 
 
-def recv_frame(sock):
+def recv_frame(sock, max_payload=None):
     """
     Receive one frame; return (json_dict, payload_bytes).
+
+    max_payload optionally caps the declared 'payload' size; a frame
+    declaring more is rejected with ValueError before the payload bytes
+    are read. Default None preserves unbounded payloads (needed by
+    clients that receive large pixel buffers).
     """
     (length,) = _HEADER.unpack(_recv_exact(sock, _HEADER.size))
     if length > MAX_FRAME_BYTES:
@@ -59,5 +64,9 @@ def recv_frame(sock):
     obj = json.loads(_recv_exact(sock, length).decode('utf-8'))
     payload = b''
     if 'payload' in obj:
-        payload = _recv_exact(sock, int(obj['payload']))
+        nbytes = int(obj['payload'])
+        if max_payload is not None and nbytes > max_payload:
+            raise ValueError('payload of %d bytes exceeds limit %d'
+                             % (nbytes, max_payload))
+        payload = _recv_exact(sock, nbytes)
     return obj, payload

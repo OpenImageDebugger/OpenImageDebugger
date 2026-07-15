@@ -105,6 +105,9 @@ class AgentEndpoint(object):
         Handle one request dict; return (response_dict, payload_bytes).
         Raises EndpointError for protocol-level failures.
         """
+        if not isinstance(request, dict):
+            raise EndpointError(ERROR_UNKNOWN_METHOD,
+                                'malformed request (not a JSON object)')
         method = request.get('method')
         handler = self._handlers.get(method)
         if handler is None:
@@ -213,6 +216,8 @@ def discovery_dir():
 
 def _prepare_discovery_dir():
     path = discovery_dir()
+    if os.path.islink(path):
+        raise RuntimeError('discovery directory %s is a symlink' % path)
     if not os.path.isdir(path):
         os.makedirs(path, mode=0o700, exist_ok=True)
     if hasattr(os, 'getuid'):
@@ -256,8 +261,13 @@ class _EndpointServer(object):
         self._clients = []
         self._lock = threading.Lock()
         self.port = self._sock.getsockname()[1]
-        self.discovery_path = _write_discovery_file(
-            self.port, endpoint.token, endpoint.hello_response()['debugger'])
+        try:
+            self.discovery_path = _write_discovery_file(
+                self.port, endpoint.token,
+                endpoint.hello_response()['debugger'])
+        except Exception:
+            self._sock.close()
+            raise
         self._thread = threading.Thread(
             target=self._accept_loop, name='oid-agent-endpoint', daemon=True)
         self._thread.start()
@@ -278,9 +288,10 @@ class _EndpointServer(object):
     def _serve_client(self, conn):
         try:
             with conn:
-                request, _ = recv_frame(conn)
+                request, _ = recv_frame(conn, max_payload=0)
                 try:
-                    if request.get('method') != 'hello':
+                    if (not isinstance(request, dict)
+                            or request.get('method') != 'hello'):
                         raise EndpointError(ERROR_BAD_TOKEN,
                                             'first request must be hello')
                     response, payload = self._endpoint.handle_request(request)
@@ -290,7 +301,7 @@ class _EndpointServer(object):
                     return  # unauthenticated: drop the connection
                 send_frame(conn, response, payload)
                 while True:
-                    request, _ = recv_frame(conn)
+                    request, _ = recv_frame(conn, max_payload=0)
                     try:
                         response, payload = \
                             self._endpoint.handle_request(request)
@@ -308,6 +319,10 @@ class _EndpointServer(object):
 
     def close(self):
         try:
+            self._sock.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        try:
             self._sock.close()
         except OSError:
             pass
@@ -322,6 +337,7 @@ class _EndpointServer(object):
             os.remove(self.discovery_path)
         except OSError:
             pass
+        self._thread.join(timeout=2.0)
 
 
 _active = None
@@ -345,8 +361,9 @@ def start(bridge, window):
 
 def notify_stop():
     """Bump the stop generation. No-op when the endpoint is not running."""
-    if _active is not None:
-        _active[0].notify_stop()
+    active = _active
+    if active is not None:
+        active[0].notify_stop()
 
 
 def is_running():

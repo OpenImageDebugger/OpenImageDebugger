@@ -3,6 +3,8 @@ import os
 import socket
 import stat
 import sys
+import threading
+from pathlib import Path
 
 import pytest
 
@@ -20,7 +22,7 @@ def endpoint_session(tmp_path, monkeypatch):
 
 
 def _connect(path):
-    info = json.loads(open(path).read())
+    info = json.loads(Path(path).read_text())
     sock = socket.create_connection(('127.0.0.1', info['port']), timeout=5)
     sock.settimeout(5)
     return sock, info
@@ -28,7 +30,7 @@ def _connect(path):
 
 def test_start_writes_discovery_file(endpoint_session):
     path, _ = endpoint_session
-    info = json.loads(open(path).read())
+    info = json.loads(Path(path).read_text())
     assert info['version'] == ep.PROTOCOL_VERSION
     assert info['pid'] == os.getpid()
     assert info['debugger'] == 'gdb'
@@ -64,6 +66,18 @@ def test_first_frame_must_authenticate(endpoint_session):
         response, _ = ep.recv_frame(sock)
         assert response['error']['code'] == ep.ERROR_BAD_TOKEN
         # server closes the connection after a failed hello
+        with pytest.raises(ConnectionError):
+            ep.recv_frame(sock)
+
+
+def test_non_dict_first_frame_drops_connection(endpoint_session):
+    path, _ = endpoint_session
+    sock, info = _connect(path)
+    with sock:
+        ep.send_frame(sock, [1])
+        response, _ = ep.recv_frame(sock)
+        assert response['error']['code'] == ep.ERROR_BAD_TOKEN
+        # server closes the connection after a failed handshake
         with pytest.raises(ConnectionError):
             ep.recv_frame(sock)
 
@@ -106,6 +120,25 @@ def test_shutdown_removes_discovery_file(tmp_path, monkeypatch):
     assert not os.path.exists(path)
     assert not ep.is_running()
     ep.shutdown()  # idempotent
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX symlinks')
+def test_start_rejects_symlinked_discovery_dir(tmp_path, monkeypatch):
+    real_dir = tmp_path / 'real-agent'
+    real_dir.mkdir(mode=0o700)
+    link = tmp_path / 'agent-link'
+    os.symlink(str(real_dir), str(link))
+    monkeypatch.setenv('OID_AGENT_DIR', str(link))
+    with pytest.raises(RuntimeError):
+        ep.start(FakeBridge(), FakeWindow())
+
+
+def test_shutdown_joins_accept_thread(tmp_path, monkeypatch):
+    monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'agent'))
+    ep.start(FakeBridge(), FakeWindow())
+    ep.shutdown()
+    names = [t.name for t in threading.enumerate()]
+    assert 'oid-agent-endpoint' not in names
 
 
 def test_notify_stop_without_start_is_noop():
