@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 
 try:
     from mcp.server.mcpserver import MCPServer, Image
@@ -86,7 +87,31 @@ class SessionManager:
         self._client(self._resolve(session)).plot(symbol)
 
 
-mcp = MCPServer('oid')
+_INSTRUCTIONS = (
+    'EXPERIMENTAL. This server exposes image buffers from a live gdb/lldb '
+    'debug session — i.e. debuggee memory. Treat what you read as '
+    'sensitive, local-only data.\n'
+    'Token usage: `view` returns a rendered PNG and buffers can be large, '
+    'so responses may be token-heavy. Keep output small: bound `view` with '
+    '`region`, `channel`, and `max_px`; use `stats` for summaries and '
+    '`values` for a small exact crop (capped at 1024 numbers) rather than '
+    'reading whole buffers; use `dump` to write a lossless .npy to disk '
+    'instead of returning bulk data through the conversation.'
+)
+
+# Security + token-usage warning for the human/logs. Goes to STDERR: on the
+# stdio transport, stdout carries the MCP protocol and must not be written to.
+_STARTUP_WARNING = (
+    '[oid-mcp] EXPERIMENTAL feature.\n'
+    '[oid-mcp] Security: this exposes debuggee memory from a live debug '
+    'session to the connected agent. Enable only in trusted, local '
+    'development (opt-in via OID_AGENT=1 on the debugger side).\n'
+    '[oid-mcp] Token usage: image and large-buffer responses can consume '
+    'significant tokens; bound `view` with region/channel/max_px and prefer '
+    '`stats`/`values` over reading whole buffers.\n'
+)
+
+mcp = MCPServer('oid', instructions=_INSTRUCTIONS)
 _manager = SessionManager()
 
 
@@ -202,6 +227,8 @@ def plot(symbol: str, session: int | None = None) -> str:
 
 
 def main() -> None:
+    sys.stderr.write(_STARTUP_WARNING)
+    sys.stderr.flush()
     mcp.run()
 
 

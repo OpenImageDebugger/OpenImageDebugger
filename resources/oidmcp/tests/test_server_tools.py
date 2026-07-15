@@ -75,3 +75,22 @@ def test_plot_forwards(manager):
     # its confirmation string naming the symbol.
     result = server._plot_impl(mgr, 'grad', None)
     assert 'grad' in result
+
+
+def test_server_instructions_warn_security_and_tokens():
+    instructions = server._INSTRUCTIONS
+    assert 'EXPERIMENTAL' in instructions
+    assert 'debuggee memory' in instructions
+    assert 'Token usage' in instructions
+
+
+def test_main_writes_warning_to_stderr_only(capsys, monkeypatch):
+    # main() must emit the security/token warning before serving, on
+    # stderr (stdout carries the stdio MCP protocol and must stay clean).
+    monkeypatch.setattr(server.mcp, 'run', lambda: None)
+    server.main()
+    captured = capsys.readouterr()
+    assert 'Security:' in captured.err
+    assert 'debuggee memory' in captured.err
+    assert 'Token usage:' in captured.err
+    assert captured.out == ''
