@@ -78,3 +78,31 @@ def make_meta(width, height, channels=1, type_value=5, row_stride=None,
         'transpose_buffer': transpose_buffer,
         'variable_name': 'fake',
     }
+
+
+import numpy as np
+import pytest
+
+from oidscripts import agentendpoint
+
+
+def gradient_meta():
+    """4x3 float32 single-channel gradient buffer, values row*10+col."""
+    arr = (np.arange(3)[:, None] * 10 + np.arange(4)[None, :]) \
+        .astype(np.float32)
+    return make_meta(4, 3, channels=1, type_value=5, raw=arr.tobytes())
+
+
+@pytest.fixture
+def live_endpoint(tmp_path, monkeypatch):
+    """Real agentendpoint server backed by a FakeBridge."""
+    from oidmcp import discovery
+
+    monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'agent'))
+    bridge = FakeBridge(symbols=['img', 'grad'],
+                        buffers={'grad': gradient_meta()})
+    agentendpoint.start(bridge, FakeWindow(ready=True))
+    sessions = discovery.live_sessions()
+    assert len(sessions) == 1
+    yield sessions[0], bridge
+    agentendpoint.shutdown()
