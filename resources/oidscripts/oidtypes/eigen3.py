@@ -67,8 +67,13 @@ class EigenXX(interface.TypeInspectorInterface):
             buffer = debugger_bridge.get_casted_pointer(current_type,
                                                         picked_obj['m_data'])
         elif dynamic_buffer:
+            # Dynamic storage keeps the heap buffer in its m_data pointer.
+            # Pass that pointer directly: GDB's cast of the whole storage
+            # struct happens to read its first member (m_data), but LLDB
+            # would take the struct's address instead, so name m_data
+            # explicitly to get the right pointer on both backends.
             buffer = debugger_bridge.get_casted_pointer(
-                current_type, picked_obj['m_storage'])
+                current_type, picked_obj['m_storage']['m_data'])
         else:
             buffer = debugger_bridge.get_casted_pointer(
                 current_type, picked_obj['m_storage']['m_data']['array'])
@@ -113,7 +118,14 @@ class EigenXX(interface.TypeInspectorInterface):
         # Set row stride and pixel layout
         pixel_layout = 'bgra'
 
-        eigen_stride = int(picked_obj.type.template_argument(2).template_argument(1))
+        # The inner stride only exists for Eigen::Map's Stride<> template
+        # parameter; a plain matrix has no such argument, so fall back to a
+        # dense row stride (== width) instead of failing.
+        try:
+            eigen_stride = int(
+                picked_obj.type.template_argument(2).template_argument(1))
+        except (IndexError, TypeError, AttributeError):
+            eigen_stride = 0
         row_stride = eigen_stride if eigen_stride > 0 else width
 
         return {
