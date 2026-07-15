@@ -41,6 +41,26 @@ HANDSHAKE_TIMEOUT = 10.0
 MAX_CLIENTS = 8
 
 
+def _endpoint_max_bytes():
+    """
+    Server-side ceiling on a single get_buffer read. Overridable with
+    OID_AGENT_MAX_BYTES; parsed defensively so a bad value never breaks the
+    endpoint. A client may only request a *smaller* cap, never remove it.
+    """
+    raw = os.environ.get('OID_AGENT_MAX_BYTES')
+    if raw:
+        try:
+            value = int(raw)
+            if value > 0:
+                return value
+        except ValueError:
+            pass
+    return 256 * 1024 * 1024
+
+
+ENDPOINT_MAX_BYTES = _endpoint_max_bytes()
+
+
 class EndpointError(Exception):
     """Structured protocol error carried back to the client."""
 
@@ -162,7 +182,14 @@ class AgentEndpoint(object):
 
     def _handle_get_buffer(self, request):
         symbol = str(request.get('symbol', ''))
-        max_bytes = request.get('max_bytes')
+        # Always enforce the server-side cap. A client may lower it, but a
+        # missing/invalid value does NOT disable the guard (a direct
+        # endpoint client must not be able to force unbounded reads).
+        requested = request.get('max_bytes')
+        if isinstance(requested, int) and 0 < requested < ENDPOINT_MAX_BYTES:
+            max_bytes = requested
+        else:
+            max_bytes = ENDPOINT_MAX_BYTES
 
         def fetch():
             return self._bridge.get_buffer_metadata(symbol,
@@ -252,8 +279,10 @@ def _write_discovery_file(port, token, backend):
         'pid': os.getpid(),
         'start_time': time.time(),
     })
-    tmp = path + '.tmp'
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    # Use a unique temp name (mkstemp, mode 0600) so a stale <pid>.json.tmp
+    # left by a crashed run can never wedge startup with EEXIST.
+    fd, tmp = tempfile.mkstemp(dir=directory, prefix='%d.' % os.getpid(),
+                               suffix='.tmp')
     try:
         os.write(fd, payload.encode('utf-8'))
     finally:

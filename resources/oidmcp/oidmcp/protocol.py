@@ -31,7 +31,13 @@ class ControlClient:
                  timeout: float = 20.0):
         self._sock = socket.create_connection((host, port), timeout=timeout)
         self._sock.settimeout(timeout)
-        self.hello, _ = self._call({'method': 'hello', 'token': token})
+        try:
+            self.hello, _ = self._call({'method': 'hello', 'token': token})
+        except BaseException:
+            # A failed handshake (bad token, timeout, ...) must not leak the
+            # socket we just opened.
+            self.close()
+            raise
 
     def _call(self, request: dict) -> tuple[dict, bytes]:
         send_frame(self._sock, request)
