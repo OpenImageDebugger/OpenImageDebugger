@@ -94,3 +94,19 @@ def test_main_writes_warning_to_stderr_only(capsys, monkeypatch):
     assert 'debuggee memory' in captured.err
     assert 'Token usage:' in captured.err
     assert captured.out == ''
+
+
+def test_parse_max_bytes_defaults_and_rejects_bad_values(monkeypatch):
+    monkeypatch.delenv('OID_MCP_MAX_BYTES', raising=False)
+    assert server._parse_max_bytes() == server.DEFAULT_MAX_BYTES
+    monkeypatch.setenv('OID_MCP_MAX_BYTES', '1048576')
+    assert server._parse_max_bytes() == 1048576
+    for bad in ('not-a-number', '', '0', '-5'):
+        monkeypatch.setenv('OID_MCP_MAX_BYTES', bad)
+        assert server._parse_max_bytes() == server.DEFAULT_MAX_BYTES
+
+
+def test_session_manager_survives_invalid_max_bytes(monkeypatch):
+    monkeypatch.setenv('OID_MCP_MAX_BYTES', 'garbage')
+    manager = server.SessionManager()  # must not raise at construction
+    assert manager._max_bytes == server.DEFAULT_MAX_BYTES

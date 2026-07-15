@@ -2,9 +2,11 @@ import sys
 from pathlib import Path
 
 # Make `import oidscripts.agentendpoint` work: the endpoint lives in the
-# sibling debugger-scripts tree, not in this package.
-RESOURCES_DIR = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(RESOURCES_DIR))
+# sibling debugger-scripts tree, not in this package. Append (lowest
+# precedence) to avoid shadowing similarly named modules on the path.
+RESOURCES_DIR = str(Path(__file__).resolve().parents[2])
+if RESOURCES_DIR not in sys.path:
+    sys.path.append(RESOURCES_DIR)
 
 from oidscripts.debuggers.interfaces import raise_if_too_large
 

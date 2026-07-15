@@ -174,10 +174,16 @@ class AgentEndpoint(object):
                 ERROR_SYMBOL_NOT_FOUND,
                 '%r is not an observable buffer in the current frame'
                 % symbol)
-        payload = bytes(metadata.pop('pointer'))
+        # Avoid copying the whole buffer inside the debugger process: the
+        # bridge already materialized it into a bytes-like object (lldb:
+        # bytes; gdb: a read_memory memoryview), and send_frame/sendall
+        # accept the buffer protocol directly.
+        pointer = metadata.pop('pointer')
+        if not isinstance(pointer, (bytes, bytearray, memoryview)):
+            pointer = memoryview(pointer)
         response = dict(metadata)
         response['stop_generation'] = self._stop_generation
-        return response, payload
+        return response, pointer
 
     def _handle_plot(self, request):
         symbol = str(request.get('symbol', ''))
