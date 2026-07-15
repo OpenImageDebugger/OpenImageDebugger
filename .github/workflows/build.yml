@@ -111,3 +111,96 @@ jobs:
         with:
           name: build-${{ matrix.name || matrix.os }}
           path: build-${{ matrix.name || matrix.os }}.tar
+
+  # The smoke test compiles a tiny Eigen fixture, launches it under lldb with
+  # OID_AGENT=1, imports the deployed oid.py after the breakpoint, and drives
+  # the agent endpoint through the real oid-mcp client (discovery -> hello ->
+  # list_symbols -> get_buffer). It exercises the in-debugger endpoint and the
+  # Eigen-under-lldb path end to end. The driver is an lldb + bash script, so
+  # it runs on the Linux and macOS legs (Windows uses a different debugger and
+  # would need its own E2E).
+  mcp-e2e-linux:
+    name: MCP agent e2e smoke (${{ matrix.name }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-24.04
+            os: ubuntu-24.04
+            container: ghcr.io/openimagedebugger/oid:24.04
+          - name: ubuntu-26.04
+            os: ubuntu-26.04
+            container: ghcr.io/openimagedebugger/oid:26.04
+    runs-on: ${{ matrix.os }}
+    container:
+      image: ${{ matrix.container }}
+      # lldb debugs the fixture as a child process; Docker's default seccomp
+      # profile already permits ptrace once CAP_SYS_PTRACE is held.
+      options: --cap-add=SYS_PTRACE
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # 7.0.0
+        with:
+          fetch-depth: 1
+          # Eigen (src/thirdparty) is needed to compile the fixture.
+          submodules: "recursive"
+          persist-credentials: false
+
+      - name: Download the ${{ matrix.name }} build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          name: build-${{ matrix.name }}
+
+      - name: Install lldb and uv
+        shell: bash
+        run: |
+          apt-get update -y
+          apt-get install -y --no-install-recommends lldb
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Run lldb e2e smoke test
+        shell: bash
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          tar xf build-${{ matrix.name }}.tar
+          deploy=$(dirname "$(find "$PWD" -name oid.py | grep -m1 OpenImageDebugger)")
+          echo "deployed OID: $deploy"
+          resources/oidmcp/tests/e2e/run_e2e_lldb.sh "$deploy"
+
+  mcp-e2e-macos:
+    name: MCP agent e2e smoke (${{ matrix.os }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26, macos-26-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # 7.0.0
+        with:
+          fetch-depth: 1
+          submodules: "recursive"
+          persist-credentials: false
+
+      - name: Download the ${{ matrix.os }} build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+        with:
+          name: build-${{ matrix.os }}
+
+      - name: Install uv
+        shell: bash
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      # Allow lldb to launch/debug the freshly built fixture without an
+      # interactive authorization prompt.
+      - name: Enable developer-mode debugging
+        run: sudo /usr/sbin/DevToolsSecurity -enable
+
+      - name: Run lldb e2e smoke test
+        shell: bash
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          tar xf build-${{ matrix.os }}.tar
+          deploy=$(dirname "$(find "$PWD" -name oid.py | grep -m1 OpenImageDebugger)")
+          echo "deployed OID: $deploy"
+          resources/oidmcp/tests/e2e/run_e2e_lldb.sh "$deploy"
