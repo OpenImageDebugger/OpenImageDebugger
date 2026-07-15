@@ -126,7 +126,14 @@ class LldbBridge(BridgeInterface):
             # Could not fetch frame from debugger state
             return None
 
-        picked_obj = frame.EvaluateExpression(variable)  # type: lldb.SBValue
+        # Prefer a direct variable lookup: it is the same robust path
+        # get_available_symbols() uses, and it avoids lldb's expression JIT,
+        # which can fail to resolve heavy templated types (e.g. Eigen) on
+        # some architectures (observed on x86_64). Fall back to expression
+        # evaluation so dotted/complex symbol paths still work.
+        picked_obj = frame.FindVariable(variable)  # type: lldb.SBValue
+        if not picked_obj.IsValid():
+            picked_obj = frame.EvaluateExpression(variable)
 
         buffer_metadata = self._type_bridge.get_buffer_metadata(
             variable, SymbolWrapper(picked_obj), self)

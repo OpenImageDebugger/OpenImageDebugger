@@ -38,15 +38,20 @@ def send_frame(sock, obj, payload=b''):
 
 
 def _recv_exact(sock, size):
-    chunks = []
-    remaining = size
-    while remaining > 0:
-        chunk = sock.recv(min(remaining, 65536))
-        if not chunk:
+    # Fill a single preallocated buffer with recv_into rather than
+    # accumulating a list of chunks and joining them, which would need a
+    # second payload-sized allocation for large (up to the cap) transfers.
+    if size == 0:
+        return b''
+    buf = bytearray(size)
+    view = memoryview(buf)
+    pos = 0
+    while pos < size:
+        received = sock.recv_into(view[pos:])
+        if received == 0:
             raise ConnectionError('peer closed the connection')
-        chunks.append(chunk)
-        remaining -= len(chunk)
-    return b''.join(chunks)
+        pos += received
+    return bytes(buf)
 
 
 def recv_frame(sock, max_payload=None):
