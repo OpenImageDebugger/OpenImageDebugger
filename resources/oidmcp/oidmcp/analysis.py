@@ -20,7 +20,8 @@ def _finite_or_none(value):
     return value if math.isfinite(value) else None
 
 
-def compute_stats(arr, meta, region=None):
+def compute_stats(arr: np.ndarray, meta: dict,
+                   region: tuple | None = None) -> dict:
     view = crop_region(arr, region) if region is not None else arr
     floating = np.issubdtype(arr.dtype, np.floating)
     layout = (meta.get('pixel_layout') or '')
@@ -65,7 +66,8 @@ def _sanitize_tree(node):
     return _json_safe(node)
 
 
-def extract_values(arr, x, y, w, h, channel=None):
+def extract_values(arr: np.ndarray, x: int, y: int, w: int, h: int,
+                    channel: int | None = None) -> dict:
     """
     Exact values for a crop; capped so results stay readable.
     """
@@ -90,7 +92,8 @@ def extract_values(arr, x, y, w, h, channel=None):
     }
 
 
-def dump_npy(arr, symbol, stop_generation, path=None):
+def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
+             path: str | None = None) -> str:
     """
     Save the full decoded buffer (padding already stripped) as .npy.
     """
@@ -99,5 +102,7 @@ def dump_npy(arr, symbol, stop_generation, path=None):
         directory.mkdir(mode=0o700, exist_ok=True)
         name = re.sub(r'[^A-Za-z0-9_.-]', '_', symbol)
         path = str(directory / f'{name}_gen{stop_generation}.npy')
+    elif not path.endswith('.npy'):
+        path = f'{path}.npy'
     np.save(path, np.ascontiguousarray(arr))
     return os.path.abspath(path)

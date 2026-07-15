@@ -82,6 +82,13 @@ def test_dump_npy_roundtrip(tmp_path):
     np.testing.assert_array_equal(loaded, arr)
 
 
+def test_dump_npy_appends_missing_npy_suffix(tmp_path):
+    arr = np.arange(6, dtype=np.int32).reshape(2, 3, 1)
+    path = dump_npy(arr, 'img->data[0]', 1, path=str(tmp_path / 'out'))
+    loaded = np.load(path)
+    np.testing.assert_array_equal(loaded, arr)
+
+
 def test_dump_npy_default_path_is_sanitized(tmp_path, monkeypatch):
     monkeypatch.setenv('TMPDIR', str(tmp_path))
     import importlib
