@@ -54,7 +54,7 @@ def _endpoint_max_bytes():
             if value > 0:
                 return value
         except ValueError:
-            pass
+            pass  # non-integer override: fall through to the default cap
     return 256 * 1024 * 1024
 
 
