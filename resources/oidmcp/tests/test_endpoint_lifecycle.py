@@ -1,0 +1,116 @@
+import json
+import os
+import socket
+import stat
+import sys
+
+import pytest
+
+from oidscripts import agentendpoint as ep
+from conftest import FakeBridge, FakeWindow
+
+
+@pytest.fixture
+def endpoint_session(tmp_path, monkeypatch):
+    monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'agent'))
+    bridge = FakeBridge(symbols=['img'])
+    path = ep.start(bridge, FakeWindow())
+    yield path, bridge
+    ep.shutdown()
+
+
+def _connect(path):
+    info = json.loads(open(path).read())
+    sock = socket.create_connection(('127.0.0.1', info['port']), timeout=5)
+    sock.settimeout(5)
+    return sock, info
+
+
+def test_start_writes_discovery_file(endpoint_session):
+    path, _ = endpoint_session
+    info = json.loads(open(path).read())
+    assert info['version'] == ep.PROTOCOL_VERSION
+    assert info['pid'] == os.getpid()
+    assert info['debugger'] == 'gdb'
+    assert isinstance(info['port'], int)
+    assert len(info['token']) >= 32
+    assert os.path.basename(path) == '%d.json' % os.getpid()
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX permissions')
+def test_discovery_artifacts_are_private(endpoint_session):
+    path, _ = endpoint_session
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o600
+    assert stat.S_IMODE(os.stat(os.path.dirname(path)).st_mode) == 0o700
+
+
+def test_hello_then_request_over_real_socket(endpoint_session):
+    path, _ = endpoint_session
+    sock, info = _connect(path)
+    with sock:
+        ep.send_frame(sock, {'method': 'hello', 'token': info['token']})
+        response, _ = ep.recv_frame(sock)
+        assert response['debugger'] == 'gdb'
+        ep.send_frame(sock, {'method': 'list_symbols'})
+        response, _ = ep.recv_frame(sock)
+        assert response['symbols'] == ['img']
+
+
+def test_first_frame_must_authenticate(endpoint_session):
+    path, _ = endpoint_session
+    sock, info = _connect(path)
+    with sock:
+        ep.send_frame(sock, {'method': 'hello', 'token': 'wrong'})
+        response, _ = ep.recv_frame(sock)
+        assert response['error']['code'] == ep.ERROR_BAD_TOKEN
+        # server closes the connection after a failed hello
+        with pytest.raises(ConnectionError):
+            ep.recv_frame(sock)
+
+
+def test_error_responses_keep_connection_alive(endpoint_session):
+    path, _ = endpoint_session
+    sock, info = _connect(path)
+    with sock:
+        ep.send_frame(sock, {'method': 'hello', 'token': info['token']})
+        ep.recv_frame(sock)
+        ep.send_frame(sock, {'method': 'get_buffer', 'symbol': 'nope'})
+        response, _ = ep.recv_frame(sock)
+        assert response['error']['code'] == ep.ERROR_SYMBOL_NOT_FOUND
+        ep.send_frame(sock, {'method': 'ping'})
+        response, _ = ep.recv_frame(sock)
+        assert response == {'stop_generation': 0}
+
+
+def test_module_notify_stop_reaches_endpoint(endpoint_session):
+    path, _ = endpoint_session
+    ep.notify_stop()
+    sock, info = _connect(path)
+    with sock:
+        ep.send_frame(sock, {'method': 'hello', 'token': info['token']})
+        response, _ = ep.recv_frame(sock)
+        assert response['stop_generation'] == 1
+
+
+def test_start_twice_is_noop(endpoint_session):
+    path, bridge = endpoint_session
+    assert ep.start(bridge, FakeWindow()) is None
+    assert ep.is_running()
+
+
+def test_shutdown_removes_discovery_file(tmp_path, monkeypatch):
+    monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'agent'))
+    path = ep.start(FakeBridge(), FakeWindow())
+    assert os.path.exists(path)
+    ep.shutdown()
+    assert not os.path.exists(path)
+    assert not ep.is_running()
+    ep.shutdown()  # idempotent
+
+
+def test_notify_stop_without_start_is_noop():
+    # With no endpoint running, notify_stop must be a harmless no-op
+    # and must not bring an endpoint into existence.
+    assert not ep.is_running()
+    ep.notify_stop()
+    assert not ep.is_running()
