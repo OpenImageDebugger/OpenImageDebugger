@@ -17,6 +17,40 @@ Python and can be unit tested without a debugger.
 """
 
 
+def _matching_angle(type_name, start):
+    """Index of the '>' matching the '<' at ``start``, or -1 if unbalanced."""
+    depth = 0
+    for i in range(start, len(type_name)):
+        char = type_name[i]
+        if char == '<':
+            depth += 1
+        elif char == '>':
+            depth -= 1
+            if depth == 0:
+                return i
+    return -1
+
+
+def _split_top_level_commas(inner):
+    """Split ``inner`` on commas that are not inside nested angle brackets."""
+    args = []
+    depth = 0
+    current = ''
+    for char in inner:
+        if char == '<':
+            depth += 1
+        elif char == '>':
+            depth -= 1
+        if char == ',' and depth == 0:
+            args.append(current.strip())
+            current = ''
+        else:
+            current += char
+    if current.strip():
+        args.append(current.strip())
+    return args
+
+
 def split_template_args(type_name):
     """
     Return the top-level template arguments of ``type_name`` as a list of
@@ -31,40 +65,10 @@ def split_template_args(type_name):
     start = type_name.find('<')
     if start == -1:
         return []
-
-    depth = 0
-    end = -1
-    for i in range(start, len(type_name)):
-        char = type_name[i]
-        if char == '<':
-            depth += 1
-        elif char == '>':
-            depth -= 1
-            if depth == 0:
-                end = i
-                break
+    end = _matching_angle(type_name, start)
     if end == -1:
         return []
-
-    inner = type_name[start + 1:end]
-    args = []
-    depth = 0
-    current = ''
-    for char in inner:
-        if char == '<':
-            depth += 1
-            current += char
-        elif char == '>':
-            depth -= 1
-            current += char
-        elif char == ',' and depth == 0:
-            args.append(current.strip())
-            current = ''
-        else:
-            current += char
-    if current.strip():
-        args.append(current.strip())
-    return args
+    return _split_top_level_commas(type_name[start + 1:end])
 
 
 class TemplateTypeName(str):
