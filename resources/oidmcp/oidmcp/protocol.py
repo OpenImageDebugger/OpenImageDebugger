@@ -66,4 +66,4 @@ class ControlClient:
         try:
             self._sock.close()
         except OSError:
-            pass
+            pass  # best-effort cleanup; the socket may already be closed
