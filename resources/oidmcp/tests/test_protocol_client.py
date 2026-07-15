@@ -55,3 +55,37 @@ def test_semantic_errors_carry_codes(live_endpoint):
     client.plot('grad')
     assert isinstance(client.ping(), int)
     client.close()
+
+
+def test_client_bounds_received_payload_to_max_bytes():
+    # Defense in depth: even if the endpoint misbehaves and sends more than
+    # the requested cap, the client refuses to buffer past max_bytes.
+    import socket
+    import threading
+
+    from oidscripts import wireframe as wf
+
+    listener = socket.socket()
+    listener.bind(('127.0.0.1', 0))
+    listener.listen(1)
+    port = listener.getsockname()[1]
+
+    def rogue_endpoint():
+        conn, _ = listener.accept()
+        with conn:
+            wf.recv_frame(conn)  # hello
+            wf.send_frame(conn, {'version': 1, 'debugger': 'x',
+                                 'stop_generation': 0})
+            wf.recv_frame(conn)  # get_buffer
+            wf.send_frame(conn, {'width': 1, 'stop_generation': 0},
+                          payload=b'x' * 100)
+
+    thread = threading.Thread(target=rogue_endpoint, daemon=True)
+    thread.start()
+
+    client = ControlClient('127.0.0.1', port, 'tok')
+    with pytest.raises((ValueError, ControlError)):
+        client.get_buffer('img', max_bytes=16)
+    client.close()
+    listener.close()
+    thread.join(timeout=2)
