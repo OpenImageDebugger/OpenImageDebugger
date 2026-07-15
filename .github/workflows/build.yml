@@ -119,9 +119,14 @@ jobs:
   # Eigen-under-lldb path end to end. The driver is an lldb + bash script, so
   # it runs on the Linux and macOS legs (Windows uses a different debugger and
   # would need its own E2E).
+  # OID is built and installed IN PLACE here rather than downloading the
+  # build artifact: liboidbridge's rpaths are absolute paths into the build
+  # tree's out/lib, so a relocated (extracted) install can't resolve
+  # liboidipc, and macOS SIP strips DYLD_* from /usr/bin/lldb so it can't be
+  # patched at runtime. Building in place puts the libs exactly where the
+  # rpaths point. ccache (shared with the Build job's keys) keeps it cheap.
   mcp-e2e-linux:
     name: MCP agent e2e smoke (${{ matrix.name }})
-    needs: build
     strategy:
       fail-fast: false
       matrix:
@@ -142,34 +147,42 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # 7.0.0
         with:
           fetch-depth: 1
-          # Eigen (src/thirdparty) is needed to compile the fixture.
           submodules: "recursive"
           persist-credentials: false
 
-      - name: Download the ${{ matrix.name }} build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # 1.2.23
         with:
-          name: build-${{ matrix.name }}
+          key: ${{ matrix.name }}-${{ github.ref_name }}
+          restore-keys: |
+            ${{ matrix.name }}-${{ github.ref_name }}
+            ${{ matrix.name }}-main
+          variant: ccache
+
+      - name: Build and install OID in place
+        shell: bash
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+        run: |
+          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --target install
 
       - name: Install lldb and uv
         shell: bash
         run: |
           apt-get update -y
-          apt-get install -y --no-install-recommends lldb
+          apt-get install -y --no-install-recommends curl lldb
           curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Run lldb e2e smoke test
         shell: bash
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          tar xf build-${{ matrix.name }}.tar
-          deploy=$(dirname "$(find "$PWD" -name oid.py | grep -m1 OpenImageDebugger)")
-          echo "deployed OID: $deploy"
-          resources/oidmcp/tests/e2e/run_e2e_lldb.sh "$deploy"
+          resources/oidmcp/tests/e2e/run_e2e_lldb.sh "$PWD/out/OpenImageDebugger"
 
   mcp-e2e-macos:
     name: MCP agent e2e smoke (${{ matrix.os }})
-    needs: build
     strategy:
       fail-fast: false
       matrix:
@@ -182,10 +195,28 @@ jobs:
           submodules: "recursive"
           persist-credentials: false
 
-      - name: Download the ${{ matrix.os }} build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # 8.0.1
+      - name: Select latest Xcode
+        run: |
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$LATEST_XCODE"
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # 1.2.23
         with:
-          name: build-${{ matrix.os }}
+          key: ${{ matrix.os }}-${{ github.ref_name }}
+          restore-keys: |
+            ${{ matrix.os }}-${{ github.ref_name }}
+            ${{ matrix.os }}-main
+          variant: ccache
+
+      - name: Build and install OID in place
+        shell: bash
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+        run: |
+          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --target install
 
       - name: Install uv
         shell: bash
@@ -200,7 +231,4 @@ jobs:
         shell: bash
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          tar xf build-${{ matrix.os }}.tar
-          deploy=$(dirname "$(find "$PWD" -name oid.py | grep -m1 OpenImageDebugger)")
-          echo "deployed OID: $deploy"
-          resources/oidmcp/tests/e2e/run_e2e_lldb.sh "$deploy"
+          resources/oidmcp/tests/e2e/run_e2e_lldb.sh "$PWD/out/OpenImageDebugger"
