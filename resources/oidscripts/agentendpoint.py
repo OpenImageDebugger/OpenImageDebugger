@@ -334,6 +334,8 @@ class _EndpointServer(object):
         except OSError:
             pass  # discovery file already gone
         self._thread.join(timeout=2.0)
+        if self._thread.is_alive():
+            log.debug('agent endpoint accept thread did not exit within 2s')
 
 
 _active = None

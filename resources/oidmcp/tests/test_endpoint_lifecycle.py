@@ -74,10 +74,10 @@ def test_non_dict_first_frame_drops_connection(endpoint_session):
     path, _ = endpoint_session
     sock, info = _connect(path)
     with sock:
+        # A non-object frame is a malformed-wire error: recv_frame rejects
+        # it and the server drops the connection without a reply, the same
+        # as any other unparseable frame (no error frame is sent).
         ep.send_frame(sock, [1])
-        response, _ = ep.recv_frame(sock)
-        assert response['error']['code'] == ep.ERROR_BAD_TOKEN
-        # server closes the connection after a failed handshake
         with pytest.raises(ConnectionError):
             ep.recv_frame(sock)
 

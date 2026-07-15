@@ -62,6 +62,11 @@ def recv_frame(sock, max_payload=None):
     if length > MAX_FRAME_BYTES:
         raise ValueError('JSON frame too large: %d bytes' % length)
     obj = json.loads(_recv_exact(sock, length).decode('utf-8'))
+    if not isinstance(obj, dict):
+        # A scalar or array frame would make the 'payload' membership
+        # test / lookup below raise TypeError; reject it as a protocol
+        # error the callers already handle.
+        raise ValueError('frame is not a JSON object')
     payload = b''
     if 'payload' in obj:
         nbytes = int(obj['payload'])
