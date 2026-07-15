@@ -41,13 +41,20 @@ jobs:
           ]
         ccache-variant: [ccache]
         include:
+          # CAP_SYS_PTRACE lets lldb debug the e2e fixture as a child process
+          # in the container; Docker's default seccomp profile permits ptrace
+          # once the cap is held. It is harmless for the plain build/ctest.
           - os: ubuntu-24.04
             name: ubuntu-24.04
-            container: ghcr.io/openimagedebugger/oid:24.04
+            container:
+              image: ghcr.io/openimagedebugger/oid:24.04
+              options: --cap-add=SYS_PTRACE
             ccache-variant: "ccache"
           - os: ubuntu-26.04
             name: ubuntu-26.04
-            container: ghcr.io/openimagedebugger/oid:26.04
+            container:
+              image: ghcr.io/openimagedebugger/oid:26.04
+              options: --cap-add=SYS_PTRACE
             ccache-variant: "ccache"
           - os: windows-2025
             ccache-variant: "sccache"
@@ -116,66 +123,21 @@ jobs:
           name: build-${{ matrix.name || matrix.os }}
           path: build-${{ matrix.name || matrix.os }}.tar
 
-  # The smoke test compiles a tiny Eigen fixture, launches it under lldb with
-  # OID_AGENT=1, imports the deployed oid.py after the breakpoint, and drives
-  # the agent endpoint through the real oid-mcp client (discovery -> hello ->
-  # list_symbols -> get_buffer). It exercises the in-debugger endpoint and the
-  # Eigen-under-lldb path end to end. The driver is an lldb + bash script, so
-  # it runs on the Linux and macOS legs (Windows uses a different debugger and
-  # would need its own E2E).
-  # OID is built and installed IN PLACE here rather than downloading the
-  # build artifact: liboidbridge's rpaths are absolute paths into the build
-  # tree's out/lib, so a relocated (extracted) install can't resolve
-  # liboidipc, and macOS SIP strips DYLD_* from /usr/bin/lldb so it can't be
-  # patched at runtime. Building in place puts the libs exactly where the
-  # rpaths point. ccache (shared with the Build job's keys) keeps it cheap.
-  mcp-e2e-linux:
-    name: MCP agent e2e smoke (${{ matrix.name }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: ubuntu-24.04
-            os: ubuntu-24.04
-            container: ghcr.io/openimagedebugger/oid:24.04
-          - name: ubuntu-26.04
-            os: ubuntu-26.04
-            container: ghcr.io/openimagedebugger/oid:26.04
-    runs-on: ${{ matrix.os }}
-    container:
-      image: ${{ matrix.container }}
-      # lldb debugs the fixture as a child process; Docker's default seccomp
-      # profile already permits ptrace once CAP_SYS_PTRACE is held.
-      options: --cap-add=SYS_PTRACE
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # 7.0.0
-        with:
-          fetch-depth: 1
-          submodules: "recursive"
-          persist-credentials: false
-
-      # Key on OS + build-config hash (not the branch ref) so the cache is
-      # reused across PRs instead of fragmenting per branch; fall back to any
-      # earlier cache for this OS.
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # 1.2.23
-        with:
-          key: ${{ matrix.name }}-e2e-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
-          restore-keys: |
-            ${{ matrix.name }}-e2e-
-            ${{ matrix.name }}-
-          variant: ccache
-
-      - name: Build and install OID in place
-        shell: bash
-        env:
-          CMAKE_C_COMPILER_LAUNCHER: ccache
-          CMAKE_CXX_COMPILER_LAUNCHER: ccache
-        run: |
-          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release --target install
-
-      - name: Install lldb
+      # --- MCP agent e2e smoke (non-Windows legs) -------------------------
+      # Runs on the same runner, reusing the in-place install produced above
+      # rather than a downloaded artifact: liboidbridge's rpaths are absolute
+      # paths into out/lib, so a relocated (extracted) install can't resolve
+      # liboidipc, and macOS SIP strips DYLD_* from /usr/bin/lldb; building in
+      # place puts the libs exactly where the rpaths point. The smoke test
+      # compiles a tiny Eigen fixture, launches it under lldb with
+      # OID_AGENT=1, imports the deployed oid.py after the breakpoint, and
+      # drives the agent endpoint through the real oid-mcp client (discovery
+      # -> hello -> list_symbols -> get_buffer), exercising the in-debugger
+      # endpoint and the Eigen-under-lldb path end to end. The driver is an
+      # lldb + bash script; Windows uses a different debugger and is out of
+      # scope for this smoke, so every e2e step is gated off the Windows legs.
+      - if: contains(matrix.os, 'ubuntu')
+        name: Install lldb (Linux e2e)
         shell: bash
         run: |
           apt-get update -y
@@ -184,88 +146,29 @@ jobs:
       # Pin uv to a specific version via the official action (verifies the
       # downloaded binary's checksum) rather than piping a remote install
       # script to sh.
-      - name: Install uv
+      - if: ${{ !contains(matrix.os, 'windows') }}
+        name: Install uv (e2e)
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           version: "0.11.28"
 
-      # Install the oid-mcp deps up front. The e2e keeps its lldb session
-      # alive with a fixed sleep, so a slow first-time dependency build (e.g.
+      # Install the oid-mcp deps up front. The e2e keeps its lldb session alive
+      # with a fixed sleep, so a slow first-time dependency build (e.g.
       # cryptography compiling from source) must not run inside that window.
-      - name: Warm the oid-mcp virtualenv
-        shell: bash
-        working-directory: resources/oidmcp
-        run: uv run python -c "import oidmcp, numpy, PIL"
-
-      - name: Run lldb e2e smoke test
-        shell: bash
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          resources/oidmcp/tests/e2e/run_e2e_lldb.sh "$PWD/out/OpenImageDebugger"
-
-  mcp-e2e-macos:
-    name: MCP agent e2e smoke (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-15, macos-26, macos-26-intel]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # 7.0.0
-        with:
-          fetch-depth: 1
-          submodules: "recursive"
-          persist-credentials: false
-
-      - name: Select latest stable Xcode
-        run: |
-          # Exclude beta bundles for determinism and log the resolved
-          # version for traceability across the different macOS runners.
-          LATEST_XCODE=$(ls -d /Applications/Xcode*.app | grep -iv beta | sort -V | tail -1)
-          sudo xcode-select -s "$LATEST_XCODE"
-          echo "Selected Xcode: $LATEST_XCODE"
-          xcodebuild -version
-
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # 1.2.23
-        with:
-          key: ${{ matrix.os }}-e2e-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
-          restore-keys: |
-            ${{ matrix.os }}-e2e-
-            ${{ matrix.os }}-
-          variant: ccache
-
-      - name: Build and install OID in place
-        shell: bash
-        env:
-          CMAKE_C_COMPILER_LAUNCHER: ccache
-          CMAKE_CXX_COMPILER_LAUNCHER: ccache
-        run: |
-          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release --target install
-
-      # Pin uv to a specific version via the official action (verifies the
-      # downloaded binary's checksum) rather than piping a remote install
-      # script to sh.
-      - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
-        with:
-          version: "0.11.28"
-
-      # Install the oid-mcp deps up front so the timed e2e (its lldb session
-      # is kept alive by a fixed sleep) does not race a slow first-time
-      # dependency build (e.g. cryptography compiling from source on Intel).
-      - name: Warm the oid-mcp virtualenv
+      - if: ${{ !contains(matrix.os, 'windows') }}
+        name: Warm the oid-mcp virtualenv (e2e)
         shell: bash
         working-directory: resources/oidmcp
         run: uv run python -c "import oidmcp, numpy, PIL"
 
       # Allow lldb to launch/debug the freshly built fixture without an
       # interactive authorization prompt.
-      - name: Enable developer-mode debugging
+      - if: contains(matrix.os, 'macos')
+        name: Enable developer-mode debugging (macOS e2e)
         run: sudo /usr/sbin/DevToolsSecurity -enable
 
-      - name: Run lldb e2e smoke test
+      - if: ${{ !contains(matrix.os, 'windows') }}
+        name: Run lldb e2e smoke test
         shell: bash
         run: |
           export PATH="$HOME/.local/bin:$PATH"
