@@ -63,7 +63,7 @@ def test_no_cleanup_in_group_or_world_accessible_dir(tmp_path, monkeypatch):
     # to touch a dir carrying any group/other bits. Sonar S2612 flags this
     # world-accessible chmod, but it is intentional and confined to a
     # throwaway tmp_path fixture, so the finding is reviewed as safe.
-    os.chmod(str(agent_dir), 0o755)
+    os.chmod(str(agent_dir), 0o755)  # nosec B103
     monkeypatch.setenv('OID_AGENT_DIR', str(agent_dir))
     _stale_and_garbage(agent_dir)
     assert discovery.live_sessions() == []
