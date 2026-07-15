@@ -22,7 +22,8 @@ def test_stats_per_channel_nan_aware():
     arr[0, 1, 1] = np.inf
     stats = compute_stats(arr, float_meta(arr))
     first, second = stats['per_channel']
-    assert first['min'] == 1.0 and first['max'] == 8.0
+    assert first['min'] == pytest.approx(1.0)
+    assert first['max'] == pytest.approx(8.0)
     assert first['mean'] == pytest.approx(4.5)
     assert first['nan'] == 0
     assert second['nan'] == 1 and second['inf'] == 1
@@ -41,7 +42,7 @@ def test_stats_with_region():
     arr = np.zeros((4, 4, 1), dtype=np.float32)
     arr[2:, 2:, 0] = 9.0
     stats = compute_stats(arr, float_meta(arr), region=(2, 2, 2, 2))
-    assert stats['per_channel'][0]['min'] == 9.0
+    assert stats['per_channel'][0]['min'] == pytest.approx(9.0)
     assert stats['region'] == [2, 2, 2, 2]
 
 

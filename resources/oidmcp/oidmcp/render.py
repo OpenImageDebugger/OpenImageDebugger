@@ -58,6 +58,30 @@ def _nn_scale(img, max_px):
     return img
 
 
+def _select_channels(channels, channel, layout):
+    """Storage-channel indices that feed the RGB composition/NaN mask."""
+    if channel is not None:
+        return [channel]
+    if channels == 1:
+        return [0]
+    if channels == 2:
+        return [0, 1]
+    return [layout.index(sem) if sem in layout else fallback
+            for sem, fallback in (('r', 0), ('g', 1), ('b', 2))]
+
+
+def _compose_rgb(view, channels, channel, layout, bounds):
+    """Normalize the selected storage channels into a uint8 (H, W, 3) array."""
+    used = _select_channels(channels, channel, layout)
+    grays = {i: _channel_gray(view[:, :, i], *bounds[i]) for i in set(used)}
+    if channel is not None or channels == 1:
+        return np.stack([grays[used[0]]] * 3, axis=-1)
+    if channels == 2:
+        zero = np.zeros_like(grays[0])
+        return np.stack([grays[0], grays[1], zero], axis=-1)
+    return np.stack([grays[i] for i in used], axis=-1)
+
+
 def render_view(arr, meta, region=None, channel=None,
                 vmin=None, vmax=None, max_px=512):
     """
@@ -74,29 +98,13 @@ def render_view(arr, meta, region=None, channel=None,
     bounds, mode = _channel_bounds(arr, vmin, vmax)
     view = crop_region(arr, region) if region is not None else arr
 
-    if channel is not None:
-        used = [channel]
-    elif channels == 1:
-        used = [0]
-    elif channels == 2:
-        used = [0, 1]
-    else:
-        used = [layout.index(sem) if sem in layout else fallback
-                for sem, fallback in (('r', 0), ('g', 1), ('b', 2))]
-
-    grays = {i: _channel_gray(view[:, :, i], *bounds[i]) for i in set(used)}
-    if channel is not None or channels == 1:
-        rgb = np.stack([grays[used[0]]] * 3, axis=-1)
-    elif channels == 2:
-        zero = np.zeros_like(grays[0])
-        rgb = np.stack([grays[0], grays[1], zero], axis=-1)
-    else:
-        rgb = np.stack([grays[i] for i in used], axis=-1)
+    rgb = _compose_rgb(view, channels, channel, layout, bounds)
 
     floating = np.issubdtype(arr.dtype, np.floating)
     nan_count = int(np.isnan(arr).sum()) if floating else 0
     inf_count = int(np.isinf(arr).sum()) if floating else 0
     if floating:
+        used = _select_channels(channels, channel, layout)
         mask = np.isnan(view[:, :, sorted(set(used))]).any(axis=2)
         rgb = rgb.copy()
         rgb[mask] = MAGENTA
