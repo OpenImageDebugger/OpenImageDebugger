@@ -8,6 +8,8 @@ import time
 
 from oidscripts.debuggers.interfaces import BridgeEventHandlerInterface
 
+from oidscripts import agentendpoint
+
 
 class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
     """
@@ -27,6 +29,7 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
             self._window.set_available_symbols(observable_symbols)
 
     def exit_handler(self):
+        agentendpoint.shutdown()
         self._window.terminate()
 
     def stop_handler(self):
@@ -47,6 +50,9 @@ class OpenImageDebuggerEvents(BridgeEventHandlerInterface):
 
         # Set list of available symbols
         self._set_symbol_complete_list()
+
+        # Let agent clients know the world may have changed
+        agentendpoint.notify_stop()
 
     def plot_handler(self, variable_name):
         """
