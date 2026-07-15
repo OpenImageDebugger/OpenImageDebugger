@@ -2,12 +2,12 @@
 Client side of the private control protocol spoken by the in-debugger
 agent endpoint.
 
-Frame encode/decode lives in ``oidmcp._wireframe``, a vendored
-byte-identical copy of ``oidscripts/wireframe.py`` (the endpoint's
-module; a sync test keeps the two identical). Vendoring keeps the wire
-format shared without loading any code by filesystem path, so importing
-this package has no filesystem or side-effect dependency and the wheel
-is self-contained.
+Frame encode/decode comes from the single shared definition,
+``oidscripts.wireframe``, re-exported through the ``oidmcp._wireframe``
+bridge (which puts the sibling debugger-scripts tree on ``sys.path`` and
+imports it as a normal named package -- no code is loaded by filesystem
+path). Both the endpoint and this client import the same module, so the
+wire format cannot drift between them.
 """
 
 from __future__ import annotations
