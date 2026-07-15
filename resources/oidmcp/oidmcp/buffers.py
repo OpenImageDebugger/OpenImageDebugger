@@ -34,6 +34,12 @@ def decode_buffer(meta: dict, raw: bytes) -> np.ndarray:
     height, width = int(meta['height']), int(meta['width'])
     channels = int(meta['channels'])
     stride = int(meta['row_stride'])
+    if height <= 0 or width <= 0 or channels <= 0:
+        raise ValueError(
+            f'invalid buffer dimensions: {width}x{height}x{channels}')
+    if stride < width:
+        raise ValueError(
+            f'row_stride {stride} is smaller than width {width}')
     count = height * stride * channels
     if len(raw) < count * dtype.itemsize:
         raise ValueError(

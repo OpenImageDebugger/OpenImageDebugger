@@ -60,24 +60,24 @@ def test_view_tool_returns_image_and_text(manager):
     assert 'stop_generation' in text
 
 
-def test_dump_tool_wraps_filesystem_errors(live_endpoint, tmp_path):
-    # A bad explicit path becomes a friendly RuntimeError, like the
-    # other tools, instead of a raw OSError.
-    missing = str(tmp_path / 'no-such-dir' / 'out.npy')
+def test_dump_tool_wraps_filesystem_errors(live_endpoint, dump_dir):
+    # A path outside the dump directory becomes a friendly RuntimeError,
+    # like the other tools, instead of a raw ValueError.
+    escaping = str(dump_dir / 'no-such-dir' / 'out.npy')
     with pytest.raises(RuntimeError) as excinfo:
-        server.dump('grad', path=missing)
-    assert 'no-such-dir' in str(excinfo.value)
+        server.dump('grad', path=escaping)
+    assert 'bare filename' in str(excinfo.value)
 
 
-def test_dump_tool_refuses_to_overwrite_without_flag(live_endpoint, tmp_path):
-    # An explicit path that already holds a file is refused, so an agent
+def test_dump_tool_refuses_to_overwrite_without_flag(live_endpoint, dump_dir):
+    # A filename that already holds a file is refused, so an agent
     # cannot clobber it by accident; the overwrite flag opts back in.
-    target = str(tmp_path / 'out.npy')
-    first = server.dump('grad', path=target)
+    first = server.dump('grad', path='out.npy')
+    assert first.startswith(str(dump_dir))
     with pytest.raises(RuntimeError) as excinfo:
-        server.dump('grad', path=target)
+        server.dump('grad', path='out.npy')
     assert 'overwrite' in str(excinfo.value)
-    assert server.dump('grad', path=target, overwrite=True) == first
+    assert server.dump('grad', path='out.npy', overwrite=True) == first
 
 
 def test_plot_forwards(manager):

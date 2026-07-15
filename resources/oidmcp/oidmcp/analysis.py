@@ -151,18 +151,48 @@ def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
     """
     Save the full decoded buffer (padding already stripped) as .npy.
 
+    Every write is confined to the hardened per-user dump directory
+    (``_safe_dump_dir()``); ``path`` may only pick a bare filename
+    inside it, never an arbitrary location. The write itself is atomic
+    and symlink-safe.
+
     Never clobbers an existing file: if the resolved target already
     exists, raise unless ``overwrite`` is set, so an unintended ``path``
     cannot silently destroy the caller's data.
     """
+    directory = _safe_dump_dir()
     if path is None:
-        directory = _safe_dump_dir()
         name = re.sub(r'[^A-Za-z0-9_.-]', '_', symbol)
-        path = str(directory / f'{name}_gen{stop_generation}.npy')
-    elif not path.endswith('.npy'):
-        path = f'{path}.npy'
-    if not overwrite and os.path.exists(path):
+        filename = f'{name}_gen{stop_generation}.npy'
+    else:
+        # The client picks only a name INSIDE the hardened dump dir; a
+        # path separator, '..', or an absolute path could escape it.
+        if (os.path.isabs(path)
+                or os.path.basename(path) != path
+                or path in ('.', '..', '')):
+            raise ValueError(
+                'dump path must be a bare filename within the dump '
+                'directory')
+        filename = path if path.endswith('.npy') else f'{path}.npy'
+    target = os.path.join(str(directory), filename)
+    if os.path.islink(target):
+        raise ValueError(
+            f'{target} is a symlink; refusing to write through it')
+    if not overwrite and os.path.lexists(target):
         raise FileExistsError(
-            f'{path} already exists; pass overwrite=true to replace it')
-    np.save(path, np.ascontiguousarray(arr))
-    return os.path.abspath(path)
+            f'{target} already exists; pass overwrite=true to replace it')
+    # Atomic, symlink-safe write: fill a temp file in the same 0700 dir,
+    # then os.replace() the directory entry (which never follows a
+    # symlink at the target).
+    fd, tmp = tempfile.mkstemp(dir=str(directory), suffix='.npy.tmp')
+    try:
+        with os.fdopen(fd, 'wb') as handle:
+            np.save(handle, np.ascontiguousarray(arr))
+        os.replace(tmp, target)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+    return os.path.abspath(target)

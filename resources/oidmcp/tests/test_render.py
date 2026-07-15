@@ -90,6 +90,17 @@ def test_nan_pixels_are_magenta():
     assert info['nan_count'] == 1
 
 
+def test_channel_selection_marks_nan_without_axis_error():
+    # _select_channels returns a list, so view[:, :, [i]] keeps the
+    # channel axis and the NaN mask's .any(axis=2) stays valid even
+    # when a single channel is selected.
+    arr = np.zeros((4, 4, 3), dtype=np.float32)
+    arr[1, 1, 2] = np.nan          # NaN only in the selected channel
+    meta = make_meta(4, 4, channels=3, type_value=5, raw=arr.tobytes())
+    _, info = render_view(arr, meta, channel=2)   # must not raise
+    assert info['nan_count'] == 1
+
+
 def test_tiny_buffers_are_upscaled():
     arr = np.eye(2, dtype=np.float32).reshape(2, 2, 1)
     _, info = render_view(arr, gray_meta(arr))
