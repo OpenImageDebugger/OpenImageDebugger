@@ -3,16 +3,44 @@ Client side of the private control protocol spoken by the in-debugger
 agent endpoint.
 
 Frame encode/decode is shared with the endpoint through
-oidscripts.wireframe (single source of the wire format).
-oidmcp/__init__.py puts resources/ on sys.path so this import resolves
-at runtime when oid-mcp runs from the OID source tree.
+oidscripts/wireframe.py (single source of the wire format). oid-mcp runs
+from the OID source tree; rather than mutating the interpreter-wide
+sys.path, that stdlib-only module is loaded directly from its file so
+importing this package stays free of side effects.
 """
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
 import socket
+from pathlib import Path as _Path
 
-from oidscripts.wireframe import recv_frame, send_frame
+
+def _load_wireframe():
+    """Load the shared framing module (`oidscripts/wireframe.py`) by path.
+
+    The module is stdlib-only by design (so it also loads inside whatever
+    Python the debugger embeds), which makes a file-path load safe without
+    putting the sibling `oidscripts` tree on sys.path.
+    """
+    path = _Path(__file__).resolve().parents[2] / 'oidscripts' / 'wireframe.py'
+    spec = _importlib_util.spec_from_file_location('oidmcp._wireframe', path)
+    if spec is None or spec.loader is None:  # pragma: no cover - defensive
+        raise ImportError(f'cannot load wire framing from {path}')
+    module = _importlib_util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_wireframe = _load_wireframe()
+recv_frame = _wireframe.recv_frame
+send_frame = _wireframe.send_frame
+
+# Client-side ceiling on a single get_buffer payload, applied when the caller
+# does not request a smaller cap. Matches the endpoint's own default ceiling so
+# a legitimate buffer always fits, while still bounding how much a misbehaving
+# endpoint can make us read. server.py imports this as its transfer-cap default.
+DEFAULT_MAX_BYTES = 256 * 1024 * 1024
 
 
 class ControlError(Exception):
@@ -64,9 +92,11 @@ class ControlClient:
             request['max_bytes'] = max_bytes
         # Enforce the cap on the client side too: bound how many payload bytes
         # we will read so a misbehaving endpoint can't make us buffer more
-        # than requested. The endpoint rejects buffers above the cap, so a
-        # legitimate payload is always <= max_bytes.
-        meta, payload = self._call(request, max_payload=max_bytes)
+        # than requested. When the caller omits max_bytes we still apply a safe
+        # default ceiling instead of reading unbounded. The endpoint rejects
+        # buffers above the cap, so a legitimate payload always fits.
+        limit = max_bytes if max_bytes is not None else DEFAULT_MAX_BYTES
+        meta, payload = self._call(request, max_payload=limit)
         meta.pop('payload', None)
         return meta, payload
 

@@ -47,7 +47,7 @@ buffers into the human viewer.
 | `view(symbol, region?, channel?, vmin?, vmax?, max_px?)` | PNG rendering; `region` is the stateless zoom |
 | `stats(symbol, region?)` | Per-channel min/max/mean/std, NaN/Inf/zero counts |
 | `values(symbol, x, y, w, h, channel?)` | Exact numbers (≤1024 per call) |
-| `dump(symbol, path?)` | Lossless `.npy` dump |
+| `dump(symbol, path?, overwrite?)` | Lossless `.npy` dump; refuses to overwrite an existing file unless `overwrite=true` |
 | `plot(symbol)` | Mirror into the human viewer window |
 
 ## Notes

@@ -62,20 +62,25 @@ def crop_region(arr: np.ndarray,
     return arr[y:y + h, x:x + w, :]
 
 
+# (session pid, symbol, stop generation) -> (metadata, decoded array)
+CacheKey = tuple[int, str, int]
+CacheValue = tuple[dict, np.ndarray]
+
+
 class BufferCache:
     """Small LRU keyed by (session pid, symbol, stop generation)."""
 
     def __init__(self, capacity: int = 4):
         self._capacity = capacity
-        self._entries: OrderedDict = OrderedDict()
+        self._entries: OrderedDict[CacheKey, CacheValue] = OrderedDict()
 
-    def get(self, key):
+    def get(self, key: CacheKey) -> CacheValue | None:
         if key not in self._entries:
             return None
         self._entries.move_to_end(key)
         return self._entries[key]
 
-    def put(self, key, value) -> None:
+    def put(self, key: CacheKey, value: CacheValue) -> None:
         self._entries[key] = value
         self._entries.move_to_end(key)
         while len(self._entries) > self._capacity:

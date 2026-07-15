@@ -1,9 +1,18 @@
 import json
 import os
+import sys
 
 import pytest
 
 from oidmcp import discovery
+
+
+def _stale_and_garbage(agent_dir):
+    """Drop one unparseable and one stale-but-valid discovery file."""
+    (agent_dir / 'garbage.json').write_text('{not json')
+    (agent_dir / '999999999.json').write_text(json.dumps({
+        'version': 1, 'port': 1, 'token': 'x' * 64,
+        'debugger': 'gdb', 'pid': 999999999, 'start_time': 0.0}))
 
 
 def test_live_sessions_finds_running_endpoint(live_endpoint):
@@ -15,15 +24,47 @@ def test_live_sessions_finds_running_endpoint(live_endpoint):
 
 
 def test_stale_files_are_cleaned_up(tmp_path, monkeypatch):
+    # A private, current-user-owned directory is a trusted OID agent dir,
+    # so stale/unreadable entries are safe to unlink.
     agent_dir = tmp_path / 'agent'
-    agent_dir.mkdir()
+    agent_dir.mkdir(mode=0o700)
+    os.chmod(str(agent_dir), 0o700)
     monkeypatch.setenv('OID_AGENT_DIR', str(agent_dir))
-    (agent_dir / '999999999.json').write_text(json.dumps({
-        'version': 1, 'port': 1, 'token': 'x' * 64,
-        'debugger': 'gdb', 'pid': 999999999, 'start_time': 0.0}))
-    (agent_dir / 'garbage.json').write_text('{not json')
+    _stale_and_garbage(agent_dir)
     assert discovery.live_sessions() == []
     assert list(agent_dir.iterdir()) == []
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX symlinks')
+def test_no_cleanup_through_symlinked_agent_dir(tmp_path, monkeypatch):
+    # A symlinked OID_AGENT_DIR is not a trusted agent dir: an attacker
+    # (or a footgun) could aim it at a directory whose matching *.json
+    # files would then be deleted. Discovery must delete nothing there.
+    real_dir = tmp_path / 'real'
+    real_dir.mkdir(mode=0o700)
+    os.chmod(str(real_dir), 0o700)
+    _stale_and_garbage(real_dir)
+    link = tmp_path / 'link'
+    os.symlink(str(real_dir), str(link))
+    monkeypatch.setenv('OID_AGENT_DIR', str(link))
+    assert discovery.live_sessions() == []
+    assert (real_dir / 'garbage.json').exists()
+    assert (real_dir / '999999999.json').exists()
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX permissions')
+def test_no_cleanup_in_group_or_world_accessible_dir(tmp_path, monkeypatch):
+    # A group/world-accessible directory (e.g. the user accidentally
+    # points OID_AGENT_DIR at ~/Documents) is not a trusted OID agent
+    # dir; nothing there may be unlinked.
+    agent_dir = tmp_path / 'shared'
+    agent_dir.mkdir()
+    os.chmod(str(agent_dir), 0o755)
+    monkeypatch.setenv('OID_AGENT_DIR', str(agent_dir))
+    _stale_and_garbage(agent_dir)
+    assert discovery.live_sessions() == []
+    assert (agent_dir / 'garbage.json').exists()
+    assert (agent_dir / '999999999.json').exists()
 
 
 def test_pick_session_default_is_most_recent(tmp_path, monkeypatch):

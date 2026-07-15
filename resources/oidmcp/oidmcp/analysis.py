@@ -38,8 +38,23 @@ def _channel_stats(channel: np.ndarray, floating: bool, label) -> dict:
     }
 
 
+def _as_hwc(arr: np.ndarray) -> np.ndarray:
+    """
+    Normalize a buffer to (H, W, C). A bare (H, W) matrix is a
+    single-channel buffer, so promote it to (H, W, 1); reject anything
+    that is neither 2-D nor 3-D with a clear error.
+    """
+    if arr.ndim == 2:
+        return arr[:, :, np.newaxis]
+    if arr.ndim != 3:
+        raise ValueError(
+            f'expected a 2-D or 3-D buffer, got {arr.ndim} dimensions')
+    return arr
+
+
 def compute_stats(arr: np.ndarray, meta: dict,
                    region: tuple | None = None) -> dict:
+    arr = _as_hwc(arr)
     view = crop_region(arr, region) if region is not None else arr
     floating = np.issubdtype(arr.dtype, np.floating)
     layout = (meta.get('pixel_layout') or '')
@@ -74,6 +89,8 @@ def _json_safe(value):
 def _sanitize_tree(node):
     if isinstance(node, list):
         return [_sanitize_tree(item) for item in node]
+    if isinstance(node, dict):
+        return {key: _sanitize_tree(value) for key, value in node.items()}
     return _json_safe(node)
 
 
@@ -130,9 +147,13 @@ def _safe_dump_dir() -> Path:
 
 
 def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
-             path: str | None = None) -> str:
+             path: str | None = None, overwrite: bool = False) -> str:
     """
     Save the full decoded buffer (padding already stripped) as .npy.
+
+    Never clobbers an existing file: if the resolved target already
+    exists, raise unless ``overwrite`` is set, so an unintended ``path``
+    cannot silently destroy the caller's data.
     """
     if path is None:
         directory = _safe_dump_dir()
@@ -140,5 +161,8 @@ def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
         path = str(directory / f'{name}_gen{stop_generation}.npy')
     elif not path.endswith('.npy'):
         path = f'{path}.npy'
+    if not overwrite and os.path.exists(path):
+        raise FileExistsError(
+            f'{path} already exists; pass overwrite=true to replace it')
     np.save(path, np.ascontiguousarray(arr))
     return os.path.abspath(path)
