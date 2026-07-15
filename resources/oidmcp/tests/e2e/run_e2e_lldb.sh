@@ -34,7 +34,7 @@ export OID_AGENT_DIR="$WORK/agent"
 # Python thread, so the endpoint answers while lldb sits stopped at the
 # breakpoint. stdin from `sleep` only keeps the session alive for the
 # checker (lldb quits on EOF).
-lldb --source "$WORK/cmds.lldb" "$WORK/fixture" < <(sleep 90) &
+lldb --no-lldbinit --source "$WORK/cmds.lldb" "$WORK/fixture" < <(sleep 90) &
 LLDB_PID=$!
 
 cd "$HERE/../.."

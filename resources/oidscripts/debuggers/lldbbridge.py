@@ -12,6 +12,7 @@ from oidscripts import sysinfo
 from oidscripts.typebridge import TypeInspectorInterface
 from oidscripts.debuggers.interfaces import BridgeInterface, \
     DebuggerSymbolReference, raise_if_too_large
+from oidscripts.debuggers.template_args import TemplateTypeName
 
 instance = None
 
@@ -232,7 +233,13 @@ class LldbBridge(BridgeInterface):
 class SymbolWrapper(DebuggerSymbolReference):
     def __init__(self, symbol):
         self._symbol = symbol  # type: lldb.SBValue
-        self.type = symbol.GetTypeName()  # type: str
+        # A str carrying the type name, plus GDB-style template_argument()
+        # backed by the canonical name so the Eigen inspector works under
+        # LLDB (whose GetTypeName() is a typedef with no template params).
+        sbtype = symbol.GetType()
+        canonical = (sbtype.GetCanonicalType().GetName() or None) \
+            if sbtype.IsValid() else None
+        self.type = TemplateTypeName(symbol.GetTypeName(), canonical)
 
     def __str__(self):
         return str(self._symbol.GetValue())
