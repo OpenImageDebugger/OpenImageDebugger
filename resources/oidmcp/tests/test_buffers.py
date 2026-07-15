@@ -54,6 +54,29 @@ def test_decode_rejects_short_payload():
         decode_buffer(meta, b'\x00' * 8)
 
 
+@pytest.mark.parametrize('field,value', [
+    ('height', 0), ('height', -1),
+    ('width', 0), ('width', -3),
+    ('channels', 0), ('channels', -2),
+])
+def test_decode_rejects_non_positive_dimensions(field, value):
+    # Hostile or corrupt wire metadata must fail with a clear error, not
+    # a confusing reshape exception or an absurd allocation.
+    meta = make_meta(4, 4, channels=1, type_value=5, raw=b'')
+    meta[field] = value
+    with pytest.raises(ValueError) as excinfo:
+        decode_buffer(meta, b'\x00' * 64)
+    assert 'invalid buffer dimensions' in str(excinfo.value)
+
+
+def test_decode_rejects_stride_smaller_than_width():
+    meta = make_meta(4, 2, channels=1, type_value=5, raw=b'')
+    meta['row_stride'] = 3
+    with pytest.raises(ValueError) as excinfo:
+        decode_buffer(meta, b'\x00' * 64)
+    assert 'row_stride' in str(excinfo.value)
+
+
 def test_crop_region():
     arr = np.arange(6 * 4, dtype=np.int32).reshape(4, 6, 1)
     cropped = crop_region(arr, (1, 2, 3, 2))

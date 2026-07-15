@@ -10,7 +10,7 @@ from oidmcp.analysis import (
     dump_npy,
     extract_values,
 )
-from oidmcp.analysis import _sanitize_tree
+from oidmcp.analysis import _current_user, _safe_dump_dir, _sanitize_tree
 from conftest import make_meta
 
 
@@ -143,30 +143,30 @@ def test_values_cap_enforced():
     assert str(VALUES_CAP) in str(excinfo.value)
 
 
-def test_dump_npy_roundtrip(tmp_path):
+def test_dump_npy_roundtrip(dump_dir):
     arr = np.arange(24, dtype=np.int32).reshape(4, 3, 2)
-    path = dump_npy(arr, 'img->data[0]', 7, path=str(tmp_path / 'out.npy'))
-    loaded = np.load(path)
-    np.testing.assert_array_equal(loaded, arr)
+    path = dump_npy(arr, 'img->data[0]', 7, path='out.npy')
+    # Writes are confined to the hardened per-user dump directory.
+    assert (os.path.dirname(path)
+            == str(dump_dir / ('oid-dumps-' + _current_user())))
+    np.testing.assert_array_equal(np.load(path), arr)
+    # The atomic write leaves no temp file behind.
+    assert not [name for name in os.listdir(os.path.dirname(path))
+                if name.endswith('.tmp')]
 
 
-def test_dump_npy_appends_missing_npy_suffix(tmp_path):
+def test_dump_npy_appends_missing_npy_suffix(dump_dir):
     arr = np.arange(6, dtype=np.int32).reshape(2, 3, 1)
-    path = dump_npy(arr, 'img->data[0]', 1, path=str(tmp_path / 'out'))
-    loaded = np.load(path)
-    np.testing.assert_array_equal(loaded, arr)
+    path = dump_npy(arr, 'img->data[0]', 1, path='out')
+    assert path.endswith('/out.npy')
+    np.testing.assert_array_equal(np.load(path), arr)
 
 
-def test_dump_npy_default_path_is_sanitized(tmp_path, monkeypatch):
-    monkeypatch.setenv('TMPDIR', str(tmp_path))
-    import importlib
-    import tempfile
-    importlib.reload(tempfile)
-    from oidmcp.analysis import _current_user
+def test_dump_npy_default_path_is_sanitized(dump_dir):
     arr = np.zeros((2, 2, 1), dtype=np.uint8)
     path = dump_npy(arr, 'img->data[0]', 3)
     assert path.endswith('.npy')
-    name = path.rsplit('/', 1)[-1]
+    name = os.path.basename(path)
     assert '(' not in name and '>' not in name and '[' not in name
     # The default dir is per-user, so another user cannot pre-own it.
     assert (os.path.basename(os.path.dirname(path))
@@ -174,39 +174,34 @@ def test_dump_npy_default_path_is_sanitized(tmp_path, monkeypatch):
     np.testing.assert_array_equal(np.load(path), arr)
 
 
-def test_dump_npy_refuses_to_overwrite_existing_file(tmp_path):
-    target = tmp_path / 'out.npy'
+def test_dump_npy_refuses_to_overwrite_existing_file(dump_dir):
     original = np.arange(6, dtype=np.int32).reshape(2, 3, 1)
-    np.save(str(target), original)
+    target = dump_npy(original, 'img', 1, path='out.npy')
     with pytest.raises(FileExistsError) as excinfo:
         dump_npy(np.zeros((2, 3, 1), dtype=np.int32), 'img', 1,
-                 path=str(target))
+                 path='out.npy')
     assert 'overwrite' in str(excinfo.value)
     # The existing file is left untouched.
-    np.testing.assert_array_equal(np.load(str(target)), original)
+    np.testing.assert_array_equal(np.load(target), original)
 
 
-def test_dump_npy_overwrite_flag_replaces_existing_file(tmp_path):
-    target = tmp_path / 'out.npy'
-    np.save(str(target), np.arange(6, dtype=np.int32).reshape(2, 3, 1))
+def test_dump_npy_overwrite_flag_replaces_existing_file(dump_dir):
+    dump_npy(np.arange(6, dtype=np.int32).reshape(2, 3, 1), 'img', 1,
+             path='out.npy')
     replacement = np.full((2, 3, 1), 9, dtype=np.int32)
-    path = dump_npy(replacement, 'img', 1, path=str(target), overwrite=True)
+    path = dump_npy(replacement, 'img', 1, path='out.npy', overwrite=True)
     np.testing.assert_array_equal(np.load(path), replacement)
 
 
-def test_dump_npy_overwrite_guard_uses_final_suffixed_path(tmp_path):
+def test_dump_npy_overwrite_guard_uses_final_suffixed_path(dump_dir):
     # The guard checks the resolved '.npy' target, not the raw argument.
-    np.save(str(tmp_path / 'out.npy'), np.zeros((1, 1, 1), dtype=np.uint8))
+    dump_npy(np.zeros((1, 1, 1), dtype=np.uint8), 'img', 1, path='out.npy')
     with pytest.raises(FileExistsError):
         dump_npy(np.zeros((1, 1, 1), dtype=np.uint8), 'img', 1,
-                 path=str(tmp_path / 'out'))   # no explicit suffix
+                 path='out')   # no explicit suffix
 
 
-def test_dump_npy_default_path_refuses_silent_overwrite(tmp_path, monkeypatch):
-    monkeypatch.setenv('TMPDIR', str(tmp_path))
-    import importlib
-    import tempfile
-    importlib.reload(tempfile)
+def test_dump_npy_default_path_refuses_silent_overwrite(dump_dir):
     arr = np.zeros((2, 2, 1), dtype=np.uint8)
     first = dump_npy(arr, 'img', 3)
     with pytest.raises(FileExistsError):
@@ -214,17 +209,39 @@ def test_dump_npy_default_path_refuses_silent_overwrite(tmp_path, monkeypatch):
     assert dump_npy(arr, 'img', 3, overwrite=True) == first
 
 
+@pytest.mark.parametrize('bad_path', [
+    'sub/out.npy',        # relative path with a separator
+    '/tmp/escape.npy',    # absolute path
+    '..',                 # parent-directory reference
+    '.',                  # the dump directory itself
+    '',                   # empty name
+])
+def test_dump_npy_rejects_non_bare_filename(dump_dir, bad_path):
+    with pytest.raises(ValueError) as excinfo:
+        dump_npy(np.zeros((1, 1, 1), dtype=np.uint8), 'img', 1,
+                 path=bad_path)
+    assert 'bare filename' in str(excinfo.value)
+
+
 @pytest.mark.skipif(sys.platform == 'win32', reason='POSIX symlinks')
-def test_dump_npy_default_dir_rejects_symlink(tmp_path, monkeypatch):
-    monkeypatch.setenv('TMPDIR', str(tmp_path))
-    import importlib
-    import tempfile
-    importlib.reload(tempfile)
-    from oidmcp.analysis import _current_user
-    elsewhere = tmp_path / 'elsewhere'
+def test_dump_npy_refuses_symlink_at_target(dump_dir):
+    directory = _safe_dump_dir()
+    victim = dump_dir / 'victim.npy'
+    os.symlink(str(victim), str(directory / 'link.npy'))
+    with pytest.raises(ValueError) as excinfo:
+        dump_npy(np.zeros((1, 1, 1), dtype=np.uint8), 'img', 1,
+                 path='link.npy', overwrite=True)
+    assert 'symlink' in str(excinfo.value)
+    # Nothing was written through the link.
+    assert not victim.exists()
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX symlinks')
+def test_dump_npy_default_dir_rejects_symlink(dump_dir):
+    elsewhere = dump_dir / 'elsewhere'
     elsewhere.mkdir(mode=0o700)
     os.symlink(str(elsewhere),
-               str(tmp_path / ('oid-dumps-' + _current_user())))
+               str(dump_dir / ('oid-dumps-' + _current_user())))
     arr = np.zeros((2, 2, 1), dtype=np.uint8)
     with pytest.raises(RuntimeError) as excinfo:
         dump_npy(arr, 'img', 1)

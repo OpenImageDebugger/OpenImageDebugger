@@ -1,4 +1,5 @@
 import sys
+import tempfile
 from pathlib import Path
 
 # Make `import oidscripts.agentendpoint` work: the endpoint lives in the
@@ -93,6 +94,19 @@ def gradient_meta():
     arr = (np.arange(3)[:, None] * 10 + np.arange(4)[None, :]) \
         .astype(np.float32)
     return make_meta(4, 3, channels=1, type_value=5, raw=arr.tobytes())
+
+
+@pytest.fixture
+def dump_dir(tmp_path, monkeypatch):
+    """Resolve the hardened per-user dump directory under tmp_path.
+
+    gettempdir() caches its result in tempfile.tempdir; clearing the
+    cache makes the patched TMPDIR take effect now, and monkeypatch
+    restores the previous cache afterwards.
+    """
+    monkeypatch.setenv('TMPDIR', str(tmp_path))
+    monkeypatch.setattr(tempfile, 'tempdir', None)
+    return tmp_path
 
 
 @pytest.fixture
