@@ -211,7 +211,7 @@ def test_dump_npy_default_path_refuses_silent_overwrite(dump_dir):
 
 @pytest.mark.parametrize('bad_path', [
     'sub/out.npy',        # relative path with a separator
-    '/tmp/escape.npy',    # absolute path
+    '/etc/escape.npy',    # absolute path
     '..',                 # parent-directory reference
     '.',                  # the dump directory itself
     '',                   # empty name
