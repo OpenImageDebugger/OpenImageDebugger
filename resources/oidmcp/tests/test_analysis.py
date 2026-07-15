@@ -1,3 +1,6 @@
+import os
+import sys
+
 import numpy as np
 import pytest
 
@@ -44,6 +47,24 @@ def test_stats_with_region():
     stats = compute_stats(arr, float_meta(arr), region=(2, 2, 2, 2))
     assert stats['per_channel'][0]['min'] == pytest.approx(9.0)
     assert stats['region'] == [2, 2, 2, 2]
+
+
+def test_stats_single_channel_has_no_color_label():
+    # A single-channel buffer (e.g. an Eigen matrix) has no color
+    # semantics, even though bridges default pixel_layout to 'bgra'.
+    arr = np.zeros((2, 2, 1), dtype=np.float32)
+    meta = make_meta(2, 2, channels=1, type_value=5, pixel_layout='bgra',
+                     raw=arr.tobytes())
+    stats = compute_stats(arr, meta)
+    assert stats['per_channel'][0]['label'] is None
+
+
+def test_stats_multi_channel_keeps_layout_labels():
+    arr = np.zeros((2, 2, 3), dtype=np.float32)
+    meta = make_meta(2, 2, channels=3, type_value=5, pixel_layout='bgra',
+                     raw=arr.tobytes())
+    stats = compute_stats(arr, meta)
+    assert [c['label'] for c in stats['per_channel']] == ['b', 'g', 'r']
 
 
 def test_values_returns_exact_numbers():
@@ -95,9 +116,30 @@ def test_dump_npy_default_path_is_sanitized(tmp_path, monkeypatch):
     import importlib
     import tempfile
     importlib.reload(tempfile)
+    from oidmcp.analysis import _current_user
     arr = np.zeros((2, 2, 1), dtype=np.uint8)
     path = dump_npy(arr, 'img->data[0]', 3)
     assert path.endswith('.npy')
     name = path.rsplit('/', 1)[-1]
     assert '(' not in name and '>' not in name and '[' not in name
+    # The default dir is per-user, so another user cannot pre-own it.
+    assert (os.path.basename(os.path.dirname(path))
+            == 'oid-dumps-' + _current_user())
     np.testing.assert_array_equal(np.load(path), arr)
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX symlinks')
+def test_dump_npy_default_dir_rejects_symlink(tmp_path, monkeypatch):
+    monkeypatch.setenv('TMPDIR', str(tmp_path))
+    import importlib
+    import tempfile
+    importlib.reload(tempfile)
+    from oidmcp.analysis import _current_user
+    elsewhere = tmp_path / 'elsewhere'
+    elsewhere.mkdir(mode=0o700)
+    os.symlink(str(elsewhere),
+               str(tmp_path / ('oid-dumps-' + _current_user())))
+    arr = np.zeros((2, 2, 1), dtype=np.uint8)
+    with pytest.raises(RuntimeError) as excinfo:
+        dump_npy(arr, 'img', 1)
+    assert 'symlink' in str(excinfo.value)

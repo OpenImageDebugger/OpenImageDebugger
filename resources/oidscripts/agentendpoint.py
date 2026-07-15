@@ -33,6 +33,13 @@ from oidscripts.debuggers.interfaces import BufferTooLargeError
 
 DEFAULT_REQUEST_TIMEOUT = 15.0
 
+# An unauthenticated connection must complete its hello within this
+# window; the timeout is lifted once the client has authenticated.
+HANDSHAKE_TIMEOUT = 10.0
+
+# Ceiling on simultaneously served connections; excess ones are closed.
+MAX_CLIENTS = 8
+
 
 class EndpointError(Exception):
     """Structured protocol error carried back to the client."""
@@ -103,6 +110,11 @@ class AgentEndpoint(object):
             raise EndpointError(ERROR_UNKNOWN_METHOD,
                                 'malformed request (not a JSON object)')
         method = request.get('method')
+        if not isinstance(method, str):
+            # An unhashable method (list/dict) must not become a
+            # TypeError from the handler-table lookup.
+            raise EndpointError(ERROR_UNKNOWN_METHOD,
+                                'unknown method: %r' % (method,))
         handler = self._handlers.get(method)
         if handler is None:
             raise EndpointError(ERROR_UNKNOWN_METHOD,
@@ -272,16 +284,33 @@ class _EndpointServer(object):
                 conn, _ = self._sock.accept()
             except OSError:
                 return  # listening socket closed by close()
-            with self._lock:
-                self._clients.append(conn)
-            thread = threading.Thread(
-                target=self._serve_client, args=(conn,),
-                name='oid-agent-client', daemon=True)
-            thread.start()
+            try:
+                with self._lock:
+                    if len(self._clients) >= MAX_CLIENTS:
+                        conn.close()
+                        continue
+                    self._clients.append(conn)
+                thread = threading.Thread(
+                    target=self._serve_client, args=(conn,),
+                    name='oid-agent-client', daemon=True)
+                thread.start()
+            except Exception:
+                # A per-connection failure (e.g. thread.start()) drops
+                # that connection but must never kill the accept loop.
+                with self._lock:
+                    if conn in self._clients:
+                        self._clients.remove(conn)
+                try:
+                    conn.close()
+                except OSError:
+                    pass  # already closed
 
     def _serve_client(self, conn):
         try:
             with conn:
+                # Pre-auth: an idle connection may not hold its slot
+                # open; it must say hello within the handshake window.
+                conn.settimeout(HANDSHAKE_TIMEOUT)
                 request, _ = recv_frame(conn, max_payload=0)
                 try:
                     if (not isinstance(request, dict)
@@ -294,6 +323,8 @@ class _EndpointServer(object):
                                                 'message': error.message}})
                     return  # unauthenticated: drop the connection
                 send_frame(conn, response, payload)
+                # Authenticated: the client may idle between requests.
+                conn.settimeout(None)
                 while True:
                     request, _ = recv_frame(conn, max_payload=0)
                     try:

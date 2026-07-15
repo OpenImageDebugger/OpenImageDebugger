@@ -35,6 +35,15 @@ def test_unknown_method():
     assert excinfo.value.code == ep.ERROR_UNKNOWN_METHOD
 
 
+def test_non_string_method_is_unknown_method():
+    # An unhashable method (e.g. a list) must map to a protocol error,
+    # not a TypeError that would kill the client thread.
+    endpoint = make_endpoint()
+    with pytest.raises(ep.EndpointError) as excinfo:
+        endpoint.handle_request({'method': ['x']})
+    assert excinfo.value.code == ep.ERROR_UNKNOWN_METHOD
+
+
 def test_ping_tracks_stop_generation():
     endpoint = make_endpoint()
     endpoint.notify_stop()

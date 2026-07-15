@@ -51,6 +51,8 @@ def crop_region(arr: np.ndarray,
     """
     Crop (x, y, w, h), in display coordinates (x = column, y = row).
     """
+    if len(region) != 4:
+        raise ValueError('region must be [x, y, w, h]')
     x, y, w, h = (int(v) for v in region)
     rows, cols = arr.shape[:2]
     if w <= 0 or h <= 0 or x < 0 or y < 0 or x + w > cols or y + h > rows:
