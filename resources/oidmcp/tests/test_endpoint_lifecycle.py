@@ -193,3 +193,16 @@ def test_notify_stop_without_start_is_noop():
     assert not ep.is_running()
     ep.notify_stop()
     assert not ep.is_running()
+
+
+def test_stale_tmp_does_not_block_start(tmp_path, monkeypatch):
+    agent_dir = tmp_path / 'agent'
+    agent_dir.mkdir()
+    monkeypatch.setenv('OID_AGENT_DIR', str(agent_dir))
+    # A leftover deterministic tmp from a crashed run must not wedge startup.
+    (agent_dir / ('%d.json.tmp' % os.getpid())).write_text('stale')
+    path = ep.start(FakeBridge(), FakeWindow())
+    try:
+        assert path is not None and os.path.exists(path)
+    finally:
+        ep.shutdown()

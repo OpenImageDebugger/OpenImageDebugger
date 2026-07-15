@@ -21,6 +21,10 @@ c++ -g -O0 -I "$REPO_ROOT/src/thirdparty/Eigen" \
 
 BREAK_LINE=$(grep -n 'BREAK' "$HERE/fixture.cpp" | cut -d: -f1)
 cat > "$WORK/cmds.lldb" <<EOF
+# Do not let lldb disable ASLR: that uses the personality() syscall, which
+# is blocked by the default container seccomp profile even with
+# CAP_SYS_PTRACE. ASLR is irrelevant to this smoke test.
+settings set target.disable-aslr false
 breakpoint set --file fixture.cpp --line $BREAK_LINE
 run
 command script import $OID_DEPLOY/oid.py

@@ -150,3 +150,35 @@ def test_get_buffer_passes_memoryview_pointer_without_copy():
     assert isinstance(payload, (bytes, bytearray, memoryview))
     assert bytes(payload) == raw
     assert response['width'] == 4
+
+
+def test_get_buffer_enforces_endpoint_cap_when_client_omits(monkeypatch):
+    # Omitting max_bytes must NOT disable the guard: the endpoint applies its
+    # own ceiling, so an oversized buffer is still rejected.
+    monkeypatch.setattr(ep, 'ENDPOINT_MAX_BYTES', 16)
+    meta = make_meta(10, 10, type_value=0)  # 100 bytes > 16
+    endpoint = make_endpoint(bridge=FakeBridge(buffers={'img': meta}))
+    with pytest.raises(ep.EndpointError) as excinfo:
+        endpoint.handle_request({'method': 'get_buffer', 'symbol': 'img'})
+    assert excinfo.value.code == ep.ERROR_TOO_LARGE
+
+
+def test_get_buffer_clamps_client_cap_to_endpoint_max(monkeypatch):
+    # A client cannot raise the cap above the endpoint ceiling.
+    monkeypatch.setattr(ep, 'ENDPOINT_MAX_BYTES', 16)
+    meta = make_meta(10, 10, type_value=0)  # 100 bytes
+    endpoint = make_endpoint(bridge=FakeBridge(buffers={'img': meta}))
+    with pytest.raises(ep.EndpointError) as excinfo:
+        endpoint.handle_request(
+            {'method': 'get_buffer', 'symbol': 'img', 'max_bytes': 10 ** 9})
+    assert excinfo.value.code == ep.ERROR_TOO_LARGE
+
+
+def test_get_buffer_honors_smaller_client_cap(monkeypatch):
+    monkeypatch.setattr(ep, 'ENDPOINT_MAX_BYTES', 10 ** 6)
+    raw = bytes(48)
+    meta = make_meta(4, 3, channels=4, type_value=0, raw=raw)  # 48 bytes
+    endpoint = make_endpoint(bridge=FakeBridge(buffers={'img': meta}))
+    _, payload = endpoint.handle_request(
+        {'method': 'get_buffer', 'symbol': 'img', 'max_bytes': 48})
+    assert bytes(payload) == raw
