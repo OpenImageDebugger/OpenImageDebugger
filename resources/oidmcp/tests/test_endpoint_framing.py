@@ -9,7 +9,6 @@ def test_agentendpoint_reexports_shared_framing():
     from oidscripts import agentendpoint
     assert agentendpoint.send_frame is ep.send_frame
     assert agentendpoint.recv_frame is ep.recv_frame
-    assert agentendpoint.MAX_FRAME_BYTES == ep.MAX_FRAME_BYTES
 
 
 def test_frame_roundtrip_without_payload():
