@@ -65,10 +65,14 @@ jobs:
           persist-credentials: false
 
       - if: contains(matrix.os, 'macos')
-        name: Select latest Xcode
+        name: Select latest stable Xcode
         run: |
-          LATEST_XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          # Exclude beta bundles for determinism and log the resolved
+          # version for traceability across the different macOS runners.
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app | grep -iv beta | sort -V | tail -1)
           sudo xcode-select -s "$LATEST_XCODE"
+          echo "Selected Xcode: $LATEST_XCODE"
+          xcodebuild -version
 
       - name: Setup ${{ matrix.ccache-variant }}
         uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # 1.2.23
@@ -150,13 +154,16 @@ jobs:
           submodules: "recursive"
           persist-credentials: false
 
+      # Key on OS + build-config hash (not the branch ref) so the cache is
+      # reused across PRs instead of fragmenting per branch; fall back to any
+      # earlier cache for this OS.
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # 1.2.23
         with:
-          key: ${{ matrix.name }}-${{ github.ref_name }}
+          key: ${{ matrix.name }}-e2e-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
           restore-keys: |
-            ${{ matrix.name }}-${{ github.ref_name }}
-            ${{ matrix.name }}-main
+            ${{ matrix.name }}-e2e-
+            ${{ matrix.name }}-
           variant: ccache
 
       - name: Build and install OID in place
@@ -182,6 +189,14 @@ jobs:
         with:
           version: "0.11.28"
 
+      # Install the oid-mcp deps up front. The e2e keeps its lldb session
+      # alive with a fixed sleep, so a slow first-time dependency build (e.g.
+      # cryptography compiling from source) must not run inside that window.
+      - name: Warm the oid-mcp virtualenv
+        shell: bash
+        working-directory: resources/oidmcp
+        run: uv run python -c "import oidmcp, numpy, PIL"
+
       - name: Run lldb e2e smoke test
         shell: bash
         run: |
@@ -202,18 +217,22 @@ jobs:
           submodules: "recursive"
           persist-credentials: false
 
-      - name: Select latest Xcode
+      - name: Select latest stable Xcode
         run: |
-          LATEST_XCODE=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          # Exclude beta bundles for determinism and log the resolved
+          # version for traceability across the different macOS runners.
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app | grep -iv beta | sort -V | tail -1)
           sudo xcode-select -s "$LATEST_XCODE"
+          echo "Selected Xcode: $LATEST_XCODE"
+          xcodebuild -version
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # 1.2.23
         with:
-          key: ${{ matrix.os }}-${{ github.ref_name }}
+          key: ${{ matrix.os }}-e2e-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
           restore-keys: |
-            ${{ matrix.os }}-${{ github.ref_name }}
-            ${{ matrix.os }}-main
+            ${{ matrix.os }}-e2e-
+            ${{ matrix.os }}-
           variant: ccache
 
       - name: Build and install OID in place
@@ -232,6 +251,14 @@ jobs:
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           version: "0.11.28"
+
+      # Install the oid-mcp deps up front so the timed e2e (its lldb session
+      # is kept alive by a fixed sleep) does not race a slow first-time
+      # dependency build (e.g. cryptography compiling from source on Intel).
+      - name: Warm the oid-mcp virtualenv
+        shell: bash
+        working-directory: resources/oidmcp
+        run: uv run python -c "import oidmcp, numpy, PIL"
 
       # Allow lldb to launch/debug the freshly built fixture without an
       # interactive authorization prompt.
