@@ -135,5 +135,9 @@ def main():
 
         debugger.register_event_handlers(event_handler)
 
+        if os.environ.get('OID_AGENT') == '1':
+            from oidscripts import agentendpoint
+            agentendpoint.start(debugger, window)
+
 
 main()
