@@ -9,16 +9,10 @@ wrapped in a closure and marshalled onto the debugger thread through
 bridge.queue_request(), the same mechanism the viewer event loop uses.
 """
 
-# Framing is defined once in wireframe and re-exported here so the
-# endpoint's public surface (agentendpoint.send_frame, .recv_frame, ...)
-# is unchanged.
-from oidscripts.wireframe import (  # noqa: F401
-    _HEADER,
-    MAX_FRAME_BYTES,
-    _recv_exact,
-    recv_frame,
-    send_frame,
-)
+# Framing is defined once in wireframe. send_frame/recv_frame are used by
+# the server below and re-exported so the endpoint's public surface
+# (agentendpoint.send_frame, .recv_frame) is unchanged.
+from oidscripts.wireframe import recv_frame, send_frame  # noqa: F401
 
 PROTOCOL_VERSION = 1
 
@@ -319,24 +313,26 @@ class _EndpointServer(object):
 
     def close(self):
         try:
+            # Wake a thread blocked in accept() so the loop can exit;
+            # on Linux close() alone does not interrupt accept().
             self._sock.shutdown(socket.SHUT_RDWR)
         except OSError:
-            pass
+            pass  # socket not connected / already shut down
         try:
             self._sock.close()
         except OSError:
-            pass
+            pass  # already closed
         with self._lock:
             clients = list(self._clients)
         for conn in clients:
             try:
                 conn.close()
             except OSError:
-                pass
+                pass  # client already disconnected
         try:
             os.remove(self.discovery_path)
         except OSError:
-            pass
+            pass  # discovery file already gone
         self._thread.join(timeout=2.0)
 
 
