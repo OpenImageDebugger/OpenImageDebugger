@@ -20,6 +20,23 @@ def _finite_or_none(value):
     return value if math.isfinite(value) else None
 
 
+def _channel_stats(channel: np.ndarray, floating: bool, label) -> dict:
+    """Nan-aware stat dict for one 2-D channel (all-NaN -> None stats)."""
+    finite = channel[np.isfinite(channel)] if floating else channel
+    empty = finite.size == 0
+    return {
+        'label': label,
+        'min': None if empty else _finite_or_none(finite.min()),
+        'max': None if empty else _finite_or_none(finite.max()),
+        'mean': None if empty else _finite_or_none(finite.mean()),
+        'std': None if empty else _finite_or_none(finite.std()),
+        'nan': int(np.isnan(channel).sum()) if floating else 0,
+        'inf': int(np.isinf(channel).sum()) if floating else 0,
+        'zeros': int((channel == 0).sum()),
+        'count': int(channel.size),
+    }
+
+
 def compute_stats(arr: np.ndarray, meta: dict,
                    region: tuple | None = None) -> dict:
     view = crop_region(arr, region) if region is not None else arr
@@ -28,20 +45,9 @@ def compute_stats(arr: np.ndarray, meta: dict,
     per_channel = []
     for index in range(view.shape[2]):
         channel = view[:, :, index]
-        finite = channel[np.isfinite(channel)] if floating else channel
-        empty = finite.size == 0
-        per_channel.append({
-            'channel': index,
-            'label': layout[index] if index < len(layout) else None,
-            'min': None if empty else _finite_or_none(finite.min()),
-            'max': None if empty else _finite_or_none(finite.max()),
-            'mean': None if empty else _finite_or_none(finite.mean()),
-            'std': None if empty else _finite_or_none(finite.std()),
-            'nan': int(np.isnan(channel).sum()) if floating else 0,
-            'inf': int(np.isinf(channel).sum()) if floating else 0,
-            'zeros': int((channel == 0).sum()),
-            'count': int(channel.size),
-        })
+        label = layout[index] if index < len(layout) else None
+        stats = {'channel': index, **_channel_stats(channel, floating, label)}
+        per_channel.append(stats)
     return {
         'width': arr.shape[1],
         'height': arr.shape[0],

@@ -59,8 +59,9 @@ def test_channel_selection_renders_grayscale():
 
 def test_channel_out_of_range():
     arr = np.zeros((4, 4, 1), dtype=np.float32)
+    meta = gray_meta(arr)
     with pytest.raises(ValueError):
-        render_view(arr, gray_meta(arr), channel=3)
+        render_view(arr, meta, channel=3)
 
 
 def test_bgra_layout_swaps_red_and_blue():
@@ -91,14 +92,14 @@ def test_nan_pixels_are_magenta():
 
 def test_tiny_buffers_are_upscaled():
     arr = np.eye(2, dtype=np.float32).reshape(2, 2, 1)
-    png, info = render_view(arr, gray_meta(arr))
+    _, info = render_view(arr, gray_meta(arr))
     height, width = info['output_px']
     assert min(height, width) >= 64
 
 
 def test_large_buffers_are_downscaled():
     arr = np.zeros((300, 700, 1), dtype=np.float32)
-    png, info = render_view(arr, gray_meta(arr), max_px=100)
+    _, info = render_view(arr, gray_meta(arr), max_px=100)
     height, width = info['output_px']
     assert max(height, width) <= 100
     assert width > height  # aspect preserved
