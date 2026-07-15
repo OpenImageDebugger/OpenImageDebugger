@@ -89,3 +89,41 @@ def test_client_bounds_received_payload_to_max_bytes():
     client.close()
     listener.close()
     thread.join(timeout=2)
+
+
+def test_client_bounds_received_payload_without_explicit_max(monkeypatch):
+    # Omitting max_bytes must NOT disable the client-side bound: get_buffer
+    # falls back to a safe default ceiling so a misbehaving endpoint can't make
+    # us buffer an unbounded payload.
+    import socket
+    import threading
+
+    from oidmcp import protocol
+    from oidscripts import wireframe as wf
+
+    monkeypatch.setattr(protocol, 'DEFAULT_MAX_BYTES', 16)
+
+    listener = socket.socket()
+    listener.bind(('127.0.0.1', 0))
+    listener.listen(1)
+    port = listener.getsockname()[1]
+
+    def rogue_endpoint():
+        conn, _ = listener.accept()
+        with conn:
+            wf.recv_frame(conn)  # hello
+            wf.send_frame(conn, {'version': 1, 'debugger': 'x',
+                                 'stop_generation': 0})
+            wf.recv_frame(conn)  # get_buffer
+            wf.send_frame(conn, {'width': 1, 'stop_generation': 0},
+                          payload=b'x' * 100)
+
+    thread = threading.Thread(target=rogue_endpoint, daemon=True)
+    thread.start()
+
+    client = protocol.ControlClient('127.0.0.1', port, 'tok')
+    with pytest.raises((ValueError, ControlError)):
+        client.get_buffer('img')  # no max_bytes → default ceiling applies
+    client.close()
+    listener.close()
+    thread.join(timeout=2)

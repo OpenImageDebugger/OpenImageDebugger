@@ -69,6 +69,17 @@ def test_dump_tool_wraps_filesystem_errors(live_endpoint, tmp_path):
     assert 'no-such-dir' in str(excinfo.value)
 
 
+def test_dump_tool_refuses_to_overwrite_without_flag(live_endpoint, tmp_path):
+    # An explicit path that already holds a file is refused, so an agent
+    # cannot clobber it by accident; the overwrite flag opts back in.
+    target = str(tmp_path / 'out.npy')
+    first = server.dump('grad', path=target)
+    with pytest.raises(RuntimeError) as excinfo:
+        server.dump('grad', path=target)
+    assert 'overwrite' in str(excinfo.value)
+    assert server.dump('grad', path=target, overwrite=True) == first
+
+
 def test_plot_forwards(manager):
     mgr, _ = manager
     # FakeWindow is ready, so the plot succeeds and _plot_impl returns

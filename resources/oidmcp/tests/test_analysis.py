@@ -10,6 +10,7 @@ from oidmcp.analysis import (
     dump_npy,
     extract_values,
 )
+from oidmcp.analysis import _sanitize_tree
 from conftest import make_meta
 
 
@@ -67,6 +68,36 @@ def test_stats_multi_channel_keeps_layout_labels():
     assert [c['label'] for c in stats['per_channel']] == ['b', 'g', 'r']
 
 
+def test_stats_promotes_2d_array_to_single_channel():
+    # A bare (H, W) matrix is a single-channel buffer; compute_stats must
+    # not crash on the missing channel axis.
+    arr = np.array([[1, 2, 3, 4], [5, 6, 7, 8]], dtype=np.float32)
+    meta = make_meta(4, 2, channels=1, type_value=5, raw=arr.tobytes())
+    stats = compute_stats(arr, meta)
+    assert stats['channels'] == 1
+    assert len(stats['per_channel']) == 1
+    channel = stats['per_channel'][0]
+    assert channel['min'] == pytest.approx(1.0)
+    assert channel['max'] == pytest.approx(8.0)
+    assert channel['label'] is None
+
+
+def test_stats_2d_array_with_region():
+    arr = np.zeros((4, 4), dtype=np.float32)
+    arr[2:, 2:] = 9.0
+    meta = make_meta(4, 4, channels=1, type_value=5, raw=arr.tobytes())
+    stats = compute_stats(arr, meta, region=(2, 2, 2, 2))
+    assert stats['per_channel'][0]['min'] == pytest.approx(9.0)
+
+
+def test_stats_rejects_non_2d_3d_array():
+    arr = np.arange(4, dtype=np.float32)   # 1-D
+    meta = make_meta(4, 1, channels=1, type_value=5, raw=arr.tobytes())
+    with pytest.raises(ValueError) as excinfo:
+        compute_stats(arr, meta)
+    assert '1' in str(excinfo.value)
+
+
 def test_values_returns_exact_numbers():
     arr = (np.arange(12, dtype=np.float32) ** 2).reshape(3, 4, 1)
     result = extract_values(arr, x=1, y=1, w=2, h=2)
@@ -80,6 +111,21 @@ def test_values_encodes_non_finite_as_strings():
     result = extract_values(arr, x=0, y=0, w=2, h=2)
     flat = [v[0] for row in result['values'] for v in row]
     assert flat == ['NaN', 'Inf', '-Inf', 1.0]
+
+
+def test_sanitize_tree_recurses_into_dicts():
+    tree = {
+        'min': float('nan'),
+        'max': float('inf'),
+        'nested': {'low': float('-inf'), 'ok': 1.5},
+        'rows': [{'v': float('nan')}, [float('inf'), 2.0]],
+    }
+    assert _sanitize_tree(tree) == {
+        'min': 'NaN',
+        'max': 'Inf',
+        'nested': {'low': '-Inf', 'ok': 1.5},
+        'rows': [{'v': 'NaN'}, ['Inf', 2.0]],
+    }
 
 
 def test_values_channel_selection():
@@ -126,6 +172,46 @@ def test_dump_npy_default_path_is_sanitized(tmp_path, monkeypatch):
     assert (os.path.basename(os.path.dirname(path))
             == 'oid-dumps-' + _current_user())
     np.testing.assert_array_equal(np.load(path), arr)
+
+
+def test_dump_npy_refuses_to_overwrite_existing_file(tmp_path):
+    target = tmp_path / 'out.npy'
+    original = np.arange(6, dtype=np.int32).reshape(2, 3, 1)
+    np.save(str(target), original)
+    with pytest.raises(FileExistsError) as excinfo:
+        dump_npy(np.zeros((2, 3, 1), dtype=np.int32), 'img', 1,
+                 path=str(target))
+    assert 'overwrite' in str(excinfo.value)
+    # The existing file is left untouched.
+    np.testing.assert_array_equal(np.load(str(target)), original)
+
+
+def test_dump_npy_overwrite_flag_replaces_existing_file(tmp_path):
+    target = tmp_path / 'out.npy'
+    np.save(str(target), np.arange(6, dtype=np.int32).reshape(2, 3, 1))
+    replacement = np.full((2, 3, 1), 9, dtype=np.int32)
+    path = dump_npy(replacement, 'img', 1, path=str(target), overwrite=True)
+    np.testing.assert_array_equal(np.load(path), replacement)
+
+
+def test_dump_npy_overwrite_guard_uses_final_suffixed_path(tmp_path):
+    # The guard checks the resolved '.npy' target, not the raw argument.
+    np.save(str(tmp_path / 'out.npy'), np.zeros((1, 1, 1), dtype=np.uint8))
+    with pytest.raises(FileExistsError):
+        dump_npy(np.zeros((1, 1, 1), dtype=np.uint8), 'img', 1,
+                 path=str(tmp_path / 'out'))   # no explicit suffix
+
+
+def test_dump_npy_default_path_refuses_silent_overwrite(tmp_path, monkeypatch):
+    monkeypatch.setenv('TMPDIR', str(tmp_path))
+    import importlib
+    import tempfile
+    importlib.reload(tempfile)
+    arr = np.zeros((2, 2, 1), dtype=np.uint8)
+    first = dump_npy(arr, 'img', 3)
+    with pytest.raises(FileExistsError):
+        dump_npy(arr, 'img', 3)
+    assert dump_npy(arr, 'img', 3, overwrite=True) == first
 
 
 @pytest.mark.skipif(sys.platform == 'win32', reason='POSIX symlinks')

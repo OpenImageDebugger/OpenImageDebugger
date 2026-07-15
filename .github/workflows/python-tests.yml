@@ -37,9 +37,13 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      # Pin uv to a specific version via the official action (verifies the
+      # downloaded binary's checksum) rather than piping a remote install
+      # script to sh.
       - name: Install uv
-        shell: bash
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: "0.11.28"
 
       # The oid-mcp test suite is pure Python (it drives the endpoint through
       # in-process fakes), so it needs no debugger or OID build. uv resolves

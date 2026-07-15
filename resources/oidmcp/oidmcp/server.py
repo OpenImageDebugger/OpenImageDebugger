@@ -14,10 +14,8 @@ except ImportError:  # installed SDK exposes FastMCP
 from .analysis import compute_stats, dump_npy, extract_values
 from .buffers import BufferCache, decode_buffer
 from .discovery import NoSessionError, live_sessions, pick_session
-from .protocol import ControlClient, ControlError
+from .protocol import DEFAULT_MAX_BYTES, ControlClient, ControlError
 from .render import render_view
-
-DEFAULT_MAX_BYTES = 256 * 1024 * 1024
 
 _HINTS = {
     'symbol_not_found': 'Call list_buffers() to see what is observable '
@@ -230,13 +228,17 @@ def values(symbol: str, x: int, y: int, w: int, h: int,
 
 
 @mcp.tool()
-def dump(symbol: str, path: str | None = None,
+def dump(symbol: str, path: str | None = None, overwrite: bool = False,
          session: int | None = None) -> str:
-    """Save the buffer losslessly as .npy; returns the file path."""
+    """Save the buffer losslessly as .npy; returns the file path.
+
+    Refuses to overwrite an existing file unless overwrite=true, so an
+    unintended path cannot clobber your data.
+    """
     meta, arr = _fetch_or_fail(_manager, session, symbol)
     try:
         return dump_npy(arr, symbol, meta.get('stop_generation', 0),
-                        path=path)
+                        path=path, overwrite=overwrite)
     except (OSError, ValueError) as error:
         raise RuntimeError(str(error)) from None
 
