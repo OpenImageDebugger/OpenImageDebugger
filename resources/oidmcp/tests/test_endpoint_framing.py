@@ -54,3 +54,20 @@ def test_recv_frame_raises_on_peer_close():
         a.close()
         with pytest.raises(ConnectionError):
             ep.recv_frame(b)
+
+
+def test_recv_frame_rejects_oversized_payload():
+    a, b = socket.socketpair()
+    with a, b:
+        ep.send_frame(a, {'ok': True}, payload=b'x' * 100)
+        with pytest.raises(ValueError):
+            ep.recv_frame(b, max_payload=10)
+
+
+def test_recv_frame_allows_within_limit_payload():
+    a, b = socket.socketpair()
+    raw = b'y' * 10
+    with a, b:
+        ep.send_frame(a, {'ok': True}, payload=raw)
+        obj, payload = ep.recv_frame(b, max_payload=10)
+    assert payload == raw
