@@ -38,14 +38,35 @@ def _friendly(error: Exception) -> str:
     return str(error)
 
 
+def _parse_max_bytes() -> int:
+    """
+    Read the OID_MCP_MAX_BYTES transfer cap defensively. A missing, invalid,
+    or non-positive value falls back to the default (with a stderr note) so a
+    bad env var can never crash the server at import time.
+    """
+    raw = os.environ.get('OID_MCP_MAX_BYTES')
+    if raw is None:
+        return DEFAULT_MAX_BYTES
+    try:
+        value = int(raw)
+    except ValueError:
+        value = 0
+    if value <= 0:
+        sys.stderr.write(
+            '[oid-mcp] Ignoring invalid OID_MCP_MAX_BYTES=%r (expected a '
+            'positive integer number of bytes); using default %d.\n'
+            % (raw, DEFAULT_MAX_BYTES))
+        return DEFAULT_MAX_BYTES
+    return value
+
+
 class SessionManager:
     """Connection pool + per-stop buffer cache over live sessions."""
 
     def __init__(self):
         self._clients: dict[int, ControlClient] = {}
         self._cache = BufferCache(capacity=4)
-        self._max_bytes = int(
-            os.environ.get('OID_MCP_MAX_BYTES', DEFAULT_MAX_BYTES))
+        self._max_bytes = _parse_max_bytes()
 
     def _client(self, info) -> ControlClient:
         client = self._clients.get(info.pid)

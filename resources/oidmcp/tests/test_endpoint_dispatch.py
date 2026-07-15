@@ -135,3 +135,18 @@ def test_plot_failure_maps_to_internal():
     with pytest.raises(ep.EndpointError) as excinfo:
         endpoint.handle_request({'method': 'plot', 'symbol': 'img'})
     assert excinfo.value.code == ep.ERROR_INTERNAL
+
+
+def test_get_buffer_passes_memoryview_pointer_without_copy():
+    # A bridge that hands back a memoryview (as gdb's read_memory does) must
+    # be forwarded without an eager bytes() copy, yet still yield the exact
+    # bytes on the wire.
+    raw = bytes(range(48))
+    meta = make_meta(4, 3, channels=4, type_value=0, raw=raw)
+    meta['pointer'] = memoryview(bytearray(raw))
+    endpoint = make_endpoint(bridge=FakeBridge(buffers={'img': meta}))
+    response, payload = endpoint.handle_request(
+        {'method': 'get_buffer', 'symbol': 'img'})
+    assert isinstance(payload, (bytes, bytearray, memoryview))
+    assert bytes(payload) == raw
+    assert response['width'] == 4
