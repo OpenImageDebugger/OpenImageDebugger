@@ -176,7 +176,7 @@ def values(symbol: str, x: int, y: int, w: int, h: int,
            channel: int | None = None,
            session: int | None = None) -> dict:
     """Exact pixel values for a small crop (at most 1024 numbers)."""
-    meta, arr = _fetch_or_fail(_manager, session, symbol)
+    _, arr = _fetch_or_fail(_manager, session, symbol)
     try:
         return extract_values(arr, x, y, w, h, channel=channel)
     except ValueError as error:
