@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import getpass
 import math
 import os
 import re
@@ -42,6 +43,10 @@ def compute_stats(arr: np.ndarray, meta: dict,
     view = crop_region(arr, region) if region is not None else arr
     floating = np.issubdtype(arr.dtype, np.floating)
     layout = (meta.get('pixel_layout') or '')
+    if arr.shape[2] == 1:
+        # A single-channel buffer (an Eigen matrix, a mask) has no
+        # color-channel semantics; do not label it after the layout.
+        layout = ''
     per_channel = []
     for index in range(view.shape[2]):
         channel = view[:, :, index]
@@ -98,14 +103,39 @@ def extract_values(arr: np.ndarray, x: int, y: int, w: int, h: int,
     }
 
 
+def _current_user() -> str:
+    try:
+        return getpass.getuser()
+    except Exception:
+        return str(os.getuid()) if hasattr(os, 'getuid') else 'user'
+
+
+def _safe_dump_dir() -> Path:
+    """
+    Per-user default dump directory, hardened against a shared tempdir:
+    reject a pre-created symlink or a directory owned by another user,
+    and force 0o700 (mkdir ignores the mode when the dir pre-exists).
+    """
+    directory = Path(tempfile.gettempdir()) / ('oid-dumps-' + _current_user())
+    if directory.is_symlink():
+        raise RuntimeError('dump directory %s is a symlink' % directory)
+    directory.mkdir(mode=0o700, exist_ok=True)
+    if hasattr(os, 'getuid'):
+        info = os.stat(directory)
+        if info.st_uid != os.getuid():
+            raise RuntimeError(
+                'dump directory %s is owned by another user' % directory)
+        os.chmod(directory, 0o700)
+    return directory
+
+
 def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
              path: str | None = None) -> str:
     """
     Save the full decoded buffer (padding already stripped) as .npy.
     """
     if path is None:
-        directory = Path(tempfile.gettempdir()) / 'oid-dumps'
-        directory.mkdir(mode=0o700, exist_ok=True)
+        directory = _safe_dump_dir()
         name = re.sub(r'[^A-Za-z0-9_.-]', '_', symbol)
         path = str(directory / f'{name}_gen{stop_generation}.npy')
     elif not path.endswith('.npy'):

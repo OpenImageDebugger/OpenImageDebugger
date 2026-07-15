@@ -7,7 +7,7 @@ import os
 
 try:
     from mcp.server.mcpserver import MCPServer, Image
-except ImportError:  # older SDK naming
+except ImportError:  # installed SDK exposes FastMCP
     from mcp.server.fastmcp import FastMCP as MCPServer, Image
 
 from .analysis import compute_stats, dump_npy, extract_values
@@ -188,8 +188,11 @@ def dump(symbol: str, path: str | None = None,
          session: int | None = None) -> str:
     """Save the buffer losslessly as .npy; returns the file path."""
     meta, arr = _fetch_or_fail(_manager, session, symbol)
-    return dump_npy(arr, symbol, meta.get('stop_generation', 0),
-                    path=path)
+    try:
+        return dump_npy(arr, symbol, meta.get('stop_generation', 0),
+                        path=path)
+    except (OSError, ValueError) as error:
+        raise RuntimeError(str(error)) from None
 
 
 @mcp.tool()

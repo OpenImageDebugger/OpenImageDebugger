@@ -70,6 +70,8 @@ def recv_frame(sock, max_payload=None):
     payload = b''
     if 'payload' in obj:
         nbytes = int(obj['payload'])
+        if nbytes < 0:
+            raise ValueError('negative payload size: %d' % nbytes)
         if max_payload is not None and nbytes > max_payload:
             raise ValueError('payload of %d bytes exceeds limit %d'
                              % (nbytes, max_payload))

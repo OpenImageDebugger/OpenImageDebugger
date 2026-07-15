@@ -63,6 +63,13 @@ def test_crop_region():
             crop_region(arr, bad)
 
 
+def test_crop_region_rejects_wrong_length_region():
+    arr = np.zeros((4, 6, 1), dtype=np.int32)
+    with pytest.raises(ValueError) as excinfo:
+        crop_region(arr, (1, 2, 3))
+    assert 'region must be [x, y, w, h]' in str(excinfo.value)
+
+
 def test_cache_is_lru_with_capacity():
     cache = BufferCache(capacity=2)
     cache.put('a', 1)

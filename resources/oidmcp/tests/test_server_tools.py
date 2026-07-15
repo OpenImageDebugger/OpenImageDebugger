@@ -60,6 +60,15 @@ def test_view_tool_returns_image_and_text(manager):
     assert 'stop_generation' in text
 
 
+def test_dump_tool_wraps_filesystem_errors(live_endpoint, tmp_path):
+    # A bad explicit path becomes a friendly RuntimeError, like the
+    # other tools, instead of a raw OSError.
+    missing = tmp_path / 'no-such-dir' / 'out.npy'
+    with pytest.raises(RuntimeError) as excinfo:
+        server.dump('grad', path=str(missing))
+    assert 'no-such-dir' in str(excinfo.value)
+
+
 def test_plot_forwards(manager):
     mgr, _ = manager
     # FakeWindow is ready, so the plot succeeds and _plot_impl returns

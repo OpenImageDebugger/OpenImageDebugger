@@ -70,6 +70,31 @@ def test_dynamic_matrixxf_metadata_under_lldb():
     assert meta['pointer'] == ('casted', 'float', m_data)
 
 
+def test_map_with_stride_metadata_under_lldb():
+    # Eigen::Map over a fixed 3x4 column-major float matrix with a
+    # non-trivial inner stride: exercises the Map pointer branch
+    # (m_data on the Map itself) and the stride lookup SUCCESS path
+    # (Stride's second argument), which plain matrices never reach.
+    m_data = FakeSymbol('float *')
+    name = ('Eigen::Map<Eigen::Matrix<float, 3, 4, 0, 3, 4>, 0, '
+            'Eigen::Stride<0, 5> >')
+    picked = FakeSymbol(name, canonical=name, children={'m_data': m_data})
+    bridge = FakeBridge()
+
+    meta = EigenXX().get_buffer_metadata('mapped', picked, bridge)
+
+    assert meta['type'] == symbols.OID_TYPES_FLOAT32
+    assert meta['channels'] == 1
+    # Column-major (Options bit 0 == 0) -> transposed; dims swapped.
+    assert meta['transpose_buffer'] is True
+    assert (meta['width'], meta['height']) == (3, 4)
+    # Stride<0, 5>'s inner value wins over the dense fallback (== width).
+    assert meta['row_stride'] == 5
+    # Map branch: the pointer is cast from the Map's own m_data.
+    assert bridge.casts[-1] == ('float', m_data)
+    assert meta['pointer'] == ('casted', 'float', m_data)
+
+
 def test_static_matrix_metadata_under_lldb():
     # Fixed-size Eigen::Matrix<float, 8, 16> (row-major here: Options bit 0
     # set) to exercise the non-dynamic dims and the static pointer branch.

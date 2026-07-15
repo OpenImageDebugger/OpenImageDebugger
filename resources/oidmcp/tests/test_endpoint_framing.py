@@ -72,6 +72,16 @@ def test_recv_frame_allows_within_limit_payload():
     assert payload == raw
 
 
+def test_recv_frame_rejects_negative_payload():
+    import json
+    a, b = socket.socketpair()
+    with a, b:
+        data = json.dumps({'ok': True, 'payload': -1}).encode('utf-8')
+        a.sendall(ep._HEADER.pack(len(data)) + data)
+        with pytest.raises(ValueError):
+            ep.recv_frame(b)
+
+
 def test_recv_frame_rejects_non_object_frame():
     import json
     for body in (5, [1, 2], 'payload'):

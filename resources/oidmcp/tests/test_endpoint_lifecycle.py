@@ -4,6 +4,7 @@ import socket
 import stat
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -94,6 +95,50 @@ def test_error_responses_keep_connection_alive(endpoint_session):
         ep.send_frame(sock, {'method': 'ping'})
         response, _ = ep.recv_frame(sock)
         assert response == {'stop_generation': 0}
+
+
+def test_unauthenticated_idle_connection_is_dropped(endpoint_session,
+                                                    monkeypatch):
+    # Pre-auth connections must not linger: the endpoint applies a
+    # handshake timeout until the hello frame arrives.
+    monkeypatch.setattr(ep, 'HANDSHAKE_TIMEOUT', 0.2)
+    path, _ = endpoint_session
+    sock, _ = _connect(path)
+    with sock:
+        with pytest.raises(ConnectionError):
+            ep.recv_frame(sock)
+
+
+def test_authenticated_client_may_idle_past_handshake_timeout(
+        endpoint_session, monkeypatch):
+    # After a successful hello the timeout is lifted: a pooled client
+    # idling between requests must not be dropped.
+    monkeypatch.setattr(ep, 'HANDSHAKE_TIMEOUT', 0.2)
+    path, _ = endpoint_session
+    sock, info = _connect(path)
+    with sock:
+        ep.send_frame(sock, {'method': 'hello', 'token': info['token']})
+        ep.recv_frame(sock)
+        time.sleep(0.6)
+        ep.send_frame(sock, {'method': 'ping'})
+        response, _ = ep.recv_frame(sock)
+        assert response == {'stop_generation': 0}
+
+
+def test_excess_connections_are_refused(endpoint_session, monkeypatch):
+    monkeypatch.setattr(ep, 'MAX_CLIENTS', 1)
+    path, _ = endpoint_session
+    first, info = _connect(path)
+    with first:
+        second, _ = _connect(path)
+        with second:
+            # Over the cap: the endpoint closes the excess connection.
+            with pytest.raises(ConnectionError):
+                ep.recv_frame(second)
+        # The accept loop survives and the admitted client still works.
+        ep.send_frame(first, {'method': 'hello', 'token': info['token']})
+        response, _ = ep.recv_frame(first)
+        assert response['debugger'] == 'gdb'
 
 
 def test_module_notify_stop_reaches_endpoint(endpoint_session):
