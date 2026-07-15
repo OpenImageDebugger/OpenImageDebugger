@@ -177,9 +177,9 @@ def test_dump_npy_default_path_is_sanitized(dump_dir):
 def test_dump_npy_refuses_to_overwrite_existing_file(dump_dir):
     original = np.arange(6, dtype=np.int32).reshape(2, 3, 1)
     target = dump_npy(original, 'img', 1, path='out.npy')
+    replacement = np.zeros((2, 3, 1), dtype=np.int32)
     with pytest.raises(FileExistsError) as excinfo:
-        dump_npy(np.zeros((2, 3, 1), dtype=np.int32), 'img', 1,
-                 path='out.npy')
+        dump_npy(replacement, 'img', 1, path='out.npy')
     assert 'overwrite' in str(excinfo.value)
     # The existing file is left untouched.
     np.testing.assert_array_equal(np.load(target), original)
@@ -195,10 +195,10 @@ def test_dump_npy_overwrite_flag_replaces_existing_file(dump_dir):
 
 def test_dump_npy_overwrite_guard_uses_final_suffixed_path(dump_dir):
     # The guard checks the resolved '.npy' target, not the raw argument.
-    dump_npy(np.zeros((1, 1, 1), dtype=np.uint8), 'img', 1, path='out.npy')
+    arr = np.zeros((1, 1, 1), dtype=np.uint8)
+    dump_npy(arr, 'img', 1, path='out.npy')
     with pytest.raises(FileExistsError):
-        dump_npy(np.zeros((1, 1, 1), dtype=np.uint8), 'img', 1,
-                 path='out')   # no explicit suffix
+        dump_npy(arr, 'img', 1, path='out')   # no explicit suffix
 
 
 def test_dump_npy_default_path_refuses_silent_overwrite(dump_dir):
@@ -217,9 +217,9 @@ def test_dump_npy_default_path_refuses_silent_overwrite(dump_dir):
     '',                   # empty name
 ])
 def test_dump_npy_rejects_non_bare_filename(dump_dir, bad_path):
+    arr = np.zeros((1, 1, 1), dtype=np.uint8)
     with pytest.raises(ValueError) as excinfo:
-        dump_npy(np.zeros((1, 1, 1), dtype=np.uint8), 'img', 1,
-                 path=bad_path)
+        dump_npy(arr, 'img', 1, path=bad_path)
     assert 'bare filename' in str(excinfo.value)
 
 
@@ -228,9 +228,9 @@ def test_dump_npy_refuses_symlink_at_target(dump_dir):
     directory = _safe_dump_dir()
     victim = dump_dir / 'victim.npy'
     os.symlink(str(victim), str(directory / 'link.npy'))
+    arr = np.zeros((1, 1, 1), dtype=np.uint8)
     with pytest.raises(ValueError) as excinfo:
-        dump_npy(np.zeros((1, 1, 1), dtype=np.uint8), 'img', 1,
-                 path='link.npy', overwrite=True)
+        dump_npy(arr, 'img', 1, path='link.npy', overwrite=True)
     assert 'symlink' in str(excinfo.value)
     # Nothing was written through the link.
     assert not victim.exists()
