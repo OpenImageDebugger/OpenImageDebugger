@@ -157,3 +157,26 @@ class DebuggerSymbolReference(object):
         """
         raise __not_implemented_error
 
+
+class BufferTooLargeError(RuntimeError):
+    """
+    Raised by get_buffer_metadata when the buffer exceeds the caller's
+    max_bytes limit. Raised before debuggee memory is read.
+    """
+
+    def __init__(self, size_bytes, max_bytes):
+        super(BufferTooLargeError, self).__init__(
+            'buffer is %d bytes, exceeding the %d byte limit'
+            % (size_bytes, max_bytes))
+        self.size_bytes = size_bytes
+        self.max_bytes = max_bytes
+
+
+def raise_if_too_large(size_bytes, max_bytes):
+    """
+    Raise BufferTooLargeError if size_bytes exceeds max_bytes.
+    max_bytes=None disables the check.
+    """
+    if max_bytes is not None and size_bytes > max_bytes:
+        raise BufferTooLargeError(size_bytes, max_bytes)
+
