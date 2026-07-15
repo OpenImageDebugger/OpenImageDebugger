@@ -3,9 +3,7 @@ import os
 
 import pytest
 
-from oidscripts import agentendpoint
 from oidmcp import discovery
-from conftest import FakeBridge, FakeWindow
 
 
 def test_live_sessions_finds_running_endpoint(live_endpoint):
