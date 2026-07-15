@@ -193,6 +193,9 @@ def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
         try:
             os.unlink(tmp)
         except OSError:
+            # Best-effort cleanup of the temp file; a failure to unlink it
+            # (already gone, or a transient FS error) must not mask the
+            # original write error we are about to re-raise.
             pass
         raise
     return os.path.abspath(target)
