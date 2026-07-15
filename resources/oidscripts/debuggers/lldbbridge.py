@@ -11,7 +11,7 @@ import threading
 from oidscripts import sysinfo
 from oidscripts.typebridge import TypeInspectorInterface
 from oidscripts.debuggers.interfaces import BridgeInterface, \
-    DebuggerSymbolReference
+    DebuggerSymbolReference, raise_if_too_large
 
 instance = None
 
@@ -115,7 +115,7 @@ class LldbBridge(BridgeInterface):
             return None
         return thread.GetSelectedFrame()
 
-    def get_buffer_metadata(self, variable):
+    def get_buffer_metadata(self, variable, max_bytes=None):
         # type: (str) -> dict
         process = self._get_process(self.get_lldb_backend())
         thread = self._get_thread(process)
@@ -148,6 +148,8 @@ class LldbBridge(BridgeInterface):
             raise ValueError('Invalid buffer of zero bytes')
         elif bufsize >= sysinfo.get_available_memory() / 10:
             raise MemoryError('Invalid buffer size larger than available memory')
+
+        raise_if_too_large(bufsize, max_bytes)
 
         buffer_metadata['variable_name'] = variable
 

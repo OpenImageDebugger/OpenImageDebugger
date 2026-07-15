@@ -9,7 +9,8 @@ import time
 import threading
 
 from oidscripts import sysinfo
-from oidscripts.debuggers.interfaces import BridgeInterface
+from oidscripts.debuggers.interfaces import BridgeInterface, \
+    raise_if_too_large
 from oidscripts.events import BridgeEventHandlerInterface
 from oidscripts.logger import log
 
@@ -53,7 +54,7 @@ class GdbBridge(BridgeInterface):
     def get_backend_name(self):
         return 'gdb'
 
-    def get_buffer_metadata(self, variable):
+    def get_buffer_metadata(self, variable, max_bytes=None):
         picked_obj = gdb.parse_and_eval(variable)
 
         buffer_metadata = self._type_bridge.get_buffer_metadata(
@@ -77,6 +78,8 @@ class GdbBridge(BridgeInterface):
             raise ValueError('Invalid buffer of zero bytes')
         elif bufsize >= sysinfo.get_available_memory() / 10:
             raise MemoryError('Invalid buffer size larger than available memory')
+
+        raise_if_too_large(bufsize, max_bytes)
 
         # Check if buffer is valid. If it isn't, this function will throw an
         # exception
