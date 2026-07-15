@@ -304,8 +304,10 @@ class _EndpointServer(object):
                         send_frame(conn,
                                    {'error': {'code': error.code,
                                               'message': error.message}})
-        except (ConnectionError, ValueError, OSError):
-            pass  # client went away or spoke garbage; nothing to clean up
+        except (ValueError, OSError):
+            # OSError covers ConnectionError; client went away or spoke
+            # garbage. Nothing to clean up.
+            pass
         finally:
             with self._lock:
                 if conn in self._clients:

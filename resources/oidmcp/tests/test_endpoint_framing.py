@@ -68,7 +68,7 @@ def test_recv_frame_allows_within_limit_payload():
     raw = b'y' * 10
     with a, b:
         ep.send_frame(a, {'ok': True}, payload=raw)
-        obj, payload = ep.recv_frame(b, max_payload=10)
+        _, payload = ep.recv_frame(b, max_payload=10)
     assert payload == raw
 
 
