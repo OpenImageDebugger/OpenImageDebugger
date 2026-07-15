@@ -60,7 +60,7 @@ def test_hello_then_request_over_real_socket(endpoint_session):
 
 def test_first_frame_must_authenticate(endpoint_session):
     path, _ = endpoint_session
-    sock, info = _connect(path)
+    sock, _ = _connect(path)
     with sock:
         ep.send_frame(sock, {'method': 'hello', 'token': 'wrong'})
         response, _ = ep.recv_frame(sock)
@@ -72,7 +72,7 @@ def test_first_frame_must_authenticate(endpoint_session):
 
 def test_non_dict_first_frame_drops_connection(endpoint_session):
     path, _ = endpoint_session
-    sock, info = _connect(path)
+    sock, _ = _connect(path)
     with sock:
         # A non-object frame is a malformed-wire error: recv_frame rejects
         # it and the server drops the connection without a reply, the same
@@ -107,7 +107,7 @@ def test_module_notify_stop_reaches_endpoint(endpoint_session):
 
 
 def test_start_twice_is_noop(endpoint_session):
-    path, bridge = endpoint_session
+    _, bridge = endpoint_session
     assert ep.start(bridge, FakeWindow()) is None
     assert ep.is_running()
 
@@ -129,8 +129,9 @@ def test_start_rejects_symlinked_discovery_dir(tmp_path, monkeypatch):
     link = tmp_path / 'agent-link'
     os.symlink(str(real_dir), str(link))
     monkeypatch.setenv('OID_AGENT_DIR', str(link))
+    bridge, window = FakeBridge(), FakeWindow()
     with pytest.raises(RuntimeError):
-        ep.start(FakeBridge(), FakeWindow())
+        ep.start(bridge, window)
 
 
 def test_shutdown_joins_accept_thread(tmp_path, monkeypatch):
