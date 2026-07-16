@@ -74,11 +74,18 @@ jobs:
       - if: contains(matrix.os, 'macos')
         name: Select latest stable Xcode
         run: |
-          # Exclude beta bundles for determinism and log the resolved
-          # version for traceability across the different macOS runners.
-          LATEST_XCODE=$(ls -d /Applications/Xcode*.app | grep -iv beta | sort -V | tail -1)
-          sudo xcode-select -s "$LATEST_XCODE"
-          echo "Selected Xcode: $LATEST_XCODE"
+          # Exclude beta bundles for determinism and log the resolved version
+          # for traceability across the different macOS runners. If no stable
+          # Xcode is found (only betas, or the glob matched nothing), keep the
+          # runner's default selection instead of calling xcode-select with an
+          # empty path, which would fail the job.
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | grep -iv beta | sort -V | tail -1)
+          if [ -n "$LATEST_XCODE" ]; then
+            sudo xcode-select -s "$LATEST_XCODE"
+            echo "Selected Xcode: $LATEST_XCODE"
+          else
+            echo "No non-beta Xcode found; using default: $(xcode-select -p)"
+          fi
           xcodebuild -version
 
       - name: Setup ${{ matrix.ccache-variant }}
