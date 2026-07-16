@@ -2,13 +2,25 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import sys
 
+# The published MCP SDK exposes the server class as FastMCP; some builds
+# expose it as MCPServer under mcp.server.mcpserver. Choose by whether that
+# module actually exists (find_spec) rather than by catching ImportError from
+# the import itself -- so a genuine failure *inside* an existing mcpserver
+# module surfaces to the user instead of being silently swallowed into the
+# FastMCP fallback.
 try:
+    _has_mcpserver = (
+        importlib.util.find_spec('mcp.server.mcpserver') is not None)
+except (ImportError, ValueError):
+    _has_mcpserver = False
+if _has_mcpserver:
     from mcp.server.mcpserver import MCPServer, Image
-except ImportError:  # installed SDK exposes FastMCP
+else:
     from mcp.server.fastmcp import FastMCP as MCPServer, Image
 
 from .analysis import compute_stats, dump_npy, extract_values
@@ -98,8 +110,11 @@ class SessionManager:
             return cached
         meta, raw = client.get_buffer(symbol, max_bytes=self._max_bytes)
         arr = decode_buffer(meta, raw)
-        self._cache.put((info.pid, symbol, meta['stop_generation']),
-                        (meta, arr))
+        # Store under the same key we looked up (the ping generation), not
+        # meta['stop_generation']: if the stop advanced between ping and
+        # get_buffer those differ, and keying the entry off the lookup value
+        # is what guarantees the next same-stop fetch finds it.
+        self._cache.put(key, (meta, arr))
         return meta, arr
 
     def plot(self, session, symbol) -> None:
