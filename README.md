@@ -262,6 +262,19 @@ Buffers exported in the `Octave matrix` format can be loaded with the function
 folder to Octave/Matlab `path` variable and call
 `oid_load('/path/to/buffer.dump')`.
 
+### AI agent access (MCP, experimental)
+
+Open Image Debugger ships an experimental **MCP server** (`oid-mcp`) that
+lets AI coding agents inspect your buffers in a live gdb/lldb session —
+list observable symbols at a breakpoint, view renderings, read exact
+values, dump lossless `.npy` copies, and mirror buffers into the viewer.
+It is opt-in (launch the debugger with `OID_AGENT=1`) and exposes
+debuggee memory to local processes, so enable it only in trusted, local
+development.
+
+See [`resources/oidmcp/README.md`](resources/oidmcp/README.md) for
+deployment and usage instructions.
+
 ## Basic configuration
 
 The settings file for the plugin can be located under
