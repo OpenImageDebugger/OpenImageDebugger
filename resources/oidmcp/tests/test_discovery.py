@@ -53,10 +53,12 @@ def test_no_cleanup_through_symlinked_agent_dir(tmp_path, monkeypatch):
 
 
 @pytest.mark.skipif(sys.platform == 'win32', reason='POSIX permissions')
-def test_no_cleanup_in_group_or_world_accessible_dir(tmp_path, monkeypatch):
-    # A group/world-accessible directory (e.g. the user accidentally
-    # points OID_AGENT_DIR at ~/Documents) is not a trusted OID agent
-    # dir; nothing there may be unlinked.
+def test_untrusted_dir_is_neither_read_nor_cleaned(tmp_path, monkeypatch):
+    # A group/world-accessible directory (e.g. the user accidentally points
+    # OID_AGENT_DIR at ~/Documents) is not a trusted OID agent dir: a token
+    # there could have been read or planted by another user. Discovery must
+    # surface no session from it -- not even a well-formed, live one -- and
+    # must unlink nothing there.
     agent_dir = tmp_path / 'shared'
     agent_dir.mkdir()
     # The loose 0o755 mode is the point of this test: discovery must refuse
@@ -66,9 +68,16 @@ def test_no_cleanup_in_group_or_world_accessible_dir(tmp_path, monkeypatch):
     os.chmod(str(agent_dir), 0o755)  # nosec B103
     monkeypatch.setenv('OID_AGENT_DIR', str(agent_dir))
     _stale_and_garbage(agent_dir)
+    # A live, valid session for this very process would be usable in a
+    # trusted dir; here it must still be refused.
+    live = agent_dir / f'{os.getpid()}.json'
+    live.write_text(json.dumps({
+        'version': 1, 'port': 5555, 'token': 'x' * 64,
+        'debugger': 'gdb', 'pid': os.getpid(), 'start_time': 1.0}))
     assert discovery.live_sessions() == []
     assert (agent_dir / 'garbage.json').exists()
     assert (agent_dir / '999999999.json').exists()
+    assert live.exists()
 
 
 def test_pick_session_default_is_most_recent(tmp_path, monkeypatch):
