@@ -19,3 +19,8 @@ CMakeLists.txt.user
 build-imgui/
 out/
 imgui.ini
+
+# Python
+__pycache__/
+*.py[cod]
+.coverage
