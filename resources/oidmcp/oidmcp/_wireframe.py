@@ -12,28 +12,49 @@ normal named-package import -- no code is loaded by filesystem path.
 
 The append is idempotent and lowest-precedence, so it cannot shadow a
 stdlib or site module; it mirrors what the test suite's conftest already
-does to import from the debugger-scripts tree.
+does to import from the debugger-scripts tree. That low precedence,
+however, also means an unrelated ``oidscripts`` earlier on ``sys.path``
+could win the import, and a foreign ``wireframe`` may carry an
+incompatible wire format. So the resolved module is verified to be the one
+shipped beside us and a mismatch is rejected loudly rather than used
+silently.
 """
 
+import os
 import sys
 from pathlib import Path
 
 # resources/oidmcp/oidmcp/_wireframe.py -> parents[2] == resources/
-_RESOURCES_DIR = str(Path(__file__).resolve().parents[2])
-if _RESOURCES_DIR not in sys.path:
-    sys.path.append(_RESOURCES_DIR)
+_RESOURCES_DIR = Path(__file__).resolve().parents[2]
+_EXPECTED_WIREFRAME = _RESOURCES_DIR / 'oidscripts' / 'wireframe.py'
+if str(_RESOURCES_DIR) not in sys.path:
+    sys.path.append(str(_RESOURCES_DIR))
 
 try:
-    from oidscripts.wireframe import (  # noqa: E402
-        MAX_FRAME_BYTES,
-        recv_frame,
-        send_frame,
-    )
+    from oidscripts import wireframe as _wireframe  # noqa: E402
 except ImportError as exc:  # pragma: no cover - deployment misconfiguration
     raise ImportError(
         'oid-mcp requires the OpenImageDebugger scripts tree; expected '
         'oidscripts alongside this package under resources/. Run oid-mcp '
         'from the OID install (uv run --directory resources/oidmcp).'
     ) from exc
+
+# Guard against an earlier sys.path entry resolving `oidscripts` to some
+# other tree: confirm we imported the wireframe that ships beside us. A
+# different module could encode frames incompatibly, so treat it as a
+# misconfiguration to fix, not a protocol to trust.
+_loaded = getattr(_wireframe, '__file__', None)
+if _loaded is not None and (
+        os.path.realpath(_loaded)
+        != os.path.realpath(_EXPECTED_WIREFRAME)):
+    raise ImportError(  # pragma: no cover - conflicting oidscripts on path
+        'oid-mcp imported a foreign oidscripts.wireframe from %s; expected '
+        'the copy shipped with the debugger scripts at %s. Remove the '
+        'conflicting oidscripts from sys.path / PYTHONPATH.'
+        % (_loaded, _EXPECTED_WIREFRAME))
+
+MAX_FRAME_BYTES = _wireframe.MAX_FRAME_BYTES
+recv_frame = _wireframe.recv_frame
+send_frame = _wireframe.send_frame
 
 __all__ = ['MAX_FRAME_BYTES', 'recv_frame', 'send_frame']

@@ -47,6 +47,29 @@ def test_recv_frame_rejects_oversized_json_frame():
             ep.recv_frame(b)
 
 
+def test_send_frame_rejects_oversized_json_frame():
+    # The JSON cap is symmetric: a frame recv_frame would reject must not
+    # be transmitted in the first place. The sender raises *before* writing
+    # anything, so the peer's stream stays in sync.
+    a, b = socket.socketpair()
+    huge = {'blob': 'x' * (ep.MAX_FRAME_BYTES + 1)}
+    with a, b:
+        with pytest.raises(ValueError):
+            ep.send_frame(a, huge)
+        b.setblocking(False)
+        with pytest.raises(BlockingIOError):
+            b.recv(1)
+
+
+def test_bridge_reexports_the_sibling_wireframe():
+    # oid-mcp's bridge must re-export the very objects the endpoint uses,
+    # not a shadowing copy from some other oidscripts on sys.path.
+    from oidmcp import _wireframe as bridge
+    assert bridge.send_frame is ep.send_frame
+    assert bridge.recv_frame is ep.recv_frame
+    assert bridge.MAX_FRAME_BYTES == ep.MAX_FRAME_BYTES
+
+
 def test_recv_frame_raises_on_peer_close():
     a, b = socket.socketpair()
     with b:
