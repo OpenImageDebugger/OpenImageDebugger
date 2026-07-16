@@ -55,16 +55,19 @@ the same directory** (see [Troubleshooting](#troubleshooting)).
    MCP traffic on stdin — that blocking wait means it started
    correctly. Press `Ctrl-C` to exit.
 
-2. **Register it with your MCP client.**
+2. **Register it with your MCP client.** Every stdio MCP client uses the
+   same `mcpServers` schema — only the file location differs. Each client
+   spawns its *own* `oid-mcp` process, so you can register it in several
+   clients at once; they all discover the same debug session.
 
-   Claude Code, one-liner:
+   **Claude Code** — one-liner:
 
    ```bash
    claude mcp add oid -- \
      uv run --directory /path/to/OpenImageDebugger/resources/oidmcp oid-mcp
    ```
 
-   Or equivalently, in an `.mcp.json`:
+   or add it to `.mcp.json`:
 
    ```json
    {
@@ -79,6 +82,30 @@ the same directory** (see [Troubleshooting](#troubleshooting)).
    }
    ```
 
+   **Cursor** — put the same entry in `~/.cursor/mcp.json` (global, all
+   projects) or `<workspace>/.cursor/mcp.json` (one project). Settings →
+   *MCP / Tools & Integrations* → *Add new MCP server* opens that file.
+   The tools are only usable from Cursor's **Agent** chat.
+
+   ```json
+   {
+     "mcpServers": {
+       "oid": {
+         "command": "/absolute/path/to/uv",
+         "args": ["run", "--directory",
+                  "/path/to/OpenImageDebugger/resources/oidmcp",
+                  "oid-mcp"]
+       }
+     }
+   }
+   ```
+
+   > **Use an absolute `command` path in desktop editors.** Cursor and
+   > other GUI IDEs do not inherit your shell `PATH`, so a bare `"uv"`
+   > often fails to launch. Use the output of `command -v uv` (e.g.
+   > `/opt/homebrew/bin/uv` with Apple-Silicon Homebrew). The same goes
+   > for any interpreter the client can't resolve on its own.
+
    Optional environment variables (set them on the server entry via
    your client's `env` field, and — for `OID_AGENT_DIR` — on the
    debugger too):
@@ -87,6 +114,15 @@ the same directory** (see [Troubleshooting](#troubleshooting)).
    | --- | --- | --- |
    | `OID_MCP_MAX_BYTES` | `268435456` (256 MiB) | Reject buffers larger than this before transfer |
    | `OID_AGENT_DIR` | `$TMPDIR/oid-agent-<user>/` | Discovery directory shared by debugger and server |
+
+   > **Desktop editors and discovery.** A GUI client spawns `oid-mcp`
+   > from the app's environment, which may carry a different `$TMPDIR`
+   > than the terminal running your debugger — so the two default
+   > `$TMPDIR/oid-agent-<user>` paths won't match and `list_sessions`
+   > comes back empty. If that happens, pin `OID_AGENT_DIR` to the same
+   > private directory (e.g. `~/.oid-agent`) in both the client's `env`
+   > and the debugger's environment. See
+   > [Troubleshooting](#troubleshooting).
 
 ## Use
 
