@@ -27,11 +27,21 @@ MAX_FRAME_BYTES = 1 << 20
 def send_frame(sock, obj, payload=b''):
     """
     Send a JSON frame, optionally followed by a raw binary payload.
+
+    The JSON frame is bounded by MAX_FRAME_BYTES -- the same cap
+    recv_frame enforces on receipt -- so a control message too large for
+    the peer to accept fails loudly here at the sender instead of being
+    transmitted and then rejected mid-stream (which would desync the
+    connection). The binary payload is not JSON and is not bounded here:
+    it is sized by the 'payload' field and capped by get_buffer's
+    max_bytes parameter.
     """
     if payload:
         obj = dict(obj)
         obj['payload'] = len(payload)
     data = json.dumps(obj).encode('utf-8')
+    if len(data) > MAX_FRAME_BYTES:
+        raise ValueError('JSON frame too large: %d bytes' % len(data))
     sock.sendall(_HEADER.pack(len(data)) + data)
     if payload:
         sock.sendall(payload)
