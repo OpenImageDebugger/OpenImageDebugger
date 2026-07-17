@@ -26,12 +26,15 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <format>
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <imgui.h>
@@ -42,6 +45,10 @@
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 
+#if !defined(__EMSCRIPTEN__)
+#include "host/agent/agent_server.h"
+#include "host/agent/native_view_model.h"
+#endif
 #include "host/cli_options.h"
 #include "host/frame_loop.h"
 #include "host/glfw_canvas.h"
@@ -363,7 +370,27 @@ struct FrameContext {
     oid::platform::SessionBridge& session_bridge;
     oid::host::SettingsSaver& saver;
     oid::host::FileOpenQueue& file_open_queue;
+#if !defined(__EMSCRIPTEN__)
+    // Non-null only when OID_AGENT=1; see the construction site in main()
+    // and the per-frame drain() call below. Native-only: the Emscripten
+    // build has no asio transport (its agent glue lives in the out-of-tree
+    // platform port), so the whole endpoint is compiled out there.
+    oid::host::agent::AgentServer* agent = nullptr;
+#endif
 };
+
+#if !defined(__EMSCRIPTEN__)
+// Dispatches agent requests queued since the last rendered frame on this
+// (the GL) thread. Native-only: the Emscripten build has no agent endpoint
+// (its glue lives in the out-of-tree platform port), so this is a no-op.
+void drain_agent(FrameContext& ctx) {
+    if (ctx.agent != nullptr) {
+        ctx.agent->drain();
+    }
+}
+#else
+void drain_agent(FrameContext& /*ctx*/) {}
+#endif
 
 // Drains inbound IPC and reconciles the buffer-list thumbnail cache for
 // this frame; must run before any panel below reads the model.
@@ -858,6 +885,36 @@ int main(int argc, char** argv) {
 
     oid::host::StageView view{*canvas};
 
+#if !defined(__EMSCRIPTEN__)
+    // Native agent endpoint: off unless OID_AGENT=1. `agent_model` adapts
+    // the same model/stages/ui/canvas the ImGui frontend already renders
+    // through; `agent_server` owns the localhost transport and queues
+    // requests for the per-frame drain() call below to dispatch on this
+    // (the GL) thread. Native-only: the Emscripten build supplies its own
+    // agent glue via the out-of-tree platform port and has no asio.
+    std::optional<oid::host::agent::NativeViewModel> agent_model;
+    std::optional<oid::host::agent::AgentServer> agent_server;
+    if (const char* v = std::getenv("OID_AGENT");
+        v && std::string_view(v) == "1") {
+        // Socket bind/listen and discovery-file writes below can throw;
+        // the agent endpoint is optional, so a failure here must not
+        // abort viewer startup -- fall back to running without it.
+        try {
+            agent_model.emplace(model,
+                                stages,
+                                ui,
+                                /*viewport source*/ canvas);
+            agent_server.emplace(*agent_model,
+                                 oid::host::agent::AgentServerConfig{
+                                     /*enabled=*/true, cli.agent_debugger_pid});
+        } catch (const std::exception& e) {
+            agent_server.reset();
+            agent_model.reset();
+            std::cerr << "[oid] agent endpoint disabled: " << e.what() << "\n";
+        }
+    }
+#endif
+
     // Go-to widget's open flag, kept alive across frames via FrameContext.
     bool goto_open = false;
 
@@ -942,9 +999,34 @@ int main(int argc, char** argv) {
                      session_bridge,
                      saver,
                      file_open_queue};
+#if !defined(__EMSCRIPTEN__)
+    ctx.agent = agent_server ? &*agent_server : nullptr;
+#endif
 
     oid::host::FrameLoop loop{backend, [&ctx, &imgui] {
+                                  // Runs on every tick() that renders a frame.
                                   poll_ipc_and_update_thumbnails(ctx);
+
+                                  // Drain agent requests AFTER ipc.poll() so an
+                                  // agent readback (list_buffers/get_buffer/
+                                  // get_view) observes this frame's
+                                  // freshly-reconciled model, not the previous
+                                  // frame's -- drain_agent is itself a model
+                                  // reader/mutator, so it honors the same
+                                  // "poll IPC before reading the model"
+                                  // contract as every panel below. It also
+                                  // lets an agent set_view win over, rather
+                                  // than be clobbered by, a buffer that arrived
+                                  // over IPC this same frame. drain still runs
+                                  // before begin_frame/render below, so an
+                                  // applied set_view renders this frame. The
+                                  // final tick, where the backend has requested
+                                  // close, returns false before invoking this
+                                  // lambda at all, so that last iteration's
+                                  // drain() is skipped -- acceptable, since it
+                                  // is shutdown and agent_server->stop() below
+                                  // closes the socket regardless.
+                                  drain_agent(ctx);
 
                                   // Canvas sizing + HiDPI is handled in
                                   // ImGuiLayer::begin_frame's hidpi_sync()
@@ -967,6 +1049,14 @@ int main(int argc, char** argv) {
                               }};
 
     loop.run();
+#if !defined(__EMSCRIPTEN__)
+    // Stop accepting/serving agent connections before the GL context and
+    // Stage/Buffer state below are torn down, so no in-flight drain() call
+    // can touch them.
+    if (agent_server) {
+        agent_server->stop();
+    }
+#endif
     // Force a final save if a debounced write was still pending when the
     // window closed, so the last frame's geometry/prefs/buffer list aren't
     // silently dropped.

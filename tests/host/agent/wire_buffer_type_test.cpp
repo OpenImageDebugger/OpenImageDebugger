@@ -23,32 +23,33 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef HOST_CLI_OPTIONS_H_
-#define HOST_CLI_OPTIONS_H_
+#include "host/agent/wire_buffer_type.h"
 
-#include <optional>
-#include <string>
-#include <vector>
+#include <gtest/gtest.h>
 
-namespace oid::host {
+namespace {
 
-// Command-line options accepted by the native ImGui frontend.
-struct CliOptions {
-    std::string hostname{"127.0.0.1"};
-    int port{9588};
-    std::vector<std::string> open_files;
-    std::optional<int> agent_debugger_pid;
-};
+using oid::BufferType;
+using enum oid::BufferType;
+using oid::host::agent::wire_buffer_type;
 
-// Parses argv into CliOptions. Recognized flags: `--host H`; `--port N` /
-// `-p N` (via std::atoi -- invalid or non-positive input leaves the
-// default); repeatable `-o PATH` / `--open PATH` (each occurrence appends to
-// open_files); `--agent-debugger-pid PID` (invalid input leaves
-// agent_debugger_pid unset). Unknown arguments are ignored; a trailing
-// `-o`/`--open`/`--host`/`--port`/`-p`/`--agent-debugger-pid` with no
-// following value is ignored.
-[[nodiscard]] CliOptions parse_cli(int argc, const char* const* argv);
+// The only automated guard on the FLOAT64->float32 narrowing the ingest path
+// applies: NativeViewModel serves float32 bytes for a double buffer, so it must
+// advertise FLOAT32, or oid-mcp sizes the payload at 8 bytes/element (rejecting
+// every double buffer) and the get_buffer pre-copy cap over-estimates.
+TEST(WireBufferType, Float64IsNarrowedToFloat32) {
+    EXPECT_EQ(wire_buffer_type(FLOAT64), FLOAT32);
+}
 
-} // namespace oid::host
+TEST(WireBufferType, EveryOtherTypeIsServedAsIs) {
+    for (const BufferType type :
+         {UNSIGNED_BYTE, UNSIGNED_SHORT, SHORT, INT32, FLOAT32}) {
+        EXPECT_EQ(wire_buffer_type(type), type);
+    }
+}
 
-#endif // HOST_CLI_OPTIONS_H_
+// constexpr-evaluable so it can never silently regress to a runtime-only map.
+static_assert(wire_buffer_type(FLOAT64) == FLOAT32);
+static_assert(wire_buffer_type(UNSIGNED_BYTE) == UNSIGNED_BYTE);
+
+} // namespace

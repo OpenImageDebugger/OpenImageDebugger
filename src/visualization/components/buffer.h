@@ -143,6 +143,11 @@ class Buffer final : public Component {
     void get_pixel_info(std::stringstream& message, int x, int y) const;
 
     void rotate(float angle);
+    // Absolute counterpart of rotate(): replaces the accumulated angle
+    // (radians) rather than adding to it. Used by the agent endpoint for
+    // idempotent view control; the human toolbar keeps using rotate().
+    void set_rotation(float radians);
+    [[nodiscard]] float rotation() const;
 
     void set_icon_drawing_mode(bool is_enabled) const;
 

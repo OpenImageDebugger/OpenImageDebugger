@@ -26,6 +26,7 @@
 #include "host/cli_options.h"
 
 #include <array>
+#include <optional>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -94,7 +95,38 @@ TEST(CliOptionsTest, RejectsOutOfRangePort) {
     EXPECT_EQ(parse({"oidwindow", "--port", "65535"}).port, 65535);
 }
 
+TEST(CliOptionsTest, RejectsOverflowingOrTrailingGarbageNumbers) {
+    // A digit string past INT_MAX is undefined behavior for std::atoi; it must
+    // be rejected cleanly (from_chars reports out-of-range), keeping the
+    // default rather than crashing or mis-parsing.
+    EXPECT_EQ(parse({"oidwindow", "--port", "99999999999999999999"}).port,
+              9588);
+    // The whole token must parse -- trailing non-numeric bytes are rejected.
+    EXPECT_EQ(parse({"oidwindow", "--port", "123abc"}).port, 9588);
+    EXPECT_EQ(
+        parse({"oidwindow", "--agent-debugger-pid", "99999999999999999999"})
+            .agent_debugger_pid,
+        std::nullopt);
+}
+
 TEST(CliOptionsTest, OpenFlagWithoutValueIsIgnored) {
     const CliOptions options = parse({"oidwindow", "-o"});
     EXPECT_TRUE(options.open_files.empty());
+}
+
+TEST(CliOptionsTest, ParsesAgentDebuggerPid) {
+    const CliOptions options =
+        parse({"oidwindow", "--agent-debugger-pid", "4200"});
+    EXPECT_EQ(options.agent_debugger_pid, std::optional<int>{4200});
+}
+
+TEST(CliOptionsTest, AgentDebuggerPidDefaultsToNullopt) {
+    const CliOptions options = parse({"oidwindow"});
+    EXPECT_EQ(options.agent_debugger_pid, std::nullopt);
+}
+
+TEST(CliOptionsTest, NonNumericAgentDebuggerPidIsIgnored) {
+    const CliOptions options =
+        parse({"oidwindow", "--agent-debugger-pid", "notanumber"});
+    EXPECT_EQ(options.agent_debugger_pid, std::nullopt);
 }

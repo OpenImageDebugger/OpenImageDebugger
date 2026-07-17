@@ -23,32 +23,25 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef HOST_CLI_OPTIONS_H_
-#define HOST_CLI_OPTIONS_H_
+#include "process_id.h"
 
-#include <optional>
-#include <string>
-#include <vector>
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
 
-namespace oid::host {
+namespace oid::system {
 
-// Command-line options accepted by the native ImGui frontend.
-struct CliOptions {
-    std::string hostname{"127.0.0.1"};
-    int port{9588};
-    std::vector<std::string> open_files;
-    std::optional<int> agent_debugger_pid;
-};
+long current_process_id() {
+#ifdef _WIN32
+    return static_cast<long>(GetCurrentProcessId());
+#else
+    return static_cast<long>(getpid());
+#endif
+}
 
-// Parses argv into CliOptions. Recognized flags: `--host H`; `--port N` /
-// `-p N` (via std::atoi -- invalid or non-positive input leaves the
-// default); repeatable `-o PATH` / `--open PATH` (each occurrence appends to
-// open_files); `--agent-debugger-pid PID` (invalid input leaves
-// agent_debugger_pid unset). Unknown arguments are ignored; a trailing
-// `-o`/`--open`/`--host`/`--port`/`-p`/`--agent-debugger-pid` with no
-// following value is ignored.
-[[nodiscard]] CliOptions parse_cli(int argc, const char* const* argv);
-
-} // namespace oid::host
-
-#endif // HOST_CLI_OPTIONS_H_
+} // namespace oid::system

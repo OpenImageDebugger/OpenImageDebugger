@@ -1,0 +1,17 @@
+{
+    "ok_payload.bin": {
+        "decoded_obj": {
+            "ok": true,
+            "payload": 8
+        },
+        "payload_hex": "0001020304050607",
+        "payload_len": 8
+    },
+    "ping.bin": {
+        "decoded_obj": {
+            "method": "ping"
+        },
+        "payload_hex": "",
+        "payload_len": 0
+    }
+}

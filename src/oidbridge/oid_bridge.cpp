@@ -44,6 +44,7 @@
 #include "ipc/asio_transport.h"
 #include "ipc/message_exchange.h"
 #include "system/process/process.h"
+#include "system/process/process_id.h"
 
 struct PlotBufferParams {
     std::string variable_name_str;
@@ -117,6 +118,12 @@ class OidBridge {
         // data()), so command cannot be const here.
         std::vector<std::string> command = {
             oid_path_ + "/oidwindow", "-p", portStdString};
+
+        // Passed explicitly (not via OID_AGENT env, which the child already
+        // inherits) so a standalone window launched outside the bridge never
+        // picks up a stale pid from a leftover environment variable.
+        command.emplace_back("--agent-debugger-pid");
+        command.emplace_back(std::to_string(oid::system::current_process_id()));
 
         ui_proc_.start(command);
 

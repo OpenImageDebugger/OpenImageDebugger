@@ -859,5 +859,68 @@ if(OID_BUILD_IMGUI_FRONTEND)
     )
 
     add_test(NAME CliOptionsTests COMMAND cli_options_test)
+
+    # Test encode_frame()/decode_frame() out of host/agent/wire_frame.cpp:
+    # the C++ mirror of oidscripts.wireframe's stdlib-only wire framing
+    # (4-byte big-endian length prefix + UTF-8 JSON object, optional raw
+    # binary payload). Pure logic -- the vendored nlohmann/json
+    # single_include is SYSTEM for the same rationale as settings_store_test.
+    add_executable(wire_frame_test host/agent/wire_frame_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/agent/wire_frame.cpp)
+    target_include_directories(wire_frame_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+    target_include_directories(wire_frame_test SYSTEM
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/thirdparty/json/single_include)
+    target_compile_definitions(wire_frame_test
+        PRIVATE GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/host/agent/golden")
+    target_link_libraries(wire_frame_test PRIVATE GTest::gtest_main GTest::gtest)
+    add_test(NAME WireFrameTests COMMAND wire_frame_test)
+
+    # Test wire_buffer_type() -- the FLOAT64->float32 wire-type narrowing that
+    # NativeViewModel applies on the ingest path. Header-only (no GL/engine
+    # deps), so it is the only automated guard on that mapping since
+    # FakeViewModel cannot exercise the real Buffer.
+    add_executable(wire_buffer_type_test host/agent/wire_buffer_type_test.cpp)
+    target_include_directories(wire_buffer_type_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+    target_link_libraries(wire_buffer_type_test PRIVATE GTest::gtest_main GTest::gtest)
+    add_test(NAME WireBufferTypeTests COMMAND wire_buffer_type_test)
+
+    # Test AgentCore's request dispatch out of host/agent/agent_core.cpp
+    # against FakeViewModel: hello/ping/list_buffers/get_buffer/get_view/
+    # set_view semantics and error codes. Pure logic -- vendored
+    # nlohmann/json single_include is SYSTEM for the same rationale as
+    # wire_frame_test.
+    add_executable(agent_core_test host/agent/agent_core_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/agent/agent_core.cpp)
+    target_include_directories(agent_core_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+    target_include_directories(agent_core_test SYSTEM
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/thirdparty/json/single_include)
+    target_link_libraries(agent_core_test PRIVATE GTest::gtest_main GTest::gtest)
+    add_test(NAME AgentCoreTests COMMAND agent_core_test)
+
+    # Test AgentServer's native transport out of host/agent/agent_server.cpp
+    # and host/agent/discovery_file.cpp: a real localhost connection driven
+    # over asio, plus the discovery file it publishes. Needs the full
+    # request-dispatch stack (agent_core.cpp, wire_frame.cpp) behind a
+    # FakeViewModel, and asio SYSTEM same as test_message_exchange.
+    add_executable(agent_server_test host/agent/agent_server_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/agent/agent_server.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/agent/discovery_file.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/agent/agent_core.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/agent/wire_frame.cpp)
+    target_include_directories(agent_server_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+    target_include_directories(agent_server_test SYSTEM
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/thirdparty/json/single_include
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/thirdparty/asio/asio/include)
+    target_compile_definitions(agent_server_test PRIVATE ASIO_STANDALONE ASIO_NO_DEPRECATED)
+    find_package(Threads REQUIRED)
+    target_link_libraries(agent_server_test PRIVATE Threads::Threads GTest::gtest_main GTest::gtest)
+    add_test(NAME AgentServerTests COMMAND agent_server_test)
+    # Cap the suite so a teardown regression (a stop() that fails to unblock a
+    # serve thread) fails the run instead of hanging CI indefinitely.
+    set_tests_properties(AgentServerTests PROPERTIES TIMEOUT 60)
 endif()
 

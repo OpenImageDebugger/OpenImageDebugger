@@ -23,32 +23,24 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef HOST_CLI_OPTIONS_H_
-#define HOST_CLI_OPTIONS_H_
+#ifndef HOST_AGENT_WIRE_BUFFER_TYPE_H_
+#define HOST_AGENT_WIRE_BUFFER_TYPE_H_
 
-#include <optional>
-#include <string>
-#include <vector>
+#include "ipc/raw_data_decode.h"
 
-namespace oid::host {
+namespace oid::host::agent {
 
-// Command-line options accepted by the native ImGui frontend.
-struct CliOptions {
-    std::string hostname{"127.0.0.1"};
-    int port{9588};
-    std::vector<std::string> open_files;
-    std::optional<int> agent_debugger_pid;
-};
+// Maps an in-memory buffer element type to the type actually served on the
+// wire. FLOAT64 payloads are narrowed to float32 on ingest (make_buffer_record
+// in buffer_decode.cpp), so the agent must report FLOAT32 for them and every
+// other type as-is. Reporting FLOAT64 would make oid-mcp size the payload at 8
+// bytes/element (rejecting every double buffer) and make the get_buffer
+// pre-copy cap over-estimate. Kept as a free function so it is testable without
+// the render-thread-bound NativeViewModel.
+constexpr oid::BufferType wire_buffer_type(const oid::BufferType type) {
+    return type == oid::BufferType::FLOAT64 ? oid::BufferType::FLOAT32 : type;
+}
 
-// Parses argv into CliOptions. Recognized flags: `--host H`; `--port N` /
-// `-p N` (via std::atoi -- invalid or non-positive input leaves the
-// default); repeatable `-o PATH` / `--open PATH` (each occurrence appends to
-// open_files); `--agent-debugger-pid PID` (invalid input leaves
-// agent_debugger_pid unset). Unknown arguments are ignored; a trailing
-// `-o`/`--open`/`--host`/`--port`/`-p`/`--agent-debugger-pid` with no
-// following value is ignored.
-[[nodiscard]] CliOptions parse_cli(int argc, const char* const* argv);
+} // namespace oid::host::agent
 
-} // namespace oid::host
-
-#endif // HOST_CLI_OPTIONS_H_
+#endif // HOST_AGENT_WIRE_BUFFER_TYPE_H_

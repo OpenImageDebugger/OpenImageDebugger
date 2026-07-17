@@ -26,10 +26,12 @@
 #include "host/cli_options.h"
 
 #include <algorithm>
-#include <cstdlib>
+#include <charconv>
 #include <cstring>
 #include <initializer_list>
 #include <optional>
+#include <string_view>
+#include <system_error>
 
 namespace oid::host {
 
@@ -46,11 +48,33 @@ bool matches(const char* arg, std::initializer_list<const char*> names) {
            });
 }
 
+// Parses a positive decimal integer, requiring the whole token to be numeric
+// and representable; non-numeric, out-of-range, or non-positive input is
+// rejected. std::from_chars (rather than std::atoi) turns out-of-range input
+// into a clean rejection instead of undefined behavior.
+std::optional<int> parse_positive_int(const char* text) {
+    if (text == nullptr) {
+        return std::nullopt;
+    }
+    // A string_view derives the end from the (already null-checked) pointer
+    // without a raw strlen, matching how matches() keeps unbounded C-string
+    // functions off argv pointers.
+    const std::string_view sv{text};
+    int value = 0;
+    const auto [ptr, ec] =
+        std::from_chars(sv.data(), sv.data() + sv.size(), value);
+    if (ec == std::errc{} && ptr == sv.data() + sv.size() && value > 0) {
+        return value;
+    }
+    return std::nullopt;
+}
+
 // Parses a TCP port, accepting only the valid 1..65535 range; anything outside
 // it would be narrowed to the wrong unsigned short later, so it is rejected and
 // the caller keeps the default.
 std::optional<int> parse_port(const char* text) {
-    if (const int value = std::atoi(text); value > 0 && value <= 65535) {
+    if (const auto value = parse_positive_int(text);
+        value.has_value() && *value <= 65535) {
         return value;
     }
     return std::nullopt;
@@ -81,6 +105,9 @@ CliOptions parse_cli(int argc, const char* const* argv) {
             if (const auto port = parse_port(value); port.has_value()) {
                 options.port = *port;
             }
+            i += 2;
+        } else if (matches(arg, {"--agent-debugger-pid"}) && value != nullptr) {
+            options.agent_debugger_pid = parse_positive_int(value);
             i += 2;
         } else {
             // Bare/unknown flags, and value-taking flags with no following
