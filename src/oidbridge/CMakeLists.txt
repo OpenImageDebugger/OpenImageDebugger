@@ -31,6 +31,7 @@ add_library(${PROJECT_NAME} MODULE
             oid_bridge.cpp
             ../debuggerinterface/python_native_interface.cpp
             ../system/process/process.cpp
+            ../system/process/process_id.cpp
             $<$<BOOL:${UNIX}>:../system/process/process_unix.cpp>
             $<$<BOOL:${WIN32}>:../system/process/process_win32.cpp>)
 

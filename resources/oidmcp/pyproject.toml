@@ -1,6 +1,6 @@
 [project]
 name = "oidmcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server giving AI agents eyes on OpenImageDebugger buffers in live gdb/lldb sessions"
 requires-python = ">=3.10"
 dependencies = [

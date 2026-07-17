@@ -172,6 +172,8 @@ if(OID_BUILD_IMGUI_FRONTEND)
     host/io/file_buffer_loader.cpp
     host/io/file_open_queue.cpp
     host/io/npy_decode.cpp
+    host/agent/wire_frame.cpp
+    host/agent/agent_core.cpp
     host/ui/svg_raster.cpp
     ${VIZ_SOURCES}
   )
@@ -188,6 +190,9 @@ if(OID_BUILD_IMGUI_FRONTEND)
       platform/display_env.cpp
       platform/app_services.cpp
       platform/native_file_dialog.cpp
+      host/agent/native_view_model.cpp
+      host/agent/agent_server.cpp
+      host/agent/discovery_file.cpp
     )
   endif()
 

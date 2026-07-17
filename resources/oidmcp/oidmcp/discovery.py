@@ -26,6 +26,16 @@ class SessionInfo:
     start_time: float
 
 
+@dataclass(frozen=True)
+class ViewerSessionInfo:
+    path: Path | None
+    pid: int
+    port: int
+    token: str
+    start_time: float
+    debugger_pid: int | None
+
+
 def discovery_dir() -> Path:
     override = os.environ.get('OID_AGENT_DIR')
     if override:
@@ -35,6 +45,16 @@ def discovery_dir() -> Path:
     except Exception:
         user = str(os.getuid()) if hasattr(os, 'getuid') else 'user'
     return Path(tempfile.gettempdir()) / f'oid-agent-{user}'
+
+
+def viewer_discovery_dir() -> Path:
+    """Directory holding per-viewer discovery files.
+
+    A ``viewer`` subdirectory of the debugger discovery dir, kept separate
+    so the debugger's flat ``*.json`` glob (``live_sessions``) never sees a
+    viewer's discovery file, and vice versa.
+    """
+    return discovery_dir() / 'viewer'
 
 
 def _is_private_dir(directory: Path) -> bool:
@@ -82,6 +102,18 @@ def _warn_untrusted_dir(directory: Path) -> None:
 
 
 def _pid_alive(pid: int) -> bool:
+    if pid <= 0:
+        # pid 0 and negatives have special os.kill semantics (current process
+        # group / broadcast), so a malformed record with a non-positive pid
+        # would look "alive" and never be reaped -- treat it as dead.
+        return False
+    if os.name == 'nt':
+        # os.kill(pid, 0) is NOT a liveness probe on Windows: signal 0 maps to
+        # CTRL_C_EVENT and any non-console signal to an unconditional
+        # TerminateProcess, so probing would disrupt or kill the very
+        # viewer/debugger this enumeration just discovered. Query the process
+        # object instead.
+        return _pid_alive_windows(pid)
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -93,44 +125,122 @@ def _pid_alive(pid: int) -> bool:
     return True
 
 
-def live_sessions() -> list[SessionInfo]:
-    """
-    Parse every discovery file in a *trusted* discovery directory.
+def _pid_alive_windows(pid: int) -> bool:
+    """Non-destructive Windows liveness probe via the process object.
 
-    The directory holds session tokens -- capabilities to a live debug
-    endpoint that exposes debuggee memory. A symlinked, wrong-owner, or
-    group/world-accessible directory (typically a mispointed
-    OID_AGENT_DIR) is untrusted: its tokens may have been read or planted
-    by another user, so nothing there is read or deleted and we warn once.
-    In a trusted directory, entries that are unreadable or whose debugger
-    process is gone are unlinked.
+    Opens the process for SYNCHRONIZE and waits with a zero timeout:
+    WAIT_TIMEOUT means the object is not signalled (still running), while a
+    signalled object means it has exited. This avoids both the destructive
+    ``os.kill`` path and the ``GetExitCodeProcess`` STILL_ACTIVE(259)
+    ambiguity for a process that exited with code 259.
     """
-    directory = discovery_dir()
+    import ctypes.wintypes
+
+    ERROR_ACCESS_DENIED = 5
+    SYNCHRONIZE = 0x00100000
+    WAIT_TIMEOUT = 0x00000102
+
+    wintypes = ctypes.wintypes
+    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL,
+                                     wintypes.DWORD)
+    kernel32.WaitForSingleObject.restype = wintypes.DWORD
+    kernel32.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+    kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+
+    handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
+    if not handle:
+        # No handle: access-denied means the pid is live but owned by another
+        # user (mirror POSIX os.kill's PermissionError => alive); any other
+        # error (e.g. invalid parameter) means there is no such process.
+        return ctypes.get_last_error() == ERROR_ACCESS_DENIED
+    try:
+        return kernel32.WaitForSingleObject(handle, 0) == WAIT_TIMEOUT
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _reap(path: Path) -> None:
+    """Best-effort removal of a stale/bad discovery file. A stray entry that
+    cannot be removed (e.g. a directory left in the dir) must not break
+    enumeration, so unlink errors are swallowed."""
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass  # stray unremovable entry (e.g. a dir); skip, don't crash
+
+
+def _live_entries(directory: Path, parse):
+    """
+    Parse every discovery file in a *trusted* directory, reaping the rest.
+
+    Shared by ``live_sessions`` and ``live_viewers``: both hold session
+    tokens -- capabilities to a live endpoint that exposes debuggee
+    memory -- so both apply the same trust gate before touching anything.
+    A symlinked, wrong-owner, or group/world-accessible directory
+    (typically a mispointed OID_AGENT_DIR) is untrusted: its tokens may
+    have been read or planted by another user, so nothing there is read
+    or deleted and we warn once. In a trusted directory, entries that are
+    unreadable/unparseable or whose process is gone are unlinked.
+
+    ``parse`` turns a discovery file's ``(path, info_dict)`` into the
+    caller's session type; it must expose a ``.pid`` attribute.
+    """
     if not directory.is_dir():
         return []
     if not _is_private_dir(directory):
         _warn_untrusted_dir(directory)
         return []
-    sessions = []
+    entries = []
     for path in sorted(directory.glob('*.json')):
         try:
             info = json.loads(path.read_text())
-            session = SessionInfo(
-                path=path,
-                pid=int(info['pid']),
-                port=int(info['port']),
-                token=str(info['token']),
-                debugger=str(info['debugger']),
-                start_time=float(info['start_time']),
-            )
-        except (ValueError, KeyError, OSError):
-            path.unlink(missing_ok=True)
+            entry = parse(path, info)
+        except (ValueError, KeyError, TypeError, OSError):
+            # TypeError: a JSON field is the wrong type (e.g. debugger_pid an
+            # object) so int()/float() in parse() rejects it -- treat as a
+            # malformed file and reap it rather than aborting enumeration.
+            _reap(path)
             continue
-        if not _pid_alive(session.pid):
-            path.unlink(missing_ok=True)
+        if not _pid_alive(entry.pid):
+            _reap(path)
             continue
-        sessions.append(session)
-    return sessions
+        entries.append(entry)
+    return entries
+
+
+def _parse_session(path: Path, info: dict) -> SessionInfo:
+    return SessionInfo(
+        path=path,
+        pid=int(info['pid']),
+        port=int(info['port']),
+        token=str(info['token']),
+        debugger=str(info['debugger']),
+        start_time=float(info['start_time']),
+    )
+
+
+def _parse_viewer(path: Path, info: dict) -> ViewerSessionInfo:
+    debugger_pid = info.get('debugger_pid')
+    return ViewerSessionInfo(
+        path=path,
+        pid=int(info['pid']),
+        port=int(info['port']),
+        token=str(info['token']),
+        start_time=float(info['start_time']),
+        debugger_pid=int(debugger_pid) if debugger_pid is not None else None,
+    )
+
+
+def live_sessions() -> list[SessionInfo]:
+    """Parse every debugger discovery file in the trusted discovery dir."""
+    return _live_entries(discovery_dir(), _parse_session)
+
+
+def live_viewers() -> list[ViewerSessionInfo]:
+    """Parse every viewer discovery file in the trusted viewer subdir."""
+    return _live_entries(viewer_discovery_dir(), _parse_viewer)
 
 
 def pick_session(sessions: list[SessionInfo],

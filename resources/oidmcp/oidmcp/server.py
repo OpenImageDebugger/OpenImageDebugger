@@ -25,13 +25,17 @@ else:
 
 from .analysis import compute_stats, dump_npy, extract_values
 from .buffers import BufferCache, decode_buffer
-from .discovery import NoSessionError, live_sessions, pick_session
+from .discovery import (NoSessionError, _pid_alive, live_sessions,
+                        live_viewers, pick_session)
 from .protocol import DEFAULT_MAX_BYTES, ControlClient, ControlError
 from .render import render_view
+from .viewer_meta import to_bridge_meta
 
 _HINTS = {
     'symbol_not_found': 'Call list_buffers() to see what is observable '
                         'at the current stop.',
+    'unknown_buffer': 'Call list_buffers() to see what buffers this '
+                      'viewer has.',
     'not_stopped': 'The debuggee is running; wait for the next '
                    'breakpoint or pause it, then retry.',
     'no_viewer': 'No OID viewer window is connected to this session.',
@@ -75,6 +79,7 @@ class SessionManager:
 
     def __init__(self):
         self._clients: dict[int, ControlClient] = {}
+        self._viewer_clients: dict[int, ControlClient] = {}
         self._cache = BufferCache(capacity=4)
         self._max_bytes = _parse_max_bytes()
 
@@ -91,17 +96,117 @@ class SessionManager:
         self._clients[info.pid] = client
         return client
 
+    def _viewer_client(self, info) -> ControlClient:
+        # Pooled separately from debugger clients (own dict, keyed by the
+        # viewer's own pid): a debugger session and its paired viewer are
+        # different live endpoints and must never share a pool slot, even
+        # though nothing stops the two pid spaces from colliding.
+        client = self._viewer_clients.get(info.pid)
+        if client is not None:
+            try:
+                client.ping()
+                return client
+            except OSError:
+                client.close()
+                del self._viewer_clients[info.pid]
+        client = ControlClient('127.0.0.1', info.port, info.token)
+        self._viewer_clients[info.pid] = client
+        return client
+
     def _resolve(self, session):
         return pick_session(live_sessions(), session)
 
+    def _resolve_viewer(self, session):
+        """
+        Select a live viewer window by viewer pid or paired debugger pid.
+
+        No selector: the only live viewer if there is exactly one, else
+        the most recently started; none live raises a friendly
+        `NoSessionError` pointing at `OID_AGENT=1` (paired viewer) or a
+        standalone `oidwindow`.
+
+        An explicit `session` is tried first against live viewers' own
+        pid; if none matches, it is tried against their `debugger_pid`
+        pairing instead. A debugger with no paired viewer window (e.g.
+        before its first stop) raises a distinct "that debugger has no
+        viewer window" error rather than silently falling back to an
+        unrelated window. Should the pairing ever resolve to more than
+        one live viewer (a transient window relaunch racing discovery
+        reaping), liveness is re-checked and the most recently started
+        one wins.
+        """
+        viewers = live_viewers()
+        if session is None:
+            if not viewers:
+                raise NoSessionError(
+                    'no live OID viewer window found. Start a debugger '
+                    'with OID_AGENT=1 in its environment (a viewer '
+                    'window is spawned at its first stop), or run the '
+                    'standalone `oidwindow` with OID_AGENT=1 set in its '
+                    'own environment.')
+            return max(viewers, key=lambda v: v.start_time)
+
+        for viewer in viewers:
+            if viewer.pid == session:
+                return viewer
+
+        paired = [v for v in viewers if v.debugger_pid == session]
+        if not paired:
+            raise NoSessionError(
+                f'no live OID viewer for pid {session}: it is not a '
+                f'live viewer itself, and that debugger has no viewer '
+                f'window paired to it.')
+        if len(paired) > 1:
+            alive = [v for v in paired if _pid_alive(v.pid)]
+            paired = alive or paired
+        return max(paired, key=lambda v: v.start_time)
+
+    def _resolve_pixel_source(self, session):
+        """
+        Resolve a pixel-tool `session` selector to its source.
+
+        Prefers a debugger session, as before: `_resolve` picks the
+        explicit match, or (with no selector) the most recently started
+        live debugger session. Only when that fails -- the pid selects
+        no live debugger session, or none exist at all -- is `session`
+        instead resolved against live viewer windows (by the viewer's
+        own pid, or by `debugger_pid` pairing), so a caller can target a
+        standalone `oidwindow` or a viewer whose debugger session has
+        already exited.
+        """
+        try:
+            return 'debugger', self._resolve(session)
+        except NoSessionError:
+            return 'viewer', self._resolve_viewer(session)
+
     def list_buffers(self, session) -> dict:
-        client = self._client(self._resolve(session))
-        symbols, generation = client.list_symbols()
+        kind, info = self._resolve_pixel_source(session)
+        if kind == 'viewer':
+            buffers = self._viewer_client(info).list_viewer_buffers()
+            return {'symbols': [b['name'] for b in buffers],
+                    'stop_generation': 0}
+        symbols, generation = self._client(info).list_symbols()
         return {'symbols': symbols, 'stop_generation': generation}
 
     def fetch(self, session, symbol):
-        """Return (meta, array), served from the per-stop cache."""
-        info = self._resolve(session)
+        """
+        Return (meta, array).
+
+        A debugger fetch is served from the per-stop cache. A viewer
+        fetch is never cached: `viewer_meta.to_bridge_meta` always sets
+        `stop_generation` to 0 because the viewer has no notion of a
+        debugger stop -- a fetch from it is always the buffer's current
+        state, so caching it under a constant key would serve stale
+        pixels forever.
+        """
+        kind, info = self._resolve_pixel_source(session)
+        if kind == 'viewer':
+            client = self._viewer_client(info)
+            viewer_meta, raw = client.get_buffer(symbol,
+                                                 max_bytes=self._max_bytes)
+            meta = to_bridge_meta(viewer_meta)
+            return meta, decode_buffer(meta, raw)
+
         client = self._client(info)
         generation = client.ping()
         key = (info.pid, symbol, generation)
@@ -118,7 +223,18 @@ class SessionManager:
         return meta, arr
 
     def plot(self, session, symbol) -> None:
-        self._client(self._resolve(session)).plot(symbol)
+        kind, info = self._resolve_pixel_source(session)
+        if kind == 'viewer':
+            raise RuntimeError(
+                'the buffer is already displayed in that viewer')
+        self._client(info).plot(symbol)
+
+    def set_view(self, session, **fields) -> dict:
+        return self._viewer_client(self._resolve_viewer(session)) \
+            .set_view(**fields)
+
+    def get_view(self, session) -> dict:
+        return self._viewer_client(self._resolve_viewer(session)).get_view()
 
 
 _INSTRUCTIONS = (
@@ -130,7 +246,15 @@ _INSTRUCTIONS = (
     '`region`, `channel`, and `max_px`; use `stats` for summaries and '
     '`values` for a small exact crop (capped at 1024 numbers) rather than '
     'reading whole buffers; use `dump` to write a lossless .npy to disk '
-    'instead of returning bulk data through the conversation.'
+    'instead of returning bulk data through the conversation.\n'
+    'Viewers: `session` accepts either a debugger pid or an OID viewer '
+    'window pid -- `list_sessions` lists both and pairs them via '
+    '`debugger_pid`. `view`/`stats`/`values`/`dump`/`list_buffers` prefer '
+    'a debugger session but fall back to a viewer window when none is '
+    'live or one is selected explicitly, so they also work against a '
+    'standalone `oidwindow`. `set_view`/`get_view` read or move what the '
+    'human currently sees in their viewer window; `auto_contrast` is a '
+    'global viewer setting, not per-buffer.'
 )
 
 # Security + token-usage warning for the human/logs. Goes to STDERR: on the
@@ -181,18 +305,30 @@ def _plot_impl(manager, symbol, session):
 
 
 @mcp.tool()
-def list_sessions() -> list[dict]:
-    """List live OID debug sessions this server can reach."""
-    return [{'pid': s.pid, 'debugger': s.debugger,
-             'started_unix': s.start_time} for s in live_sessions()]
+def list_sessions() -> dict:
+    """List live OID debug sessions and viewer windows this server can reach.
+
+    Each viewer shows its debugger_pid pairing (None for a standalone
+    oidwindow), so a caller can target either a debugger's session pid
+    or its viewer window explicitly.
+    """
+    return {
+        'debuggers': [{'pid': s.pid, 'debugger': s.debugger,
+                      'started_unix': s.start_time}
+                     for s in live_sessions()],
+        'viewers': [{'pid': v.pid, 'debugger_pid': v.debugger_pid,
+                    'started_unix': v.start_time}
+                   for v in live_viewers()],
+    }
 
 
 @mcp.tool()
 def list_buffers(session: int | None = None) -> dict:
     """List symbols observable as image buffers at the current stop.
 
-    session: debugger pid from list_sessions(); defaults to the most
-    recently started live session.
+    session: a debugger or viewer pid from list_sessions(); defaults to
+    the most recently started live debugger session, or the most
+    recently started live viewer window if none is live.
     """
     try:
         return _manager.list_buffers(session)
@@ -262,6 +398,44 @@ def dump(symbol: str, path: str | None = None, overwrite: bool = False,
 def plot(symbol: str, session: int | None = None) -> str:
     """Mirror a buffer into the human's OID viewer window."""
     return _plot_impl(_manager, symbol, session)
+
+
+@mcp.tool()
+def set_view(session: int | None = None, buffer: str | None = None,
+            center: list[float] | None = None, zoom: float | None = None,
+            rotation_deg: float | None = None,
+            channel: int | str | None = None,
+            auto_contrast: bool | None = None) -> dict:
+    """Set the OID viewer's view of a buffer (absolute/idempotent).
+
+    Only the fields you pass are changed; omitted fields keep their
+    current value. session: a viewer pid or a paired debugger pid, as
+    for the pixel tools. channel selects a single display channel by
+    0-based index (``0``, ``1``, ``2``) or ``"all"`` to restore the
+    natural layout. auto_contrast is a global viewer setting (not
+    per-buffer), matching get_view.
+    """
+    fields = {k: v for k, v in {
+        'buffer': buffer, 'center': center, 'zoom': zoom,
+        'rotation_deg': rotation_deg, 'channel': channel,
+        'auto_contrast': auto_contrast}.items() if v is not None}
+    try:
+        return _manager.set_view(session, **fields)
+    except (ControlError, NoSessionError) as error:
+        raise RuntimeError(_friendly(error)) from None
+
+
+@mcp.tool()
+def get_view(session: int | None = None) -> dict:
+    """Read the OID viewer's current view state.
+
+    Returns buffer/center/zoom/rotation_deg/channel/auto_contrast.
+    auto_contrast is global (not per-buffer).
+    """
+    try:
+        return _manager.get_view(session)
+    except (ControlError, NoSessionError) as error:
+        raise RuntimeError(_friendly(error)) from None
 
 
 def main() -> None:

@@ -291,6 +291,30 @@ def _write_discovery_file(port, token, backend):
     return path
 
 
+class _DeadlineSocket(object):
+    """Per-recv view of a socket that enforces one absolute deadline.
+
+    ``settimeout`` is a per-operation timeout and ``recv_frame`` issues
+    several ``recv_into`` calls per frame, so a plain
+    ``conn.settimeout(HANDSHAKE_TIMEOUT)`` lets a client hold its slot
+    forever by trickling bytes just under the timeout without ever
+    completing hello. This wrapper shares one ``budget`` across every recv
+    of the pre-auth frame, mirroring the absolute handshake deadline in the
+    C++ endpoint (agent_server.cpp).
+    """
+
+    def __init__(self, sock, budget):
+        self._sock = sock
+        self._deadline = time.monotonic() + budget
+
+    def recv_into(self, view):
+        remaining = self._deadline - time.monotonic()
+        if remaining <= 0:
+            raise socket.timeout('agent handshake deadline exceeded')
+        self._sock.settimeout(remaining)
+        return self._sock.recv_into(view)
+
+
 class _EndpointServer(object):
     """Owns the listening socket, client threads and discovery file."""
 
@@ -343,10 +367,16 @@ class _EndpointServer(object):
     def _serve_client(self, conn):
         try:
             with conn:
-                # Pre-auth: an idle connection may not hold its slot
-                # open; it must say hello within the handshake window.
+                # Pre-auth: an idle connection may not hold its slot open; it
+                # must say hello within the handshake window. The deadline is
+                # absolute across the whole pre-auth frame, not per-recv, so a
+                # client cannot hold a MAX_CLIENTS slot forever by trickling
+                # bytes just under a per-recv timeout (mirrors agent_server.cpp).
+                request, _ = recv_frame(
+                    _DeadlineSocket(conn, HANDSHAKE_TIMEOUT), max_payload=0)
+                # Bound the reply send as a single op too (a small reply cannot
+                # be trickled the way a multi-recv frame can).
                 conn.settimeout(HANDSHAKE_TIMEOUT)
-                request, _ = recv_frame(conn, max_payload=0)
                 try:
                     if (not isinstance(request, dict)
                             or request.get('method') != 'hello'):

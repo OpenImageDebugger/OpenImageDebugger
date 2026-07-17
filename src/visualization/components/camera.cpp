@@ -26,6 +26,7 @@
 #include "camera.h"
 
 #include <cmath>
+#include <limits>
 
 #include "visualization/components/buffer.h"
 #include "visualization/events.h"
@@ -368,6 +369,33 @@ float Camera::get_zoom_power() const {
 }
 
 void Camera::set_zoom_power(const float zoom_power) {
+    // camera_pos_ lives in the scaled frame (get_position() reads back
+    // buf/2 - pose^-1 * scale_ * camera_pos_), so replacing scale_ without
+    // compensating it moves the buffer pixel currently at the canvas center.
+    // Scale camera_pos_ by the zoom ratio so the centered pixel is preserved --
+    // an absolute zoom write must not pan the view. (The interactive wheel path
+    // scale_at() zooms about the cursor instead and compensates separately.)
+    // Guards against an extreme zoom-power swing: the ratio is computed in
+    // double (cannot overflow for a valid power range), the already-centered
+    // (zero) case is skipped so it can never become 0 * inf == NaN, and the
+    // scaled position is committed only if it stays finite and within float
+    // range -- poisoning camera_pos_ with inf/NaN would corrupt every later
+    // view computation, so an absurd swing simply skips the compensation.
+    if (camera_pos_x_ != 0.0f || camera_pos_y_ != 0.0f) {
+        const double ratio = std::pow(static_cast<double>(ZOOM_FACTOR),
+                                      static_cast<double>(zoom_power) -
+                                          static_cast<double>(zoom_power_));
+        const double new_x = static_cast<double>(camera_pos_x_) * ratio;
+        const double new_y = static_cast<double>(camera_pos_y_) * ratio;
+        constexpr auto float_max =
+            static_cast<double>((std::numeric_limits<float>::max)());
+        if (std::isfinite(new_x) && std::isfinite(new_y) &&
+            std::abs(new_x) <= float_max && std::abs(new_y) <= float_max) {
+            camera_pos_x_ = static_cast<float>(new_x);
+            camera_pos_y_ = static_cast<float>(new_y);
+        }
+    }
+
     zoom_power_ = zoom_power;
 
     const auto zoom{1.0f / compute_zoom()};
@@ -400,11 +428,21 @@ void Camera::move_to(const float x, const float y) {
     const auto zoom{1.0f / compute_zoom()};
     scale_ = mat4::scale(vec4(zoom, zoom, 1.0f, 1.0f));
 
-    const auto transformed_goal =
-        scale_.inv() * buffer_obj->get().get_pose() * centered_coord;
-
-    camera_pos_x_ = transformed_goal.x();
-    camera_pos_y_ = transformed_goal.y();
+    // Commit the new center only if it is finite. At an extreme (but validated)
+    // zoom, scale_.inv() magnifies centered_coord past FLT_MAX -- or scale_'s
+    // subnormal determinant makes Eigen's inverse itself non-finite -- so the
+    // product can be +/-inf/NaN. Poisoning camera_pos_ that way would corrupt
+    // every later view computation (get_position, set_zoom_power's own guarded
+    // path), so an out-of-range move simply keeps the previous center. Mirrors
+    // the finite-commit guard in set_zoom_power (float storage makes isfinite
+    // subsume the range check).
+    if (const auto transformed_goal =
+            scale_.inv() * buffer_obj->get().get_pose() * centered_coord;
+        std::isfinite(transformed_goal.x()) &&
+        std::isfinite(transformed_goal.y())) {
+        camera_pos_x_ = transformed_goal.x();
+        camera_pos_y_ = transformed_goal.y();
+    }
 
     update_object_pose();
 }

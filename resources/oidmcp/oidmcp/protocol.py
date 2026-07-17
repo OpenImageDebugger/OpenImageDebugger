@@ -48,7 +48,11 @@ class ControlClient:
             raise
 
     def _call(self, request: dict,
-              max_payload: int | None = None) -> tuple[dict, bytes]:
+              max_payload: int | None = 0) -> tuple[dict, bytes]:
+        # Default max_payload=0: control calls are JSON-only, so a server (or a
+        # corrupted frame) declaring a binary payload is rejected before
+        # recv_frame allocates for it. get_buffer, the only payload-carrying
+        # call, passes its own cap explicitly.
         send_frame(self._sock, request)
         response, payload = recv_frame(self._sock, max_payload=max_payload)
         if 'error' in response:
@@ -58,8 +62,18 @@ class ControlClient:
         return response, payload
 
     def ping(self) -> int:
+        """
+        Round-trip a ping; return the debugger's stop generation.
+
+        The debugger endpoint's reply always carries 'stop_generation';
+        the viewer endpoint's does not (a viewer has no stop notion, and
+        replies '{"ok": true}' instead). `SessionManager`'s viewer
+        connection pool still calls this to detect a dead connection, so
+        a missing key defaults to 0 rather than raising -- only the
+        debugger side relies on the returned value being meaningful.
+        """
         response, _ = self._call({'method': 'ping'})
-        return response['stop_generation']
+        return response.get('stop_generation', 0)
 
     def list_symbols(self) -> tuple[list[str], int]:
         response, _ = self._call({'method': 'list_symbols'})
@@ -82,6 +96,20 @@ class ControlClient:
 
     def plot(self, symbol: str) -> None:
         self._call({'method': 'plot', 'symbol': symbol})
+
+    def get_view(self) -> dict:
+        response, _ = self._call({'method': 'get_view'})
+        return response
+
+    def set_view(self, **fields) -> dict:
+        # method last so a caller-supplied fields['method'] cannot override the
+        # RPC method (later keys win in dict unpacking).
+        response, _ = self._call({**fields, 'method': 'set_view'})
+        return response
+
+    def list_viewer_buffers(self) -> list[dict]:
+        response, _ = self._call({'method': 'list_buffers'})
+        return response['buffers']
 
     def close(self) -> None:
         try:

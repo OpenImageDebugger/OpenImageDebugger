@@ -268,9 +268,11 @@ Open Image Debugger ships an experimental **MCP server** (`oid-mcp`) that
 lets AI coding agents inspect your buffers in a live gdb/lldb session —
 list observable symbols at a breakpoint, view renderings, read exact
 values, dump lossless `.npy` copies, and mirror buffers into the viewer.
-It is opt-in (launch the debugger with `OID_AGENT=1`) and exposes
-debuggee memory to local processes, so enable it only in trusted, local
-development.
+Agents can also control and read back a running viewer's view — pan,
+zoom, rotate, channel, and auto-contrast — including one opened
+standalone with no debugger attached. It is opt-in (launch the debugger
+with `OID_AGENT=1`) and exposes debuggee memory to local processes, so
+enable it only in trusted, local development.
 
 See [`resources/oidmcp/README.md`](resources/oidmcp/README.md) for
 deployment and usage instructions.

@@ -164,17 +164,44 @@ the same directory** (see [Troubleshooting](#troubleshooting)).
    when more than one is live; it defaults to the most recently started
    session.
 
+## Viewer sessions
+
+The pixel tools (`view`, `stats`, `values`, `dump`, `list_buffers`) don't
+require a debugger at all. A viewer started standalone with the agent
+endpoint enabled:
+
+```bash
+OID_AGENT=1 oidwindow --open path/to/image.png
+```
+
+exposes the same endpoint even with no debugger attached, so an agent
+can inspect whatever a user currently has open in the viewer.
+
+When a debugger *did* spawn the viewer, that viewer's session carries a
+`debugger_pid` back-pointer, so `set_view`/`get_view` accept either the
+viewer's own pid or its debugger's pid to address that window. (The
+pixel tools — `view`/`stats`/`values`/`dump`/`list_buffers` — prefer the
+debugger's own buffers when given a debugger pid, and fall back to the
+viewer only when there's no live debugger session.) `list_sessions()`
+reports the pairing (see below).
+
+`set_view`/`get_view` always target a viewer (there's nothing to move
+in a debugger without one), resolved the same way: a viewer pid, or a
+debugger pid paired to a live viewer.
+
 ## Tools
 
 | Tool | Purpose |
 | --- | --- |
-| `list_sessions()` | Live debug sessions (all tools take `session=<pid>`) |
-| `list_buffers()` | Observable buffer symbols at the current stop |
+| `list_sessions()` | `{"debuggers": [...], "viewers": [...]}` — live debug sessions and viewer windows (all tools take `session=<pid>`); each viewer entry shows its `debugger_pid` pairing (`null` for a standalone viewer) |
+| `list_buffers()` | Observable buffer symbols at the current stop (debugger or viewer session) |
 | `view(symbol, region?, channel?, vmin?, vmax?, max_px?)` | PNG rendering; `region` is the stateless zoom |
 | `stats(symbol, region?)` | Per-channel min/max/mean/std, NaN/Inf/zero counts |
 | `values(symbol, x, y, w, h, channel?)` | Exact numbers (≤1024 per call) |
 | `dump(symbol, path?, overwrite?)` | Lossless `.npy` dump into the per-user dump directory; `path` is a filename within it (not an arbitrary path); refuses to overwrite an existing file unless `overwrite=true` |
 | `plot(symbol)` | Mirror into the human viewer window |
+| `set_view(session?, buffer?, center?, zoom?, rotation_deg?, channel?, auto_contrast?)` | Set the viewer's view **absolutely** (idempotent — it sets state, it does not nudge); omitted fields keep their current value; `channel` is `0`, `1`, `2`, or `"all"`; `auto_contrast` is a **global** viewer toggle, not per-buffer |
+| `get_view(session?)` | Read the viewer's current `buffer`/`center`/`zoom`/`rotation_deg`/`channel`/`auto_contrast` |
 
 ## Notes
 

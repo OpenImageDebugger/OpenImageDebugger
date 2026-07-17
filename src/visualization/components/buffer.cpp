@@ -157,6 +157,19 @@ void Buffer::rotate(const float angle) {
     angle_ += angle;
 }
 
+void Buffer::set_rotation(const float radians) {
+    angle_ = radians;
+    // Apply the pose eagerly so the agent's synchronous get_view read-back (and
+    // any move_to in the same set_view request) sees the requested rotation
+    // rather than the previous frame's pose. Idempotent with the per-frame
+    // update_object_pose() call in Buffer::update().
+    update_object_pose();
+}
+
+float Buffer::rotation() const {
+    return angle_;
+}
+
 void Buffer::set_icon_drawing_mode(const bool is_enabled) const {
     buff_prog_.use();
 

@@ -98,3 +98,191 @@ def test_pick_session_errors_are_actionable():
                                       debugger='gdb', start_time=1.0)]
     with pytest.raises(discovery.NoSessionError):
         discovery.pick_session(sessions, session=42)
+
+
+def _make_agent_dir(tmp_path, monkeypatch):
+    agent_dir = tmp_path / 'agent'
+    agent_dir.mkdir(mode=0o700)
+    os.chmod(str(agent_dir), 0o700)
+    monkeypatch.setenv('OID_AGENT_DIR', str(agent_dir))
+    return agent_dir
+
+
+def test_live_viewers_finds_running_endpoint(tmp_path, monkeypatch):
+    agent_dir = _make_agent_dir(tmp_path, monkeypatch)
+    viewer_dir = agent_dir / 'viewer'
+    viewer_dir.mkdir(mode=0o700)
+    os.chmod(str(viewer_dir), 0o700)
+    assert discovery.viewer_discovery_dir() == viewer_dir
+    (viewer_dir / '1234.json').write_text(json.dumps({
+        'version': 1, 'port': 6001, 'token': 'y' * 64,
+        'pid': os.getpid(), 'start_time': 5.0, 'debugger_pid': 42}))
+
+    viewers = discovery.live_viewers()
+
+    assert len(viewers) == 1
+    viewer = viewers[0]
+    assert viewer.path == viewer_dir / '1234.json'
+    assert viewer.pid == os.getpid()
+    assert viewer.port == 6001
+    assert viewer.token == 'y' * 64
+    assert viewer.start_time == pytest.approx(5.0)
+    assert viewer.debugger_pid == 42
+
+
+def test_live_viewers_reaps_malformed_and_keeps_valid(tmp_path, monkeypatch):
+    # A discovery file whose debugger_pid is a JSON object makes int() raise
+    # TypeError in _parse_viewer; enumeration must reap that file and still
+    # return the valid entries rather than aborting on the malformed one.
+    agent_dir = _make_agent_dir(tmp_path, monkeypatch)
+    viewer_dir = agent_dir / 'viewer'
+    viewer_dir.mkdir(mode=0o700)
+    os.chmod(str(viewer_dir), 0o700)
+    good = viewer_dir / 'good.json'
+    good.write_text(json.dumps({
+        'version': 1, 'port': 6002, 'token': 'z' * 64,
+        'pid': os.getpid(), 'start_time': 1.0, 'debugger_pid': 7}))
+    bad = viewer_dir / 'bad.json'
+    bad.write_text(json.dumps({
+        'version': 1, 'port': 6003, 'token': 'z' * 64,
+        'pid': os.getpid(), 'start_time': 2.0, 'debugger_pid': {}}))
+
+    viewers = discovery.live_viewers()
+
+    assert [v.port for v in viewers] == [6002]
+    assert not bad.exists()  # malformed file reaped
+    assert good.exists()     # valid entry untouched
+
+
+def test_live_viewers_survives_directory_entry(tmp_path, monkeypatch):
+    # A *.json entry that is itself a directory cannot be read (OSError) or
+    # unlinked; _reap must swallow the unlink failure and enumeration must
+    # still return the valid entries instead of crashing.
+    agent_dir = _make_agent_dir(tmp_path, monkeypatch)
+    viewer_dir = agent_dir / 'viewer'
+    viewer_dir.mkdir(mode=0o700)
+    os.chmod(str(viewer_dir), 0o700)
+    (viewer_dir / 'good.json').write_text(json.dumps({
+        'version': 1, 'port': 6004, 'token': 'z' * 64,
+        'pid': os.getpid(), 'start_time': 1.0, 'debugger_pid': 8}))
+    (viewer_dir / 'adir.json').mkdir()
+
+    viewers = discovery.live_viewers()
+
+    assert [v.port for v in viewers] == [6004]
+    assert (viewer_dir / 'adir.json').exists()  # unremovable dir left intact
+
+
+def test_live_viewers_reaps_nonpositive_pid(tmp_path, monkeypatch):
+    # A record with pid <= 0 is malformed; os.kill(0/neg, 0) has special
+    # process-group/broadcast semantics that would look "alive", so the entry
+    # must be treated as dead and reaped rather than routed to.
+    agent_dir = _make_agent_dir(tmp_path, monkeypatch)
+    viewer_dir = agent_dir / 'viewer'
+    viewer_dir.mkdir(mode=0o700)
+    os.chmod(str(viewer_dir), 0o700)
+    bad = viewer_dir / 'zeropid.json'
+    bad.write_text(json.dumps({
+        'version': 1, 'port': 6005, 'token': 'z' * 64,
+        'pid': 0, 'start_time': 1.0, 'debugger_pid': 9}))
+
+    viewers = discovery.live_viewers()
+
+    assert viewers == []
+    assert not bad.exists()  # reaped
+
+
+def test_viewer_and_debugger_sessions_do_not_cross(tmp_path, monkeypatch):
+    agent_dir = _make_agent_dir(tmp_path, monkeypatch)
+    (agent_dir / f'{os.getpid()}.json').write_text(json.dumps({
+        'version': 1, 'port': 1, 'token': 'x' * 64,
+        'debugger': 'gdb', 'pid': os.getpid(), 'start_time': 1.0}))
+    viewer_dir = agent_dir / 'viewer'
+    viewer_dir.mkdir(mode=0o700)
+    os.chmod(str(viewer_dir), 0o700)
+    (viewer_dir / f'{os.getpid()}.json').write_text(json.dumps({
+        'version': 1, 'port': 2, 'token': 'y' * 64,
+        'pid': os.getpid(), 'start_time': 2.0}))
+
+    sessions = discovery.live_sessions()
+    assert len(sessions) == 1
+    assert sessions[0].port == 1
+
+    viewers = discovery.live_viewers()
+    assert len(viewers) == 1
+    assert viewers[0].port == 2
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX permissions')
+def test_untrusted_viewer_dir_is_refused(tmp_path, monkeypatch, capsys):
+    agent_dir = _make_agent_dir(tmp_path, monkeypatch)
+    viewer_dir = agent_dir / 'viewer'
+    viewer_dir.mkdir()
+    # See test_untrusted_dir_is_neither_read_nor_cleaned: the loose mode
+    # is the point of this test. nosec B103
+    os.chmod(str(viewer_dir), 0o777)  # nosec B103  # NOSONAR
+    live = viewer_dir / f'{os.getpid()}.json'
+    live.write_text(json.dumps({
+        'version': 1, 'port': 5555, 'token': 'x' * 64,
+        'pid': os.getpid(), 'start_time': 1.0}))
+
+    assert discovery.live_viewers() == []
+    assert live.exists()
+    err = capsys.readouterr().err
+    assert err.count('Refusing to read OID discovery files') == 1
+
+
+def test_live_viewers_debugger_pid_optional(tmp_path, monkeypatch):
+    agent_dir = _make_agent_dir(tmp_path, monkeypatch)
+    viewer_dir = agent_dir / 'viewer'
+    viewer_dir.mkdir(mode=0o700)
+    os.chmod(str(viewer_dir), 0o700)
+    (viewer_dir / 'with_dbg.json').write_text(json.dumps({
+        'version': 1, 'port': 1, 'token': 'a' * 64,
+        'pid': os.getpid(), 'start_time': 1.0, 'debugger_pid': 77}))
+    (viewer_dir / 'without_dbg.json').write_text(json.dumps({
+        'version': 1, 'port': 2, 'token': 'b' * 64,
+        'pid': os.getpid(), 'start_time': 2.0}))
+
+    viewers = {v.path.name: v for v in discovery.live_viewers()}
+
+    assert viewers['with_dbg.json'].debugger_pid == 77
+    assert viewers['without_dbg.json'].debugger_pid is None
+
+
+def test_pid_alive_never_calls_os_kill_on_windows(monkeypatch):
+    # os.kill(pid, 0) is destructive on Windows (CTRL_C_EVENT /
+    # TerminateProcess), so liveness must route through the process-handle
+    # probe and never touch os.kill -- otherwise enumerating discovery files
+    # would kill the viewers/debuggers it finds.
+    monkeypatch.setattr(os, 'name', 'nt')
+    called = []
+    monkeypatch.setattr(os, 'kill', lambda *args: called.append(args))
+    monkeypatch.setattr(discovery, '_pid_alive_windows', lambda pid: True)
+
+    assert discovery._pid_alive(4321) is True
+    assert called == []
+
+
+def test_pid_alive_uses_os_kill_on_posix(monkeypatch):
+    monkeypatch.setattr(os, 'name', 'posix')
+    seen = []
+    monkeypatch.setattr(os, 'kill', lambda pid, sig: seen.append((pid, sig)))
+
+    assert discovery._pid_alive(4321) is True
+    assert seen == [(4321, 0)]
+
+
+def test_pid_alive_nonpositive_is_dead_without_probing(monkeypatch):
+    # A non-positive pid is dead on every platform without invoking either
+    # probe (os.kill's special group/broadcast semantics or the Windows path).
+    monkeypatch.setattr(os, 'name', 'nt')
+    monkeypatch.setattr(
+        discovery, '_pid_alive_windows',
+        lambda pid: pytest.fail('non-positive pid must not be probed'))
+    monkeypatch.setattr(
+        os, 'kill',
+        lambda *args: pytest.fail('non-positive pid must not be probed'))
+
+    assert discovery._pid_alive(0) is False
+    assert discovery._pid_alive(-1) is False

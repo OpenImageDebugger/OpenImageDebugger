@@ -109,6 +109,66 @@ def test_unauthenticated_idle_connection_is_dropped(endpoint_session,
             ep.recv_frame(sock)
 
 
+def test_deadline_socket_raises_after_budget():
+    # An exhausted absolute budget makes the next recv raise socket.timeout
+    # (an OSError subclass the serve loop already handles), no matter how many
+    # prior recvs a per-recv timer would have reset.
+    class _FakeSock(object):
+        def settimeout(self, _timeout):
+            """No-op: this fake ignores the per-recv socket timeout."""
+
+        def recv_into(self, view):
+            return len(view)
+
+    ds = ep._DeadlineSocket(_FakeSock(), 0.0)
+    buf = bytearray(4)
+    with pytest.raises(socket.timeout):
+        ds.recv_into(buf)
+
+
+def test_deadline_socket_passes_through_within_budget():
+    seen = {'recv': 0, 'timeout': None}
+
+    class _FakeSock(object):
+        def settimeout(self, timeout):
+            seen['timeout'] = timeout
+
+        def recv_into(self, view):
+            seen['recv'] += 1
+            return len(view)
+
+    ds = ep._DeadlineSocket(_FakeSock(), 100.0)
+    assert ds.recv_into(bytearray(4)) == 4
+    assert seen['recv'] == 1
+    # The pass-through recv gets the remaining budget, not a reset window.
+    assert 0.0 < seen['timeout'] <= 100.0
+
+
+def test_pre_auth_trickle_cannot_hold_slot(endpoint_session, monkeypatch):
+    # A client that trickles frame bytes -- each arriving within the per-recv
+    # window but together exceeding HANDSHAKE_TIMEOUT -- must still be dropped:
+    # the deadline is absolute across the whole pre-auth frame, not reset per
+    # recv. Without the fix the server would keep reading forever.
+    monkeypatch.setattr(ep, 'HANDSHAKE_TIMEOUT', 0.2)
+    path, _ = endpoint_session
+    sock, _ = _connect(path)
+    with sock:
+        # Header declaring a 1000-byte JSON, then trickle its bytes slowly.
+        sock.sendall(b'\x00\x00\x03\xe8')
+        closed = False
+        for _ in range(8):  # ~0.64s, well past the 0.2s absolute deadline
+            try:
+                sock.sendall(b'x')
+            except OSError:
+                closed = True  # server closed the connection mid-trickle
+                break
+            time.sleep(0.08)
+        if not closed:
+            sock.settimeout(2.0)
+            with pytest.raises(ConnectionError):
+                ep.recv_frame(sock)  # absolute deadline closed it -> EOF
+
+
 def test_authenticated_client_may_idle_past_handshake_timeout(
         endpoint_session, monkeypatch):
     # After a successful hello the timeout is lifted: a pooled client
