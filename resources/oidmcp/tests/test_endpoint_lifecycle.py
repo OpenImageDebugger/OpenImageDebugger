@@ -171,8 +171,8 @@ def test_pre_auth_trickle_cannot_hold_slot(endpoint_session, monkeypatch):
 
 def test_authenticated_client_may_idle_past_handshake_timeout(
         endpoint_session, monkeypatch):
-    # After a successful hello the timeout is lifted: a pooled client
-    # idling between requests must not be dropped.
+    # After a successful hello the timeout is lifted: an authenticated
+    # client idling between requests must not be dropped.
     monkeypatch.setattr(ep, 'HANDSHAKE_TIMEOUT', 0.2)
     path, _ = endpoint_session
     sock, info = _connect(path)

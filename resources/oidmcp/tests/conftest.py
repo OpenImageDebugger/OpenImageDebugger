@@ -169,15 +169,15 @@ class _FakeViewerEndpoint:
         self._listener.listen(4)
         self.port = self._listener.getsockname()[1]
         # Every accepted connection is tracked so `close()` can shut them
-        # all down, not just the listener: a `SessionManager`'s pooled
-        # `ControlClient` reuses one connection across many calls and is
-        # never explicitly closed by test code, so leaving it open past
-        # this fixture's teardown would let a later test's viewer (a new
+        # all down, not just the listener: `SessionManager` connects a
+        # fresh `ControlClient` per call and closes it right after, so no
+        # test code holds a reference to any of these sockets. Without
+        # tracking them here, a stray open connection surviving past this
+        # fixture's teardown would let a later test's endpoint (a new
         # `_FakeViewerEndpoint` on a new port, but possibly the same
         # declared pid if the global `_manager` singleton is reused
-        # across tests) silently keep talking to this dead one instead of
-        # failing the pooled client's next call with an ``OSError``,
-        # which `_call_with_retry` answers by rebuilding the client once.
+        # across tests) be silently reachable through this dead socket
+        # instead of a clean, freshly resolved connection.
         self._conns_lock = threading.Lock()
         self._conns = []
         self._thread = threading.Thread(target=self._accept_loop,
@@ -276,8 +276,10 @@ class _FakeViewerEndpoint:
             pass  # already closed or never connected; nothing to wake
         self._listener.close()
         # Also force-close every still-open accepted connection (see the
-        # comment in __init__): otherwise a pooled ControlClient's next
-        # ping() would still succeed against an orphaned serving thread.
+        # comment in __init__): connect-per-call means each call opens and
+        # closes its own connection, so nothing here is pooled -- this just
+        # stops this fixture's teardown from leaving a leftover socket that
+        # a later same-pid test could otherwise reach.
         with self._conns_lock:
             conns = list(self._conns)
         for conn in conns:
@@ -287,15 +289,6 @@ class _FakeViewerEndpoint:
                 pass  # peer already gone; nothing to shut down
             conn.close()
         self._thread.join(timeout=2)
-
-    def drop_connections(self):
-        """Sever every accepted connection (the listener stays up),
-        simulating a pooled client whose socket died while the viewer
-        lives on."""
-        with self._conns_lock:
-            conns = list(self._conns)
-        for conn in conns:
-            conn.close()
 
 
 class FakeViewer:

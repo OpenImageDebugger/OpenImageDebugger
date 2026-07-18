@@ -62,10 +62,10 @@ class GlfwHostBackend final : public HostBackend {
     // OS may throttle for a background window.
     void set_vsync(bool enabled);
 
-    // Refresh rate, in Hz, of the monitor showing the window (greatest
-    // overlap); the primary's when undetermined (no window yet, or the
-    // platform hides window positions), 60 when GLFW cannot say.
-    [[nodiscard]] int refresh_rate_hz() const;
+    // Refresh rate (Hz) of the primary monitor; 60 when GLFW cannot say
+    // (headless / null video mode / non-positive rate). Queried once at
+    // agent startup to pace the render loop.
+    [[nodiscard]] int primary_refresh_rate_hz() const;
 
     [[nodiscard]] GLFWwindow* window() const {
         return window_;

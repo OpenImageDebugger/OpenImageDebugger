@@ -286,24 +286,14 @@ def test_list_sessions_pairs_debugger_and_viewer(live_endpoint, live_viewer):
               for v in result['viewers'])
 
 
-# --- pooled-client retry (no per-call liveness ping) --------------------
+# --- connect-per-call ------------------------------------------------
 
-def test_warm_control_calls_are_single_round_trips(live_viewer):
+def test_each_call_is_a_single_round_trip_no_ping(live_viewer):
     viewer = live_viewer()
     mgr = server.SessionManager()
     mgr.set_view(None, zoom=1.5)
     mgr.get_view(None)
     # Two calls, two wire requests: no ping precedes a warm call.
-    assert viewer.endpoint.requests_served == 2
-
-
-def test_stale_pooled_client_is_rebuilt_once(live_viewer):
-    viewer = live_viewer()
-    mgr = server.SessionManager()
-    mgr.set_view(None, zoom=1.5)
-    viewer.endpoint.drop_connections()
-    view = mgr.get_view(None)  # transparent reconnect + single retry
-    assert view['zoom'] == pytest.approx(1.5)
     assert viewer.endpoint.requests_served == 2
 
 
@@ -316,25 +306,110 @@ def test_control_error_reply_is_not_retried(live_viewer):
     assert viewer.endpoint.requests_served == 1
 
 
-def test_dead_viewer_propagates_after_one_rebuild(live_viewer):
-    viewer = live_viewer()
-    mgr = server.SessionManager()
-    mgr.set_view(None, zoom=1.0)
-    viewer.endpoint.close()
-    with pytest.raises(OSError):
-        mgr.get_view(None)
-
-
-def test_retry_re_resolves_a_restarted_viewer(live_viewer):
-    # The rebuild must target freshly re-resolved discovery, not the record
-    # captured before the failure: a restarted viewer publishes a new port
-    # and token (same pool key here: both fixtures default to os.getpid()).
+def test_restarted_endpoint_is_reached_on_the_next_call(live_viewer):
+    # A viewer that restarts between calls publishes a new port and token.
+    # Connect-per-call re-resolves discovery each time, so the next call
+    # reaches the new endpoint with no retry logic present.
     old = live_viewer(start_time=100.0)
     mgr = server.SessionManager()
-    mgr.set_view(None, zoom=1.5)         # pools a client to `old`
-    old.endpoint.close()                 # viewer "restarts"...
-    new = live_viewer(start_time=200.0)  # ...republishing discovery
-    view = mgr.set_view(None, zoom=2.0)  # stale socket -> re-resolve -> new
+    mgr.set_view(None, zoom=1.5)          # connects to old, closes
+    old.endpoint.close()                  # old viewer "restarts"...
+    new = live_viewer(start_time=200.0)   # ...republishing discovery
+    view = mgr.set_view(None, zoom=2.0)   # fresh resolve + connect -> new
     assert view['zoom'] == pytest.approx(2.0)
     assert new.endpoint.requests_served == 1
     assert old.endpoint.requests_served == 1
+
+
+def test_fetch_cache_does_not_bleed_across_pid_reused_debugger_sessions(
+        live_endpoint):
+    # A debug session that exits and a new one that starts under the same
+    # OS pid (pid reuse) must not read back the previous session's cached
+    # bytes, even though both sessions reach the same stop generation (a
+    # freshly started endpoint's stop generation always starts at 0). The
+    # cache key must therefore also discriminate on the endpoint's token,
+    # which is re-randomized on every `agentendpoint.start()`.
+    from conftest import FakeBridge, FakeWindow, make_meta
+    from oidmcp import discovery
+    from oidscripts import agentendpoint
+    import numpy as np
+
+    _, _ = live_endpoint
+    mgr = server.SessionManager()
+    _, arr = mgr.fetch(None, 'grad')
+    assert arr[0, 0, 0] == pytest.approx(0.0)  # original gradient value
+
+    old_pid = discovery.live_sessions()[0].pid
+    old_token = discovery.live_sessions()[0].token
+    agentendpoint.shutdown()
+
+    new_raw = np.full((3, 4, 1), 42.0, dtype=np.float32)
+    new_bridge = FakeBridge(
+        symbols=['img', 'grad'],
+        buffers={'grad': make_meta(4, 3, channels=1, type_value=5,
+                                    raw=new_raw.tobytes())})
+    agentendpoint.start(new_bridge, FakeWindow(ready=True))
+
+    sessions = discovery.live_sessions()
+    assert len(sessions) == 1
+    assert sessions[0].pid == old_pid            # same OS pid (reused)
+    assert sessions[0].token != old_token         # but a fresh token
+
+    _, arr2 = mgr.fetch(None, 'grad')
+    assert arr2[0, 0, 0] == pytest.approx(42.0)  # new session's bytes
+
+
+def test_client_is_closed_when_a_call_raises(live_viewer, monkeypatch):
+    live_viewer()
+    mgr = server.SessionManager()
+    closed = []
+    real_close = server.ControlClient.close
+
+    def spy_close(self):
+        closed.append(self)
+        return real_close(self)
+
+    monkeypatch.setattr(server.ControlClient, 'close', spy_close)
+    with pytest.raises(ControlError):
+        mgr.fetch(None, 'missing')  # viewer get_buffer('missing') -> ControlError
+    assert len(closed) == 1  # the per-call client is closed despite the error
+
+
+def test_client_is_closed_after_a_successful_call(live_viewer, monkeypatch):
+    live_viewer()
+    mgr = server.SessionManager()
+    closed = []
+    real_close = server.ControlClient.close
+
+    def spy_close(self):
+        closed.append(self)
+        return real_close(self)
+
+    monkeypatch.setattr(server.ControlClient, 'close', spy_close)
+    mgr.get_view(None)
+    assert len(closed) == 1  # the per-call client is closed after success too
+
+
+def test_client_is_closed_on_fetch_including_cache_hit(live_endpoint,
+                                                        monkeypatch):
+    _, bridge = live_endpoint
+    mgr = server.SessionManager()
+    closed = []
+    real_close = server.ControlClient.close
+
+    def spy_close(self):
+        closed.append(self)
+        return real_close(self)
+
+    monkeypatch.setattr(server.ControlClient, 'close', spy_close)
+
+    mgr.fetch(None, 'grad')
+    fetches = bridge.fetch_count
+    mgr.fetch(None, 'grad')  # same stop generation: served from cache
+
+    # The cache hit still went through fetch()'s try/finally, so it never
+    # re-called the bridge...
+    assert bridge.fetch_count == fetches
+    # ...but both calls -- the cache miss and the cache hit -- still each
+    # opened and closed their own per-call client.
+    assert len(closed) == 2

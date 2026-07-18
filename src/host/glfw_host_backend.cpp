@@ -134,53 +134,12 @@ bool platform_supports_window_position() {
 
 } // namespace
 
-int GlfwHostBackend::refresh_rate_hz() const {
-    // Pace from the monitor actually showing the window -- the one whose
-    // area overlaps it most -- not the primary: on mixed-refresh
-    // multi-monitor setups the primary's rate would pace an agent run too
-    // slow (or needlessly fast) on the other monitor.
-    // (glfwGetWindowMonitor only answers for fullscreen windows.) Falls
-    // back to the primary when undetermined, and to 60 Hz when GLFW
-    // cannot say.
-    GLFWmonitor* best = glfwGetPrimaryMonitor();
-    // Overlap needs the window's global position, which Wayland (and the
-    // Emscripten shim) never provide -- there the primary is the best
-    // answer available, without error-callback spam.
-    if (window_ != nullptr && platform_supports_window_position()) {
-        int wx = 0;
-        int wy = 0;
-        int ww = 0;
-        int wh = 0;
-        glfwGetWindowPos(window_, &wx, &wy);
-        glfwGetWindowSize(window_, &ww, &wh);
-        int monitor_count = 0;
-        GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
-        int best_overlap = 0;
-        for (int i = 0; i < monitor_count; ++i) {
-            const GLFWvidmode* m = glfwGetVideoMode(monitors[i]);
-            if (m == nullptr) {
-                continue;
-            }
-            int mx = 0;
-            int my = 0;
-            glfwGetMonitorPos(monitors[i], &mx, &my);
-            const int ox = (std::max)(0,
-                                      (std::min)(wx + ww, mx + m->width) -
-                                          (std::max)(wx, mx));
-            const int oy = (std::max)(0,
-                                      (std::min)(wy + wh, my + m->height) -
-                                          (std::max)(wy, my));
-            const int overlap = ox * oy;
-            if (overlap > best_overlap) {
-                best_overlap = overlap;
-                best = monitors[i];
-            }
-        }
-    }
-    if (best == nullptr) {
+int GlfwHostBackend::primary_refresh_rate_hz() const {
+    GLFWmonitor* primary = glfwGetPrimaryMonitor();
+    if (primary == nullptr) {
         return 60; // headless: no monitor to ask
     }
-    const GLFWvidmode* mode = glfwGetVideoMode(best);
+    const GLFWvidmode* mode = glfwGetVideoMode(primary);
     return (mode != nullptr && mode->refreshRate > 0) ? mode->refreshRate : 60;
 }
 

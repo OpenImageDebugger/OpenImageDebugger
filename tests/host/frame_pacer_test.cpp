@@ -112,17 +112,4 @@ TEST(FramePacer, WakeAfterPaceReturnsIsSafeAndCarriesOver) {
     EXPECT_EQ(calls, 1);
 }
 
-TEST(FramePacer, SetPeriodKeepsServingWakes) {
-    // A cadence change (window moved to a different-Hz monitor) must not
-    // disrupt wake service: a pending wake is still served on the next
-    // pace() entry, and pace() still returns.
-    FramePacer pacer{std::chrono::milliseconds(100)};
-    int calls = 0;
-    pacer.pace([&calls] { ++calls; });
-    pacer.set_period(std::chrono::milliseconds(50));
-    pacer.wake();
-    pacer.pace([&calls] { ++calls; });
-    EXPECT_EQ(calls, 1);
-}
-
 } // namespace

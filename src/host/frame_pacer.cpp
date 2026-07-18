@@ -38,19 +38,6 @@ void FramePacer::wake() {
     cv_.notify_one();
 }
 
-void FramePacer::set_period(std::chrono::nanoseconds period) {
-    {
-        const std::scoped_lock lock(mutex_);
-        period_ = period;
-        // Re-anchor so the new cadence applies now, not after the old
-        // deadline expires.
-        deadline_ = Clock::now() + period;
-    }
-    // A pace() parked on the old (possibly much later) deadline must
-    // re-evaluate against the new one.
-    cv_.notify_one();
-}
-
 void FramePacer::pace(const std::function<void()>& on_wake) {
     std::unique_lock lock(mutex_);
     for (;;) {
