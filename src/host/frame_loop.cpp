@@ -50,7 +50,7 @@ bool FrameLoop::tick() {
 }
 
 void FrameLoop::run() {
-    oid::platform::run_main_loop(*this);
+    platform::run_main_loop(*this);
 }
 
 } // namespace oid::host

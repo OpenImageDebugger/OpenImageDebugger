@@ -39,18 +39,9 @@
 #include <vector>
 
 #include "host/agent/view_model.h"
+#include "host/util/transparent_string_hash.h"
 
 namespace oid::host::agent {
-
-// Transparent hash so the string-keyed maps below can be looked up with a
-// std::string_view without allocating a temporary std::string.
-struct TransparentStringHash {
-    using is_transparent = void;
-
-    std::size_t operator()(std::string_view s) const noexcept {
-        return std::hash<std::string_view>{}(s);
-    }
-};
 
 // In-memory ViewModel double: no Stage/Camera/BufferValues behind it, just
 // the plain data a test needs to poke at directly. Tests populate `buffers`
@@ -95,7 +86,10 @@ class FakeViewModel : public ViewModel { // NOSONAR
     // Convenience for tests that only care about shape: appends a buffer
     // with a plausible display_name/step/pixel_layout so callers don't have
     // to spell out every BufferInfo field by hand.
-    void add(std::string_view name, int width, int height, int channels) {
+    void add(const std::string_view name,
+             const int width,
+             const int height,
+             const int channels) {
         BufferInfo info;
         info.name = std::string(name);
         info.display_name = info.name;
@@ -116,7 +110,7 @@ class FakeViewModel : public ViewModel { // NOSONAR
 
     // Convenience for get_buffer tests: stashes the bytes read_pixels()
     // returns for `name`, independent of that buffer's declared shape.
-    void set_bytes(std::string_view name, std::vector<std::byte> bytes) {
+    void set_bytes(const std::string_view name, std::vector<std::byte> bytes) {
         pixel_data[std::string(name)] = std::move(bytes);
     }
 
@@ -124,14 +118,15 @@ class FakeViewModel : public ViewModel { // NOSONAR
         return buffers.size();
     }
 
-    std::optional<BufferInfo> buffer_at(std::size_t i) override {
+    std::optional<BufferInfo> buffer_at(const std::size_t i) override {
         if (i >= buffers.size()) {
             return std::nullopt;
         }
         return buffers[i];
     }
 
-    std::optional<BufferInfo> buffer_named(std::string_view name) override {
+    std::optional<BufferInfo>
+    buffer_named(const std::string_view name) override {
         for (const auto& info : buffers) {
             if (info.name == name) {
                 return info;
@@ -140,7 +135,7 @@ class FakeViewModel : public ViewModel { // NOSONAR
         return std::nullopt;
     }
 
-    bool read_pixels(std::string_view name,
+    bool read_pixels(const std::string_view name,
                      std::vector<std::byte>& out) override {
         ++read_pixels_calls;
         if (throw_in_read_pixels) {
@@ -155,7 +150,7 @@ class FakeViewModel : public ViewModel { // NOSONAR
         return true;
     }
 
-    bool select(std::string_view name) override {
+    bool select(const std::string_view name) override {
         for (std::size_t i = 0; i < buffers.size(); ++i) {
             if (buffers[i].name == name) {
                 selected_index_ = i;
@@ -173,35 +168,39 @@ class FakeViewModel : public ViewModel { // NOSONAR
         return buffers[*selected_index_].name;
     }
 
-    std::optional<ViewState> view_of(std::string_view name) override {
+    std::optional<ViewState> view_of(const std::string_view name) override {
         if (!buffer_named(name)) {
             return std::nullopt;
         }
         const std::string key{name};
-        const Record& record = records[key];
+        const auto& [center_x,
+                     center_y,
+                     zoom_power,
+                     rotation_rad,
+                     mode,
+                     index] = records[key];
 
         ViewState state;
         state.buffer = key;
-        state.center_x = record.center_x;
-        state.center_y = record.center_y;
-        state.zoom = std::pow(ZOOM_FACTOR, record.zoom_power);
-        state.rotation_deg = normalize_degrees(record.rotation_rad);
-        state.channel =
-            record.mode == -1 ? "all" : std::to_string(record.index);
+        state.center_x = center_x;
+        state.center_y = center_y;
+        state.zoom = std::pow(ZOOM_FACTOR, zoom_power);
+        state.rotation_deg = normalize_degrees(rotation_rad);
+        state.channel = mode == -1 ? "all" : std::to_string(index);
         state.auto_contrast = auto_contrast_flag_;
         state.viewport_w = viewport_w;
         state.viewport_h = viewport_h;
         return state;
     }
 
-    bool set_center(std::string_view name, double x, double y) override {
+    bool set_center(const std::string_view name, double x, double y) override {
         return with_record(name, [x, y](Record& record) {
             record.center_x = x;
             record.center_y = y;
         });
     }
 
-    bool set_zoom_power(std::string_view name, double power) override {
+    bool set_zoom_power(const std::string_view name, double power) override {
         if (fail_set_zoom_power) {
             return false;
         }
@@ -209,12 +208,14 @@ class FakeViewModel : public ViewModel { // NOSONAR
             name, [power](Record& record) { record.zoom_power = power; });
     }
 
-    bool set_rotation_rad(std::string_view name, double radians) override {
+    bool set_rotation_rad(const std::string_view name,
+                          double radians) override {
         return with_record(
             name, [radians](Record& record) { record.rotation_rad = radians; });
     }
 
-    bool set_channel(std::string_view name, int mode, int index) override {
+    bool
+    set_channel(const std::string_view name, int mode, int index) override {
         return with_record(name, [mode, index](Record& record) {
             record.mode = mode;
             record.index = index;
@@ -225,7 +226,7 @@ class FakeViewModel : public ViewModel { // NOSONAR
         return auto_contrast_flag_;
     }
 
-    void set_auto_contrast(bool enabled) override {
+    void set_auto_contrast(const bool enabled) override {
         auto_contrast_flag_ = enabled;
     }
 
@@ -238,7 +239,7 @@ class FakeViewModel : public ViewModel { // NOSONAR
     bool auto_contrast_flag_ = true;
 
     template <typename Mutator>
-    bool with_record(std::string_view name, Mutator&& mutate) {
+    bool with_record(const std::string_view name, Mutator&& mutate) {
         if (!buffer_named(name)) {
             return false;
         }
@@ -247,7 +248,7 @@ class FakeViewModel : public ViewModel { // NOSONAR
         return true;
     }
 
-    static double normalize_degrees(double radians) {
+    static double normalize_degrees(const double radians) {
         double degrees = radians * (180.0 / std::numbers::pi);
         degrees = std::fmod(degrees, 360.0);
         if (degrees < 0.0) {

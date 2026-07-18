@@ -28,18 +28,20 @@
 #include <unordered_set>
 
 #include "host/glfw_canvas.h"
-#include "host/ui/transparent_string_hash.h"
+#include "host/util/transparent_string_hash.h"
 #include "platform/gl_dialect.h"
 #include "visualization/stage.h"
 
+#include <ranges>
+
 namespace oid::host {
 
-ThumbnailCache::ThumbnailCache(GlfwCanvas& canvas, float content_scale)
+ThumbnailCache::ThumbnailCache(GlfwCanvas& canvas, const float content_scale)
     : canvas_(canvas), render_w_(static_cast<int>(100.0f * content_scale)),
       render_h_(static_cast<int>(75.0f * content_scale)) {}
 
 ThumbnailCache::~ThumbnailCache() {
-    for (const auto& [name, entry] : entries_) {
+    for (const auto& entry : entries_ | std::views::values) {
         if (entry.tex != 0) {
             canvas_.glDeleteTextures(1, &entry.tex);
         }
@@ -51,8 +53,8 @@ void ThumbnailCache::begin_frame() {
 }
 
 GLuint ThumbnailCache::texture_for(const std::string& name,
-                                   std::uint64_t revision,
-                                   oid::Stage* stage) {
+                                   const std::uint64_t revision,
+                                   Stage* stage) {
     const auto it = entries_.find(name);
 
     if (const bool up_to_date =
@@ -78,7 +80,7 @@ GLuint ThumbnailCache::texture_for(const std::string& name,
     // Reuse the cached texture object across re-renders (same fixed
     // render_w_ x render_h_ size every time, for the life of this instance);
     // only allocate a new one the first time this name is seen.
-    GLuint tex = (it != entries_.end()) ? it->second.tex : 0;
+    GLuint tex = it != entries_.end() ? it->second.tex : 0;
     if (tex == 0) {
         canvas_.glGenTextures(1, &tex);
         canvas_.glBindTexture(GL_TEXTURE_2D, tex);

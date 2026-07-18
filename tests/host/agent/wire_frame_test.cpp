@@ -58,20 +58,20 @@ reader(std::vector<std::byte> data) {
 }
 
 TEST(WireFrame, RoundTripNoPayload) {
-    auto bytes = encode_frame(json{{"method", "ping"}});
-    auto f = decode_frame(reader(bytes), 0);
-    EXPECT_EQ(f.obj.at("method"), "ping");
-    EXPECT_TRUE(f.payload.empty());
+    const auto bytes = encode_frame(json{{"method", "ping"}});
+    auto [obj, payload] = decode_frame(reader(bytes), 0);
+    EXPECT_EQ(obj.at("method"), "ping");
+    EXPECT_TRUE(payload.empty());
 }
 
 TEST(WireFrame, RoundTripWithPayload) {
     std::vector<std::byte> raw(1024);
     for (std::size_t i = 0; i < raw.size(); ++i)
         raw[i] = static_cast<std::byte>(i & 0xff);
-    auto bytes = encode_frame(json{{"ok", true}}, raw);
-    auto f = decode_frame(reader(bytes), raw.size());
-    EXPECT_EQ(f.obj.at("payload"), raw.size());
-    EXPECT_EQ(f.payload, raw);
+    const auto bytes = encode_frame(json{{"ok", true}}, raw);
+    auto [obj, payload] = decode_frame(reader(bytes), raw.size());
+    EXPECT_EQ(obj.at("payload"), raw.size());
+    EXPECT_EQ(payload, raw);
 }
 
 TEST(WireFrame, EncodeRejectsOversizeJson) {
@@ -85,25 +85,25 @@ TEST(WireFrame, EncodeHeaderMatchesEncodeFrame) {
     std::vector<std::byte> raw(1024);
     for (std::size_t i = 0; i < raw.size(); ++i)
         raw[i] = static_cast<std::byte>(i & 0xff);
-    auto header = encode_frame_header(json{{"ok", true}}, raw.size());
+    const auto header = encode_frame_header(json{{"ok", true}}, raw.size());
     std::vector<std::byte> combined = header;
     combined.insert(combined.end(), raw.begin(), raw.end());
     EXPECT_EQ(combined, encode_frame(json{{"ok", true}}, raw));
 
-    auto f = decode_frame(reader(combined), raw.size());
-    EXPECT_EQ(f.obj.at("payload"), raw.size());
-    EXPECT_EQ(f.payload, raw);
+    auto [obj, payload] = decode_frame(reader(combined), raw.size());
+    EXPECT_EQ(obj.at("payload"), raw.size());
+    EXPECT_EQ(payload, raw);
 }
 
 TEST(WireFrame, EncodeHeaderNoPayloadOmitsField) {
     // payload_size 0 leaves the JSON untouched (no "payload" field) and emits
     // no trailer, so it decodes as a plain no-payload frame.
-    auto header = encode_frame_header(json{{"method", "ping"}}, 0);
+    const auto header = encode_frame_header(json{{"method", "ping"}}, 0);
     EXPECT_EQ(header, encode_frame(json{{"method", "ping"}}));
-    auto f = decode_frame(reader(header), 0);
-    EXPECT_EQ(f.obj.at("method"), "ping");
-    EXPECT_FALSE(f.obj.contains("payload"));
-    EXPECT_TRUE(f.payload.empty());
+    auto [obj, payload] = decode_frame(reader(header), 0);
+    EXPECT_EQ(obj.at("method"), "ping");
+    EXPECT_FALSE(obj.contains("payload"));
+    EXPECT_TRUE(payload.empty());
 }
 
 TEST(WireFrame, EncodeHeaderRejectsOversizeJson) {
@@ -112,7 +112,7 @@ TEST(WireFrame, EncodeHeaderRejectsOversizeJson) {
 }
 
 TEST(WireFrame, DecodeRejectsOversizePayload) {
-    std::vector<std::byte> raw(100, std::byte{'x'});
+    std::vector raw(100, std::byte{'x'});
     auto bytes = encode_frame(json{{"ok", true}}, raw);
     EXPECT_THROW(decode_frame(reader(bytes), 10), FrameError);
 }
@@ -203,9 +203,9 @@ TEST(WireFrame, GoldenPingFixtureDecodesAndRoundTrips) {
     const json& expected_obj = manifest.at("ping.bin").at("decoded_obj");
 
     auto bytes = read_golden_bytes("ping.bin");
-    auto decoded = decode_frame(reader(bytes), 0);
-    EXPECT_EQ(decoded.obj, expected_obj);
-    EXPECT_TRUE(decoded.payload.empty());
+    auto [obj, payload] = decode_frame(reader(bytes), 0);
+    EXPECT_EQ(obj, expected_obj);
+    EXPECT_TRUE(payload.empty());
 
     auto own_bytes = encode_frame(expected_obj);
     auto round_tripped = decode_frame(reader(own_bytes), 0);
@@ -221,9 +221,9 @@ TEST(WireFrame, GoldenOkPayloadFixtureDecodesAndRoundTrips) {
         hex_to_bytes(entry.at("payload_hex").get<std::string>());
 
     auto bytes = read_golden_bytes("ok_payload.bin");
-    auto decoded = decode_frame(reader(bytes), expected_payload.size());
-    EXPECT_EQ(decoded.obj, expected_obj);
-    EXPECT_EQ(decoded.payload, expected_payload);
+    auto [obj, payload] = decode_frame(reader(bytes), expected_payload.size());
+    EXPECT_EQ(obj, expected_obj);
+    EXPECT_EQ(payload, expected_payload);
 
     json input_obj = expected_obj;
     input_obj.erase("payload"); // encode_frame injects this itself

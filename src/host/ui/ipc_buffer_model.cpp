@@ -33,7 +33,7 @@ std::size_t IpcBufferModel::size() const {
     return storage_.size();
 }
 
-const BufferRecord& IpcBufferModel::at(std::size_t i) const {
+const BufferRecord& IpcBufferModel::at(const std::size_t i) const {
     return *storage_.at(i);
 }
 
@@ -51,7 +51,7 @@ void IpcBufferModel::upsert(BufferRecord record) {
     ++revision_;
 }
 
-void IpcBufferModel::remove(std::string_view variable_name) {
+void IpcBufferModel::remove(const std::string_view variable_name) {
     for (std::size_t i = 0; i < storage_.size(); ++i) {
         if (storage_[i]->variable_name == variable_name) {
             storage_.erase(storage_.begin() + static_cast<std::ptrdiff_t>(i));
@@ -63,11 +63,11 @@ void IpcBufferModel::remove(std::string_view variable_name) {
     }
 }
 
-std::uint64_t IpcBufferModel::revision_of(std::size_t i) const {
+std::uint64_t IpcBufferModel::revision_of(const std::size_t i) const {
     return slot_revision_.at(i);
 }
 
-const std::string& IpcBufferModel::variable_name_of(std::size_t i) const {
+const std::string& IpcBufferModel::variable_name_of(const std::size_t i) const {
     return storage_.at(i)->variable_name;
 }
 

@@ -47,7 +47,7 @@ namespace {
 // icon). Returns
 // {data, size}; every IconId has a matching array, so there is no
 // "not found" case.
-std::pair<const unsigned char*, std::size_t> svg_source_for(IconId id) {
+std::pair<const unsigned char*, std::size_t> svg_source_for(const IconId id) {
     using enum IconId;
     switch (id) {
     case CHANNEL_RED:
@@ -75,7 +75,7 @@ std::pair<const unsigned char*, std::size_t> svg_source_for(IconId id) {
 
 } // namespace
 
-SvgIconCache::SvgIconCache(float content_scale)
+SvgIconCache::SvgIconCache(const float content_scale)
     : content_scale_(content_scale) {}
 
 SvgIconCache::~SvgIconCache() {
@@ -93,7 +93,8 @@ SvgIconCache::~SvgIconCache() {
 // glfwGetProcAddress loading is required for them, unlike the post-1.1
 // functions GlfwCanvas has to load. Do not extrapolate this to newer GL
 // functions.
-GLuint SvgIconCache::texture_for(IconId id, int logical_w, int logical_h) {
+GLuint
+SvgIconCache::texture_for(IconId id, const int logical_w, const int logical_h) {
     Entry& entry = entries_[static_cast<std::size_t>(id)];
     if (entry.cached) {
         return entry.failed ? 0 : entry.tex;

@@ -57,7 +57,7 @@ TEST(GlyphAtlas, FinalizeComputesPow2AndTables) {
 }
 
 TEST(GlyphAtlas, DeterministicAcrossTwoCalls) {
-    std::vector<std::uint8_t> strip(4 * 2, 7);
+    const std::vector<std::uint8_t> strip(4 * 2, 7);
     std::array<int, 256> adv{};
     adv['1'] = 4;
     const auto a = oid::finalize_strip_atlas(strip.data(), 4, 2, adv, "1");

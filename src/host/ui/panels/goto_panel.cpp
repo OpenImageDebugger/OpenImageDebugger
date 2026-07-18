@@ -46,15 +46,12 @@ namespace {
 // Prefill only on the open transition, not every frame -- doing it every
 // frame would stomp in-progress edits with the camera's (unchanging)
 // center on every subsequent frame the widget stays open.
-void prefill_goto_fields_on_open(bool& was_open,
-                                 oid::Stage* sel,
-                                 int& x,
-                                 int& y) {
+void prefill_goto_fields_on_open(bool& was_open, Stage* sel, int& x, int& y) {
     if (!was_open) {
         was_open = true;
         if (sel != nullptr) {
-            if (const oid::Camera* cam = camera_of(*sel); cam != nullptr) {
-                const oid::vec4 p = cam->get_position();
+            if (const Camera* cam = camera_of(*sel); cam != nullptr) {
+                const vec4 p = cam->get_position();
                 x = static_cast<int>(std::lround(p.x() - 0.5f));
                 y = static_cast<int>(std::lround(p.y() - 0.5f));
             }
@@ -68,8 +65,8 @@ void prefill_goto_fields_on_open(bool& was_open,
 // text; texture_for() returning 0 (rasterization failed, or no
 // current GL context) falls back to today's plain text label.
 void draw_goto_axis_field(SvgIconCache& icons,
-                          int icon_px,
-                          IconId icon_id,
+                          const int icon_px,
+                          const IconId icon_id,
                           const char* tooltip,
                           const char* input_id,
                           const char* fallback_label,
@@ -90,15 +87,15 @@ void draw_goto_axis_field(SvgIconCache& icons,
 // Handles the Go button / Enter-to-submit path: validates the fields via
 // ui.parse_goto() and, on success, calls sel->go_to_pixel() (the inverse of
 // the prefill math); closes the widget either way once submitted.
-void commit_goto_on_submit(const UiState& ui,
-                           const oid::Stage* sel,
-                           int x,
-                           int y,
-                           bool enter_pressed,
+void commit_goto_on_submit(const Stage* sel,
+                           const int x,
+                           const int y,
+                           const bool enter_pressed,
                            bool& window_open) {
     if (ImGui::Button("Go") || enter_pressed) {
         if (sel != nullptr &&
-            ui.parse_goto(std::to_string(x), std::to_string(y)).has_value()) {
+            UiState::parse_goto(std::to_string(x), std::to_string(y))
+                .has_value()) {
             sel->go_to_pixel(static_cast<float>(x) + 0.5f,
                              static_cast<float>(y) + 0.5f);
         }
@@ -106,7 +103,7 @@ void commit_goto_on_submit(const UiState& ui,
     }
 }
 
-void close_goto_on_escape(bool focused, bool& window_open) {
+void close_goto_on_escape(const bool focused, bool& window_open) {
     if (focused && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
         window_open = false;
     }
@@ -132,7 +129,7 @@ void draw_goto_panel(const UiState& ui,
         return;
     }
 
-    oid::Stage* sel = stages.selected_stage(ui.selected());
+    Stage* sel = stages.selected_stage(ui.selected());
 
     prefill_goto_fields_on_open(was_open, sel, x, y);
 
@@ -167,7 +164,7 @@ void draw_goto_panel(const UiState& ui,
             focused && (ImGui::IsKeyPressed(ImGuiKey_Enter) ||
                         ImGui::IsKeyPressed(ImGuiKey_KeypadEnter));
 
-        commit_goto_on_submit(ui, sel, x, y, enter_pressed, window_open);
+        commit_goto_on_submit(sel, x, y, enter_pressed, window_open);
         close_goto_on_escape(focused, window_open);
     }
     ImGui::End();

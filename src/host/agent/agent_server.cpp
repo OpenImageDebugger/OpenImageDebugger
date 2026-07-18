@@ -144,7 +144,7 @@ void run_async_op(asio::io_context& ctx,
                   const bool& done,
                   const asio::error_code& op_ec,
                   const std::atomic<bool>& stop_requested,
-                  std::optional<std::chrono::milliseconds> timeout) {
+                  const std::optional<std::chrono::milliseconds> timeout) {
     ctx.restart();
     if (stop_requested.load()) {
         // stop() flipped the flag (and called ctx.stop()) before this restart
@@ -189,7 +189,7 @@ void read_exact_async(asio::io_context& ctx,
                       asio::ip::tcp::socket& socket,
                       std::span<std::byte> dst,
                       const std::atomic<bool>& stop_requested,
-                      std::optional<std::chrono::milliseconds> timeout) {
+                      const std::optional<std::chrono::milliseconds> timeout) {
     bool done = false;
     asio::error_code op_ec;
     asio::async_read(socket,
@@ -206,7 +206,7 @@ void read_exact_async(asio::io_context& ctx,
 // either.
 void write_all_async(asio::io_context& ctx,
                      asio::ip::tcp::socket& socket,
-                     std::span<const std::byte> data,
+                     const std::span<const std::byte> data,
                      const std::atomic<bool>& stop_requested) {
     bool done = false;
     asio::error_code op_ec;
@@ -249,7 +249,7 @@ void write_reply(asio::io_context& ctx,
 
 } // namespace
 
-AgentServer::AgentServer(ViewModel& model, AgentServerConfig cfg)
+AgentServer::AgentServer(ViewModel& model, const AgentServerConfig cfg)
     : cfg_(cfg), token_(generate_token()), core_(model, token_, current_pid()),
       acceptor_(io_context_), accept_retry_timer_(io_context_) {
     if (!cfg_.enabled) {
@@ -419,7 +419,7 @@ void AgentServer::serve_client(asio::io_context& conn_ctx,
         std::chrono::steady_clock::now() + HANDSHAKE_TIMEOUT;
     try {
         while (true) {
-            DecodedFrame frame = decode_frame(
+            auto frame = decode_frame(
                 [&conn_ctx,
                  &socket,
                  &authed,
@@ -502,15 +502,15 @@ void AgentServer::drain() {
         std::scoped_lock lock(queue_mutex_);
         batch.swap(pending_);
     }
-    for (PendingRequest& item : batch) {
+    for (auto& [request, reply, authed] : batch) {
         // Contain any handler exception (e.g. bad_alloc from a large get_buffer
         // copy) to the one request: the serve thread's future.get() rethrows it
         // and its existing catch closes just that connection, rather than
         // letting it unwind through the render frame and crash the viewer.
         try {
-            item.reply.set_value(core_.handle(item.request, *item.authed));
+            reply.set_value(core_.handle(request, *authed));
         } catch (...) { // NOSONAR
-            item.reply.set_exception(std::current_exception());
+            reply.set_exception(std::current_exception());
         }
     }
 }

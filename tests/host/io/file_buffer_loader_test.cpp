@@ -84,12 +84,12 @@ std::vector<std::byte> make_png_rgba(int width, int height) {
 // the zero CRCs.)
 std::vector<std::byte> make_png_header(std::uint32_t w, std::uint32_t h) {
     std::vector<std::byte> b;
-    auto push = [&b](std::initializer_list<int> xs) {
+    auto push = [&b](const std::initializer_list<int> xs) {
         for (const int x : xs) {
             b.push_back(static_cast<std::byte>(x & 0xFF));
         }
     };
-    auto push_be32 = [&push](std::uint32_t v) {
+    auto push_be32 = [&push](const std::uint32_t v) {
         push({static_cast<int>((v >> 24) & 0xFF),
               static_cast<int>((v >> 16) & 0xFF),
               static_cast<int>((v >> 8) & 0xFF),
@@ -109,8 +109,8 @@ std::vector<std::byte> make_png_header(std::uint32_t w, std::uint32_t h) {
 
 // Encode an HDR (float RGB) image in memory.
 std::vector<std::byte> make_hdr_rgb(int width, int height) {
-    std::vector<float> pixels(static_cast<std::size_t>(width) * height * 3,
-                              0.5f);
+    const std::vector pixels(static_cast<std::size_t>(width) * height * 3,
+                             0.5f);
     std::vector<std::byte> sink;
     stbi_write_hdr_to_func(sink_write, &sink, width, height, 3, pixels.data());
     return sink;
@@ -137,22 +137,23 @@ std::vector<std::byte> make_npy(const std::string& descr,
 
     // Pad so that (10 + header_len) is a multiple of 64; header ends in '\n'.
     const std::size_t unpadded = 10 + dict.size() + 1;
-    const std::size_t padded = ((unpadded + 63) / 64) * 64;
+    const std::size_t padded = (unpadded + 63) / 64 * 64;
     dict.append(padded - unpadded, ' ');
     dict.push_back('\n');
 
     const auto header_len = static_cast<std::uint16_t>(dict.size());
 
     std::vector<std::byte> blob;
-    const std::array<unsigned char, 6> magic = {0x93, 'N', 'U', 'M', 'P', 'Y'};
+    constexpr std::array<unsigned char, 6> magic = {
+        0x93, 'N', 'U', 'M', 'P', 'Y'};
     for (unsigned char c : magic) {
         blob.push_back(static_cast<std::byte>(c));
     }
     blob.push_back(static_cast<std::byte>(1)); // major
     blob.push_back(static_cast<std::byte>(0)); // minor
     blob.push_back(static_cast<std::byte>(header_len & 0xFF));
-    blob.push_back(static_cast<std::byte>((header_len >> 8) & 0xFF));
-    for (char c : dict) {
+    blob.push_back(static_cast<std::byte>(header_len >> 8 & 0xFF));
+    for (const char c : dict) {
         blob.push_back(static_cast<std::byte>(static_cast<unsigned char>(c)));
     }
     blob.insert(blob.end(), payload.begin(), payload.end());
@@ -204,7 +205,7 @@ TEST(FileBufferLoaderTest, DecodesNpyThroughLoader) {
 }
 
 TEST(FileBufferLoaderTest, RejectsGarbageBytes) {
-    const std::vector<std::byte> junk(32, std::byte{0x7F});
+    const std::vector junk(32, std::byte{0x7F});
     const auto result = decode_file_bytes(junk, "x.bin", "x.bin");
     EXPECT_FALSE(result.has_value());
 }

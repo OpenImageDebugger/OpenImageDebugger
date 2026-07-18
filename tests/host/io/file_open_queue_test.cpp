@@ -37,7 +37,7 @@ using namespace oid::host;
 
 namespace {
 
-BufferRecord record_named(std::string_view name) {
+BufferRecord record_named(const std::string_view name) {
     BufferRecord record;
     record.variable_name = std::string(name);
     record.display_name = std::string(name);
@@ -48,7 +48,7 @@ BufferRecord record_named(std::string_view name) {
 } // namespace
 
 TEST(FileOpenQueueTest, StartsEmpty) {
-    FileOpenQueue queue;
+    const FileOpenQueue queue;
     EXPECT_TRUE(queue.empty());
 }
 

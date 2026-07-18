@@ -47,7 +47,11 @@ struct Unexpected {
 // Minimal value-or-error-message result type for the file-loading pipeline.
 template <typename T> class Expected {
   public:
+    // Intentionally implicit, mirroring std::expected's converting
+    // constructors: callers return a bare value or make_error(...) directly.
+    // NOLINTNEXTLINE(*-explicit-constructor)
     Expected(T value) : value_{std::move(value)} {}
+    // NOLINTNEXTLINE(*-explicit-constructor)
     Expected(Unexpected error) : error_{std::move(error.message)} {}
 
     [[nodiscard]] bool has_value() const {

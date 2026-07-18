@@ -62,7 +62,7 @@ struct ExportDialogState;
 // default path (see export_dialog.h's default_export_path()).
 void draw_buffer_list(UiState& ui,
                       IpcBufferModel& model,
-                      IpcClient& ipc,
+                      const IpcClient& ipc,
                       StageManager& stages,
                       ThumbnailCache& thumbs,
                       ExportDialogState& export_dialog,

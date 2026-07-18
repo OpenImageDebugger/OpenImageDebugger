@@ -34,10 +34,10 @@ namespace oid::host::agent {
 
 namespace {
 
-std::uint32_t read_be_length(std::span<const std::byte> header) {
-    return (std::to_integer<std::uint32_t>(header[0]) << 24) |
-           (std::to_integer<std::uint32_t>(header[1]) << 16) |
-           (std::to_integer<std::uint32_t>(header[2]) << 8) |
+std::uint32_t read_be_length(const std::span<const std::byte> header) {
+    return std::to_integer<std::uint32_t>(header[0]) << 24 |
+           std::to_integer<std::uint32_t>(header[1]) << 16 |
+           std::to_integer<std::uint32_t>(header[2]) << 8 |
            std::to_integer<std::uint32_t>(header[3]);
 }
 
@@ -78,7 +78,7 @@ void fill_prefixed_json(std::vector<std::byte>& out, const std::string& s) {
 } // namespace
 
 std::vector<std::byte> encode_frame_header(const nlohmann::json& obj,
-                                           std::size_t payload_size) {
+                                           const std::size_t payload_size) {
     const std::string s = dump_frame_json(obj, payload_size);
     std::vector<std::byte> out(4 + s.size());
     fill_prefixed_json(out, s);
@@ -86,7 +86,7 @@ std::vector<std::byte> encode_frame_header(const nlohmann::json& obj,
 }
 
 std::vector<std::byte> encode_frame(const nlohmann::json& obj,
-                                    std::span<const std::byte> payload) {
+                                    const std::span<const std::byte> payload) {
     const std::string s = dump_frame_json(obj, payload.size());
     std::vector<std::byte> out(4 + s.size() + payload.size());
     fill_prefixed_json(out, s);

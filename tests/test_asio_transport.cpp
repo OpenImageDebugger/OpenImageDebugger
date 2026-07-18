@@ -55,7 +55,7 @@ TEST(AsioTransport, RoundTripBytes) {
     });
 
     AsioTransport client("127.0.0.1", port);
-    const std::array<std::byte, 4> out{
+    constexpr std::array out{
         std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}};
     client.send(out);
     std::array<std::byte, 4> in{};
@@ -76,7 +76,7 @@ TEST(AsioTransport, HasDataFalseBeforeSend) {
     asio::ip::tcp::socket server_sock(server_ctx);
     std::jthread server(
         [&acceptor, &server_sock] { acceptor.accept(server_sock); });
-    AsioTransport client("127.0.0.1", port);
+    const AsioTransport client("127.0.0.1", port);
     server.join();
     EXPECT_FALSE(client.has_data()); // nothing sent by peer yet
 }
@@ -103,7 +103,7 @@ TEST(AsioCodec, RoundTripPlotBufferRequest) {
     struct ServerTransport final : ITransport {
         asio::ip::tcp::socket& s;
         explicit ServerTransport(asio::ip::tcp::socket& sock) : s(sock) {}
-        void send(std::span<const std::byte> d) override {
+        void send(const std::span<const std::byte> d) override {
             asio::write(s, asio::buffer(d.data(), d.size()));
         }
         std::size_t receive(std::span<std::byte> dst) override {
@@ -150,8 +150,7 @@ TEST(AsioAcceptor, AcceptThenRoundTrip) {
     });
     AsioTransport client("127.0.0.1", port);
     server.join();
-    const std::array<std::byte, 3> out{
-        std::byte{7}, std::byte{8}, std::byte{9}};
+    constexpr std::array out{std::byte{7}, std::byte{8}, std::byte{9}};
     client.send(out);
     std::array<std::byte, 3> in{};
     std::size_t got = 0;
@@ -186,7 +185,7 @@ TEST(AsioTransport, IsConnectedTrueWhileOpenNoData) {
     std::jthread server([&server_side, &acceptor] {
         server_side.emplace(acceptor.accept(std::chrono::seconds{5}));
     });
-    AsioTransport client("127.0.0.1", port);
+    const AsioTransport client("127.0.0.1", port);
     server.join();
     EXPECT_TRUE(client.is_connected());
 }
@@ -198,7 +197,7 @@ TEST(AsioTransport, IsConnectedFalseAfterPeerClose) {
     std::jthread server([&server_side, &acceptor] {
         server_side.emplace(acceptor.accept(std::chrono::seconds{5}));
     });
-    AsioTransport client("127.0.0.1", port);
+    const AsioTransport client("127.0.0.1", port);
     server.join();
 
     server_side.reset(); // close the server side of the connection

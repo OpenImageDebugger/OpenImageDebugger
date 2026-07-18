@@ -62,7 +62,7 @@ struct BufferRecord {
     int height{};
     int channels{};
     int step{};
-    oid::BufferType type{oid::BufferType::UNSIGNED_BYTE};
+    BufferType type{BufferType::UNSIGNED_BYTE};
     std::vector<std::byte> bytes;
     BufferKind kind{BufferKind::DEBUGGER_SYMBOL};
 };
@@ -109,11 +109,11 @@ class MockBufferModel : public BufferModel {
         return storage_.size();
     }
 
-    const BufferRecord& at(std::size_t i) const override {
+    const BufferRecord& at(const std::size_t i) const override {
         return *storage_.at(i);
     }
 
-    const std::string& variable_name_of(std::size_t i) const override {
+    const std::string& variable_name_of(const std::size_t i) const override {
         return storage_.at(i)->variable_name;
     }
 
@@ -143,8 +143,8 @@ class MockBufferModel : public BufferModel {
 
 // Human-readable type+channel label used by the buffer-list panel, e.g.
 // "uint8x3", "float32x1".
-inline std::string type_label(const oid::BufferType type, const int channels) {
-    using enum oid::BufferType;
+inline std::string type_label(const BufferType type, const int channels) {
+    using enum BufferType;
     std::string base;
     switch (type) {
     case UNSIGNED_BYTE:
@@ -181,15 +181,14 @@ inline MockBufferModel make_default_mock_model() {
         constexpr int w = 64;
         constexpr int h = 64;
         constexpr int channels = 3;
-        std::vector<std::byte> pixels(
-            static_cast<std::size_t>(w * h * channels));
+        std::vector<std::byte> pixels(w * h * channels);
         for (int y = 0; y < h; ++y) {
             for (int x = 0; x < w; ++x) {
                 auto* p =
                     &pixels[static_cast<std::size_t>((y * w + x) * channels)];
-                p[0] = std::byte(x * 4);
-                p[1] = std::byte(y * 4);
-                p[2] = std::byte(128);
+                p[0] = static_cast<std::byte>(x * 4);
+                p[1] = static_cast<std::byte>(y * 4);
+                p[2] = static_cast<std::byte>(128);
             }
         }
         records.push_back(std::make_unique<BufferRecord>(BufferRecord{
@@ -201,7 +200,7 @@ inline MockBufferModel make_default_mock_model() {
             .height = h,
             .channels = channels,
             .step = w,
-            .type = oid::BufferType::UNSIGNED_BYTE,
+            .type = BufferType::UNSIGNED_BYTE,
             .bytes = std::move(pixels),
         }));
     }
@@ -211,19 +210,18 @@ inline MockBufferModel make_default_mock_model() {
         constexpr int w = 32;
         constexpr int h = 32;
         constexpr int channels = 4;
-        constexpr int cell = 4;
-        std::vector<std::byte> pixels(
-            static_cast<std::size_t>(w * h * channels));
+        std::vector<std::byte> pixels(w * h * channels);
         for (int y = 0; y < h; ++y) {
             for (int x = 0; x < w; ++x) {
-                const bool light = ((x / cell) + (y / cell)) % 2 == 0;
+                constexpr int cell = 4;
+                const bool light = (x / cell + y / cell) % 2 == 0;
                 const auto v = static_cast<std::uint8_t>(light ? 220 : 40);
                 auto* p =
                     &pixels[static_cast<std::size_t>((y * w + x) * channels)];
-                p[0] = std::byte(v);
-                p[1] = std::byte(v);
-                p[2] = std::byte(v);
-                p[3] = std::byte(255);
+                p[0] = static_cast<std::byte>(v);
+                p[1] = static_cast<std::byte>(v);
+                p[2] = static_cast<std::byte>(v);
+                p[3] = static_cast<std::byte>(255);
             }
         }
         records.push_back(std::make_unique<BufferRecord>(BufferRecord{
@@ -235,7 +233,7 @@ inline MockBufferModel make_default_mock_model() {
             .height = h,
             .channels = channels,
             .step = w,
-            .type = oid::BufferType::UNSIGNED_BYTE,
+            .type = BufferType::UNSIGNED_BYTE,
             .bytes = std::move(pixels),
         }));
     }
@@ -263,7 +261,7 @@ inline MockBufferModel make_default_mock_model() {
             .height = h,
             .channels = channels,
             .step = w,
-            .type = oid::BufferType::FLOAT32,
+            .type = BufferType::FLOAT32,
             .bytes = std::move(pixels),
         }));
     }

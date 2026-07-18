@@ -80,7 +80,7 @@ std::vector<std::string> request_open_files(GLFWwindow* /*window*/) {
         return {};
     }
 
-    const std::array<nfdu8filteritem_t, 2> filters{{
+    constexpr std::array<nfdu8filteritem_t, 2> filters{{
         {"Images", "png,jpg,jpeg,bmp,tga,gif,psd,hdr,ppm,pgm,pnm"},
         {"NumPy array", "npy"},
     }};
@@ -146,7 +146,7 @@ std::optional<std::string> request_save_path(const std::string& default_dir,
 }
 #endif // !defined(__APPLE__)
 
-void register_file_open_sink(oid::host::IpcBufferModel& /*model*/) {
+void register_file_open_sink(host::IpcBufferModel& /*model*/) {
     // Native opens files itself (OS dialog + the frame-loop file-open queue);
     // there is no external byte sink to register.
 }

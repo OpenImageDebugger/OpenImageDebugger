@@ -48,7 +48,7 @@ class ImGuiLayer {
     // physical resolution for crisp HiDPI text (see host/ui_fonts.h).
     bool initialize(GLFWwindow* window, float content_scale);
     void begin_frame();
-    void render() const; // draw the accumulated ImGui draw data
+    static void render(); // draw the accumulated ImGui draw data
     void shutdown();
 
   private:

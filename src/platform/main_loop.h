@@ -39,7 +39,7 @@ namespace oid::platform {
 // returns when the window closes. Non-native builds hand one tick per
 // animation frame to the host and NEVER return (the main-loop driver unwinds
 // the caller without destroying its stack frame).
-void run_main_loop(oid::host::FrameLoop& loop);
+void run_main_loop(host::FrameLoop& loop);
 
 } // namespace oid::platform
 

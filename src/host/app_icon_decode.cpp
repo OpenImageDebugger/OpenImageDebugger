@@ -59,8 +59,7 @@ DecodedImage decode_png_rgba(const unsigned char* data,
 
     const auto byte_count = static_cast<std::size_t>(width) *
                             static_cast<std::size_t>(height) * RGBA;
-    DecodedImage image{
-        width, height, std::vector<unsigned char>(pixels, pixels + byte_count)};
+    DecodedImage image{width, height, std::vector(pixels, pixels + byte_count)};
 
     stbi_image_free(pixels);
 

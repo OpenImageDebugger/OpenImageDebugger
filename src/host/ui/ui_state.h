@@ -96,8 +96,8 @@ class UiState {
     // Go-to text staging: parses `x`/`y` with parse_int_field()
     // and returns {x, y} only if both fields parse; std::nullopt
     // otherwise. Parsing only -- moving the camera is the panel's job.
-    std::optional<std::pair<int, int>> parse_goto(std::string_view x,
-                                                  std::string_view y) const;
+    static std::optional<std::pair<int, int>> parse_goto(std::string_view x,
+                                                         std::string_view y);
 
     // Status-bar message: a transient, ui-level notice -- e.g. the
     // most recent export's outcome -- shown appended to the status bar

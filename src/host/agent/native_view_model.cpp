@@ -43,8 +43,7 @@ namespace oid::host::agent {
 // double(1.1) to float(1.1f) promoted back to double is false -- rounding
 // 1.1 to float precision changes the bit pattern -- so the double side is
 // cast down to float before comparing at the engine's own precision.
-static_assert(static_cast<float>(ViewModel::ZOOM_FACTOR) ==
-                  oid::Camera::ZOOM_FACTOR,
+static_assert(static_cast<float>(ViewModel::ZOOM_FACTOR) == Camera::ZOOM_FACTOR,
               "agent zoom factor must match Camera::ZOOM_FACTOR");
 
 namespace {
@@ -53,7 +52,7 @@ constexpr double PI = std::numbers::pi;
 
 // Converts a Buffer::rotation() radians value into the [0, 360) degrees
 // range ViewState::rotation_deg reports.
-double normalize_degrees(double radians) {
+double normalize_degrees(const double radians) {
     double degrees = radians * (180.0 / PI);
     degrees = std::fmod(degrees, 360.0);
     if (degrees < 0.0) {
@@ -64,8 +63,8 @@ double normalize_degrees(double radians) {
 
 // Pixel layout that isolates a single channel for Buffer's "specific
 // channel" display mode (set_display_channel_mode(1)): index 0/1/2 -> R/G/B.
-const char* isolated_layout(int index) {
-    static constexpr std::array<const char*, 3> LAYOUTS{"rrra", "ggga", "bbba"};
+const char* isolated_layout(const int index) {
+    static constexpr std::array LAYOUTS{"rrra", "ggga", "bbba"};
     return LAYOUTS[static_cast<std::size_t>(index)];
 }
 
@@ -95,7 +94,7 @@ std::size_t NativeViewModel::buffer_count() {
     return model_.size();
 }
 
-std::optional<BufferInfo> NativeViewModel::buffer_at(std::size_t i) {
+std::optional<BufferInfo> NativeViewModel::buffer_at(const std::size_t i) {
     if (i >= model_.size()) {
         return std::nullopt;
     }
@@ -113,7 +112,8 @@ std::optional<BufferInfo> NativeViewModel::buffer_at(std::size_t i) {
                       r.transpose};
 }
 
-std::optional<BufferInfo> NativeViewModel::buffer_named(std::string_view name) {
+std::optional<BufferInfo>
+NativeViewModel::buffer_named(const std::string_view name) {
     const auto idx = ui_.model_index_of(name);
     if (!idx.has_value()) {
         return std::nullopt;
@@ -121,7 +121,7 @@ std::optional<BufferInfo> NativeViewModel::buffer_named(std::string_view name) {
     return buffer_at(*idx);
 }
 
-bool NativeViewModel::read_pixels(std::string_view name,
+bool NativeViewModel::read_pixels(const std::string_view name,
                                   std::vector<std::byte>& out) {
     const auto idx = ui_.model_index_of(name);
     if (!idx.has_value()) {
@@ -131,7 +131,7 @@ bool NativeViewModel::read_pixels(std::string_view name,
     return true;
 }
 
-oid::Stage* NativeViewModel::stage_for_name(std::string_view name) {
+Stage* NativeViewModel::stage_for_name(const std::string_view name) const {
     const auto idx = ui_.model_index_of(name);
     if (!idx.has_value()) {
         return nullptr;
@@ -139,7 +139,7 @@ oid::Stage* NativeViewModel::stage_for_name(std::string_view name) {
     return stages_.stage_for(*idx);
 }
 
-bool NativeViewModel::select(std::string_view name) {
+bool NativeViewModel::select(const std::string_view name) {
     const auto idx = ui_.model_index_of(name);
     if (!idx.has_value()) {
         return false;
@@ -155,13 +155,13 @@ std::optional<std::string> NativeViewModel::selected_name() {
     return model_.variable_name_of(ui_.selected());
 }
 
-std::optional<ViewState> NativeViewModel::view_of(std::string_view name) {
-    oid::Stage* stage = stage_for_name(name);
+std::optional<ViewState> NativeViewModel::view_of(const std::string_view name) {
+    Stage* stage = stage_for_name(name);
     if (!stage) {
         return std::nullopt;
     }
-    const oid::Camera* camera = camera_of(*stage);
-    const oid::Buffer* buffer = buffer_of(*stage);
+    const Camera* camera = camera_of(*stage);
+    const Buffer* buffer = buffer_of(*stage);
     if (!camera || !buffer) {
         return std::nullopt;
     }
@@ -172,8 +172,7 @@ std::optional<ViewState> NativeViewModel::view_of(std::string_view name) {
     state.center_x = static_cast<double>(position.x());
     state.center_y = static_cast<double>(position.y());
     state.zoom = static_cast<double>(camera->compute_zoom());
-    state.rotation_deg =
-        normalize_degrees(static_cast<double>(buffer->rotation()));
+    state.rotation_deg = normalize_degrees(buffer->rotation());
     const int mode = buffer->get_display_channel_mode();
     state.channel = mode == -1
                         ? "all"
@@ -185,12 +184,14 @@ std::optional<ViewState> NativeViewModel::view_of(std::string_view name) {
     return state;
 }
 
-bool NativeViewModel::set_center(std::string_view name, double x, double y) {
-    oid::Stage* stage = stage_for_name(name);
+bool NativeViewModel::set_center(const std::string_view name,
+                                 const double x,
+                                 const double y) {
+    Stage* stage = stage_for_name(name);
     if (!stage) {
         return false;
     }
-    oid::Camera* camera = camera_of(*stage);
+    Camera* camera = camera_of(*stage);
     if (!camera) {
         return false;
     }
@@ -198,12 +199,13 @@ bool NativeViewModel::set_center(std::string_view name, double x, double y) {
     return true;
 }
 
-bool NativeViewModel::set_zoom_power(std::string_view name, double power) {
-    oid::Stage* stage = stage_for_name(name);
+bool NativeViewModel::set_zoom_power(const std::string_view name,
+                                     const double power) {
+    Stage* stage = stage_for_name(name);
     if (!stage) {
         return false;
     }
-    oid::Camera* camera = camera_of(*stage);
+    Camera* camera = camera_of(*stage);
     if (!camera) {
         return false;
     }
@@ -211,12 +213,13 @@ bool NativeViewModel::set_zoom_power(std::string_view name, double power) {
     return true;
 }
 
-bool NativeViewModel::set_rotation_rad(std::string_view name, double radians) {
-    oid::Stage* stage = stage_for_name(name);
+bool NativeViewModel::set_rotation_rad(const std::string_view name,
+                                       const double radians) {
+    Stage* stage = stage_for_name(name);
     if (!stage) {
         return false;
     }
-    oid::Buffer* buffer = buffer_of(*stage);
+    Buffer* buffer = buffer_of(*stage);
     if (!buffer) {
         return false;
     }
@@ -224,16 +227,18 @@ bool NativeViewModel::set_rotation_rad(std::string_view name, double radians) {
     return true;
 }
 
-bool NativeViewModel::set_channel(std::string_view name, int mode, int index) {
+bool NativeViewModel::set_channel(const std::string_view name,
+                                  const int mode,
+                                  const int index) {
     const auto idx = ui_.model_index_of(name);
     if (!idx.has_value()) {
         return false;
     }
-    oid::Stage* stage = stages_.stage_for(*idx);
+    Stage* stage = stages_.stage_for(*idx);
     if (!stage) {
         return false;
     }
-    oid::Buffer* buffer = buffer_of(*stage);
+    Buffer* buffer = buffer_of(*stage);
     if (!buffer) {
         return false;
     }
@@ -255,7 +260,7 @@ bool NativeViewModel::auto_contrast() {
     return ui_.contrast_enabled();
 }
 
-void NativeViewModel::set_auto_contrast(bool enabled) {
+void NativeViewModel::set_auto_contrast(const bool enabled) {
     // UiState only stores the flag; the per-frame toolbar/contrast-panel
     // update (see host/ui/panels/contrast_panel.cpp) is what actually pushes
     // it into each Stage's Buffer on the next frame.

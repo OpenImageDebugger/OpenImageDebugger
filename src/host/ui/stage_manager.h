@@ -33,7 +33,7 @@
 #include <unordered_map>
 
 #include "host/ui/buffer_model.h"
-#include "host/ui/transparent_string_hash.h"
+#include "host/util/transparent_string_hash.h"
 #include "visualization/render_canvas.h"
 #include "visualization/stage.h"
 
@@ -61,18 +61,18 @@ class StageManager {
 
     // Reconciles against the model, then returns the Stage for the selected
     // buffer index `sel`; nullptr if out of range or initialize() failed.
-    [[nodiscard]] oid::Stage* selected_stage(std::size_t sel);
+    [[nodiscard]] Stage* selected_stage(std::size_t sel);
 
     // Reconciles against the model, then returns the Stage for buffer index
     // `i`; nullptr if out of range or initialize() failed.
-    [[nodiscard]] oid::Stage* stage_for(std::size_t i);
+    [[nodiscard]] Stage* stage_for(std::size_t i);
 
   private:
     // A Stage plus the model-slot revision it was last built/updated from,
     // so sync() can tell an untouched buffer from a re-plotted one without
     // diffing bytes.
     struct Entry {
-        std::unique_ptr<oid::Stage> stage;
+        std::unique_ptr<Stage> stage;
         std::uint64_t revision;
     };
 

@@ -60,12 +60,12 @@ class GlfwHostBackend final : public HostBackend {
     // current and defaults to on). Agent runs turn it off: FramePacer
     // paces the loop instead, so the swap must not block on a present the
     // OS may throttle for a background window.
-    void set_vsync(bool enabled);
+    static void set_vsync(bool enabled);
 
     // Refresh rate (Hz) of the primary monitor; 60 when GLFW cannot say
     // (headless / null video mode / non-positive rate). Queried once at
     // agent startup to pace the render loop.
-    [[nodiscard]] int primary_refresh_rate_hz() const;
+    [[nodiscard]] static int primary_refresh_rate_hz();
 
     [[nodiscard]] GLFWwindow* window() const {
         return window_;
@@ -77,13 +77,13 @@ class GlfwHostBackend final : public HostBackend {
     [[nodiscard]] std::pair<int, int> window_position() const;
 
     // Moves the window (glfwSetWindowPos); no-op when there is no window.
-    void set_window_position(int x, int y);
+    void set_window_position(int x, int y) const;
 
     // Every connected monitor's work area (glfwGetMonitors +
     // glfwGetMonitorWorkarea), for window_visible_on() below. Public: called
     // by main_imgui at startup to decide whether a saved window position is
     // still reachable, not just internally by this class.
-    [[nodiscard]] std::vector<MonitorRect> monitors() const;
+    [[nodiscard]] static std::vector<MonitorRect> monitors();
 
     // Pure, testable: does the window rect (x, y, w, h) overlap any monitor
     // work area? Used to discard a saved window position that would place

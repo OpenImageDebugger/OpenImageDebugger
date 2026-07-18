@@ -35,8 +35,8 @@ SettingsSaver::SettingsSaver(AppSettings initial,
     : save_{std::move(sink)}, current_{std::move(initial)},
       debounce_s_{debounce_s} {}
 
-void SettingsSaver::update(const AppSettings& live, double now_s) {
-    if (!(live == current_)) {
+void SettingsSaver::update(const AppSettings& live, const double now_s) {
+    if (live != current_) {
         current_ = live;
         dirty_ = true;
     }

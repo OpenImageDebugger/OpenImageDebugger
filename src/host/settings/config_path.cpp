@@ -38,8 +38,8 @@ config_file_path_from_env([[maybe_unused]] const char* xdg_config_home,
 #if defined(_WIN32)
     base = (appdata && *appdata) ? fs::path{appdata} : fs::path{"."};
 #elif defined(__APPLE__)
-    base = (home && *home) ? fs::path{home} / "Library" / "Application Support"
-                           : fs::path{"."};
+    base = home && *home ? fs::path{home} / "Library" / "Application Support"
+                         : fs::path{"."};
 #else // Linux / other POSIX
     if (xdg_config_home && *xdg_config_home) {
         base = fs::path{xdg_config_home};

@@ -55,7 +55,7 @@ void StageView::destroy() {
     height_ = 0;
 }
 
-void StageView::ensure_size(int width, int height) {
+void StageView::ensure_size(const int width, const int height) {
     if (width <= 0 || height <= 0) {
         return;
     }

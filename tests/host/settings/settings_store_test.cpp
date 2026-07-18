@@ -194,8 +194,8 @@ TEST(SettingsStore, SaveLeavesNoLeftoverTempFiles) {
     int json_count = 0;
     int tmp_count = 0;
     for (const auto& entry : fs::directory_iterator(dir)) {
-        const auto ext = entry.path().extension().string();
-        if (ext == ".json") {
+        if (const auto ext = entry.path().extension().string();
+            ext == ".json") {
             ++json_count;
         } else if (ext == ".tmp") {
             ++tmp_count;

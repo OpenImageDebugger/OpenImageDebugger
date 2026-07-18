@@ -39,7 +39,7 @@
 namespace oid::host {
 
 TEST(BufferDecode, MapsFieldsAndStepEqualsStride) {
-    std::vector<std::byte> bytes(12, std::byte{7});
+    std::vector bytes(12, std::byte{7});
     BufferRecord r = make_buffer_record({.variable_name = "v",
                                          .display_name = "disp",
                                          .pixel_layout = "rgb",
@@ -48,7 +48,7 @@ TEST(BufferDecode, MapsFieldsAndStepEqualsStride) {
                                          .height = 2,
                                          .channels = 3,
                                          .stride = 6,
-                                         .type = oid::BufferType::UNSIGNED_BYTE,
+                                         .type = BufferType::UNSIGNED_BYTE,
                                          .bytes = std::move(bytes)});
     EXPECT_EQ(r.variable_name, "v");
     EXPECT_EQ(r.display_name, "disp");
@@ -63,7 +63,7 @@ TEST(BufferDecode, MapsFieldsAndStepEqualsStride) {
 }
 
 TEST(BufferDecode, Float64ConvertsToFloatBytes) {
-    const double value = 3.5;
+    constexpr double value = 3.5;
     std::vector<std::byte> bytes(sizeof(double));
     std::memcpy(bytes.data(), &value, sizeof(double));
 
@@ -75,7 +75,7 @@ TEST(BufferDecode, Float64ConvertsToFloatBytes) {
                                          .height = 1,
                                          .channels = 1,
                                          .stride = 1,
-                                         .type = oid::BufferType::FLOAT64,
+                                         .type = BufferType::FLOAT64,
                                          .bytes = std::move(bytes)});
 
     // FLOAT64 payload of 1 double must convert down to 1 float (4 bytes).
@@ -85,7 +85,7 @@ TEST(BufferDecode, Float64ConvertsToFloatBytes) {
 
     float decoded = 0.0F;
     std::memcpy(&decoded, r.bytes.data(), sizeof(float));
-    EXPECT_FLOAT_EQ(decoded, static_cast<float>(value));
+    EXPECT_FLOAT_EQ(decoded, value);
 }
 
 } // namespace oid::host
@@ -156,9 +156,9 @@ static std::vector<std::byte> frame(const MessageComposer& c) {
 
 TEST(IpcClient, PlotBufferContentsUpsertsModel) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
+    host::IpcBufferModel model;
     MessageComposer c;
-    std::vector<std::byte> bytes(12, std::byte{5});
+    std::vector bytes(12, std::byte{5});
     c.push(MessageType::PLOT_BUFFER_CONTENTS)
         .push(std::string("v"))
         .push(std::string("disp"))
@@ -172,7 +172,7 @@ TEST(IpcClient, PlotBufferContentsUpsertsModel) {
         .push(std::span<const std::byte>(bytes));
     t.feed(frame(c));
 
-    oid::host::IpcClient client(t, model);
+    host::IpcClient client(t, model);
     client.poll();
 
     ASSERT_EQ(model.size(), 1u);
@@ -183,7 +183,7 @@ TEST(IpcClient, PlotBufferContentsUpsertsModel) {
 
 TEST(IpcClient, SetAvailableSymbolsPopulatesList) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
+    host::IpcBufferModel model;
     MessageComposer c;
     std::deque<std::string> syms{"a", "b"};
     c.push(MessageType::SET_AVAILABLE_SYMBOLS).push(syms.size());
@@ -192,7 +192,7 @@ TEST(IpcClient, SetAvailableSymbolsPopulatesList) {
     }
     t.feed(frame(c));
 
-    oid::host::IpcClient client(t, model);
+    host::IpcClient client(t, model);
     client.poll();
 
     ASSERT_EQ(client.available_symbols().size(), 2u);
@@ -201,9 +201,9 @@ TEST(IpcClient, SetAvailableSymbolsPopulatesList) {
 
 TEST(IpcClient, GetObservedSymbolsRespondsWithModelNames) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
+    host::IpcBufferModel model;
     {
-        oid::host::BufferRecord r;
+        host::BufferRecord r;
         r.variable_name = "x";
         model.upsert(std::move(r));
     }
@@ -211,7 +211,7 @@ TEST(IpcClient, GetObservedSymbolsRespondsWithModelNames) {
     c.push(MessageType::GET_OBSERVED_SYMBOLS);
     t.feed(frame(c));
 
-    oid::host::IpcClient client(t, model);
+    host::IpcClient client(t, model);
     client.poll();
 
     ASSERT_EQ(t.sends.size(), 1u); // sent a GET_OBSERVED_SYMBOLS_RESPONSE
@@ -226,17 +226,17 @@ TEST(IpcClient, GetObservedSymbolsRespondsWithModelNames) {
 // that reply.
 TEST(IpcClient, GetObservedSymbolsExcludesLocalFileBuffers) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
+    host::IpcBufferModel model;
     {
-        oid::host::BufferRecord r;
+        host::BufferRecord r;
         r.variable_name = "debugger_var";
-        r.kind = oid::host::BufferKind::DEBUGGER_SYMBOL;
+        r.kind = host::BufferKind::DEBUGGER_SYMBOL;
         model.upsert(std::move(r));
     }
     {
-        oid::host::BufferRecord r;
+        host::BufferRecord r;
         r.variable_name = "local_file.png";
-        r.kind = oid::host::BufferKind::LOCAL_FILE;
+        r.kind = host::BufferKind::LOCAL_FILE;
         model.upsert(std::move(r));
     }
 
@@ -244,7 +244,7 @@ TEST(IpcClient, GetObservedSymbolsExcludesLocalFileBuffers) {
     c.push(MessageType::GET_OBSERVED_SYMBOLS);
     t.feed(frame(c));
 
-    oid::host::IpcClient client(t, model);
+    host::IpcClient client(t, model);
     client.poll();
 
     ASSERT_EQ(t.sends.size(), 1u); // sent a GET_OBSERVED_SYMBOLS_RESPONSE
@@ -271,30 +271,29 @@ TEST(IpcClient, GetObservedSymbolsExcludesLocalFileBuffers) {
 
     EXPECT_EQ(names.size(), 1u);
     EXPECT_EQ(names.front(), "debugger_var");
-    EXPECT_TRUE(std::find(names.begin(), names.end(), "local_file.png") ==
-                names.end());
+    EXPECT_TRUE(std::ranges::find(names, "local_file.png") == names.end());
 }
 
 TEST(IpcClient, NotifyRemovedSurvivesDeadTransport) {
     ThrowingTransport t;
-    oid::host::IpcBufferModel model;
-    oid::host::IpcClient client(t, model);
+    host::IpcBufferModel model;
+    host::IpcClient client(t, model);
 
     EXPECT_NO_THROW(client.notify_removed("some_buffer"));
 }
 
 TEST(IpcClient, RequestPlotSurvivesDeadTransport) {
     ThrowingTransport t;
-    oid::host::IpcBufferModel model;
-    oid::host::IpcClient client(t, model);
+    host::IpcBufferModel model;
+    host::IpcClient client(t, model);
 
     EXPECT_NO_THROW(client.request_plot("some_buffer"));
 }
 
 TEST(IpcClient, RequestPlotSends) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
-    oid::host::IpcClient client(t, model);
+    host::IpcBufferModel model;
+    host::IpcClient client(t, model);
     client.request_plot("myVar");
 
     ASSERT_EQ(t.sends.size(), 1u);
@@ -305,11 +304,11 @@ TEST(IpcClient, RequestPlotSends) {
 
 TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
-    std::vector<std::byte> bytes(24, std::byte{9});
-    const std::size_t total = bytes.size();
+    host::IpcBufferModel model;
+    std::vector bytes(24, std::byte{9});
 
     {
+        const std::size_t total = bytes.size();
         MessageComposer c;
         c.push(MessageType::PLOT_BUFFER_BEGIN)
             .push(std::string("v"))
@@ -339,7 +338,7 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
         t.feed(frame(c));
     }
 
-    oid::host::IpcClient client(t, model);
+    host::IpcClient client(t, model);
     client.poll();
 
     ASSERT_EQ(model.size(), 1u);
@@ -352,8 +351,8 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
 
 TEST(IpcClient, PollDoesNotThrowOnTruncatedMessage) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
-    std::vector<std::byte> bytes(12, std::byte{5});
+    host::IpcBufferModel model;
+    std::vector bytes(12, std::byte{5});
     MessageComposer c;
     c.push(MessageType::PLOT_BUFFER_CONTENTS)
         .push(std::string("v"))
@@ -373,9 +372,9 @@ TEST(IpcClient, PollDoesNotThrowOnTruncatedMessage) {
     // MessageDecoder::read_impl throw. poll() must catch that throw instead
     // of letting it escape and terminate the process.
     ASSERT_GT(full_frame.size(), 8u);
-    t.feed(std::vector<std::byte>(full_frame.begin(), full_frame.begin() + 8));
+    t.feed(std::vector(full_frame.begin(), full_frame.begin() + 8));
 
-    oid::host::IpcClient client(t, model);
+    host::IpcClient client(t, model);
     EXPECT_NO_THROW(client.poll());
 
     EXPECT_EQ(model.size(), 0u); // partial message dropped, not half-applied
@@ -383,10 +382,10 @@ TEST(IpcClient, PollDoesNotThrowOnTruncatedMessage) {
 
 TEST(IpcClient, RestoresAvailableUnexpiredBuffersOnSetAvailableSymbols) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
-    oid::host::IpcClient client(t, model);
-    const std::int64_t future = 4102444800; // year 2100
-    const std::int64_t past = 1;
+    host::IpcBufferModel model;
+    host::IpcClient client(t, model);
+    constexpr std::int64_t future = 4102444800; // year 2100
+    constexpr std::int64_t past = 1;
     client.set_restore_buffers(
         {{"want", future}, {"expired", past}, {"absent", future}});
     MessageComposer c;
@@ -421,9 +420,9 @@ TEST(IpcClient, RestoresAvailableUnexpiredBuffersOnSetAvailableSymbols) {
 
 TEST(IpcClient, RestoreRequestsOnlyOnceAcrossRepeatedSetAvailableSymbols) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
-    oid::host::IpcClient client(t, model);
-    const std::int64_t future = 4102444800; // year 2100
+    host::IpcBufferModel model;
+    host::IpcClient client(t, model);
+    constexpr std::int64_t future = 4102444800; // year 2100
     client.set_restore_buffers({{"want", future}});
 
     MessageComposer c;
@@ -451,8 +450,8 @@ TEST(IpcClient, RestoreRequestsOnlyOnceAcrossRepeatedSetAvailableSymbols) {
 
 TEST(IpcClient, ApplySessionStateInvokesCallbackWithJsonVerbatim) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
-    oid::host::IpcClient client(t, model);
+    host::IpcBufferModel model;
+    host::IpcClient client(t, model);
     std::string received;
     int calls = 0;
     client.set_session_state_callback(
@@ -485,8 +484,8 @@ TEST(IpcClient, ApplySessionStateWithoutCallbackDoesNotThrow) {
 
 TEST(IpcClient, ExportSelectedBufferInvokesCallback) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
-    oid::host::IpcClient client(t, model);
+    host::IpcBufferModel model;
+    host::IpcClient client(t, model);
     int calls = 0;
     client.set_export_selected_callback([&calls] { ++calls; });
 
@@ -500,8 +499,8 @@ TEST(IpcClient, ExportSelectedBufferInvokesCallback) {
 
 TEST(IpcClient, ExportSelectedBufferWithoutCallbackDoesNotThrow) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
-    oid::host::IpcClient client(t, model);
+    host::IpcBufferModel model;
+    host::IpcClient client(t, model);
     MessageComposer c;
     c.push(MessageType::EXPORT_SELECTED_BUFFER);
     t.feed(frame(c));
@@ -510,8 +509,8 @@ TEST(IpcClient, ExportSelectedBufferWithoutCallbackDoesNotThrow) {
 
 TEST(IpcClient, SendSessionStateChangedSendsTypeAndJsonVerbatim) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
-    oid::host::IpcClient client(t, model);
+    host::IpcBufferModel model;
+    host::IpcClient client(t, model);
 
     client.send_session_state_changed(R"({"a":1})");
 
@@ -530,8 +529,8 @@ TEST(IpcClient, SendSessionStateChangedSendsTypeAndJsonVerbatim) {
 
 TEST(IpcClient, SendExportBufferRequestRoundTripsFields) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
-    oid::host::IpcClient client(t, model);
+    host::IpcBufferModel model;
+    host::IpcClient client(t, model);
 
     client.send_export_buffer_request("myVar", 2, {0.1f, 0.2f, 0.3f});
 
@@ -564,8 +563,8 @@ TEST(IpcClient, SendExportBufferRequestRoundTripsFields) {
 
 TEST(IpcClient, UnknownMessageTypeStillIgnored) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
-    oid::host::IpcClient client(t, model);
+    host::IpcBufferModel model;
+    host::IpcClient client(t, model);
     MessageComposer c;
     c.push(static_cast<MessageType>(9999));
     t.feed(frame(c));
@@ -576,14 +575,14 @@ TEST(IpcClient, UnknownMessageTypeStillIgnored) {
 
 TEST(IpcClient, RestoreSkipsBufferAlreadyInModel) {
     FakeTransport t;
-    oid::host::IpcBufferModel model;
+    host::IpcBufferModel model;
     {
-        oid::host::BufferRecord r;
+        host::BufferRecord r;
         r.variable_name = "want";
         model.upsert(std::move(r));
     }
-    oid::host::IpcClient client(t, model);
-    const std::int64_t future = 4102444800; // year 2100
+    host::IpcClient client(t, model);
+    constexpr std::int64_t future = 4102444800; // year 2100
     client.set_restore_buffers({{"want", future}});
 
     MessageComposer c;

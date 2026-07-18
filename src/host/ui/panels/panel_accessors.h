@@ -41,31 +41,30 @@ namespace oid::host {
 // either isn't present yet (e.g. Stage::initialize() hasn't run), which
 // callers must guard.
 
-inline oid::Buffer* buffer_of(oid::Stage& s) {
+inline oid::Buffer* buffer_of(Stage& s) {
     const auto obj = s.get_game_object("buffer");
     if (!obj.has_value()) {
         return nullptr;
     }
-    const auto comp = obj->get().get_component<oid::Buffer>("buffer_component");
+    const auto comp = obj->get().get_component<Buffer>("buffer_component");
     return comp.has_value() ? &comp->get() : nullptr;
 }
 
-inline oid::Camera* camera_of(oid::Stage& s) {
+inline Camera* camera_of(Stage& s) {
     const auto obj = s.get_game_object("camera");
     if (!obj.has_value()) {
         return nullptr;
     }
-    const auto comp = obj->get().get_component<oid::Camera>("camera_component");
+    const auto comp = obj->get().get_component<Camera>("camera_component");
     return comp.has_value() ? &comp->get() : nullptr;
 }
 
-inline oid::BufferValues* values_of(oid::Stage& s) {
+inline BufferValues* values_of(Stage& s) {
     const auto obj = s.get_game_object("buffer");
     if (!obj.has_value()) {
         return nullptr;
     }
-    const auto comp =
-        obj->get().get_component<oid::BufferValues>("text_component");
+    const auto comp = obj->get().get_component<BufferValues>("text_component");
     return comp.has_value() ? &comp->get() : nullptr;
 }
 

@@ -64,10 +64,10 @@ void repeat_first_channel_into_g_and_b(
 
 template <typename T>
 RgbaImage normalize_to_rgba8_impl(const std::uint8_t* data,
-                                  int width,
-                                  int height,
-                                  int channels_i,
-                                  int step,
+                                  const int width,
+                                  const int height,
+                                  const int channels_i,
+                                  const int step,
                                   const std::array<float, 8>& bc_comp,
                                   const char* pixel_layout_str) {
     const auto width_i = static_cast<std::size_t>(width);
@@ -176,10 +176,10 @@ template <> std::string get_type_descriptor<float>() {
 
 template <typename T>
 bool export_octave_impl(const std::uint8_t* data,
-                        int width,
-                        int height,
-                        int channels_i,
-                        int step,
+                        const int width,
+                        const int height,
+                        const int channels_i,
+                        const int step,
                         const std::string& path) {
     const auto width_i = static_cast<std::size_t>(width);
     const auto height_i = static_cast<std::size_t>(height);
@@ -248,7 +248,7 @@ void write_npy_header(std::ofstream& ofs,
     // 10 bytes precede the dict (6 magic + 2 version + 2 length); the dict
     // carries a trailing '\n'. Pad with spaces up to the next 64-byte boundary.
     const std::size_t unpadded = 10 + dict.size() + 1;
-    const std::size_t padded = ((unpadded + 63) / 64) * 64;
+    const std::size_t padded = (unpadded + 63) / 64 * 64;
     dict.append(padded - unpadded, ' ');
     dict.push_back('\n');
 

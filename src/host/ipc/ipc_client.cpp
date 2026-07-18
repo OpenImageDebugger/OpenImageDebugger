@@ -36,14 +36,14 @@
 
 namespace oid::host {
 
-IpcClient::IpcClient(oid::ITransport& transport, IpcBufferModel& model)
+IpcClient::IpcClient(ITransport& transport, IpcBufferModel& model)
     : transport_(transport), model_(model) {}
 
 void IpcClient::poll() {
     while (transport_.has_data()) {
         try {
-            auto header = oid::MessageType{};
-            oid::MessageDecoder{transport_}.read(header);
+            auto header = MessageType{};
+            MessageDecoder{transport_}.read(header);
             dispatch(header);
         } catch (const std::runtime_error&) { // SocketTimeoutError, base catch
             return; // cross-shared-lib RTTI-safe; drop the partial message
@@ -51,8 +51,8 @@ void IpcClient::poll() {
     }
 }
 
-void IpcClient::dispatch(oid::MessageType header) {
-    using enum oid::MessageType;
+void IpcClient::dispatch(const MessageType header) {
+    using enum MessageType;
     switch (header) {
     case SET_AVAILABLE_SYMBOLS:
         handle_set_available_symbols();
@@ -87,35 +87,34 @@ void IpcClient::dispatch(oid::MessageType header) {
 
 void IpcClient::handle_set_available_symbols() {
     std::deque<std::string> symbols;
-    oid::MessageDecoder{transport_}.read<std::deque<std::string>, std::string>(
+    MessageDecoder{transport_}.read<std::deque<std::string>, std::string>(
         symbols);
     available_symbols_.assign(symbols.begin(), symbols.end());
 
-    const auto now = static_cast<std::int64_t>(
-        std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::system_clock::now().time_since_epoch())
-            .count());
-    std::set<std::string, std::less<>> avail{available_symbols_.begin(),
-                                             available_symbols_.end()};
-    for (const auto& b : restore_buffers_) {
-        if (b.expiry_epoch_s <= now) {
+    const auto now = std::chrono::duration_cast<std::chrono::seconds>(
+                         std::chrono::system_clock::now().time_since_epoch())
+                         .count();
+    const std::set<std::string, std::less<>> avail{available_symbols_.begin(),
+                                                   available_symbols_.end()};
+    for (const auto& [variable_name, expiry_epoch_s] : restore_buffers_) {
+        if (expiry_epoch_s <= now) {
             continue;
         }
-        if (!avail.contains(b.variable_name)) {
+        if (!avail.contains(variable_name)) {
             continue;
         }
-        if (restore_requested_.contains(b.variable_name)) {
+        if (restore_requested_.contains(variable_name)) {
             continue;
         }
-        if (model_has(b.variable_name)) {
+        if (model_has(variable_name)) {
             continue;
         }
-        request_plot(b.variable_name);
-        restore_requested_.insert(b.variable_name);
+        request_plot(variable_name);
+        restore_requested_.insert(variable_name);
     }
 }
 
-void IpcClient::handle_get_observed_symbols() {
+void IpcClient::handle_get_observed_symbols() const {
     // LOCAL_FILE-tagged buffers were opened directly from a local file and
     // are never owned by the debugger, so they must never be advertised
     // back via GET_OBSERVED_SYMBOLS_RESPONSE (re-plotting one would be
@@ -127,8 +126,8 @@ void IpcClient::handle_get_observed_symbols() {
         }
     }
 
-    oid::MessageComposer composer;
-    composer.push(oid::MessageType::GET_OBSERVED_SYMBOLS_RESPONSE)
+    MessageComposer composer;
+    composer.push(MessageType::GET_OBSERVED_SYMBOLS_RESPONSE)
         .push(observed.size());
     for (const std::string& name : observed) {
         composer.push(name);
@@ -136,7 +135,7 @@ void IpcClient::handle_get_observed_symbols() {
     send_guarded(composer);
 }
 
-void IpcClient::handle_plot_buffer_contents() {
+void IpcClient::handle_plot_buffer_contents() const {
     std::string variable_name;
     std::string display_name;
     std::string pixel_layout;
@@ -145,9 +144,9 @@ void IpcClient::handle_plot_buffer_contents() {
     int height{};
     int channels{};
     int stride{};
-    auto type = oid::BufferType{};
+    auto type = BufferType{};
     std::vector<std::byte> bytes;
-    oid::MessageDecoder{transport_}
+    MessageDecoder{transport_}
         .read(variable_name)
         .read(display_name)
         .read(pixel_layout)
@@ -171,8 +170,8 @@ void IpcClient::handle_plot_buffer_contents() {
 }
 
 void IpcClient::handle_plot_buffer_begin() {
-    oid::BufferAssembler::BeginParams params;
-    oid::MessageDecoder decoder{transport_};
+    BufferAssembler::BeginParams params;
+    MessageDecoder decoder{transport_};
     decoder.read(params.variable_name)
         .read(params.display_name)
         .read(params.pixel_layout)
@@ -193,7 +192,7 @@ void IpcClient::handle_plot_buffer_chunk() {
     std::size_t row_offset{};
     std::size_t row_count{};
     std::vector<std::byte> bytes;
-    oid::MessageDecoder{transport_}
+    MessageDecoder{transport_}
         .read(name)
         .read(row_offset)
         .read(row_count)
@@ -203,9 +202,8 @@ void IpcClient::handle_plot_buffer_chunk() {
 
 void IpcClient::handle_plot_buffer_end() {
     std::string name;
-    oid::MessageDecoder{transport_}.read(name);
-    auto assembled = assembler_.end(name);
-    if (assembled) {
+    MessageDecoder{transport_}.read(name);
+    if (auto assembled = assembler_.end(name)) {
         model_.upsert(make_buffer_record(
             {.variable_name = std::move(assembled->variable_name),
              .display_name = std::move(assembled->display_name),
@@ -215,14 +213,14 @@ void IpcClient::handle_plot_buffer_end() {
              .height = assembled->height,
              .channels = assembled->channels,
              .stride = assembled->stride,
-             .type = static_cast<oid::BufferType>(assembled->type),
+             .type = static_cast<BufferType>(assembled->type),
              .bytes = std::move(assembled->bytes)}));
     }
 }
 
-void IpcClient::handle_apply_session_state() {
+void IpcClient::handle_apply_session_state() const {
     std::string json;
-    oid::MessageDecoder{transport_}.read(json);
+    MessageDecoder{transport_}.read(json);
     if (session_state_callback_) {
         session_state_callback_(json);
     }
@@ -237,29 +235,30 @@ void IpcClient::handle_export_selected_buffer() const {
     }
 }
 
-void IpcClient::request_plot(const std::string& variable_name) {
-    oid::MessageComposer composer;
-    composer.push(oid::MessageType::PLOT_BUFFER_REQUEST).push(variable_name);
+void IpcClient::request_plot(const std::string& variable_name) const {
+    MessageComposer composer;
+    composer.push(MessageType::PLOT_BUFFER_REQUEST).push(variable_name);
     send_guarded(composer);
 }
 
-void IpcClient::notify_removed(const std::string& variable_name) {
-    oid::MessageComposer composer;
-    composer.push(oid::MessageType::BUFFER_REMOVED).push(variable_name);
+void IpcClient::notify_removed(const std::string& variable_name) const {
+    MessageComposer composer;
+    composer.push(MessageType::BUFFER_REMOVED).push(variable_name);
     send_guarded(composer);
 }
 
-void IpcClient::send_session_state_changed(const std::string& json) {
-    oid::MessageComposer composer;
-    composer.push(oid::MessageType::SESSION_STATE_CHANGED).push(json);
+void IpcClient::send_session_state_changed(const std::string& json) const {
+    MessageComposer composer;
+    composer.push(MessageType::SESSION_STATE_CHANGED).push(json);
     send_guarded(composer);
 }
 
-void IpcClient::send_export_buffer_request(const std::string& variable_name,
-                                           int format,
-                                           const std::vector<float>& contrast) {
-    oid::MessageComposer composer;
-    composer.push(oid::MessageType::EXPORT_BUFFER_REQUEST)
+void IpcClient::send_export_buffer_request(
+    const std::string& variable_name,
+    const int format,
+    const std::vector<float>& contrast) const {
+    MessageComposer composer;
+    composer.push(MessageType::EXPORT_BUFFER_REQUEST)
         .push(variable_name)
         .push(format);
     // Fixed 8-float contrast layout on the wire (mirrors the Qt sender,
@@ -286,12 +285,11 @@ const std::vector<std::string>& IpcClient::available_symbols() const {
     return available_symbols_;
 }
 
-void IpcClient::set_restore_buffers(
-    std::vector<oid::host::PreviousBuffer> buffers) {
+void IpcClient::set_restore_buffers(std::vector<PreviousBuffer> buffers) {
     restore_buffers_ = std::move(buffers);
 }
 
-bool IpcClient::model_has(std::string_view variable_name) const {
+bool IpcClient::model_has(const std::string_view variable_name) const {
     for (std::size_t i = 0; i < model_.size(); ++i) {
         if (model_.variable_name_of(i) == variable_name) {
             return true;
@@ -300,7 +298,7 @@ bool IpcClient::model_has(std::string_view variable_name) const {
     return false;
 }
 
-void IpcClient::send_guarded(const oid::MessageComposer& composer) {
+void IpcClient::send_guarded(const MessageComposer& composer) const {
     try {
         composer.send(transport_);
     } catch (const std::runtime_error&) {

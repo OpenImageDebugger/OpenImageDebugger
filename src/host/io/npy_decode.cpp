@@ -34,16 +34,18 @@ namespace oid {
 
 namespace {
 
-std::uint16_t read_u16le(std::span<const std::byte> data, std::size_t offset) {
+std::uint16_t read_u16le(const std::span<const std::byte> data,
+                         const std::size_t offset) {
     return static_cast<std::uint16_t>(
         static_cast<std::uint16_t>(
             std::to_integer<std::uint8_t>(data[offset])) |
-        (static_cast<std::uint16_t>(
-             std::to_integer<std::uint8_t>(data[offset + 1]))
-         << 8));
+        static_cast<std::uint16_t>(
+            std::to_integer<std::uint8_t>(data[offset + 1]))
+            << 8);
 }
 
-std::uint32_t read_u32le(std::span<const std::byte> data, std::size_t offset) {
+std::uint32_t read_u32le(const std::span<const std::byte> data,
+                         const std::size_t offset) {
     std::uint32_t value = 0;
     for (std::size_t i = 0; i < 4; ++i) {
         value |= static_cast<std::uint32_t>(
@@ -105,7 +107,7 @@ Expected<DType> map_dtype(std::string_view descr) {
 
 // Find value of key like 'descr' between quotes.
 Expected<std::string_view> extract_quoted(std::string_view header,
-                                          std::string_view key) {
+                                          const std::string_view key) {
     const std::size_t key_pos = header.find(key);
     if (key_pos == std::string_view::npos) {
         return make_error("npy: missing key '" + std::string{key} + "'");
@@ -177,7 +179,7 @@ struct NpyHeader {
 
 // Validate the magic and version prefix and locate the header dict. Handles the
 // differing header-length widths of v1 (2-byte) and v2+ (4-byte) formats.
-Expected<NpyHeader> parse_header_span(std::span<const std::byte> data) {
+Expected<NpyHeader> parse_header_span(const std::span<const std::byte> data) {
     static constexpr std::array<unsigned char, 6> kMagic = {
         0x93, 'N', 'U', 'M', 'P', 'Y'};
 
@@ -232,7 +234,7 @@ struct NpyLayout {
 // Turn a 2-D or 3-D shape (plus Fortran order) into image geometry, rejecting
 // unsupported ranks/orders and out-of-range dimensions.
 Expected<NpyLayout> layout_from_shape(const std::vector<int>& dims,
-                                      bool fortran) {
+                                      const bool fortran) {
     NpyLayout layout{};
     if (dims.size() == 2) {
         if (fortran) {

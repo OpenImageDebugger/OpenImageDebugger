@@ -802,7 +802,7 @@ void Buffer::setup_gl_buffer() {
     }
 
     const auto internal_format =
-        the_dialect().texture_internal_format(tex_type, tex_format);
+        GlDialect::texture_internal_format(tex_type, tex_format);
 
     auto remaining_h = buffer_height_i;
 

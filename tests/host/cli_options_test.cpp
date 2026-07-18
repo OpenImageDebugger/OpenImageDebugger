@@ -42,7 +42,7 @@ CliOptions parse(const std::vector<const char*>& args) {
 } // namespace
 
 TEST(CliOptionsTest, DefaultsWhenNoArgs) {
-    const std::array<const char*, 1> argv = {"oidwindow"};
+    constexpr std::array argv = {"oidwindow"};
     const CliOptions options =
         parse_cli(static_cast<int>(argv.size()), argv.data());
     EXPECT_EQ(options.hostname, "127.0.0.1");
@@ -117,7 +117,7 @@ TEST(CliOptionsTest, OpenFlagWithoutValueIsIgnored) {
 TEST(CliOptionsTest, ParsesAgentDebuggerPid) {
     const CliOptions options =
         parse({"oidwindow", "--agent-debugger-pid", "4200"});
-    EXPECT_EQ(options.agent_debugger_pid, std::optional<int>{4200});
+    EXPECT_EQ(options.agent_debugger_pid, std::optional{4200});
 }
 
 TEST(CliOptionsTest, AgentDebuggerPidDefaultsToNullopt) {

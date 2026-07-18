@@ -48,7 +48,7 @@ namespace oid::host {
 // transport with no live socket.
 class IpcClient {
   public:
-    IpcClient(oid::ITransport& transport, IpcBufferModel& model);
+    IpcClient(ITransport& transport, IpcBufferModel& model);
 
     // Drains all currently-available inbound messages into the model /
     // symbol list. Called once per frame. Never blocks the caller beyond
@@ -58,12 +58,14 @@ class IpcClient {
     void poll();
 
     // Outbound (from the chrome):
-    void request_plot(const std::string& variable_name); // PLOT_BUFFER_REQUEST
-    void notify_removed(const std::string& variable_name); // BUFFER_REMOVED
+    void
+    request_plot(const std::string& variable_name) const; // PLOT_BUFFER_REQUEST
+    void
+    notify_removed(const std::string& variable_name) const; // BUFFER_REMOVED
 
     // Sends SESSION_STATE_CHANGED (type 7): a single JSON string, verbatim
     // (no parsing/validation here -- the caller owns the JSON shape).
-    void send_session_state_changed(const std::string& json);
+    void send_session_state_changed(const std::string& json) const;
 
     // Sends EXPORT_BUFFER_REQUEST (type 5): variable name, export format, and
     // an 8-entry contrast vector. Mirrors the Qt sender
@@ -72,7 +74,7 @@ class IpcClient {
     // are sent (extras ignored), matching the wire's fixed 8-float layout.
     void send_export_buffer_request(const std::string& variable_name,
                                     int format,
-                                    const std::vector<float>& contrast);
+                                    const std::vector<float>& contrast) const;
 
     // Registers the callback invoked when an inbound APPLY_SESSION_STATE
     // (type 6) message is decoded; called with the JSON string verbatim.
@@ -96,20 +98,20 @@ class IpcClient {
     // SET_AVAILABLE_SYMBOLS, each entry that is available, not already loaded,
     // not expired (now < expiry) is re-requested via request_plot.
     // Idempotent.
-    void set_restore_buffers(std::vector<oid::host::PreviousBuffer> buffers);
+    void set_restore_buffers(std::vector<PreviousBuffer> buffers);
 
   private:
-    void dispatch(oid::MessageType header);
+    void dispatch(MessageType header);
 
     // Per-message-type handlers: each decodes (or applies) exactly one
     // oid::MessageType and fully consumes its wire payload.
     void handle_set_available_symbols();
-    void handle_get_observed_symbols();
-    void handle_plot_buffer_contents();
+    void handle_get_observed_symbols() const;
+    void handle_plot_buffer_contents() const;
     void handle_plot_buffer_begin();
     void handle_plot_buffer_chunk();
     void handle_plot_buffer_end();
-    void handle_apply_session_state();
+    void handle_apply_session_state() const;
     void handle_export_selected_buffer() const;
 
     [[nodiscard]] bool model_has(std::string_view variable_name) const;
@@ -118,13 +120,13 @@ class IpcClient {
     // std::runtime_error. Mirrors poll()'s tolerance of transport errors on
     // the inbound side: if the peer is gone (e.g. viewer opened with no
     // debugger attached), an outbound send must not crash the viewer.
-    void send_guarded(const oid::MessageComposer& composer);
+    void send_guarded(const MessageComposer& composer) const;
 
-    oid::ITransport& transport_;
+    ITransport& transport_;
     IpcBufferModel& model_;
-    oid::BufferAssembler assembler_;
+    BufferAssembler assembler_;
     std::vector<std::string> available_symbols_;
-    std::vector<oid::host::PreviousBuffer> restore_buffers_;
+    std::vector<PreviousBuffer> restore_buffers_;
     std::set<std::string, std::less<>> restore_requested_;
     std::function<void(const std::string& json)> session_state_callback_;
     std::function<void()> export_selected_callback_;

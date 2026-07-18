@@ -62,20 +62,20 @@ constexpr int TEST_VALUE_20 = 20;
 constexpr unsigned char MAX_UCHAR = 255;
 
 // Test string constants
-constexpr const char* TEST_STRING_HELLO = "Hello, World!";
-constexpr const char* TEST_STRING_TEST = "Test String";
-constexpr const char* TEST_STRING_ROUND_TRIP = "Round Trip Test";
-constexpr const char* TEST_STRING_BUFFER = "test_buffer";
-constexpr const char* TEST_STRING_ONE = "one";
-constexpr const char* TEST_STRING_TWO = "two";
-constexpr const char* TEST_STRING_THREE = "three";
+constexpr auto TEST_STRING_HELLO = "Hello, World!";
+constexpr auto TEST_STRING_TEST = "Test String";
+constexpr auto TEST_STRING_ROUND_TRIP = "Round Trip Test";
+constexpr auto TEST_STRING_BUFFER = "test_buffer";
+constexpr auto TEST_STRING_ONE = "one";
+constexpr auto TEST_STRING_TWO = "two";
+constexpr auto TEST_STRING_THREE = "three";
 
 template <typename T> std::span<const std::byte> as_bytes_span(const T& value) {
     return std::as_bytes(std::span{value});
 }
 } // namespace
 
-class MessageExchangeTest : public ::testing::Test {
+class MessageExchangeTest : public testing::Test {
   protected:
     // Spins up a loopback Asio acceptor/connector pair on a background
     // thread. acceptor_ is declared before client_transport_/
@@ -105,7 +105,7 @@ TEST_F(MessageExchangeTest, PrimitiveBlockSize) {
 }
 
 TEST_F(MessageExchangeTest, PrimitiveBlockData) {
-    PrimitiveBlock block(TEST_VALUE_42);
+    const PrimitiveBlock block(TEST_VALUE_42);
     int result = 0;
     std::memcpy(&result, block.data(), sizeof(int));
     EXPECT_EQ(result, TEST_VALUE_42);
@@ -113,13 +113,13 @@ TEST_F(MessageExchangeTest, PrimitiveBlockData) {
 
 TEST_F(MessageExchangeTest, StringBlockSize) {
     const auto test_string = std::string(TEST_STRING_HELLO);
-    StringBlock block(test_string);
+    const StringBlock block(test_string);
     EXPECT_EQ(block.size(), test_string.size());
 }
 
 TEST_F(MessageExchangeTest, StringBlockData) {
     const auto test_string = std::string(TEST_STRING_HELLO);
-    StringBlock block(test_string);
+    const StringBlock block(test_string);
     // Convert std::byte* to const char* for std::string (safe: same
     // size/alignment)
     const auto* data = std::bit_cast<const char*>(block.data());
@@ -132,16 +132,16 @@ constexpr std::size_t TEST_BUFFER_SIZE = sizeof(TEST_BUFFER_VALUES);
 } // namespace
 
 TEST_F(MessageExchangeTest, BufferBlockSize) {
-    BufferBlock block(std::span<const std::byte>{
-        reinterpret_cast<const std::byte*>(TEST_BUFFER_VALUES),
-        TEST_BUFFER_SIZE});
+    const BufferBlock block(
+        std::span{reinterpret_cast<const std::byte*>(TEST_BUFFER_VALUES),
+                  TEST_BUFFER_SIZE});
     EXPECT_EQ(block.size(), TEST_BUFFER_SIZE);
 }
 
 TEST_F(MessageExchangeTest, BufferBlockData) {
-    BufferBlock block(std::span<const std::byte>{
-        reinterpret_cast<const std::byte*>(TEST_BUFFER_VALUES),
-        TEST_BUFFER_SIZE});
+    const BufferBlock block(
+        std::span{reinterpret_cast<const std::byte*>(TEST_BUFFER_VALUES),
+                  TEST_BUFFER_SIZE});
     // Compare std::byte values directly (convert to uint8_t for comparison)
     const auto* data = block.data();
     for (auto i = 0U; i < TEST_BUFFER_SIZE; ++i) {
@@ -178,21 +178,21 @@ TEST_F(MessageExchangeTest, WireFormatGoldenPlotBufferRequest) {
     composer.send(transport);
     ASSERT_EQ(transport.sends.size(), 1u);
     // MessageType(int=4, 4 bytes LE) | size_t length(3, 8 bytes LE) | "abc"
-    const std::vector<std::byte> expected = {std::byte{0x04},
-                                             std::byte{0x00},
-                                             std::byte{0x00},
-                                             std::byte{0x00},
-                                             std::byte{0x03},
-                                             std::byte{0x00},
-                                             std::byte{0x00},
-                                             std::byte{0x00},
-                                             std::byte{0x00},
-                                             std::byte{0x00},
-                                             std::byte{0x00},
-                                             std::byte{0x00},
-                                             std::byte{'a'},
-                                             std::byte{'b'},
-                                             std::byte{'c'}};
+    const std::vector expected = {std::byte{0x04},
+                                  std::byte{0x00},
+                                  std::byte{0x00},
+                                  std::byte{0x00},
+                                  std::byte{0x03},
+                                  std::byte{0x00},
+                                  std::byte{0x00},
+                                  std::byte{0x00},
+                                  std::byte{0x00},
+                                  std::byte{0x00},
+                                  std::byte{0x00},
+                                  std::byte{0x00},
+                                  std::byte{'a'},
+                                  std::byte{'b'},
+                                  std::byte{'c'}};
     EXPECT_EQ(transport.sends[0], expected);
 }
 
@@ -204,9 +204,9 @@ TEST_F(MessageExchangeTest, MessageComposerPushString) {
 
 TEST_F(MessageExchangeTest, MessageComposerPushBuffer) {
     MessageComposer composer;
-    composer.push(std::span<const std::byte>{
-        reinterpret_cast<const std::byte*>(TEST_BUFFER_VALUES),
-        TEST_BUFFER_SIZE});
+    composer.push(
+        std::span{reinterpret_cast<const std::byte*>(TEST_BUFFER_VALUES),
+                  TEST_BUFFER_SIZE});
     composer.clear();
 }
 
@@ -285,8 +285,8 @@ TEST_F(MessageExchangeTest, MessageDecoderReadString) {
 TEST_F(MessageExchangeTest, MessageDecoderReadVector) {
     ConnectSockets();
 
-    const std::vector<uint8_t> test_vector(
-        TEST_BUFFER_VALUES, TEST_BUFFER_VALUES + TEST_BUFFER_SIZE);
+    const std::vector test_vector(TEST_BUFFER_VALUES,
+                                  TEST_BUFFER_VALUES + TEST_BUFFER_SIZE);
     const auto size = test_vector.size();
 
     std::array<char, sizeof(std::size_t)> buffer;
@@ -308,13 +308,13 @@ TEST_F(MessageExchangeTest, MessageDecoderReadStringContainer) {
     const std::vector<std::string> strings = {
         TEST_STRING_ONE, TEST_STRING_TWO, TEST_STRING_THREE};
 
-    auto write_string = [this](std::string_view str) {
+    auto write_string = [this](const std::string_view str) {
         const auto len = str.size();
         std::array<char, sizeof(std::size_t)> buffer;
         std::memcpy(buffer.data(), &len, sizeof(std::size_t));
         client_transport_->send(as_bytes_span(buffer));
         client_transport_->send(
-            std::as_bytes(std::span<const char>{str.data(), str.size()}));
+            std::as_bytes(std::span{str.data(), str.size()}));
     };
 
     const auto count = strings.size();

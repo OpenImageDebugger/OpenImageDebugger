@@ -32,16 +32,16 @@ inline constexpr float UI_FONT_SIZE_BASE = 13.0f; // Qt 10pt at 96dpi
 
 // Fontello glyphs as UTF-8 literals (codepoints match the legacy Qt
 // frontend's setFontIcon calls; see tag legacy-qt):
-inline constexpr const char* ICON_RECENTER = "\xEE\xA0\x80";       // U+E800
-inline constexpr const char* ICON_ROTATE_CCW = "\xEE\xA0\x81";     // U+E801
-inline constexpr const char* ICON_ROTATE_CW = "\xEE\xA0\x82";      // U+E802
-inline constexpr const char* ICON_AC_EDIT = "\xEE\xA0\x83";        // U+E803
-inline constexpr const char* ICON_AC_TOGGLE = "\xEE\xA0\x84";      // U+E804
-inline constexpr const char* ICON_LINK_VIEWS = "\xEE\xA0\x85";     // U+E805
-inline constexpr const char* ICON_PRECISION_DOWN = "\xEE\xA0\x86"; // U+E806
-inline constexpr const char* ICON_PRECISION_UP = "\xEE\xA0\x87";   // U+E807
-inline constexpr const char* ICON_AC_RESET = "\xEE\xA0\x88";       // U+E808
-inline constexpr const char* ICON_GO_TO = "\xEF\x80\xB1";          // U+F031
+inline constexpr auto ICON_RECENTER = "\xEE\xA0\x80";       // U+E800
+inline constexpr auto ICON_ROTATE_CCW = "\xEE\xA0\x81";     // U+E801
+inline constexpr auto ICON_ROTATE_CW = "\xEE\xA0\x82";      // U+E802
+inline constexpr auto ICON_AC_EDIT = "\xEE\xA0\x83";        // U+E803
+inline constexpr auto ICON_AC_TOGGLE = "\xEE\xA0\x84";      // U+E804
+inline constexpr auto ICON_LINK_VIEWS = "\xEE\xA0\x85";     // U+E805
+inline constexpr auto ICON_PRECISION_DOWN = "\xEE\xA0\x86"; // U+E806
+inline constexpr auto ICON_PRECISION_UP = "\xEE\xA0\x87";   // U+E807
+inline constexpr auto ICON_AC_RESET = "\xEE\xA0\x88";       // U+E808
+inline constexpr auto ICON_GO_TO = "\xEF\x80\xB1";          // U+F031
 
 // Builds the ImGui font atlas: Roboto (UI font) + merged fontello glyphs,
 // rasterized at UI_FONT_SIZE_BASE * content_scale physical px with

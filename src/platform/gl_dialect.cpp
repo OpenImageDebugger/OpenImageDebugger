@@ -28,12 +28,12 @@
 namespace oid {
 
 GLuint GlDialect::texture_internal_format(GLenum /*tex_type*/,
-                                          GLenum /*tex_format*/) const {
+                                          GLenum /*tex_format*/) {
     return GL_RGBA32F;
 }
 
 const GlDialect& the_dialect() {
-    static const GlDialect dialect{
+    static constexpr GlDialect dialect{
         .version_directive = "#version 150\n",
         .fragment_preamble = "out vec4 oid_fragColor;\n",
         .uses_out_color = true,

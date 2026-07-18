@@ -60,9 +60,9 @@ bool ImGuiLayer::initialize(GLFWwindow* window, const float content_scale) {
         return false;
     }
 
-    oid::platform::install_input_workarounds(window);
+    platform::install_input_workarounds(window);
 
-    if (!ImGui_ImplOpenGL3_Init(oid::platform::imgui_glsl_version())) {
+    if (!ImGui_ImplOpenGL3_Init(platform::imgui_glsl_version())) {
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
         return false;
@@ -79,11 +79,11 @@ void ImGuiLayer::begin_frame() {
     // scale changes) also happens before ImGui_ImplOpenGL3_NewFrame so the
     // destroyed font texture is recreated in the same frame. Both are
     // platform no-ops on native.
-    oid::platform::sync_canvas_size(window_);
-    if (const auto scale = oid::platform::refresh_display_scale(content_scale_);
+    platform::sync_canvas_size(window_);
+    if (const auto scale = platform::refresh_display_scale(content_scale_);
         scale.has_value()) {
         content_scale_ = *scale;
-        ImGuiIO& io = ImGui::GetIO();
+        const ImGuiIO& io = ImGui::GetIO();
         io.Fonts->Clear();
         setup_ui_fonts(content_scale_);
         io.Fonts->Build();
@@ -93,11 +93,11 @@ void ImGuiLayer::begin_frame() {
     ImGui_ImplGlfw_NewFrame();
     // Stuck-button recovery must run between the backend NewFrame and
     // ImGui::NewFrame so an injected release resolves this frame.
-    oid::platform::reconcile_pointer_state();
+    platform::reconcile_pointer_state();
     ImGui::NewFrame();
 }
 
-void ImGuiLayer::render() const {
+void ImGuiLayer::render() {
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

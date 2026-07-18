@@ -28,7 +28,6 @@
 
 #include <cstddef>
 #include <span>
-#include <string>
 #include <vector>
 
 #include "host/io/expected.h"

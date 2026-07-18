@@ -38,7 +38,8 @@ using oid::host::HostBackend;
 // records the order of calls so the loop's contract can be asserted.
 class FakeHostBackend final : public HostBackend {
   public:
-    explicit FakeHostBackend(int close_after) : close_after_(close_after) {}
+    explicit FakeHostBackend(const int close_after)
+        : close_after_(close_after) {}
 
     bool initialize(const char*, int, int) override {
         return true;

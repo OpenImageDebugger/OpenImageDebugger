@@ -34,11 +34,11 @@ namespace oid::host {
 
 namespace {
 
-char ascii_tolower(char c) {
+char ascii_tolower(const char c) {
     return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 }
 
-bool ci_char_equal(char a, char b) {
+bool ci_char_equal(const char a, const char b) {
     return ascii_tolower(a) == ascii_tolower(b);
 }
 
@@ -51,16 +51,17 @@ bool contains_ci(std::string_view haystack, std::string_view needle) {
 }
 
 bool ci_less(std::string_view a, std::string_view b) {
-    return std::ranges::lexicographical_compare(a, b, [](char lhs, char rhs) {
-        return ascii_tolower(lhs) < ascii_tolower(rhs);
-    });
+    return std::ranges::lexicographical_compare(
+        a, b, [](const char lhs, const char rhs) {
+            return ascii_tolower(lhs) < ascii_tolower(rhs);
+        });
 }
 
 } // namespace
 
 std::vector<std::string>
 filter_symbols(const std::vector<std::string>& candidates,
-               std::string_view query) {
+               const std::string_view query) {
     std::vector<std::string> result;
     result.reserve(candidates.size());
 
@@ -75,7 +76,10 @@ filter_symbols(const std::vector<std::string>& candidates,
     return result;
 }
 
-int symbol_completion_nav(int current, int match_count, bool up, bool down) {
+int symbol_completion_nav(const int current,
+                          const int match_count,
+                          const bool up,
+                          const bool down) {
     if (match_count <= 0) {
         return 0;
     }

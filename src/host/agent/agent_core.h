@@ -111,12 +111,12 @@ class AgentCore {
     Reply handle(const nlohmann::json& request, bool& authed);
 
     // Error codes reused from the debugger endpoint plus viewer-specific.
-    static constexpr const char* ERR_BAD_TOKEN = "bad_token";
-    static constexpr const char* ERR_UNKNOWN_METHOD = "unknown_method";
-    static constexpr const char* ERR_UNKNOWN_BUFFER = "unknown_buffer";
-    static constexpr const char* ERR_BAD_PARAMS = "bad_params";
-    static constexpr const char* ERR_TOO_LARGE = "too_large";
-    static constexpr const char* ERR_INTERNAL = "internal";
+    static constexpr auto ERR_BAD_TOKEN = "bad_token";
+    static constexpr auto ERR_UNKNOWN_METHOD = "unknown_method";
+    static constexpr auto ERR_UNKNOWN_BUFFER = "unknown_buffer";
+    static constexpr auto ERR_BAD_PARAMS = "bad_params";
+    static constexpr auto ERR_TOO_LARGE = "too_large";
+    static constexpr auto ERR_INTERNAL = "internal";
 
   private:
     using Handler = Reply (AgentCore::*)(const nlohmann::json&) const;

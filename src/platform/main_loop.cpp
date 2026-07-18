@@ -29,7 +29,7 @@
 
 namespace oid::platform {
 
-void run_main_loop(oid::host::FrameLoop& loop) {
+void run_main_loop(host::FrameLoop& loop) {
     while (loop.tick()) {
         // Empty body: FrameLoop::tick() drives the whole frame (poll, draw,
         // present) itself; the loop just repeats it until it returns false.

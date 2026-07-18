@@ -23,8 +23,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef HOST_UI_TRANSPARENT_STRING_HASH_H_
-#define HOST_UI_TRANSPARENT_STRING_HASH_H_
+#ifndef HOST_UTIL_TRANSPARENT_STRING_HASH_H_
+#define HOST_UTIL_TRANSPARENT_STRING_HASH_H_
 
 #include <cstddef>
 #include <functional>
@@ -46,4 +46,4 @@ struct TransparentStringHash {
 
 } // namespace oid::host
 
-#endif // HOST_UI_TRANSPARENT_STRING_HASH_H_
+#endif // HOST_UTIL_TRANSPARENT_STRING_HASH_H_

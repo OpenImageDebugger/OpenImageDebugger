@@ -33,29 +33,30 @@ using oid::host::filter_symbols;
 // QString::contains() test -- contiguous substring, not prefix-only and
 // not fuzzy/subsequence matching.
 TEST(SymbolFilter, CaseInsensitiveSubstringSorted) {
-    std::vector<std::string> c{"imgOut", "BigImg", "tmp", "my_img_data", "BUF"};
+    const std::vector<std::string> c{
+        "imgOut", "BigImg", "tmp", "my_img_data", "BUF"};
     EXPECT_EQ(filter_symbols(c, "img"),
               (std::vector<std::string>{"BigImg", "imgOut", "my_img_data"}));
 }
 
 TEST(SymbolFilter, EmptyQueryReturnsAllSorted) {
-    std::vector<std::string> c{"b", "A", "c"};
+    const std::vector<std::string> c{"b", "A", "c"};
     EXPECT_EQ(filter_symbols(c, ""), (std::vector<std::string>{"A", "b", "c"}));
 }
 
 TEST(SymbolFilter, NoMatchesReturnsEmpty) {
-    std::vector<std::string> c{"foo", "bar", "baz"};
+    const std::vector<std::string> c{"foo", "bar", "baz"};
     EXPECT_TRUE(filter_symbols(c, "xyz").empty());
 }
 
 TEST(SymbolFilter, MatchesSubstringAnywhereInString) {
-    std::vector<std::string> c{"prefix_mid_suffix", "unrelated"};
+    const std::vector<std::string> c{"prefix_mid_suffix", "unrelated"};
     EXPECT_EQ(filter_symbols(c, "mid"),
               (std::vector<std::string>{"prefix_mid_suffix"}));
 }
 
 TEST(SymbolFilter, EmptyCandidatesReturnsEmpty) {
-    std::vector<std::string> c{};
+    const std::vector<std::string> c{};
     EXPECT_TRUE(filter_symbols(c, "img").empty());
 }
 

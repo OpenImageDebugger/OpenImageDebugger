@@ -47,29 +47,29 @@ void install_platform_hooks() {
 }
 
 struct SettingsBackend::Impl {
-    oid::host::SettingsStore store{oid::host::config_file_path()};
+    host::SettingsStore store{host::config_file_path()};
 };
 
 SettingsBackend::SettingsBackend() : impl_{std::make_unique<Impl>()} {}
 SettingsBackend::~SettingsBackend() = default;
 
-oid::host::AppSettings SettingsBackend::load() const {
+host::AppSettings SettingsBackend::load() const {
     // load() never throws: a missing/corrupt settings file just yields
     // AppSettings{} defaults, so this never blocks startup.
     return impl_->store.load();
 }
 
-std::function<void(const oid::host::AppSettings&)>
-SettingsBackend::make_save_sink(oid::host::IpcClient& /*ipc*/) const {
-    return [this](const oid::host::AppSettings& a) { impl_->store.save(a); };
+std::function<void(const host::AppSettings&)>
+SettingsBackend::make_save_sink(host::IpcClient& /*ipc*/) const {
+    return [this](const host::AppSettings& a) { impl_->store.save(a); };
 }
 
 SessionBridge::SessionBridge(
-    oid::host::IpcClient& /*ipc*/,
-    const std::function<void(const oid::host::AppSettings&)>& /*apply*/,
+    host::IpcClient& /*ipc*/,
+    const std::function<void(const host::AppSettings&)>& /*apply*/,
     const std::function<void()>& /*open_export*/) {}
 
-bool confirm_export(oid::host::ExportDialogState& dialog) {
+bool confirm_export(host::ExportDialogState& dialog) {
     // A pending open request (set by open_export_dialog from the buffer-list
     // context menu) resolves this frame via the blocking OS save dialog, so
     // the one-shot flag is consumed up front. Runs from handle_export_requests
@@ -90,19 +90,19 @@ bool confirm_export(oid::host::ExportDialogState& dialog) {
         return false;
     }
 
-    dialog.format = oid::host::classify_export_format(*chosen);
-    oid::host::set_export_path(
-        dialog, oid::host::ensure_export_extension(*chosen, dialog.format));
+    dialog.format = host::classify_export_format(*chosen);
+    host::set_export_path(
+        dialog, host::ensure_export_extension(*chosen, dialog.format));
 
     return true;
 }
 
-bool perform_export(const oid::Buffer& buffer,
-                    oid::host::ExportDialogState& dialog,
-                    oid::host::IpcClient& /*ipc*/,
+bool perform_export(const Buffer& buffer,
+                    host::ExportDialogState& dialog,
+                    host::IpcClient& /*ipc*/,
                     std::string& status_message,
                     std::string& last_export_dir) {
-    const bool ok = oid::host::export_buffer_imgui(
+    const bool ok = host::export_buffer_imgui(
         buffer, dialog.path_buf.data(), dialog.format);
     const std::string path{dialog.path_buf.data()};
     status_message =

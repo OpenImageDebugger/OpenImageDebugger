@@ -43,12 +43,12 @@ namespace oid::host {
 namespace {
 
 void blend_glyph_into_strip(std::vector<std::uint8_t>& strip,
-                            int strip_w,
-                            int dst_x,
-                            int dst_y,
+                            const int strip_w,
+                            const int dst_x,
+                            const int dst_y,
                             const std::vector<std::uint8_t>& glyph,
-                            int gw,
-                            int gh) {
+                            const int gw,
+                            const int gh) {
     for (int y = 0; y < gh; ++y) {
         for (int x = 0; x < gw; ++x) {
             auto& dst = strip[static_cast<std::size_t>(dst_y + y) * strip_w +
@@ -60,7 +60,7 @@ void blend_glyph_into_strip(std::vector<std::uint8_t>& strip,
 
 } // namespace
 
-std::optional<oid::GlyphAtlas> stb_glyph_atlas() {
+std::optional<GlyphAtlas> stb_glyph_atlas() {
     stbtt_fontinfo info;
     if (stbtt_InitFont(&info,
                        fonts::ROBOTO_REGULAR,
@@ -80,9 +80,7 @@ std::optional<oid::GlyphAtlas> stb_glyph_atlas() {
 
     std::array<int, 256> advances{};
     int strip_w = 0;
-    for (const auto* p =
-             reinterpret_cast<const unsigned char*>(oid::GLYPH_TEXT);
-         *p;
+    for (const auto* p = reinterpret_cast<const unsigned char*>(GLYPH_TEXT); *p;
          ++p) {
         int adv{};
         int lsb{};
@@ -94,9 +92,7 @@ std::optional<oid::GlyphAtlas> stb_glyph_atlas() {
     std::vector<std::uint8_t> strip(static_cast<std::size_t>(strip_w) * strip_h,
                                     0);
     int pen_x = 0;
-    for (const auto* p =
-             reinterpret_cast<const unsigned char*>(oid::GLYPH_TEXT);
-         *p;
+    for (const auto* p = reinterpret_cast<const unsigned char*>(GLYPH_TEXT); *p;
          ++p) {
         int x0{};
         int y0{};
@@ -120,7 +116,7 @@ std::optional<oid::GlyphAtlas> stb_glyph_atlas() {
         pen_x += advances[*p];
     }
 
-    return oid::finalize_strip_atlas(strip.data(), strip_w, strip_h, advances);
+    return finalize_strip_atlas(strip.data(), strip_w, strip_h, advances);
 }
 
 } // namespace oid::host

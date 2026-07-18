@@ -53,9 +53,8 @@ TEST(StbGlyphAtlas, BakesAllGlyphsDeterministically) {
         EXPECT_LT(static_cast<float>(a->offsets[*p][0]), a->texture_width);
     }
     // Non-empty bitmap (some ink).
-    EXPECT_TRUE(std::any_of(a->pixels.begin(),
-                            a->pixels.end(),
-                            [](std::uint8_t v) { return v > 0; }));
+    EXPECT_TRUE(std::ranges::any_of(
+        a->pixels, [](std::uint8_t const v) { return v > 0; }));
     const auto b = oid::host::stb_glyph_atlas();
     EXPECT_EQ(a->pixels, b->pixels); // deterministic
 }

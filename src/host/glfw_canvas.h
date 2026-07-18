@@ -82,7 +82,7 @@ class GlfwCanvas {
     // const-callable, so the only mutable state this needs is
     // `text_renderer_` and `text_renderer_init_attempted_` for the
     // one-attempt lazy-init side effect.
-    [[nodiscard]] const oid::GLTextRenderer* get_text_renderer() const;
+    [[nodiscard]] const GLTextRenderer* get_text_renderer() const;
 
     // Host-tracked mouse position (device pixels); fed by the ImGui input
     // bridge before each scroll_callback so the viz layer's camera can
@@ -95,7 +95,7 @@ class GlfwCanvas {
     [[nodiscard]] int mouse_y() const {
         return mouse_y_;
     }
-    void set_mouse_position(int x, int y) {
+    void set_mouse_position(const int x, const int y) {
         mouse_x_ = x;
         mouse_y_ = y;
     }
@@ -207,7 +207,7 @@ class GlfwCanvas {
     // defined in glfw_canvas_icon.cpp to keep this TU's link graph viz-free
     // (see the note atop that file).
     bool init_icon_framebuffer(int icon_width, int icon_height);
-    bool render_buffer_icon(oid::Stage& stage, int icon_width, int icon_height);
+    bool render_buffer_icon(Stage& stage, int icon_width, int icon_height);
 
   private:
     void destroy_icon_framebuffer();
@@ -221,7 +221,7 @@ class GlfwCanvas {
     std::unique_ptr<Fns> fns_;
     // Baked lazily on first get_text_renderer() call once GL is ready; see
     // that method for the one-attempt gating.
-    mutable std::unique_ptr<oid::GLTextRenderer> text_renderer_;
+    mutable std::unique_ptr<GLTextRenderer> text_renderer_;
     mutable bool text_renderer_init_attempted_{false};
     // Icon FBO + color texture backing render_buffer_icon(); lazily created
     // by init_icon_framebuffer(), torn down in ~GlfwCanvas().

@@ -351,27 +351,27 @@ int GlfwCanvas::render_height() const {
     return height;
 }
 
-GLuint GlfwCanvas::glCreateShader(GLenum type) const {
+GLuint GlfwCanvas::glCreateShader(const GLenum type) const {
     return fns_->pfn_glCreateShader(type);
 }
 
-void GlfwCanvas::glShaderSource(GLuint s,
-                                GLsizei n,
+void GlfwCanvas::glShaderSource(const GLuint s,
+                                const GLsizei n,
                                 const GLchar* const* str,
                                 const GLint* len) const {
     fns_->pfn_glShaderSource(s, n, str, len);
 }
 
-void GlfwCanvas::glCompileShader(GLuint s) const {
+void GlfwCanvas::glCompileShader(const GLuint s) const {
     fns_->pfn_glCompileShader(s);
 }
 
-void GlfwCanvas::glGetShaderiv(GLuint s, GLenum p, GLint* v) const {
+void GlfwCanvas::glGetShaderiv(const GLuint s, const GLenum p, GLint* v) const {
     fns_->pfn_glGetShaderiv(s, p, v);
 }
 
-void GlfwCanvas::glGetShaderInfoLog(GLuint s,
-                                    GLsizei b,
+void GlfwCanvas::glGetShaderInfoLog(const GLuint s,
+                                    const GLsizei b,
                                     GLsizei* l,
                                     GLchar* log) const {
     fns_->pfn_glGetShaderInfoLog(s, b, l, log);
@@ -381,223 +381,251 @@ GLuint GlfwCanvas::glCreateProgram() const {
     return fns_->pfn_glCreateProgram();
 }
 
-void GlfwCanvas::glAttachShader(GLuint p, GLuint s) const {
+void GlfwCanvas::glAttachShader(const GLuint p, const GLuint s) const {
     fns_->pfn_glAttachShader(p, s);
 }
 
-void GlfwCanvas::glLinkProgram(GLuint p) const {
+void GlfwCanvas::glLinkProgram(const GLuint p) const {
     fns_->pfn_glLinkProgram(p);
 }
 
-void GlfwCanvas::glGetProgramiv(GLuint p, GLenum pn, GLint* v) const {
+void GlfwCanvas::glGetProgramiv(const GLuint p,
+                                const GLenum pn,
+                                GLint* v) const {
     fns_->pfn_glGetProgramiv(p, pn, v);
 }
 
-void GlfwCanvas::glGetProgramInfoLog(GLuint p,
-                                     GLsizei b,
+void GlfwCanvas::glGetProgramInfoLog(const GLuint p,
+                                     const GLsizei b,
                                      GLsizei* l,
                                      GLchar* log) const {
     fns_->pfn_glGetProgramInfoLog(p, b, l, log);
 }
 
-void GlfwCanvas::glDeleteShader(GLuint s) const {
+void GlfwCanvas::glDeleteShader(const GLuint s) const {
     fns_->pfn_glDeleteShader(s);
 }
 
-void GlfwCanvas::glDeleteProgram(GLuint p) const {
+void GlfwCanvas::glDeleteProgram(const GLuint p) const {
     fns_->pfn_glDeleteProgram(p);
 }
 
-void GlfwCanvas::glUseProgram(GLuint p) const {
+void GlfwCanvas::glUseProgram(const GLuint p) const {
     fns_->pfn_glUseProgram(p);
 }
 
-GLint GlfwCanvas::glGetUniformLocation(GLuint p, const GLchar* n) const {
+GLint GlfwCanvas::glGetUniformLocation(const GLuint p, const GLchar* n) const {
     return fns_->pfn_glGetUniformLocation(p, n);
 }
 
-void GlfwCanvas::glUniform1i(GLint l, GLint v) const {
+void GlfwCanvas::glUniform1i(const GLint l, const GLint v) const {
     fns_->pfn_glUniform1i(l, v);
 }
 
-void GlfwCanvas::glUniform2f(GLint l, GLfloat a, GLfloat b) const {
+void GlfwCanvas::glUniform2f(const GLint l,
+                             const GLfloat a,
+                             const GLfloat b) const {
     fns_->pfn_glUniform2f(l, a, b);
 }
 
-void GlfwCanvas::glUniform3fv(GLint l, GLsizei n, const GLfloat* v) const {
+void GlfwCanvas::glUniform3fv(const GLint l,
+                              const GLsizei n,
+                              const GLfloat* v) const {
     fns_->pfn_glUniform3fv(l, n, v);
 }
 
-void GlfwCanvas::glUniform4fv(GLint l, GLsizei n, const GLfloat* v) const {
+void GlfwCanvas::glUniform4fv(const GLint l,
+                              const GLsizei n,
+                              const GLfloat* v) const {
     fns_->pfn_glUniform4fv(l, n, v);
 }
 
-void GlfwCanvas::glUniformMatrix4fv(GLint l,
-                                    GLsizei n,
-                                    GLboolean t,
+void GlfwCanvas::glUniformMatrix4fv(const GLint l,
+                                    const GLsizei n,
+                                    const GLboolean t,
                                     const GLfloat* v) const {
     fns_->pfn_glUniformMatrix4fv(l, n, t, v);
 }
 
-void GlfwCanvas::glGenBuffers(GLsizei n, GLuint* b) const {
+void GlfwCanvas::glGenBuffers(const GLsizei n, GLuint* b) const {
     fns_->pfn_glGenBuffers(n, b);
 }
 
-void GlfwCanvas::glDeleteBuffers(GLsizei n, const GLuint* b) const {
+void GlfwCanvas::glDeleteBuffers(const GLsizei n, const GLuint* b) const {
     fns_->pfn_glDeleteBuffers(n, b);
 }
 
-void GlfwCanvas::glBindBuffer(GLenum t, GLuint b) const {
+void GlfwCanvas::glBindBuffer(const GLenum t, const GLuint b) const {
     fns_->pfn_glBindBuffer(t, b);
 }
 
-void GlfwCanvas::glBufferData(GLenum t,
-                              GLsizeiptr sz,
+void GlfwCanvas::glBufferData(const GLenum t,
+                              const GLsizeiptr sz,
                               const void* d,
-                              GLenum u) const {
+                              const GLenum u) const {
     fns_->pfn_glBufferData(t, sz, d, u);
 }
 
-void GlfwCanvas::glEnableVertexAttribArray(GLuint i) const {
+void GlfwCanvas::glEnableVertexAttribArray(const GLuint i) const {
     fns_->pfn_glEnableVertexAttribArray(i);
 }
 
-void GlfwCanvas::glVertexAttribPointer(
-    GLuint i, GLint s, GLenum t, GLboolean n, GLsizei st, const void* p) const {
+void GlfwCanvas::glVertexAttribPointer(const GLuint i,
+                                       const GLint s,
+                                       const GLenum t,
+                                       const GLboolean n,
+                                       const GLsizei st,
+                                       // NOSONAR(cpp:S5008): mirrors the
+                                       // glVertexAttribPointer GL signature,
+                                       // whose last arg is a const void*
+                                       // byte-offset/data pointer.
+                                       const void* p) const { // NOSONAR
     fns_->pfn_glVertexAttribPointer(i, s, t, n, st, p);
 }
 
-void GlfwCanvas::glGenTextures(GLsizei n, GLuint* t) const {
+void GlfwCanvas::glGenTextures(const GLsizei n, GLuint* t) const {
     fns_->pfn_glGenTextures(n, t);
 }
 
-void GlfwCanvas::glDeleteTextures(GLsizei n, const GLuint* t) const {
+void GlfwCanvas::glDeleteTextures(const GLsizei n, const GLuint* t) const {
     fns_->pfn_glDeleteTextures(n, t);
 }
 
-void GlfwCanvas::glBindTexture(GLenum tg, GLuint t) const {
+void GlfwCanvas::glBindTexture(const GLenum tg, const GLuint t) const {
     fns_->pfn_glBindTexture(tg, t);
 }
 
-void GlfwCanvas::glActiveTexture(GLenum tex) const {
+void GlfwCanvas::glActiveTexture(const GLenum tex) const {
     fns_->pfn_glActiveTexture(tex);
 }
 
-void GlfwCanvas::glTexParameteri(GLenum tg, GLenum p, GLint v) const {
+void GlfwCanvas::glTexParameteri(const GLenum tg,
+                                 const GLenum p,
+                                 const GLint v) const {
     fns_->pfn_glTexParameteri(tg, p, v);
 }
 
-void GlfwCanvas::glTexImage2D(GLenum tg,
-                              GLint lv,
-                              GLint ifmt,
-                              GLsizei w,
-                              GLsizei h,
-                              GLint b,
-                              GLenum f,
-                              GLenum ty,
+// NOSONAR(cpp:S107): thin pass-through wrapper mirroring the 9-parameter
+// glTexImage2D GL entry point; the parameter list is fixed by the API.
+void GlfwCanvas::glTexImage2D(const GLenum tg, // NOSONAR
+                              const GLint lv,
+                              const GLint ifmt,
+                              const GLsizei w,
+                              const GLsizei h,
+                              const GLint b,
+                              const GLenum f,
+                              const GLenum ty,
                               const void* d) const {
     fns_->pfn_glTexImage2D(tg, lv, ifmt, w, h, b, f, ty, d);
 }
 
-void GlfwCanvas::glTexSubImage2D(GLenum tg,
-                                 GLint lv,
-                                 GLint xo,
-                                 GLint yo,
-                                 GLsizei w,
-                                 GLsizei h,
-                                 GLenum f,
-                                 GLenum ty,
+// NOSONAR(cpp:S107): thin pass-through wrapper mirroring the 9-parameter
+// glTexSubImage2D GL entry point; the parameter list is fixed by the API.
+void GlfwCanvas::glTexSubImage2D(const GLenum tg, // NOSONAR
+                                 const GLint lv,
+                                 const GLint xo,
+                                 const GLint yo,
+                                 const GLsizei w,
+                                 const GLsizei h,
+                                 const GLenum f,
+                                 const GLenum ty,
                                  const void* d) const {
     fns_->pfn_glTexSubImage2D(tg, lv, xo, yo, w, h, f, ty, d);
 }
 
-void GlfwCanvas::glGenerateMipmap(GLenum tg) const {
+void GlfwCanvas::glGenerateMipmap(const GLenum tg) const {
     fns_->pfn_glGenerateMipmap(tg);
 }
 
-void GlfwCanvas::glPixelStorei(GLenum p, GLint v) const {
+void GlfwCanvas::glPixelStorei(const GLenum p, const GLint v) const {
     fns_->pfn_glPixelStorei(p, v);
 }
 
-void GlfwCanvas::glDrawArrays(GLenum m, GLint f, GLsizei c) const {
+void GlfwCanvas::glDrawArrays(const GLenum m,
+                              const GLint f,
+                              const GLsizei c) const {
     fns_->pfn_glDrawArrays(m, f, c);
 }
 
-void GlfwCanvas::glGenFramebuffers(GLsizei n, GLuint* f) const {
+void GlfwCanvas::glGenFramebuffers(const GLsizei n, GLuint* f) const {
     fns_->pfn_glGenFramebuffers(n, f);
 }
 
-void GlfwCanvas::glBindFramebuffer(GLenum target, GLuint f) const {
+void GlfwCanvas::glBindFramebuffer(const GLenum target, const GLuint f) const {
     fns_->pfn_glBindFramebuffer(target, f);
 }
 
-void GlfwCanvas::glFramebufferTexture2D(GLenum target,
-                                        GLenum attachment,
-                                        GLenum textarget,
-                                        GLuint texture,
-                                        GLint level) const {
+void GlfwCanvas::glFramebufferTexture2D(const GLenum target,
+                                        const GLenum attachment,
+                                        const GLenum textarget,
+                                        const GLuint texture,
+                                        const GLint level) const {
     fns_->pfn_glFramebufferTexture2D(
         target, attachment, textarget, texture, level);
 }
 
-GLenum GlfwCanvas::glCheckFramebufferStatus(GLenum target) const {
+GLenum GlfwCanvas::glCheckFramebufferStatus(const GLenum target) const {
     return fns_->pfn_glCheckFramebufferStatus(target);
 }
 
-void GlfwCanvas::glDeleteFramebuffers(GLsizei n, const GLuint* f) const {
+void GlfwCanvas::glDeleteFramebuffers(const GLsizei n, const GLuint* f) const {
     fns_->pfn_glDeleteFramebuffers(n, f);
 }
 
-void GlfwCanvas::glGenVertexArrays(GLsizei n, GLuint* a) const {
+void GlfwCanvas::glGenVertexArrays(const GLsizei n, GLuint* a) const {
     fns_->pfn_glGenVertexArrays(n, a);
 }
 
-void GlfwCanvas::glBindVertexArray(GLuint a) const {
+void GlfwCanvas::glBindVertexArray(const GLuint a) const {
     fns_->pfn_glBindVertexArray(a);
 }
 
-void GlfwCanvas::glDeleteVertexArrays(GLsizei n, const GLuint* a) const {
+void GlfwCanvas::glDeleteVertexArrays(const GLsizei n, const GLuint* a) const {
     fns_->pfn_glDeleteVertexArrays(n, a);
 }
 
-void GlfwCanvas::glViewport(GLint x, GLint y, GLsizei w, GLsizei h) const {
+void GlfwCanvas::glViewport(const GLint x,
+                            const GLint y,
+                            const GLsizei w,
+                            const GLsizei h) const {
     fns_->pfn_glViewport(x, y, w, h);
 }
 
-void GlfwCanvas::glClearColor(GLfloat r,
-                              GLfloat g,
-                              GLfloat b,
-                              GLfloat a) const {
+void GlfwCanvas::glClearColor(const GLfloat r,
+                              const GLfloat g,
+                              const GLfloat b,
+                              const GLfloat a) const {
     fns_->pfn_glClearColor(r, g, b, a);
 }
 
-void GlfwCanvas::glClear(GLbitfield mask) const {
+void GlfwCanvas::glClear(const GLbitfield mask) const {
     fns_->pfn_glClear(mask);
 }
 
-void GlfwCanvas::glEnable(GLenum cap) const {
+void GlfwCanvas::glEnable(const GLenum cap) const {
     fns_->pfn_glEnable(cap);
 }
 
-void GlfwCanvas::glBlendFunc(GLenum sfactor, GLenum dfactor) const {
+void GlfwCanvas::glBlendFunc(const GLenum sfactor, const GLenum dfactor) const {
     fns_->pfn_glBlendFunc(sfactor, dfactor);
 }
 
-void GlfwCanvas::glDisable(GLenum cap) const {
+void GlfwCanvas::glDisable(const GLenum cap) const {
     fns_->pfn_glDisable(cap);
 }
 
-void GlfwCanvas::glReadPixels(GLint x,
-                              GLint y,
-                              GLsizei w,
-                              GLsizei h,
-                              GLenum format,
-                              GLenum type,
+void GlfwCanvas::glReadPixels(const GLint x,
+                              const GLint y,
+                              const GLsizei w,
+                              const GLsizei h,
+                              const GLenum format,
+                              const GLenum type,
                               void* data) const {
     fns_->pfn_glReadPixels(x, y, w, h, format, type, data);
 }
 
-bool GlfwCanvas::init_icon_framebuffer(int icon_width, int icon_height) {
+bool GlfwCanvas::init_icon_framebuffer(const int icon_width,
+                                       const int icon_height) {
     if (icon_framebuffer_ready_) {
         return true;
     }
@@ -605,7 +633,7 @@ bool GlfwCanvas::init_icon_framebuffer(int icon_width, int icon_height) {
         return false;
     }
 
-    const auto& dialect = oid::the_dialect();
+    const auto& dialect = the_dialect();
     const auto icon_internal_format = dialect.icon_gl_internal_format;
     const auto icon_format = dialect.icon_gl_format;
 
@@ -672,16 +700,16 @@ void GlfwCanvas::destroy_icon_framebuffer() {
 // init_icon_framebuffer()/destroy_icon_framebuffer() above stay here since
 // they only touch plain GL state, not the viz layer.
 
-const oid::GLTextRenderer* GlfwCanvas::get_text_renderer() const {
+const GLTextRenderer* GlfwCanvas::get_text_renderer() const {
     if (!ready_) {
         return nullptr; // GL not loaded yet
     }
     if (!text_renderer_init_attempted_) {
         text_renderer_init_attempted_ = true; // one attempt, mutable members
-        if (auto atlas = oid::host::stb_glyph_atlas()) {
-            auto r =
-                std::make_unique<oid::GLTextRenderer>(*this, std::move(*atlas));
-            if (r->initialize()) {
+        if (auto atlas = stb_glyph_atlas()) {
+            if (auto r =
+                    std::make_unique<GLTextRenderer>(*this, std::move(*atlas));
+                r->initialize()) {
                 text_renderer_ = std::move(r);
             }
         }
