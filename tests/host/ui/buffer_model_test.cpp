@@ -35,7 +35,7 @@ using oid::host::MockBufferModel;
 using oid::host::type_label;
 
 TEST(MockBufferModel, HoldsDeterministicBuffers) {
-    MockBufferModel m = make_default_mock_model();
+    const MockBufferModel m = make_default_mock_model();
     ASSERT_GE(m.size(), 2u);
 
     const auto& r = m.at(0);
@@ -48,7 +48,7 @@ TEST(MockBufferModel, HoldsDeterministicBuffers) {
 // excluded from GET_OBSERVED_SYMBOLS; every other record -- including these
 // deterministic mock buffers -- defaults to DEBUGGER_SYMBOL.
 TEST(MockBufferModel, DefaultRecordKindIsDebuggerSymbol) {
-    MockBufferModel m = make_default_mock_model();
+    const MockBufferModel m = make_default_mock_model();
     ASSERT_GE(m.size(), 1u);
     EXPECT_EQ(m.at(0).kind, BufferKind::DEBUGGER_SYMBOL);
 }
@@ -59,7 +59,7 @@ TEST(MockBufferModel, DefaultRecordKindIsDebuggerSymbol) {
 // silently passes Buffer's `step >= channels` check but makes GL read past
 // the buffer once StageManager wires it through.
 TEST(MockBufferModel, StepIsPixelsPerRowAndBytesAreTypeSized) {
-    MockBufferModel m = make_default_mock_model();
+    const MockBufferModel m = make_default_mock_model();
     for (std::size_t i = 0; i < m.size(); ++i) {
         const auto& r = m.at(i);
         EXPECT_EQ(r.step, r.width) << "record " << i;
@@ -75,7 +75,7 @@ TEST(MockBufferModel, StepIsPixelsPerRowAndBytesAreTypeSized) {
 // revision_of() is permanently 0 for every slot; variable_name_of() must
 // still expose each record's stable key for StageManager's name-keyed sync.
 TEST(MockBufferModel, VariableNameAndRevisionOf) {
-    MockBufferModel m = make_default_mock_model();
+    const MockBufferModel m = make_default_mock_model();
     for (std::size_t i = 0; i < m.size(); ++i) {
         EXPECT_EQ(m.variable_name_of(i), m.at(i).variable_name)
             << "record " << i;

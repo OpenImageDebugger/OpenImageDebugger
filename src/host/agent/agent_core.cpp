@@ -37,6 +37,7 @@
 #include <string_view>
 #include <unordered_map>
 
+#include "host/util/transparent_string_hash.h"
 #include "ipc/raw_data_decode.h"
 
 namespace oid::host::agent {
@@ -50,7 +51,7 @@ constexpr double PI = std::numbers::pi;
 // the longer of the two strings (out-of-range reads substitute 0) into a
 // volatile accumulator so neither the branch nor the loop can be optimized
 // into a short-circuiting compare.
-bool constant_time_equal(std::string_view a, std::string_view b) {
+bool constant_time_equal(const std::string_view a, const std::string_view b) {
     const std::size_t max_len = (std::max)(a.size(), b.size());
     volatile unsigned char diff = // NOSONAR
         static_cast<unsigned char>(a.size() != b.size());
@@ -63,15 +64,6 @@ bool constant_time_equal(std::string_view a, std::string_view b) {
     }
     return diff == 0;
 }
-
-// Transparent hash so the method-dispatch map can be looked up by
-// string_view without first constructing a std::string key (S6045).
-struct TransparentStringHash {
-    using is_transparent = void;
-    std::size_t operator()(std::string_view sv) const noexcept {
-        return std::hash<std::string_view>{}(sv);
-    }
-};
 
 Reply make_error(const char* code, std::string message) {
     nlohmann::json body;
@@ -376,7 +368,7 @@ bool apply_view(ViewModel& model, const ViewUpdate& u) {
 
 AgentCore::AgentCore(ViewModel& model,
                      std::string token,
-                     long pid,
+                     const long pid,
                      std::string session_kind)
     : model_(model), token_(std::move(token)), pid_(pid),
       session_kind_(std::move(session_kind)) {}
@@ -487,8 +479,8 @@ Reply AgentCore::handle_get_buffer(const nlohmann::json& request) const {
     std::size_t max_bytes = DEFAULT_MAX_BYTES;
     if (request.contains("max_bytes") &&
         request.at("max_bytes").is_number_integer()) {
-        const auto requested = request.at("max_bytes").get<std::int64_t>();
-        if (requested > 0 &&
+        if (const auto requested = request.at("max_bytes").get<std::int64_t>();
+            requested > 0 &&
             static_cast<std::uint64_t>(requested) < DEFAULT_MAX_BYTES) {
             max_bytes = static_cast<std::size_t>(requested);
         }

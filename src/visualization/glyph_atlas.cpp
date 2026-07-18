@@ -33,7 +33,6 @@ GlyphAtlas finalize_strip_atlas(const std::uint8_t* strip,
                                 const std::array<int, 256>& char_advances,
                                 const char* charset) {
     GlyphAtlas atlas;
-    constexpr auto border_size = 0;
 
     atlas.texture_height = 1.0f;
     atlas.texture_width = atlas.texture_height;
@@ -102,6 +101,7 @@ GlyphAtlas finalize_strip_atlas(const std::uint8_t* strip,
     auto x = 0;
     for (const auto* p = reinterpret_cast<const unsigned char*>(charset); *p;
          p++) {
+        constexpr auto border_size = 0;
         const auto advance_x = char_advances[*p];
 
         atlas.offsets[*p][0] = x + border_size;

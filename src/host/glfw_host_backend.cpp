@@ -46,8 +46,10 @@ GlfwHostBackend::~GlfwHostBackend() {
     shutdown();
 }
 
-bool GlfwHostBackend::initialize(const char* title, int width, int height) {
-    glfwSetErrorCallback([](int code, const char* description) {
+bool GlfwHostBackend::initialize(const char* title,
+                                 const int width,
+                                 const int height) {
+    glfwSetErrorCallback([](const int code, const char* description) {
         std::cerr << "[GLFW] error " << code << ": " << description << '\n';
     });
     if (glfwInit() == GLFW_FALSE) {
@@ -68,7 +70,7 @@ bool GlfwHostBackend::initialize(const char* title, int width, int height) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 #endif
 
-    oid::platform::apply_platform_window_hints();
+    platform::apply_platform_window_hints();
 
     window_ = glfwCreateWindow(width, height, title, nullptr, nullptr);
     if (window_ == nullptr) {
@@ -98,9 +100,9 @@ FramebufferSize GlfwHostBackend::framebuffer_size() const {
 }
 
 void GlfwHostBackend::begin_frame() {
-    const auto size = framebuffer_size();
+    const auto [width, height] = framebuffer_size();
     glfwMakeContextCurrent(window_);
-    glViewport(0, 0, size.width, size.height);
+    glViewport(0, 0, width, height);
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
@@ -109,7 +111,7 @@ void GlfwHostBackend::end_frame() {
     glfwSwapBuffers(window_);
 }
 
-void GlfwHostBackend::set_vsync(bool enabled) {
+void GlfwHostBackend::set_vsync(const bool enabled) {
     glfwSwapInterval(enabled ? 1 : 0);
 }
 
@@ -134,13 +136,13 @@ bool platform_supports_window_position() {
 
 } // namespace
 
-int GlfwHostBackend::primary_refresh_rate_hz() const {
+int GlfwHostBackend::primary_refresh_rate_hz() {
     GLFWmonitor* primary = glfwGetPrimaryMonitor();
     if (primary == nullptr) {
         return 60; // headless: no monitor to ask
     }
     const GLFWvidmode* mode = glfwGetVideoMode(primary);
-    return (mode != nullptr && mode->refreshRate > 0) ? mode->refreshRate : 60;
+    return mode != nullptr && mode->refreshRate > 0 ? mode->refreshRate : 60;
 }
 
 void GlfwHostBackend::shutdown() {
@@ -169,13 +171,13 @@ std::pair<int, int> GlfwHostBackend::window_position() const {
     return {x, y};
 }
 
-void GlfwHostBackend::set_window_position(int x, int y) {
+void GlfwHostBackend::set_window_position(const int x, const int y) const {
     if (window_ != nullptr && platform_supports_window_position()) {
         glfwSetWindowPos(window_, x, y);
     }
 }
 
-std::vector<GlfwHostBackend::MonitorRect> GlfwHostBackend::monitors() const {
+std::vector<GlfwHostBackend::MonitorRect> GlfwHostBackend::monitors() {
     std::vector<MonitorRect> result;
     int count = 0;
     GLFWmonitor** mons = glfwGetMonitors(&count);

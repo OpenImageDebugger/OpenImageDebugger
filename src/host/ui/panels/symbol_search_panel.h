@@ -57,7 +57,7 @@ class IpcClient;
 // UiState): it is pure ImGui widget plumbing, mirrored into UiState via
 // set_query() so filtered_symbols() stays the single source of truth for
 // *which* symbols match.
-void draw_symbol_search(UiState& ui, IpcClient& ipc, bool focus_request);
+void draw_symbol_search(UiState& ui, const IpcClient& ipc, bool focus_request);
 
 } // namespace oid::host
 

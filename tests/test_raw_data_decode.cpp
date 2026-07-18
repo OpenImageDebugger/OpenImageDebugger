@@ -67,13 +67,13 @@ TEST(RawDataDecodeTest, TypeSizeFloat64) {
 }
 
 TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_Empty) {
-    std::vector<std::byte> empty;
-    auto result = make_float_buffer_from_double(empty);
+    constexpr std::vector<std::byte> empty;
+    const auto result = make_float_buffer_from_double(empty);
     EXPECT_TRUE(result.empty());
 }
 
 namespace {
-void TestSingleDoubleValue(double value) {
+void TestSingleDoubleValue(const double value) {
     std::vector<std::byte> double_buffer(sizeof(double));
     std::memcpy(double_buffer.data(), &value, sizeof(double));
     const auto float_buffer = make_float_buffer_from_double(double_buffer);
@@ -89,7 +89,7 @@ TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_SingleValue) {
 }
 
 TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_MultipleValues) {
-    const std::vector<double> values = {
+    const std::vector values = {
         TEST_VALUE_1, TEST_VALUE_2_5, TEST_PI, TEST_VALUE_4, TEST_VALUE_5};
     std::vector<std::byte> double_buffer(values.size() * sizeof(double));
     std::memcpy(double_buffer.data(), values.data(), double_buffer.size());

@@ -40,8 +40,10 @@ class GlfwCanvas;
 // a live GL context: does a requested size differ from the currently
 // allocated one, and therefore require the FBO + texture to be
 // (re)allocated?
-[[nodiscard]] constexpr bool
-stage_view_needs_realloc(int cur_w, int cur_h, int req_w, int req_h) {
+[[nodiscard]] constexpr bool stage_view_needs_realloc(const int cur_w,
+                                                      const int cur_h,
+                                                      const int req_w,
+                                                      const int req_h) {
     return cur_w != req_w || cur_h != req_h;
 }
 

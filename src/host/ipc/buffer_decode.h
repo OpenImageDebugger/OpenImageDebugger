@@ -48,7 +48,7 @@ struct BufferRecordParams {
     int height;
     int channels;
     int stride;
-    oid::BufferType type;
+    BufferType type;
     std::vector<std::byte> bytes;
 };
 

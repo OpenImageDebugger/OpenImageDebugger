@@ -31,11 +31,11 @@ std::vector<PreviousBuffer> merge_previous_buffers(
     const std::vector<PreviousBuffer>& prior,
     const std::vector<std::string>& current_loaded,
     const std::set<std::string, std::less<>>& seen_this_session,
-    std::int64_t now_s,
-    std::int64_t ttl_s) {
+    const std::int64_t now_s,
+    const std::int64_t ttl_s) {
     std::vector<PreviousBuffer> out;
-    std::set<std::string, std::less<>> loaded{current_loaded.begin(),
-                                              current_loaded.end()};
+    const std::set<std::string, std::less<>> loaded{current_loaded.begin(),
+                                                    current_loaded.end()};
     for (const auto& name : current_loaded) {
         out.emplace_back(name, now_s + ttl_s); // fresh expiry
     }

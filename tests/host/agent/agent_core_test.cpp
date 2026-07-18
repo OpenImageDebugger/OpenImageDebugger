@@ -130,11 +130,12 @@ TEST(AgentCore, GetBufferSuccess) {
     m.set_bytes("frame", std::vector<std::byte>(4, std::byte{7}));
     AgentCore core(m, "tok", 4242);
     bool a = true;
-    auto r = core.handle({{"method", "get_buffer"}, {"symbol", "frame"}}, a);
-    EXPECT_EQ(r.body["width"], 2);
-    EXPECT_EQ(r.body["height"], 2);
-    ASSERT_EQ(r.payload.size(), 4u);
-    EXPECT_EQ(r.payload[0], std::byte{7});
+    auto [body, payload] =
+        core.handle({{"method", "get_buffer"}, {"symbol", "frame"}}, a);
+    EXPECT_EQ(body["width"], 2);
+    EXPECT_EQ(body["height"], 2);
+    ASSERT_EQ(payload.size(), 4u);
+    EXPECT_EQ(payload[0], std::byte{7});
 }
 
 TEST(AgentCore, GetBufferTooLarge) {
@@ -265,8 +266,8 @@ TEST(AgentCore, SetViewIsAbsoluteIdempotent) {
     auto r1 = core.handle(patch, a);
     auto r2 = core.handle(patch, a);
     EXPECT_EQ(r1.body, r2.body);
-    EXPECT_NEAR((double)r1.body["zoom"], 1.5, 1e-6);
-    EXPECT_NEAR((double)r1.body["rotation_deg"], 90.0, 1e-6);
+    EXPECT_NEAR(r1.body["zoom"], 1.5, 1e-6);
+    EXPECT_NEAR(r1.body["rotation_deg"], 90.0, 1e-6);
     EXPECT_EQ(r1.body["channel"], "1");
     EXPECT_EQ(r1.body["buffer"], "frame");
 }
@@ -340,11 +341,11 @@ TEST(AgentCore, SetViewNormalizesRotation) {
     auto r = core.handle(
         {{"method", "set_view"}, {"buffer", "frame"}, {"rotation_deg", 450.0}},
         a);
-    EXPECT_NEAR(static_cast<double>(r.body["rotation_deg"]), 90.0, 1e-6);
+    EXPECT_NEAR(r.body["rotation_deg"], 90.0, 1e-6);
     auto r2 = core.handle(
         {{"method", "set_view"}, {"buffer", "frame"}, {"rotation_deg", -90.0}},
         a);
-    EXPECT_NEAR(static_cast<double>(r2.body["rotation_deg"]), 270.0, 1e-6);
+    EXPECT_NEAR(r2.body["rotation_deg"], 270.0, 1e-6);
 }
 
 TEST(AgentCore, SetViewChannelAllRestoresNaturalLayout) {
@@ -413,8 +414,8 @@ TEST(AgentCore, SetViewInvalidPatchAppliesNothing) {
     m.add("frame", 8, 8, 1);
     AgentCore core(m, "tok", 4242);
     bool a = true;
-    auto before = core.handle({{"method", "get_view"}}, a).body;
+    const auto before = core.handle({{"method", "get_view"}}, a).body;
     core.handle({{"method", "set_view"}, {"zoom", -3}}, a); // invalid
-    auto after = core.handle({{"method", "get_view"}}, a).body;
+    const auto after = core.handle({{"method", "get_view"}}, a).body;
     EXPECT_EQ(before, after);
 }

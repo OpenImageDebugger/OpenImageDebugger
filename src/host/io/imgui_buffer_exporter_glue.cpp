@@ -43,7 +43,7 @@ namespace oid::host {
 
 bool export_buffer_imgui(const Buffer& buffer,
                          const std::string& path,
-                         BufferExporter::OutputType type) {
+                         const BufferExporter::OutputType type) {
     try {
         using enum BufferExporter::OutputType;
         switch (type) {

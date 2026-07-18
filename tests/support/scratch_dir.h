@@ -52,8 +52,8 @@ inline std::filesystem::path scratch_dir() {
     for (int attempt = 0; attempt < 16; ++attempt) {
         const std::string name =
             std::format("oid_scratch_{:x}{:x}", rd(), rd());
-        const fs::path dir = base / name;
-        if (fs::create_directory(dir)) { // atomic; false if name taken
+        if (const fs::path dir = base / name;
+            fs::create_directory(dir)) { // atomic; false if name taken
             fs::permissions(
                 dir, fs::perms::owner_all, fs::perm_options::replace);
             return dir;

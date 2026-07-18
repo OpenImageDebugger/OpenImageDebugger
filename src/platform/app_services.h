@@ -65,7 +65,7 @@ void install_platform_hooks();
 // decode). Native: no-op -- the native build opens files itself via the OS
 // dialog and the frame-loop file-open queue. Call once, after the model is
 // constructed and before the main loop starts.
-void register_file_open_sink(oid::host::IpcBufferModel& model);
+void register_file_open_sink(host::IpcBufferModel& model);
 
 // Settings persistence backend. Native: on-disk JSON store at the platform
 // config path. Non-native: no local file -- load() yields defaults (real
@@ -78,10 +78,10 @@ class SettingsBackend {
     SettingsBackend(const SettingsBackend&) = delete;
     SettingsBackend& operator=(const SettingsBackend&) = delete;
 
-    [[nodiscard]] oid::host::AppSettings load() const;
+    [[nodiscard]] host::AppSettings load() const;
 
-    [[nodiscard]] std::function<void(const oid::host::AppSettings&)>
-    make_save_sink(oid::host::IpcClient& ipc) const;
+    [[nodiscard]] std::function<void(const host::AppSettings&)>
+    make_save_sink(host::IpcClient& ipc) const;
 
   private:
     struct Impl;
@@ -96,10 +96,9 @@ class SettingsBackend {
 // Native wires nothing.
 class SessionBridge {
   public:
-    SessionBridge(
-        oid::host::IpcClient& ipc,
-        const std::function<void(const oid::host::AppSettings&)>& apply,
-        const std::function<void()>& open_export);
+    SessionBridge(host::IpcClient& ipc,
+                  const std::function<void(const host::AppSettings&)>& apply,
+                  const std::function<void()>& open_export);
 
     // False until persisting is safe. Non-native: flips true on the first
     // real session-state update -- the host always sends one when the viewer
@@ -119,15 +118,15 @@ class SessionBridge {
 // True when the export dialog confirmed this frame. Native draws the ImGui
 // modal. Non-native consumes dialog.open directly: there is no in-viewer
 // dialog, the host shows the OS save dialog instead.
-bool confirm_export(oid::host::ExportDialogState& dialog);
+bool confirm_export(host::ExportDialogState& dialog);
 
 // Perform a confirmed export of `buffer`. Native writes the file at
 // dialog.path_buf and updates last_export_dir from it. Non-native hands the
 // buffer to the host over IPC (with the live auto-contrast array). Sets
 // status_message either way; returns success.
-bool perform_export(const oid::Buffer& buffer,
-                    oid::host::ExportDialogState& dialog,
-                    oid::host::IpcClient& ipc,
+bool perform_export(const Buffer& buffer,
+                    host::ExportDialogState& dialog,
+                    host::IpcClient& ipc,
                     std::string& status_message,
                     std::string& last_export_dir);
 

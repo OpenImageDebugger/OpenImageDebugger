@@ -36,7 +36,8 @@ namespace oid::host {
 // tag legacy-qt). It is deliberately NOT gated on
 // ImGui::GetIO().WantCaptureKeyboard, which is true whenever any text field
 // (including the symbol search box) is focused.
-inline bool should_fire_ctrl_shortcut(bool key_ctrl, bool key_pressed) {
+inline bool should_fire_ctrl_shortcut(const bool key_ctrl,
+                                      const bool key_pressed) {
     return key_ctrl && key_pressed;
 }
 

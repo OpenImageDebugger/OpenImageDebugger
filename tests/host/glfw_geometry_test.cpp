@@ -31,12 +31,12 @@ using oid::host::GlfwHostBackend;
 using MR = GlfwHostBackend::MonitorRect;
 
 TEST(WindowVisibleOn, TrueWhenOverlappingAMonitor) {
-    std::vector<MR> mons = {{0, 0, 1920, 1080}};
+    const std::vector<MR> mons = {{0, 0, 1920, 1080}};
     EXPECT_TRUE(GlfwHostBackend::window_visible_on(100, 100, 800, 600, mons));
 }
 
 TEST(WindowVisibleOn, FalseWhenFullyOffAllMonitors) {
-    std::vector<MR> mons = {{0, 0, 1920, 1080}};
+    const std::vector<MR> mons = {{0, 0, 1920, 1080}};
     EXPECT_FALSE(
         GlfwHostBackend::window_visible_on(5000, 5000, 800, 600, mons));
     EXPECT_FALSE(GlfwHostBackend::window_visible_on(
@@ -44,6 +44,6 @@ TEST(WindowVisibleOn, FalseWhenFullyOffAllMonitors) {
 }
 
 TEST(WindowVisibleOn, TrueOnSecondMonitor) {
-    std::vector<MR> mons = {{0, 0, 1920, 1080}, {1920, 0, 1920, 1080}};
+    const std::vector<MR> mons = {{0, 0, 1920, 1080}, {1920, 0, 1920, 1080}};
     EXPECT_TRUE(GlfwHostBackend::window_visible_on(2000, 50, 800, 600, mons));
 }

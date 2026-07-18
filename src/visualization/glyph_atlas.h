@@ -36,7 +36,7 @@ namespace oid {
 using Array_256_2 = std::array<std::array<int, 2>, 256>;
 
 // Required characters for numbers, scientific notation (e), nan, inf.
-inline constexpr const char* GLYPH_TEXT = "0123456789., -+enaif";
+inline constexpr auto GLYPH_TEXT = "0123456789., -+enaif";
 
 // Pure CPU-side glyph atlas data -- no GL, no Qt. Produced by
 // finalize_strip_atlas() below from a rendered single-line glyph strip, and

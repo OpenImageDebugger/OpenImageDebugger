@@ -89,7 +89,7 @@ class NativeViewModel final : public ViewModel {
     // to that slot's Stage (created/reconciled lazily by
     // StageManager::stage_for()); nullptr if the name is unknown or the
     // Stage failed to initialize.
-    [[nodiscard]] oid::Stage* stage_for_name(std::string_view name);
+    [[nodiscard]] Stage* stage_for_name(std::string_view name) const;
 
     IpcBufferModel& model_;
     StageManager& stages_;

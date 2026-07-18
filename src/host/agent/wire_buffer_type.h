@@ -37,8 +37,8 @@ namespace oid::host::agent {
 // bytes/element (rejecting every double buffer) and make the get_buffer
 // pre-copy cap over-estimate. Kept as a free function so it is testable without
 // the render-thread-bound NativeViewModel.
-constexpr oid::BufferType wire_buffer_type(const oid::BufferType type) {
-    return type == oid::BufferType::FLOAT64 ? oid::BufferType::FLOAT32 : type;
+constexpr BufferType wire_buffer_type(const BufferType type) {
+    return type == BufferType::FLOAT64 ? BufferType::FLOAT32 : type;
 }
 
 } // namespace oid::host::agent

@@ -30,10 +30,10 @@
 using namespace oid::host;
 
 TEST(MergePreviousBuffers, LoadedGetFreshExpiryDeletedDropped) {
-    std::vector<PreviousBuffer> prior = {
+    const std::vector<PreviousBuffer> prior = {
         {"a", 5}, {"gone", 999999}, {"stale", 1}};
-    std::vector<std::string> loaded = {"a"}; // only "a" loaded now
-    std::set<std::string, std::less<>> seen = {
+    const std::vector<std::string> loaded = {"a"}; // only "a" loaded now
+    const std::set<std::string, std::less<>> seen = {
         "a", "gone"}; // "gone" was loaded then removed
     const auto out =
         merge_previous_buffers(prior, loaded, seen, /*now*/ 100, /*ttl*/ 50);
@@ -45,7 +45,7 @@ TEST(MergePreviousBuffers, LoadedGetFreshExpiryDeletedDropped) {
 }
 
 TEST(MergePreviousBuffers, NotYetReloadedUnexpiredSurvives) {
-    std::vector<PreviousBuffer> prior = {{"later", 1000}};
+    const std::vector<PreviousBuffer> prior = {{"later", 1000}};
     const auto out =
         merge_previous_buffers(prior, {}, {}, /*now*/ 100, /*ttl*/ 50);
     ASSERT_EQ(out.size(), 1u); // never seen, not expired -> kept as-is

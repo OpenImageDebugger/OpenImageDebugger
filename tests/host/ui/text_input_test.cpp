@@ -30,12 +30,12 @@
 using oid::host::parse_int_field;
 
 TEST(TextInputTest, ParsesSignedIntegers) {
-    EXPECT_EQ(parse_int_field("42"), std::optional<int>{42});
-    EXPECT_EQ(parse_int_field("-7"), std::optional<int>{-7});
+    EXPECT_EQ(parse_int_field("42"), std::optional{42});
+    EXPECT_EQ(parse_int_field("-7"), std::optional{-7});
 }
 
 TEST(TextInputTest, RejectsNonNumeric) {
     EXPECT_EQ(parse_int_field(""), std::nullopt);
     EXPECT_EQ(parse_int_field("12x"), std::nullopt);
-    EXPECT_EQ(parse_int_field(" 3 "), std::optional<int>{3}); // trims
+    EXPECT_EQ(parse_int_field(" 3 "), std::optional{3}); // trims
 }

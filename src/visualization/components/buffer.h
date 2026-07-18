@@ -158,9 +158,9 @@ class Buffer final : public Component {
 
     void update_object_pose() const;
 
-    void update_min_color_value(float* lowest, const int i, const int c) const;
+    void update_min_color_value(float* lowest, int i, int c) const;
 
-    void update_max_color_value(float* upper, const int i, const int c) const;
+    void update_max_color_value(float* upper, int i, int c) const;
 
     std::vector<GLuint> buff_tex_{};
 

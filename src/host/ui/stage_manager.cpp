@@ -30,15 +30,15 @@
 #include <unordered_set>
 #include <utility>
 
-#include "host/ui/transparent_string_hash.h"
+#include "host/util/transparent_string_hash.h"
 
 namespace oid::host {
 
 namespace {
 
-oid::BufferParams params_from(const BufferRecord& rec) {
-    return oid::BufferParams{
-        .buffer = std::span<const std::byte>{rec.bytes},
+BufferParams params_from(const BufferRecord& rec) {
+    return BufferParams{
+        .buffer = std::span{rec.bytes},
         .buffer_width_i = rec.width,
         .buffer_height_i = rec.height,
         .channels = rec.channels,
@@ -55,11 +55,11 @@ StageManager::StageManager(std::shared_ptr<RenderCanvas> canvas,
                            const BufferModel& model)
     : canvas_(std::move(canvas)), model_(model) {}
 
-oid::Stage* StageManager::selected_stage(std::size_t sel) {
+Stage* StageManager::selected_stage(const std::size_t sel) {
     return stage_for(sel);
 }
 
-oid::Stage* StageManager::stage_for(std::size_t i) {
+Stage* StageManager::stage_for(const std::size_t i) {
     sync();
 
     if (i >= model_.size()) {
@@ -80,8 +80,7 @@ void StageManager::sync() {
         const std::uint64_t rev = model_.revision_of(i);
         live_names.insert(name);
 
-        const auto it = by_name_.find(name);
-        if (it == by_name_.end()) {
+        if (const auto it = by_name_.find(name); it == by_name_.end()) {
             // New buffer. On initialize() failure, log and leave no entry
             // so a later frame can retry once the underlying cause (e.g.
             // GL context) is resolved.
@@ -90,7 +89,7 @@ void StageManager::sync() {
             // the legacy Qt frontend to request a repaint -- see tag
             // legacy-qt); the ImGui host already redraws every frame
             // unconditionally, so there is nothing for it to trigger here.
-            auto stage = std::make_unique<oid::Stage>(canvas_, [] {
+            auto stage = std::make_unique<Stage>(canvas_, [] {
                 /* no-op: ImGui host redraws every frame; see comment above */
             });
             if (stage->initialize(params_from(model_.at(i)))) {

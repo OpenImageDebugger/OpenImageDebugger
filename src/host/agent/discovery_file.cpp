@@ -68,18 +68,18 @@ std::string current_user() {
     // storage that another thread's lookup can overwrite; ::getpwuid_r fills
     // our own buffer instead. Matches Python's pwd.getpwuid() fallback, then
     // the uid string (discovery.py's final fallback when getpass raises).
-    struct passwd pwd{};
-    struct passwd* result = nullptr;
+    passwd pwd{};
+    passwd* result = nullptr;
     long n = ::sysconf(_SC_GETPW_R_SIZE_MAX);
     if (n <= 0) {
         n = 16384;
     }
     if (std::vector<char> buf(static_cast<std::size_t>(n));
-        ::getpwuid_r(::getuid(), &pwd, buf.data(), buf.size(), &result) == 0 &&
+        getpwuid_r(getuid(), &pwd, buf.data(), buf.size(), &result) == 0 &&
         result != nullptr && result->pw_name != nullptr) {
         return std::string(result->pw_name);
     }
-    return std::to_string(static_cast<long>(::getuid()));
+    return std::to_string(static_cast<long>(getuid()));
 #endif
 }
 
@@ -102,7 +102,7 @@ std::filesystem::path viewer_discovery_dir() {
 }
 
 void prepare_private_dir(const std::filesystem::path& dir,
-                         [[maybe_unused]] bool enforce_mode) {
+                         [[maybe_unused]] const bool enforce_mode) {
     // enforce_mode is only consulted in the POSIX chmod path below; on Windows
     // there is no mode to enforce, so the parameter is unused there.
     std::error_code ec;
@@ -132,15 +132,15 @@ void prepare_private_dir(const std::filesystem::path& dir,
     // check and the use (CWE-362): O_NOFOLLOW rejects a symlinked final
     // component and O_DIRECTORY requires a real directory.
     const int dir_fd =
-        ::open(dir.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        open(dir.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
     if (dir_fd < 0) {
         throw DiscoveryError(
             "failed to open discovery directory (or it is a symlink): " +
             dir.string());
     }
     struct stat info{};
-    const bool stat_ok = ::fstat(dir_fd, &info) == 0;
-    const bool owned_by_us = stat_ok && info.st_uid == ::getuid();
+    const bool stat_ok = fstat(dir_fd, &info) == 0;
+    const bool owned_by_us = stat_ok && info.st_uid == getuid();
     // Chmod to 0700 when enforce_mode is set, or when this call just created
     // the directory (the owner + symlink checks always run either way).
     // enforce_mode == false on a *pre-existing* dir skips the fchmod, so
@@ -150,8 +150,8 @@ void prepare_private_dir(const std::filesystem::path& dir,
     // contract oid-mcp's discovery trust gate enforces (and matches the
     // debugger endpoint, which always chmods its base 0700).
     const bool chmod_ok = !(enforce_mode || created) ||
-                          (owned_by_us && ::fchmod(dir_fd, S_IRWXU) == 0);
-    ::close(dir_fd);
+                          (owned_by_us && fchmod(dir_fd, S_IRWXU) == 0);
+    close(dir_fd);
     if (!stat_ok) {
         throw DiscoveryError("failed to stat discovery directory: " +
                              dir.string());
@@ -181,7 +181,7 @@ void write_discovery_atomic(const std::filesystem::path& path,
 #ifndef _WIN32
     std::string tmp_template =
         (dir / (path.filename().string() + ".XXXXXX")).string();
-    std::vector<char> name_buf(tmp_template.begin(), tmp_template.end());
+    std::vector name_buf(tmp_template.begin(), tmp_template.end());
     name_buf.push_back('\0');
 
     const int fd = ::mkstemp(name_buf.data());
@@ -193,7 +193,7 @@ void write_discovery_atomic(const std::filesystem::path& path,
     // so mark the fd FD_CLOEXEC to keep a fork+exec in this window from leaking
     // it to a child. (mkostemp with O_CLOEXEC would set it atomically but is
     // not available on all target platforms, e.g. macOS.)
-    (void)::fcntl(fd, F_SETFD, FD_CLOEXEC);
+    (void)fcntl(fd, F_SETFD, FD_CLOEXEC);
     const std::filesystem::path tmp_path{name_buf.data()};
 
     bool write_failed = false;
@@ -213,10 +213,10 @@ void write_discovery_atomic(const std::filesystem::path& path,
     // fsync before the rename so a crash cannot publish a torn or zero-length
     // discovery file (ext4 delayed allocation), and check close() so a
     // deferred write error surfaces here rather than renaming a bad file.
-    if (!write_failed && ::fsync(fd) != 0) {
+    if (!write_failed && fsync(fd) != 0) {
         write_failed = true;
     }
-    if (::close(fd) != 0) {
+    if (close(fd) != 0) {
         write_failed = true;
     }
 

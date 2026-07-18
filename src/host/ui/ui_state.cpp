@@ -30,7 +30,7 @@
 
 #include "host/ui/symbol_filter.h"
 #include "host/ui/text_input.h"
-#include "host/ui/transparent_string_hash.h"
+#include "host/util/transparent_string_hash.h"
 
 namespace oid::host {
 
@@ -104,7 +104,7 @@ std::vector<std::string> UiState::filtered_symbols() const {
 }
 
 std::optional<std::size_t>
-UiState::model_index_of(std::string_view variable_name) const {
+UiState::model_index_of(const std::string_view variable_name) const {
     for (std::size_t i = 0; i < model_.size(); ++i) {
         if (model_.variable_name_of(i) == variable_name) {
             return i;
@@ -117,7 +117,7 @@ bool UiState::contrast_enabled() const {
     return contrast_;
 }
 
-void UiState::set_contrast_enabled(bool enabled) {
+void UiState::set_contrast_enabled(const bool enabled) {
     contrast_ = enabled;
 }
 
@@ -125,7 +125,7 @@ bool UiState::link_views() const {
     return link_views_;
 }
 
-void UiState::set_link_views(bool enabled) {
+void UiState::set_link_views(const bool enabled) {
     link_views_ = enabled;
 }
 
@@ -133,12 +133,12 @@ bool UiState::ac_editor_visible() const {
     return ac_editor_visible_;
 }
 
-void UiState::set_ac_editor_visible(bool visible) {
+void UiState::set_ac_editor_visible(const bool visible) {
     ac_editor_visible_ = visible;
 }
 
 std::optional<std::pair<int, int>>
-UiState::parse_goto(std::string_view x, std::string_view y) const {
+UiState::parse_goto(const std::string_view x, const std::string_view y) {
     const auto px = parse_int_field(x);
     const auto py = parse_int_field(y);
     if (!px.has_value() || !py.has_value()) {

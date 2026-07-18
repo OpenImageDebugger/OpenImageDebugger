@@ -36,7 +36,7 @@
 
 namespace oid::host {
 
-bool export_rgba_png(const oid::BufferExporter::RgbaImage& image,
+bool export_rgba_png(const BufferExporter::RgbaImage& image,
                      const std::string& path) {
     try {
         const int stride_bytes = image.width * 4;

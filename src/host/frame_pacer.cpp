@@ -27,7 +27,7 @@
 
 namespace oid::host {
 
-FramePacer::FramePacer(std::chrono::nanoseconds period)
+FramePacer::FramePacer(const std::chrono::nanoseconds period)
     : period_{period}, deadline_{Clock::now() + period} {}
 
 void FramePacer::wake() {

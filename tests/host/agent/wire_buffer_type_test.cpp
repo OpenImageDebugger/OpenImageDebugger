@@ -30,7 +30,7 @@
 namespace {
 
 using oid::BufferType;
-using enum oid::BufferType;
+using enum BufferType;
 using oid::host::agent::wire_buffer_type;
 
 // The only automated guard on the FLOAT64->float32 narrowing the ingest path

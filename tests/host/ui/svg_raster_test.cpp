@@ -73,7 +73,7 @@ TEST(SvgRaster, GoToXIconRasterizes) {
 }
 
 TEST(SvgRaster, GarbageInputReturnsEmpty) {
-    const unsigned char garbage[] = {'n', 'o', 't', ' ', 's', 'v', 'g'};
+    constexpr unsigned char garbage[] = {'n', 'o', 't', ' ', 's', 'v', 'g'};
     EXPECT_TRUE(
         oid::host::rasterize_svg(garbage, sizeof(garbage), 10, 10).empty());
     EXPECT_TRUE(

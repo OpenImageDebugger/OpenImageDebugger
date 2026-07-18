@@ -38,7 +38,7 @@ namespace oid::host {
 // QPainter baker used (see tag legacy-qt), so the ImGui frontend gets a
 // Qt-free equivalent atlas for pixel-value text overlays. Returns
 // std::nullopt if the embedded font fails to parse (never throws).
-std::optional<oid::GlyphAtlas> stb_glyph_atlas();
+std::optional<GlyphAtlas> stb_glyph_atlas();
 
 } // namespace oid::host
 

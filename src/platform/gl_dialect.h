@@ -43,7 +43,7 @@ struct GlDialect {
     bool has_texture_wrap_r;
     GLenum icon_gl_internal_format;
     GLenum icon_gl_format;
-    GLuint texture_internal_format(GLenum tex_type, GLenum tex_format) const;
+    static GLuint texture_internal_format(GLenum tex_type, GLenum tex_format);
 };
 
 const GlDialect& the_dialect();

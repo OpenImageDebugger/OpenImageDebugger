@@ -31,7 +31,7 @@
 // render_width/height, get_text_renderer) on it.
 #include "host/glfw_canvas.h"
 namespace oid {
-using RenderCanvas = oid::host::GlfwCanvas;
+using RenderCanvas = host::GlfwCanvas;
 } // namespace oid
 
 #endif // VISUALIZATION_RENDER_CANVAS_H_

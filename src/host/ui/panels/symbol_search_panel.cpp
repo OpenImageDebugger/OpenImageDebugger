@@ -44,7 +44,7 @@ namespace {
 // Selects `name` if it's already a loaded buffer, otherwise asks the
 // debugger to plot it; the buffer will show up once IpcClient::poll()
 // decodes the response on a later frame.
-void commit_symbol(UiState& ui, IpcClient& ipc, const std::string& name) {
+void commit_symbol(UiState& ui, const IpcClient& ipc, const std::string& name) {
     if (const std::optional<std::size_t> idx = ui.model_index_of(name);
         idx.has_value()) {
         ui.select(*idx);
@@ -55,7 +55,9 @@ void commit_symbol(UiState& ui, IpcClient& ipc, const std::string& name) {
 
 } // namespace
 
-void draw_symbol_search(UiState& ui, IpcClient& ipc, bool focus_request) {
+void draw_symbol_search(UiState& ui,
+                        const IpcClient& ipc,
+                        const bool focus_request) {
     // Panel-local ImGui edit buffer, not UiState: pure widget plumbing,
     // mirrored into UiState::set_query() below so filtered_symbols() stays
     // the single source of truth for which symbols match.

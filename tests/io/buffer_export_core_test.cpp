@@ -98,7 +98,7 @@ TEST(ExportCore, NpyGoldenBytes) {
     ASSERT_TRUE(oid::BufferExporter::export_npy_raw(
         px, oid::BufferType::UNSIGNED_BYTE, 3, 2, 1, 3, p.string()));
     std::ifstream is{p, std::ios::binary};
-    std::vector<char> got{std::istreambuf_iterator<char>(is), {}};
+    std::vector<char> got{std::istreambuf_iterator(is), {}};
 
     std::string expected;
     expected.append("\x93NUMPY", 6);

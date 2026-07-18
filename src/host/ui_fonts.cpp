@@ -54,11 +54,11 @@ void setup_ui_fonts(const float content_scale) {
     ImGuiIO& io = ImGui::GetIO();
     const float px = UI_FONT_SIZE_BASE * content_scale;
 
-    ImFontConfig roboto_cfg{};
+    const ImFontConfig roboto_cfg{};
     io.Fonts->AddFontFromMemoryTTF(
         imgui_owned_font_copy(fonts::ROBOTO_REGULAR,
                               sizeof(fonts::ROBOTO_REGULAR)),
-        static_cast<int>(sizeof(fonts::ROBOTO_REGULAR)),
+        sizeof(fonts::ROBOTO_REGULAR),
         px,
         &roboto_cfg);
 
@@ -71,7 +71,7 @@ void setup_ui_fonts(const float content_scale) {
     icon_cfg.MergeMode = true;
     io.Fonts->AddFontFromMemoryTTF(
         imgui_owned_font_copy(fonts::FONTELLO, sizeof(fonts::FONTELLO)),
-        static_cast<int>(sizeof(fonts::FONTELLO)),
+        sizeof(fonts::FONTELLO),
         px,
         &icon_cfg,
         kIconRanges.data());

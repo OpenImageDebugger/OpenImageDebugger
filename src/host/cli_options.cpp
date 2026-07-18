@@ -82,7 +82,7 @@ std::optional<int> parse_port(const char* text) {
 
 } // namespace
 
-CliOptions parse_cli(int argc, const char* const* argv) {
+CliOptions parse_cli(const int argc, const char* const* argv) {
     CliOptions options;
 
     // Index-advancing walk: value-taking flags consume the following token and
@@ -92,9 +92,9 @@ CliOptions parse_cli(int argc, const char* const* argv) {
     int i = 1;
     while (i < argc) {
         const char* arg = argv[i];
-        const char* value = (i + 1) < argc ? argv[i + 1] : nullptr;
 
-        if (matches(arg, {"-o", "--open"}) && value != nullptr) {
+        if (const char* value = i + 1 < argc ? argv[i + 1] : nullptr;
+            matches(arg, {"-o", "--open"}) && value != nullptr) {
             options.open_files.emplace_back(value);
             i += 2;
         } else if (matches(arg, {"-h", "--hostname", "--host"}) &&

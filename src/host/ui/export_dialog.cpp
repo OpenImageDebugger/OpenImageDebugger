@@ -41,16 +41,16 @@ namespace {
 // Anonymous-namespace export-format registry; see export_formats() below for
 // the public accessor. Adding a format (e.g. NumPy .npy) is one row here.
 constexpr std::array<ExportFormat, 3> EXPORT_FORMATS{{
-    {oid::BufferExporter::OutputType::BITMAP, ".png", "PNG image"},
-    {oid::BufferExporter::OutputType::OCTAVE_MATRIX, ".oct", "Octave matrix"},
-    {oid::BufferExporter::OutputType::NUMPY_ARRAY, ".npy", "NumPy array"},
+    {BufferExporter::OutputType::BITMAP, ".png", "PNG image"},
+    {BufferExporter::OutputType::OCTAVE_MATRIX, ".oct", "Octave matrix"},
+    {BufferExporter::OutputType::NUMPY_ARRAY, ".npy", "NumPy array"},
 }};
 
 // Case-insensitive ASCII suffix test. Export extensions are ASCII, so a
 // byte-wise tolower comparison is enough (and locale-independent); it lets a
 // user-typed ".PNG"/".OCT" match the registry's canonical ".png"/".oct" so the
 // format is classified correctly and no second extension is appended.
-bool ends_with_ci(std::string_view s, std::string_view suffix) {
+bool ends_with_ci(const std::string_view s, const std::string_view suffix) {
     if (s.size() < suffix.size()) {
         return false;
     }
@@ -66,7 +66,7 @@ bool ends_with_ci(std::string_view s, std::string_view suffix) {
 
 // Copies `s` into `buf` as a null-terminated C string, truncating to fit
 // if necessary (path_buf is a fixed-size ImGui InputText backing buffer).
-void set_path_buf(std::array<char, 1024>& buf, std::string_view s) {
+void set_path_buf(std::array<char, 1024>& buf, const std::string_view s) {
     const std::size_t n = (std::min)(s.size(), buf.size() - 1);
     std::copy_n(s.begin(), n, buf.begin());
     buf[n] = '\0';
@@ -78,7 +78,7 @@ std::span<const ExportFormat> export_formats() {
     return EXPORT_FORMATS;
 }
 
-std::string_view extension_for(oid::BufferExporter::OutputType format) {
+std::string_view extension_for(const BufferExporter::OutputType format) {
     for (const auto& fmt : EXPORT_FORMATS) {
         if (fmt.type == format) {
             return fmt.extension;
@@ -87,10 +87,10 @@ std::string_view extension_for(oid::BufferExporter::OutputType format) {
     return EXPORT_FORMATS.front().extension; // PNG
 }
 
-std::string default_export_path(std::string_view last_export_dir,
+std::string default_export_path(const std::string_view last_export_dir,
                                 const char* home_env,
                                 const std::string& buffer_name,
-                                oid::BufferExporter::OutputType format) {
+                                const BufferExporter::OutputType format) {
     std::string dir;
     if (!last_export_dir.empty()) {
         dir = last_export_dir;
@@ -118,7 +118,7 @@ void open_export_dialog(ExportDialogState& st,
             last_export_dir, std::getenv("HOME"), buffer_name, st.format));
 }
 
-oid::BufferExporter::OutputType classify_export_format(std::string_view path) {
+BufferExporter::OutputType classify_export_format(const std::string_view path) {
     for (const auto& fmt : EXPORT_FORMATS) {
         if (ends_with_ci(path, fmt.extension)) {
             return fmt.type;
@@ -128,7 +128,7 @@ oid::BufferExporter::OutputType classify_export_format(std::string_view path) {
 }
 
 std::string ensure_export_extension(std::string path,
-                                    oid::BufferExporter::OutputType format) {
+                                    const BufferExporter::OutputType format) {
     if (const std::string_view ext = extension_for(format);
         !ends_with_ci(path, ext)) {
         path += ext;
@@ -136,7 +136,7 @@ std::string ensure_export_extension(std::string path,
     return path;
 }
 
-void set_export_path(ExportDialogState& st, std::string_view path) {
+void set_export_path(ExportDialogState& st, const std::string_view path) {
     set_path_buf(st.path_buf, path);
 }
 

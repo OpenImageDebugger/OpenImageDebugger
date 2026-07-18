@@ -62,8 +62,7 @@ class FileOpenQueue {
             const std::string path = std::move(pending_.front());
             pending_.pop_front();
 
-            oid::Expected<BufferRecord> record = loader(path);
-            if (record) {
+            if (Expected<BufferRecord> record = loader(path)) {
                 outcome.last_success = record->display_name;
                 upsert(std::move(*record));
                 ++outcome.succeeded;

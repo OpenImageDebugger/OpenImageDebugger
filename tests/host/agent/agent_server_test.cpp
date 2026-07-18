@@ -314,7 +314,7 @@ TEST_F(AgentServerTest, StopUnblocksIdleServingConnection) {
     drain_until_reply(server, sock);
     (void)read_frame(sock); // hello reply; the serve thread now blocks on read
 
-    std::packaged_task<void()> stop_task([&server] { server.stop(); });
+    std::packaged_task stop_task([&server] { server.stop(); });
     std::future<void> stopped = stop_task.get_future();
     std::jthread runner(std::move(stop_task)); // auto-joins on scope exit
     ASSERT_EQ(stopped.wait_for(std::chrono::seconds(5)),
@@ -348,7 +348,7 @@ TEST_F(AgentServerTest, StopUnblocksIdlePreAuthConnection) {
     const DecodedFrame denied = read_frame(sock);
     ASSERT_TRUE(denied.obj.contains("error")); // hello required first
 
-    std::packaged_task<void()> stop_task([&server] { server.stop(); });
+    std::packaged_task stop_task([&server] { server.stop(); });
     std::future<void> stopped = stop_task.get_future();
     std::jthread runner(std::move(stop_task)); // auto-joins on scope exit
     ASSERT_EQ(stopped.wait_for(std::chrono::seconds(5)),

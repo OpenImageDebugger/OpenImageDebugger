@@ -39,14 +39,14 @@ namespace oid::host {
 // Encodes an already contrast-normalized RGBA8 image to a PNG file via
 // stb_image_write. Never throws: catches everything internally, logs to
 // stderr, and returns false on failure (bad path, encode failure, etc).
-[[nodiscard]] bool export_rgba_png(const oid::BufferExporter::RgbaImage& image,
+[[nodiscard]] bool export_rgba_png(const BufferExporter::RgbaImage& image,
                                    const std::string& path);
 
 // Exports a live Buffer to `path`: BITMAP normalizes to RGBA8 and PNG-encodes
 // it; OCTAVE_MATRIX writes the shared raw Octave-matrix format. Never throws.
-[[nodiscard]] bool export_buffer_imgui(const oid::Buffer& buffer,
+[[nodiscard]] bool export_buffer_imgui(const Buffer& buffer,
                                        const std::string& path,
-                                       oid::BufferExporter::OutputType type);
+                                       BufferExporter::OutputType type);
 
 } // namespace oid::host
 

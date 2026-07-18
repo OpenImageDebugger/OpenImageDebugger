@@ -32,9 +32,9 @@ namespace oid {
 
 void BufferAssembler::begin(BeginParams params) {
     const auto total = params.total_byte_size;
-    auto& entry = in_progress_[params.variable_name];
-    entry.params = std::move(params);
-    entry.bytes.assign(total, std::byte{});
+    auto& [entryParams, entryBytes] = in_progress_[params.variable_name];
+    entryParams = std::move(params);
+    entryBytes.assign(total, std::byte{});
 }
 
 bool BufferAssembler::chunk(const std::string& name,
@@ -45,15 +45,14 @@ bool BufferAssembler::chunk(const std::string& name,
     if (it == in_progress_.end()) {
         return false;
     }
-    auto& entry = it->second;
-    const auto stride = static_cast<std::size_t>(entry.params.stride);
+    auto& [entryParams, entryBytes] = it->second;
+    const auto stride = static_cast<std::size_t>(entryParams.stride);
     const auto offset = row_offset * stride;
     if (const auto expected = row_count * stride;
-        bytes.size() != expected ||
-        offset + bytes.size() > entry.bytes.size()) {
+        bytes.size() != expected || offset + bytes.size() > entryBytes.size()) {
         return false;
     }
-    std::memcpy(entry.bytes.data() + offset, bytes.data(), bytes.size());
+    std::memcpy(entryBytes.data() + offset, bytes.data(), bytes.size());
     return true;
 }
 
@@ -62,17 +61,17 @@ std::optional<AssembledBuffer> BufferAssembler::end(const std::string& name) {
     if (it == in_progress_.end()) {
         return std::nullopt;
     }
-    auto& entry = it->second;
-    AssembledBuffer out{.variable_name = std::move(entry.params.variable_name),
-                        .display_name = std::move(entry.params.display_name),
-                        .pixel_layout = std::move(entry.params.pixel_layout),
-                        .transpose = entry.params.transpose,
-                        .width = entry.params.width,
-                        .height = entry.params.height,
-                        .channels = entry.params.channels,
-                        .stride = entry.params.stride,
-                        .type = entry.params.type,
-                        .bytes = std::move(entry.bytes)};
+    auto& [params, bytes] = it->second;
+    AssembledBuffer out{.variable_name = std::move(params.variable_name),
+                        .display_name = std::move(params.display_name),
+                        .pixel_layout = std::move(params.pixel_layout),
+                        .transpose = params.transpose,
+                        .width = params.width,
+                        .height = params.height,
+                        .channels = params.channels,
+                        .stride = params.stride,
+                        .type = params.type,
+                        .bytes = std::move(bytes)};
     in_progress_.erase(it);
     return out;
 }

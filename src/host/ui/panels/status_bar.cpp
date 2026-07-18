@@ -57,7 +57,7 @@ namespace {
 // the render surface is degenerate (guard not present in the Qt
 // original: ImGui can report a zero-sized canvas while the window is
 // minimized, which Qt's QOpenGLWidget never does).
-std::optional<oid::vec4> stage_coordinates(oid::Stage& stage,
+std::optional<oid::vec4> stage_coordinates(Stage& stage,
                                            const float pos_window_x,
                                            const float pos_window_y,
                                            const int render_w,
@@ -82,7 +82,7 @@ std::optional<oid::vec4> stage_coordinates(oid::Stage& stage,
         return std::nullopt;
     }
     const auto buffer_opt =
-        buffer_obj->get().get_component<oid::Buffer>("buffer_component");
+        buffer_obj->get().get_component<Buffer>("buffer_component");
     if (!buffer_opt.has_value()) {
         return std::nullopt;
     }
@@ -90,30 +90,29 @@ std::optional<oid::vec4> stage_coordinates(oid::Stage& stage,
 
     const auto win_w = static_cast<float>(render_w);
     const auto win_h = static_cast<float>(render_h);
-    const auto mouse_pos_ndc =
-        oid::vec4{2.0f * (pos_window_x - win_w / 2) / win_w,
-                  -2.0f * (pos_window_y - win_h / 2) / win_h,
-                  0.0f,
-                  1.0f};
+    const auto mouse_pos_ndc = vec4{2.0f * (pos_window_x - win_w / 2) / win_w,
+                                    -2.0f * (pos_window_y - win_h / 2) / win_h,
+                                    0.0f,
+                                    1.0f};
     const auto view = cam_obj->get().get_pose().inv();
     const auto buff_pose = buffer_obj->get().get_pose();
     const auto vp_inv = (cam.projection() * view * buff_pose).inv();
 
     auto mouse_pos = vp_inv * mouse_pos_ndc;
-    mouse_pos += oid::vec4(buffer.buffer_width_f() / 2.0f,
-                           buffer.buffer_height_f() / 2.f,
-                           0.0f,
-                           0.0f);
+    mouse_pos += vec4(buffer.buffer_width_f() / 2.0f,
+                      buffer.buffer_height_f() / 2.f,
+                      0.0f,
+                      0.0f);
 
     return mouse_pos;
 }
 
 // Negative sentinel: the Stage failed to initialize, or its camera
 // GameObject/component isn't set up yet, so zoom isn't known this frame.
-float compute_zoom_pct(oid::Stage* stage) {
+float compute_zoom_pct(Stage* stage) {
     float zoom_pct = -1.0f;
     if (stage != nullptr) {
-        if (const oid::Camera* cam = camera_of(*stage); cam != nullptr) {
+        if (const Camera* cam = camera_of(*stage); cam != nullptr) {
             zoom_pct = cam->compute_zoom() * 100.0f;
         }
     }
@@ -124,8 +123,8 @@ float compute_zoom_pct(oid::Stage* stage) {
 // values, plus float precision when applicable) — Qt parity with
 // MainWindow::update_status_bar in the legacy Qt frontend (see tag
 // legacy-qt).
-std::string format_pixel_value_text(const oid::Buffer& buffer,
-                                    oid::Stage& stage,
+std::string format_pixel_value_text(const Buffer& buffer,
+                                    Stage& stage,
                                     const int px,
                                     const int py) {
     auto pixel = std::stringstream{};
@@ -136,10 +135,9 @@ std::string format_pixel_value_text(const oid::Buffer& buffer,
     pixel << std::fixed << std::setprecision(3);
     pixel << "(" << px << ", " << py << ") val=";
     buffer.get_pixel_info(pixel, px, py);
-    if (oid::BufferType::FLOAT64 == buffer.type() ||
-        oid::BufferType::FLOAT32 == buffer.type()) {
-        if (const oid::BufferValues* values = values_of(stage);
-            values != nullptr) {
+    if (BufferType::FLOAT64 == buffer.type() ||
+        BufferType::FLOAT32 == buffer.type()) {
+        if (const BufferValues* values = values_of(stage); values != nullptr) {
             pixel << " precision=[" << values->get_float_precision() << "]";
         }
     }
@@ -153,7 +151,7 @@ std::string format_pixel_value_text(const oid::Buffer& buffer,
 // mouse_x()/mouse_y() persist the last hover position (main.cpp only
 // feeds them while the canvas is hovered), so the readout persists after
 // the cursor leaves the canvas, exactly like Qt's QLabel.
-std::optional<std::string> format_hovered_pixel_text(oid::Stage* stage,
+std::optional<std::string> format_hovered_pixel_text(Stage* stage,
                                                      const GlfwCanvas& canvas) {
     if (stage == nullptr) {
         return std::nullopt;
@@ -190,7 +188,7 @@ void draw_status_bar(const UiState& ui,
         const std::size_t sel = ui.selected();
         const BufferRecord& rec = model.at(sel);
 
-        oid::Stage* stage = stages.selected_stage(sel);
+        Stage* stage = stages.selected_stage(sel);
         const float zoom_pct = compute_zoom_pct(stage);
 
         line = std::format("{}   [{}x{}]   {}",

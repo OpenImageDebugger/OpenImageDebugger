@@ -124,9 +124,9 @@ TEST(BufferAssemblerTests, InterleavedBuffersDoNotCorruptEachOther) {
     BufferAssembler a;
     a.begin(make_begin("a", 4, height, stride, total));
     a.begin(make_begin("b", 4, height, stride, total));
-    const std::vector<std::byte> da{
+    const std::vector da{
         std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}};
-    const std::vector<std::byte> db{
+    const std::vector db{
         std::byte{5}, std::byte{6}, std::byte{7}, std::byte{8}};
     ASSERT_TRUE(a.chunk("a", 0, 1, std::span{da.data(), da.size()}));
     ASSERT_TRUE(a.chunk("b", 0, 1, std::span{db.data(), db.size()}));

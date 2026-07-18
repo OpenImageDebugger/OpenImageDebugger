@@ -45,7 +45,7 @@ namespace oid::host {
 
 namespace {
 
-bool has_npy_magic(std::span<const std::byte> bytes) {
+bool has_npy_magic(const std::span<const std::byte> bytes) {
     static constexpr std::array<unsigned char, 6> kMagic{
         0x93, 'N', 'U', 'M', 'P', 'Y'};
     if (bytes.size() < kMagic.size()) {
@@ -61,7 +61,7 @@ bool has_npy_magic(std::span<const std::byte> bytes) {
 
 // "rgba" for 4-channel buffers; empty (single-channel-style, unlabeled) for
 // everything else -- the renderer only recognizes the 4-char layout string.
-std::string layout_for_channels(int channels) {
+std::string layout_for_channels(const int channels) {
     return channels == 4 ? "rgba" : "";
 }
 
@@ -88,11 +88,13 @@ BufferRecordParams params_from_npy(NpyArray npy,
 // Kept local so this translation unit (compiled for the non-native build too)
 // does not pull in the GL-backed buffer.h. A file whose header claims more than
 // this is rejected before any pixel memory is allocated.
-constexpr int kMaxImageDimension = 131072;                             // 2^17
-constexpr std::uint64_t kMaxDecodedBytes = 16ULL * 1024 * 1024 * 1024; // 16 GB
+constexpr int K_MAX_IMAGE_DIMENSION = 131072; // 2^17
+constexpr std::uint64_t K_MAX_DECODED_BYTES =
+    16ULL * 1024 * 1024 * 1024; // 16 GB
 
 // Number of decoded scalar elements (pixels * channels) in the image.
-std::size_t element_count(int width, int height, int channels) {
+std::size_t
+element_count(const int width, const int height, const int channels) {
     return static_cast<std::size_t>(width) * static_cast<std::size_t>(height) *
            static_cast<std::size_t>(channels);
 }
@@ -104,7 +106,7 @@ template <typename T>
 std::vector<std::byte> pixels_to_bytes(const T* pixels, std::size_t count) {
     const auto* first = reinterpret_cast<const std::byte*>(pixels);
     const auto* last = reinterpret_cast<const std::byte*>(pixels + count);
-    return std::vector<std::byte>(first, last);
+    return std::vector(first, last);
 }
 
 // Decodes stb-supported image bytes into BufferRecordParams.
@@ -127,8 +129,8 @@ Expected<BufferRecordParams> decode_stb(std::span<const std::byte> bytes,
     if (stbi_info_from_memory(data, len, &width, &height, &channels) == 0) {
         return make_error(std::string{"image: "} + stbi_failure_reason());
     }
-    if (width < 1 || height < 1 || channels < 1 || width > kMaxImageDimension ||
-        height > kMaxImageDimension) {
+    if (width < 1 || height < 1 || channels < 1 ||
+        width > K_MAX_IMAGE_DIMENSION || height > K_MAX_IMAGE_DIMENSION) {
         return make_error("image: dimensions out of range");
     }
     // Upper-bound the decode with the widest element (float, 4 bytes) using
@@ -137,7 +139,7 @@ Expected<BufferRecordParams> decode_stb(std::span<const std::byte> bytes,
             static_cast<std::uint64_t>(width) *
             static_cast<std::uint64_t>(height) *
             static_cast<std::uint64_t>(channels) * sizeof(float);
-        decoded_bytes > kMaxDecodedBytes) {
+        decoded_bytes > K_MAX_DECODED_BYTES) {
         return make_error("image: decoded dimensions exceed the size limit");
     }
 
@@ -242,7 +244,7 @@ Expected<BufferRecord> load_buffer_from_file(const std::string& path,
     if (!stream) {
         return make_error("cannot open file: " + path);
     }
-    std::vector<std::byte> bytes(static_cast<std::size_t>(size));
+    std::vector<std::byte> bytes(size);
     stream.read(reinterpret_cast<char*>(bytes.data()),
                 static_cast<std::streamsize>(bytes.size()));
     if (!stream) {

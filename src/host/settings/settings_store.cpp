@@ -135,9 +135,8 @@ std::string settings_to_json(const AppSettings& s) {
                {"lastExportDir", s.last_export_dir}};
 
     auto arr = nlohmann::json::array();
-    for (const auto& b : s.previous_buffers) {
-        arr.push_back(
-            {{"name", b.variable_name}, {"expiry", b.expiry_epoch_s}});
+    for (const auto& [variable_name, expiry_epoch_s] : s.previous_buffers) {
+        arr.push_back({{"name", variable_name}, {"expiry", expiry_epoch_s}});
     }
     j["previousBuffers"] = std::move(arr);
 
@@ -188,7 +187,7 @@ AppSettings SettingsStore::load() const {
         if (!is) {
             return AppSettings{};
         }
-        const std::string content{std::istreambuf_iterator<char>(is),
+        const std::string content{std::istreambuf_iterator(is),
                                   std::istreambuf_iterator<char>()};
         return settings_from_json(content);
     } catch (const std::exception& e) {
@@ -199,9 +198,9 @@ AppSettings SettingsStore::load() const {
     }
 }
 
-void SettingsStore::save(const AppSettings& s) const {
+void SettingsStore::save(const AppSettings& settings) const {
     try {
-        const std::string json = settings_to_json(s);
+        const std::string json = settings_to_json(settings);
 
         if (const auto parent = file_.parent_path(); !parent.empty()) {
             std::error_code ec;

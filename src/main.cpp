@@ -188,7 +188,7 @@ void draw_canvas_pane(oid::host::GlfwCanvas& canvas,
     sel.resize_callback(lw, lh);
     const GLuint tex = view.render(sel);
 
-    ImGui::Image(static_cast<ImTextureID>(tex),
+    ImGui::Image(tex,
                  canvas_size,
                  ImVec2(0, 1),
                  ImVec2(1, 0)); // flip V (FBO origin is bottom-left)
@@ -289,11 +289,12 @@ bool initialize_backend_and_ui(oid::host::GlfwHostBackend& backend,
     // at whatever position the OS/window manager chose for the just-created
     // window.
     if (loaded.window_x.has_value() && loaded.window_y.has_value() &&
-        oid::host::GlfwHostBackend::window_visible_on(*loaded.window_x,
-                                                      *loaded.window_y,
-                                                      loaded.window_w,
-                                                      loaded.window_h,
-                                                      backend.monitors())) {
+        oid::host::GlfwHostBackend::window_visible_on(
+            *loaded.window_x,
+            *loaded.window_y,
+            loaded.window_w,
+            loaded.window_h,
+            oid::host::GlfwHostBackend::monitors())) {
         backend.set_window_position(*loaded.window_x, *loaded.window_y);
     }
 
@@ -385,7 +386,7 @@ struct FrameContext {
 // Dispatches agent requests queued since the last rendered frame on this
 // (the GL) thread. Native-only: the Emscripten build has no agent endpoint
 // (its glue lives in the out-of-tree platform port), so this is a no-op.
-void drain_agent(FrameContext& ctx) {
+void drain_agent(const FrameContext& ctx) {
     if (ctx.agent != nullptr) {
         ctx.agent->drain();
     }
@@ -422,7 +423,7 @@ void poll_ipc_and_update_thumbnails(FrameContext& ctx) {
 // (quit, go-to toggle, symbol-search focus). Returns whether the symbol
 // search box should claim focus this frame (draw_main_ui's search panel
 // acts on it).
-bool process_menu_and_shortcuts(FrameContext& ctx) {
+bool process_menu_and_shortcuts(const FrameContext& ctx) {
     bool request_quit = false;
     bool request_open = false;
     oid::host::draw_menu_bar(request_quit, request_open);
@@ -492,28 +493,29 @@ void process_pending_file_opens(FrameContext& ctx) {
         return;
     }
 
-    const oid::host::FileOpenOutcome outcome = ctx.file_open_queue.drain(
-        [](const std::string& path) {
-            return oid::host::load_buffer_from_file(path);
-        },
-        [&ctx](oid::host::BufferRecord record) {
-            ctx.model.upsert(std::move(record));
-        });
+    const auto [succeeded, failed, last_error, last_success] =
+        ctx.file_open_queue.drain(
+            [](const std::string& path) {
+                return oid::host::load_buffer_from_file(path);
+            },
+            [&ctx](oid::host::BufferRecord record) {
+                ctx.model.upsert(std::move(record));
+            });
 
-    if (outcome.failed > 0) {
+    if (failed > 0) {
         std::fprintf(stderr,
                      "OpenImageDebugger: failed to open %d file(s); last "
                      "error: %s\n",
-                     outcome.failed,
-                     outcome.last_error.c_str());
+                     failed,
+                     last_error.c_str());
     }
 
-    if (outcome.succeeded > 0) {
-        ctx.ui.set_status_message(std::format(
-            "Opened {} ({} total)", outcome.last_success, outcome.succeeded));
-    } else if (outcome.failed > 0) {
+    if (succeeded > 0) {
         ctx.ui.set_status_message(
-            std::format("Failed to open file: {}", outcome.last_error));
+            std::format("Opened {} ({} total)", last_success, succeeded));
+    } else if (failed > 0) {
+        ctx.ui.set_status_message(
+            std::format("Failed to open file: {}", last_error));
     }
 }
 
@@ -522,7 +524,7 @@ void process_pending_file_opens(FrameContext& ctx) {
 // the status bar. `focus_symbol_search` comes from
 // process_menu_and_shortcuts (Ctrl+K), computed earlier in the frame so the
 // symbol-search panel can act on it this same frame.
-void draw_main_ui(FrameContext& ctx, bool focus_symbol_search) {
+void draw_main_ui(const FrameContext& ctx, const bool focus_symbol_search) {
     // Host body: fills the viewport work area (BeginMainMenuBar
     // already shrank vp->WorkPos/WorkSize to sit below the menu
     // bar). Fixed pos/size, no title bar, no move/resize/scrollbar
@@ -535,7 +537,7 @@ void draw_main_ui(FrameContext& ctx, bool focus_symbol_search) {
     // (leftMargin/topMargin/rightMargin/bottomMargin; see tag
     // legacy-qt).
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
-    if (const ImGuiWindowFlags host_flags =
+    if (constexpr ImGuiWindowFlags host_flags =
             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
@@ -677,7 +679,7 @@ void draw_main_ui(FrameContext& ctx, bool focus_symbol_search) {
 // buffer_of()) and performs the export if found. Early-returns (leaving
 // `status` empty) on each lookup miss instead of nesting three deep,
 // preserving the original guard order and side effects exactly.
-void export_confirmed_buffer(FrameContext& ctx, std::string& status) {
+void export_confirmed_buffer(const FrameContext& ctx, std::string& status) {
     const auto idx = ctx.ui.model_index_of(ctx.export_dialog.buffer_name);
     if (!idx.has_value()) {
         return;
@@ -701,7 +703,7 @@ void export_confirmed_buffer(FrameContext& ctx, std::string& status) {
 // export also updates `last_export_dir` from the saved file's parent
 // directory, so the next dialog open (and the persisted settings snapshot)
 // default to it.
-void handle_export_requests(FrameContext& ctx) {
+void handle_export_requests(const FrameContext& ctx) {
     if (!oid::platform::confirm_export(ctx.export_dialog)) {
         return;
     }
@@ -718,7 +720,7 @@ void handle_export_requests(FrameContext& ctx) {
 
 // Recomputes the merged previous-buffers list, builds a live settings
 // snapshot, and hands it to the saver (debounced disk/IPC write).
-void persist_settings_if_dirty(FrameContext& ctx) {
+void persist_settings_if_dirty(const FrameContext& ctx) {
     // Settings persistence: recompute the merged
     // previous-buffers list from this frame's model contents, build
     // a live AppSettings snapshot, and hand it to the saver, which
@@ -739,10 +741,9 @@ void persist_settings_if_dirty(FrameContext& ctx) {
         }
         loaded_names.push_back(ctx.model.variable_name_of(i));
     }
-    const auto now_s = static_cast<std::int64_t>(
-        std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::system_clock::now().time_since_epoch())
-            .count());
+    const auto now_s = std::chrono::duration_cast<std::chrono::seconds>(
+                           std::chrono::system_clock::now().time_since_epoch())
+                           .count();
     ctx.prev_buffers = oid::host::merge_previous_buffers(
         ctx.prev_buffers, loaded_names, ctx.seen_this_session, now_s);
 
@@ -777,9 +778,10 @@ int main(int argc, char** argv) {
     // frontend adds on top. Defaults match the bridge's default listen port.
     // Unrecognized args (e.g. a stray "-style fusion" the bridge may still
     // pass on the Qt side) are ignored.
-    const oid::host::CliOptions cli = oid::host::parse_cli(argc, argv);
-    const oid::platform::Endpoint endpoint{
-        cli.hostname, static_cast<unsigned short>(cli.port)};
+    const auto [hostname, port, open_files, agent_debugger_pid] =
+        oid::host::parse_cli(argc, argv);
+    const oid::platform::Endpoint endpoint{hostname,
+                                           static_cast<unsigned short>(port)};
 
     // Wires the inbound message hook (non-native only; no-op native) so the
     // embedding host can push buffer data into the module; must be installed
@@ -903,6 +905,9 @@ int main(int argc, char** argv) {
     // pacer. (Initialization order is independent: the optionals are
     // emplaced in dependency order inside the try block below.)
     std::optional<oid::host::FramePacer> pacer;
+    // Declared BEFORE agent_server so it outlives it: agent_server (via
+    // AgentCore) holds a ViewModel& to this model and is used past the block
+    // below via FrameContext, so the model must not be destroyed first.
     std::optional<oid::host::agent::NativeViewModel> agent_model;
     std::optional<oid::host::agent::AgentServer> agent_server;
     if (const char* v = std::getenv("OID_AGENT");
@@ -917,16 +922,17 @@ int main(int argc, char** argv) {
                                 /*viewport source*/ canvas);
             agent_server.emplace(*agent_model,
                                  oid::host::agent::AgentServerConfig{
-                                     /*enabled=*/true, cli.agent_debugger_pid});
-            pacer.emplace(std::chrono::nanoseconds{std::chrono::seconds{1}} /
-                          backend.primary_refresh_rate_hz());
+                                     /*enabled=*/true, agent_debugger_pid});
+            pacer.emplace(
+                std::chrono::nanoseconds{std::chrono::seconds{1}} /
+                oid::host::GlfwHostBackend::primary_refresh_rate_hz());
             agent_server->set_enqueue_listener([&p = *pacer] { p.wake(); });
             oid::platform::begin_agent_activity();
             // Only after the endpoint is actually up, and as the very last
             // step of agent startup: any earlier throw falls back to the
             // default vsync loop, so vsync is never left off on a path
             // that ends in plain loop.run().
-            backend.set_vsync(false);
+            oid::host::GlfwHostBackend::set_vsync(false);
         } catch (const std::exception& e) {
             agent_server.reset();
             agent_model.reset();
@@ -964,8 +970,7 @@ int main(int argc, char** argv) {
             apply_settings(s);
         },
         [&ui, &model, &export_dialog, &last_export_dir] {
-            const std::size_t idx = ui.selected();
-            if (idx < model.size()) {
+            if (const std::size_t idx = ui.selected(); idx < model.size()) {
                 oid::host::open_export_dialog(export_dialog,
                                               model.variable_name_of(idx),
                                               last_export_dir);
@@ -996,7 +1001,7 @@ int main(int argc, char** argv) {
     // push into it later (see process_menu_and_shortcuts above), and
     // process_pending_file_opens drains it (decode + upsert) every frame.
     oid::host::FileOpenQueue file_open_queue;
-    file_open_queue.push_all(cli.open_files);
+    file_open_queue.push_all(open_files);
 
     // FrameContext bundles the frame loop's state so the frame lambda's body
     // (originally one ~180-line block under a 19-entry capture list) can be
@@ -1067,7 +1072,7 @@ int main(int argc, char** argv) {
                                   draw_main_ui(ctx, focus_symbol_search);
                                   handle_export_requests(ctx);
 
-                                  imgui.render();
+                                  oid::host::ImGuiLayer::render();
 
                                   persist_settings_if_dirty(ctx);
                               }};

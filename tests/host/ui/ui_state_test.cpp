@@ -34,28 +34,28 @@ using oid::host::MockBufferModel;
 using oid::host::UiState;
 
 TEST(UiState, SelectionClampsToModel) {
-    MockBufferModel m = make_default_mock_model();
+    const MockBufferModel m = make_default_mock_model();
     UiState s{m};
     s.select(999);
     EXPECT_LT(s.selected(), m.size());
 }
 
 TEST(UiState, SelectionStartsAtZero) {
-    MockBufferModel m = make_default_mock_model();
-    UiState s{m};
+    const MockBufferModel m = make_default_mock_model();
+    const UiState s{m};
     EXPECT_EQ(s.selected(), 0u);
     EXPECT_TRUE(s.has_selection());
 }
 
 TEST(UiState, SelectionInRangeIsUnchanged) {
-    MockBufferModel m = make_default_mock_model();
+    const MockBufferModel m = make_default_mock_model();
     UiState s{m};
     s.select(1);
     EXPECT_EQ(s.selected(), 1u);
 }
 
 TEST(UiState, FilteredIndicesFollowQuery) {
-    MockBufferModel m = make_default_mock_model();
+    const MockBufferModel m = make_default_mock_model();
     UiState s{m};
 
     s.set_query("nonexistent_zzz");
@@ -66,7 +66,7 @@ TEST(UiState, FilteredIndicesFollowQuery) {
 }
 
 TEST(UiState, FilteredIndicesMapBackToModelRecords) {
-    MockBufferModel m = make_default_mock_model();
+    const MockBufferModel m = make_default_mock_model();
     UiState s{m};
 
     s.set_query("gradient");
@@ -76,7 +76,7 @@ TEST(UiState, FilteredIndicesMapBackToModelRecords) {
 }
 
 TEST(UiState, ToolbarFlagsDefaultAndToggle) {
-    MockBufferModel m = make_default_mock_model();
+    const MockBufferModel m = make_default_mock_model();
     UiState s{m};
 
     EXPECT_TRUE(s.contrast_enabled());
@@ -89,7 +89,7 @@ TEST(UiState, ToolbarFlagsDefaultAndToggle) {
 }
 
 TEST(UiState, ParseGotoRejectsGarbageInEitherField) {
-    MockBufferModel m = make_default_mock_model();
+    const MockBufferModel m = make_default_mock_model();
     UiState s{m};
 
     EXPECT_EQ(s.parse_goto("x", "4"), std::nullopt);
@@ -98,8 +98,8 @@ TEST(UiState, ParseGotoRejectsGarbageInEitherField) {
 }
 
 TEST(UiState, ParseGotoAcceptsBothNumeric) {
-    MockBufferModel m = make_default_mock_model();
+    const MockBufferModel m = make_default_mock_model();
     UiState s{m};
 
-    EXPECT_EQ(s.parse_goto("3", "4"), (std::pair<int, int>{3, 4}));
+    EXPECT_EQ(s.parse_goto("3", "4"), (std::pair{3, 4}));
 }

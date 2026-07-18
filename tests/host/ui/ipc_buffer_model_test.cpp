@@ -31,8 +31,9 @@
 
 using namespace oid::host;
 
-static BufferRecord
-rec(std::string_view name, std::byte fill, std::size_t n = 4) {
+static BufferRecord rec(const std::string_view name,
+                        const std::byte fill,
+                        const std::size_t n = 4) {
     BufferRecord r;
     r.variable_name = name;
     r.display_name = name;

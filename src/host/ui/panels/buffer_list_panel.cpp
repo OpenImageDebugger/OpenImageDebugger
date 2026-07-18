@@ -60,7 +60,7 @@ std::string row_label(const BufferRecord& rec) {
 // newly-selected row is scrolled into view this same frame.
 bool handle_buffer_list_navigation(UiState& ui,
                                    const IpcBufferModel& model,
-                                   bool list_focused) {
+                                   const bool list_focused) {
     bool nav_moved = false;
     if (list_focused && ui.has_selection()) {
         const bool up = ImGui::IsKeyPressed(ImGuiKey_UpArrow, /*repeat=*/true);
@@ -114,8 +114,8 @@ struct BufferListRowContext {
 };
 
 void draw_buffer_list_row(const BufferListRowContext& ctx,
-                          std::size_t i,
-                          bool nav_moved) {
+                          const std::size_t i,
+                          const bool nav_moved) {
     ImGui::PushID(static_cast<int>(i));
 
     const ImVec2 row_start = ImGui::GetCursorScreenPos();
@@ -188,8 +188,8 @@ void draw_buffer_list_row(const BufferListRowContext& ctx,
 // accept both.
 void handle_buffer_list_delete_key(const UiState& ui,
                                    IpcBufferModel& model,
-                                   IpcClient& ipc,
-                                   bool list_focused) {
+                                   const IpcClient& ipc,
+                                   const bool list_focused) {
     if (list_focused && ui.has_selection() &&
         (ImGui::IsKeyPressed(ImGuiKey_Delete, /*repeat=*/false) ||
          ImGui::IsKeyPressed(ImGuiKey_Backspace, /*repeat=*/false))) {
@@ -209,7 +209,7 @@ void handle_buffer_list_delete_key(const UiState& ui,
 
 void draw_buffer_list(UiState& ui,
                       IpcBufferModel& model,
-                      IpcClient& ipc,
+                      const IpcClient& ipc,
                       StageManager& stages,
                       ThumbnailCache& thumbs,
                       ExportDialogState& export_dialog,

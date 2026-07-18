@@ -40,7 +40,7 @@ namespace {
 
 // Build a minimal v1 .npy blob: magic, version 1.0, header, payload.
 std::vector<std::byte> make_npy(const std::string& descr,
-                                bool fortran_order,
+                                const bool fortran_order,
                                 const std::vector<int>& shape,
                                 const std::vector<std::byte>& payload) {
     std::string shape_str = "(";
@@ -58,30 +58,31 @@ std::vector<std::byte> make_npy(const std::string& descr,
                        ", 'shape': " + shape_str + ", }";
 
     // Pad so that (10 + header_len) is a multiple of 64; header ends in '\n'.
-    std::size_t unpadded = 10 + dict.size() + 1;
-    std::size_t padded = ((unpadded + 63) / 64) * 64;
+    const std::size_t unpadded = 10 + dict.size() + 1;
+    const std::size_t padded = (unpadded + 63) / 64 * 64;
     dict.append(padded - unpadded, ' ');
     dict.push_back('\n');
 
     const auto header_len = static_cast<std::uint16_t>(dict.size());
 
     std::vector<std::byte> blob;
-    const std::array<unsigned char, 6> magic = {0x93, 'N', 'U', 'M', 'P', 'Y'};
+    constexpr std::array<unsigned char, 6> magic = {
+        0x93, 'N', 'U', 'M', 'P', 'Y'};
     for (unsigned char c : magic) {
         blob.push_back(static_cast<std::byte>(c));
     }
     blob.push_back(static_cast<std::byte>(1)); // major
     blob.push_back(static_cast<std::byte>(0)); // minor
     blob.push_back(static_cast<std::byte>(header_len & 0xFF));
-    blob.push_back(static_cast<std::byte>((header_len >> 8) & 0xFF));
-    for (char c : dict) {
+    blob.push_back(static_cast<std::byte>(header_len >> 8 & 0xFF));
+    for (const char c : dict) {
         blob.push_back(static_cast<std::byte>(static_cast<unsigned char>(c)));
     }
     blob.insert(blob.end(), payload.begin(), payload.end());
     return blob;
 }
 
-std::vector<std::byte> u8_payload(std::size_t n) {
+std::vector<std::byte> u8_payload(const std::size_t n) {
     std::vector<std::byte> p(n);
     for (std::size_t i = 0; i < n; ++i) {
         p[i] = static_cast<std::byte>(i & 0xFF);
@@ -171,8 +172,8 @@ TEST(NpyDecodeTest, RejectsUnsupportedDtype) {
 }
 
 TEST(NpyDecodeTest, RejectsTruncatedMagic) {
-    std::vector<std::byte> blob = {static_cast<std::byte>(0x93),
-                                   static_cast<std::byte>('N')};
+    std::vector blob = {static_cast<std::byte>(0x93),
+                        static_cast<std::byte>('N')};
     const auto result = decode_npy(blob);
     EXPECT_FALSE(result.has_value());
 }

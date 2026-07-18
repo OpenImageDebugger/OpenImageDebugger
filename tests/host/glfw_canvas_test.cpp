@@ -40,12 +40,12 @@ static_assert(
     "GlfwCanvas must be non-copy-assignable (owns a unique_ptr GL table)");
 
 TEST(GlfwCanvasTest, ReportsFramebufferSizeFromProvider) {
-    GlfwCanvas canvas{nullptr, [] { return std::pair<int, int>{800, 600}; }};
+    const GlfwCanvas canvas{nullptr, [] { return std::pair{800, 600}; }};
     EXPECT_EQ(canvas.render_width(), 800);
     EXPECT_EQ(canvas.render_height(), 600);
 }
 
 TEST(GlfwCanvasTest, HasNoTextRendererBeforePhase5) {
-    GlfwCanvas canvas{nullptr, [] { return std::pair<int, int>{1, 1}; }};
+    const GlfwCanvas canvas{nullptr, [] { return std::pair{1, 1}; }};
     EXPECT_EQ(canvas.get_text_renderer(), nullptr);
 }

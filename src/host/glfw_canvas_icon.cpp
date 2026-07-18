@@ -49,7 +49,7 @@
 
 namespace oid::host {
 
-bool GlfwCanvas::render_buffer_icon(oid::Stage& stage,
+bool GlfwCanvas::render_buffer_icon(Stage& stage,
                                     const int icon_width,
                                     const int icon_height) {
     if (!ready_) {
@@ -64,7 +64,7 @@ bool GlfwCanvas::render_buffer_icon(oid::Stage& stage,
         return false;
     }
 
-    const auto& dialect = oid::the_dialect();
+    const auto& dialect = the_dialect();
     const auto icon_read_format = dialect.icon_gl_format;
     const auto icon_bytes_per_pixel = dialect.icon_bytes_per_pixel;
 
@@ -82,7 +82,7 @@ bool GlfwCanvas::render_buffer_icon(oid::Stage& stage,
         return false;
     }
     const auto cam_opt =
-        camera->get().get_component<oid::Camera>("camera_component");
+        camera->get().get_component<Camera>("camera_component");
     if (!cam_opt.has_value()) [[unlikely]] {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, render_width(), render_height());
@@ -91,7 +91,7 @@ bool GlfwCanvas::render_buffer_icon(oid::Stage& stage,
     auto& cam = cam_opt->get();
 
     // Save original camera pose
-    const auto original_pose = oid::Camera{cam};
+    const auto original_pose = Camera{cam};
 
     // Adapt camera to the thumbnail dimensions
     cam.window_resized(icon_width, icon_height);

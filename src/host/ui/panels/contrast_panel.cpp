@@ -48,7 +48,7 @@ namespace {
 // Draws the lower_upper_bound icon spanning both rows, vertically centered
 // against the two-row block like a Qt grid rowspan cell (label_minmax,
 // 8x35).
-void draw_min_max_icon(SvgIconCache& icons, float block_h) {
+void draw_min_max_icon(SvgIconCache& icons, const float block_h) {
     if (const GLuint lub = icons.texture_for(IconId::LOWER_UPPER_BOUND, 8, 35);
         lub != 0) {
         const float top_y = ImGui::GetCursorPosY();
@@ -65,11 +65,11 @@ void draw_min_max_icon(SvgIconCache& icons, float block_h) {
 // Draws the small per-channel color dot, vertically centered against the
 // field height (Qt centers grid cells vertically).
 void draw_channel_dot(SvgIconCache& icons,
-                      int channel,
-                      float cell_x,
-                      float row_y,
-                      float field_h,
-                      float dot_w) {
+                      const int channel,
+                      const float cell_x,
+                      const float row_y,
+                      const float field_h,
+                      const float dot_w) {
     if (const GLuint ch = icons.texture_for(
             static_cast<IconId>(static_cast<int>(IconId::CHANNEL_RED) +
                                 channel),
@@ -86,7 +86,7 @@ void draw_channel_dot(SvgIconCache& icons,
 // Editable min/max value field: commits on focus-loss-after-edit (parity
 // with Qt's editingFinished) rather than on every keystroke, so recomputing
 // the contrast parameters doesn't happen mid-typing.
-void draw_channel_value_field(float* v, oid::Buffer* buffer) {
+void draw_channel_value_field(float* v, Buffer* buffer) {
     // %g matches Qt's QString::number display ("255", not "255.000").
     ImGui::InputFloat("##val", v, 0.0f, 0.0f, "%g");
     if (ImGui::IsItemDeactivatedAfterEdit()) {
@@ -109,7 +109,7 @@ struct ContrastRowContext {
     SvgIconCache& icons;
     std::span<float> mins;
     std::span<float> maxs;
-    oid::Buffer* buffer;
+    Buffer* buffer;
     bool single_channel;
     int channel_count;
     float cell_pitch;
@@ -123,9 +123,9 @@ struct ContrastRowContext {
 // PushID/BeginDisabled scope that keeps the ImGui ID stack and disabled
 // state balanced around both.
 void draw_contrast_channel_column(const ContrastRowContext& ctx,
-                                  int row,
-                                  int c,
-                                  ImVec2 row_pos) {
+                                  const int row,
+                                  const int c,
+                                  const ImVec2 row_pos) {
     const float cell_x = row_pos.x + static_cast<float>(c) * ctx.cell_pitch;
     ImGui::PushID(row * 4 + c);
     const bool channel_active =
@@ -136,7 +136,7 @@ void draw_contrast_channel_column(const ContrastRowContext& ctx,
         ImVec2(cell_x + ctx.dot_w + ctx.dot_gap, row_pos.y));
     ImGui::SetNextItemWidth(ctx.field_w);
     if (c < ctx.channel_count) {
-        float* v = (row == 0) ? &ctx.mins[c] : &ctx.maxs[c];
+        float* v = row == 0 ? &ctx.mins[c] : &ctx.maxs[c];
         draw_channel_value_field(v, ctx.buffer);
     } else {
         draw_unused_channel_field();
@@ -147,11 +147,11 @@ void draw_contrast_channel_column(const ContrastRowContext& ctx,
 
 // Draws the ac_reset_min / ac_reset_max button at a row's end (fontello
 // U+E808), sized to the field height so the row reads as one line.
-void draw_channel_row_reset_button(int row,
-                                   ImVec2 row_pos,
-                                   float cell_pitch,
-                                   float field_h,
-                                   oid::Buffer* buffer) {
+void draw_channel_row_reset_button(const int row,
+                                   const ImVec2 row_pos,
+                                   const float cell_pitch,
+                                   const float field_h,
+                                   Buffer* buffer) {
     ImGui::SetCursorScreenPos(ImVec2(row_pos.x + 4.0f * cell_pitch, row_pos.y));
     ImGui::PushID(100 + row);
     if (icon_button(ICON_AC_RESET,
@@ -176,11 +176,11 @@ void draw_channel_row_reset_button(int row,
 void draw_contrast_panel(const UiState& ui,
                          StageManager& stages,
                          SvgIconCache& icons) {
-    oid::Stage* stage = stages.selected_stage(ui.selected());
+    Stage* stage = stages.selected_stage(ui.selected());
     if (stage == nullptr) {
         return;
     }
-    oid::Buffer* buffer = buffer_of(*stage);
+    Buffer* buffer = buffer_of(*stage);
     if (buffer == nullptr) {
         return;
     }
@@ -207,9 +207,9 @@ void draw_contrast_panel(const UiState& ui,
     // the first cell anchors to the row top but later cells inherit the
     // dot-offset line Y and drift down. Absolute positioning per cell
     // sidesteps that bookkeeping entirely.
-    const float dot_w = 10.0f;
-    const float dot_gap = 3.0f;  // Qt per-cell HBox spacing is 1 + label pad
-    const float field_w = 50.0f; // Qt QLineEdit max width 50
+    constexpr float dot_w = 10.0f;
+    constexpr float dot_gap = 3.0f; // Qt per-cell HBox spacing is 1 + label pad
+    constexpr float field_w = 50.0f; // Qt QLineEdit max width 50
     const float cell_pitch =
         dot_w + dot_gap + field_w + ImGui::GetStyle().ItemSpacing.x;
 

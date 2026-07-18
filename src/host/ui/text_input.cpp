@@ -103,8 +103,8 @@ std::optional<int> parse_int_field(std::string_view text) {
     int value = 0;
     const auto* begin = text.data();
     const auto* end = text.data() + text.size();
-    const auto [ptr, ec] = std::from_chars(begin, end, value);
-    if (ec != std::errc{} || ptr != end) {
+    if (const auto [ptr, ec] = std::from_chars(begin, end, value);
+        ec != std::errc{} || ptr != end) {
         return std::nullopt;
     }
     return value;

@@ -41,7 +41,7 @@ template <typename Cancellable>
 bool run_until(asio::io_context& ctx,
                Cancellable& cancellable,
                const bool& done,
-               std::chrono::milliseconds timeout) {
+               const std::chrono::milliseconds timeout) {
     ctx.restart();
     ctx.run_for(timeout);
     if (!done) { // deadline hit before the op completed
@@ -57,7 +57,7 @@ bool run_until(asio::io_context& ctx,
 
 AsioTransport::AsioTransport(const std::string& host,
                              const unsigned short port,
-                             std::chrono::milliseconds timeout)
+                             const std::chrono::milliseconds timeout)
     : owned_ctx_{std::make_unique<asio::io_context>()}, ctx_{owned_ctx_.get()},
       socket_{*ctx_}, timeout_{timeout} {
     // NOTE: connect failure here must NOT throw -- it must leave the socket
@@ -92,11 +92,11 @@ AsioTransport::AsioTransport(const std::string& host,
 
 AsioTransport::AsioTransport(asio::io_context& ctx,
                              asio::ip::tcp::socket&& sock,
-                             std::chrono::milliseconds timeout)
+                             const std::chrono::milliseconds timeout)
     : owned_ctx_{nullptr}, ctx_{&ctx}, socket_{std::move(sock)},
       timeout_{timeout} {}
 
-void AsioTransport::send(std::span<const std::byte> data) {
+void AsioTransport::send(const std::span<const std::byte> data) {
     asio::error_code ec;
     // asio::write loops until all bytes are written or an error occurs.
     asio::write(socket_, asio::buffer(data.data(), data.size()), ec);
@@ -105,7 +105,7 @@ void AsioTransport::send(std::span<const std::byte> data) {
     }
 }
 
-std::size_t AsioTransport::receive(std::span<std::byte> dst) {
+std::size_t AsioTransport::receive(const std::span<std::byte> dst) {
     bool done = false;
     asio::error_code op_ec;
     std::size_t n = 0;
@@ -158,7 +158,7 @@ bool AsioTransport::is_connected() const {
     return true; // data pending -> connected
 }
 
-void AsioTransport::set_timeout(std::chrono::milliseconds timeout) {
+void AsioTransport::set_timeout(const std::chrono::milliseconds timeout) {
     timeout_ = timeout;
 }
 
@@ -169,7 +169,7 @@ unsigned short AsioAcceptor::port() const {
     return acceptor_.local_endpoint().port();
 }
 
-AsioTransport AsioAcceptor::accept(std::chrono::milliseconds timeout) {
+AsioTransport AsioAcceptor::accept(const std::chrono::milliseconds timeout) {
     asio::ip::tcp::socket sock{io_context_};
 
     bool done = false;

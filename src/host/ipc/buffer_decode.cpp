@@ -41,8 +41,8 @@ BufferRecord make_buffer_record(BufferRecordParams params) {
     record.step = params.stride;
     record.type = params.type;
 
-    if (params.type == oid::BufferType::FLOAT64) {
-        record.bytes = oid::make_float_buffer_from_double(params.bytes);
+    if (params.type == BufferType::FLOAT64) {
+        record.bytes = make_float_buffer_from_double(params.bytes);
     } else {
         record.bytes = std::move(params.bytes);
     }

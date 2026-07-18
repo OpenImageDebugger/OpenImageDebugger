@@ -33,7 +33,7 @@
 
 #include <GL/gl.h>
 
-#include "host/ui/transparent_string_hash.h"
+#include "host/util/transparent_string_hash.h"
 
 namespace oid {
 class Stage;
@@ -90,9 +90,8 @@ class ThumbnailCache {
     // Stage (may be nullptr, e.g. while StageManager is still initializing
     // it); texture_for() only renders when both the entry is stale/missing
     // and `stage` is non-null.
-    [[nodiscard]] GLuint texture_for(const std::string& name,
-                                     std::uint64_t revision,
-                                     oid::Stage* stage);
+    [[nodiscard]] GLuint
+    texture_for(const std::string& name, std::uint64_t revision, Stage* stage);
 
     // Drops cached entries (and deletes their GL textures) for any name not
     // present in `live_names`, so a removed buffer's icon texture doesn't
