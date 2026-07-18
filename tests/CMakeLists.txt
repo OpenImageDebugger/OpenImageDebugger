@@ -886,6 +886,15 @@ if(OID_BUILD_IMGUI_FRONTEND)
     target_link_libraries(wire_buffer_type_test PRIVATE GTest::gtest_main GTest::gtest)
     add_test(NAME WireBufferTypeTests COMMAND wire_buffer_type_test)
 
+    # FramePacer: deterministic ordering/count tests for agent-run frame
+    # pacing (pending-wake service, burst coalescing, deadline return).
+    add_executable(frame_pacer_test host/frame_pacer_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/frame_pacer.cpp)
+    target_include_directories(frame_pacer_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+    target_link_libraries(frame_pacer_test PRIVATE Threads::Threads GTest::gtest_main GTest::gtest)
+    add_test(NAME FramePacerTests COMMAND frame_pacer_test)
+
     # Test AgentCore's request dispatch out of host/agent/agent_core.cpp
     # against FakeViewModel: hello/ping/list_buffers/get_buffer/get_view/
     # set_view semantics and error codes. Pure logic -- vendored

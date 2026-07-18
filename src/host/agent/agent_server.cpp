@@ -28,9 +28,9 @@
 #include <array>
 #include <atomic>
 #include <chrono>
-#include <cstdint>
 #include <exception>
 #include <format>
+#include <iostream>
 #include <memory>
 #include <random>
 #include <span>
@@ -50,6 +50,16 @@
 namespace oid::host::agent {
 
 namespace {
+
+// Logged once per process: a throwing enqueue listener silently degrades
+// wake latency to per-frame draining only, which is otherwise invisible.
+void log_listener_failure_once(const char* what) {
+    static std::atomic_flag logged;
+    if (!logged.test_and_set()) {
+        std::cerr << "[oid-agent] enqueue listener threw (" << what
+                  << "); requests are still served by the per-frame drain\n";
+    }
+}
 
 // Mirrors agentendpoint.py's MAX_CLIENTS: ceiling on simultaneously served
 // connections; connections beyond this are closed immediately.
@@ -449,8 +459,9 @@ void AgentServer::serve_client(asio::io_context& conn_ctx,
 std::future<Reply> AgentServer::enqueue(nlohmann::json request, bool* authed) {
     std::promise<Reply> promise;
     std::future<Reply> future = promise.get_future();
+    std::function<void()> on_enqueue;
     {
-        std::scoped_lock lock(queue_mutex_);
+        const std::scoped_lock lock(queue_mutex_);
         if (stopped_.load()) {
             // Shutting down: a serve thread can reach here concurrently
             // with stop() (e.g. it finished decode_frame just as stop()
@@ -462,6 +473,24 @@ std::future<Reply> AgentServer::enqueue(nlohmann::json request, bool* authed) {
         } else {
             pending_.emplace_back(
                 std::move(request), std::move(promise), authed);
+            // Copied under lock, invoked outside it: slow listener
+            // must not stall other serve threads' enqueues or drain().
+            on_enqueue = enqueue_listener_;
+        }
+    }
+    if (on_enqueue) {
+        // Exception boundary: this runs on a serve thread, where an escaping
+        // exception would unwind the request loop and drop the client (or
+        // terminate). The listener contract says cheap and nonthrowing (it is
+        // FramePacer::wake), but a listener bug must not destabilize the
+        // transport, so failures are absorbed: the request is already queued
+        // and the per-frame drain still serves it.
+        try {
+            on_enqueue();
+        } catch (const std::exception& e) { // NOSONAR - deliberate boundary
+            log_listener_failure_once(e.what());
+        } catch (...) { // NOSONAR - deliberately absorb listener failures
+            log_listener_failure_once("unknown exception");
         }
     }
     return future;
@@ -484,6 +513,11 @@ void AgentServer::drain() {
             item.reply.set_exception(std::current_exception());
         }
     }
+}
+
+void AgentServer::set_enqueue_listener(std::function<void()> listener) {
+    const std::scoped_lock lock(queue_mutex_);
+    enqueue_listener_ = std::move(listener);
 }
 
 void AgentServer::stop() {

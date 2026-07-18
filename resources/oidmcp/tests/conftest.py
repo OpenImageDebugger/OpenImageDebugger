@@ -160,6 +160,9 @@ class _FakeViewerEndpoint:
             'buffer': None, 'center': None, 'zoom': None,
             'rotation_deg': None, 'channel': None, 'auto_contrast': False,
         }
+        # Post-hello wire requests served, across all connections; lets
+        # tests assert the warm path is ping-free (one request per call).
+        self.requests_served = 0
         self.token = secrets.token_hex(32)
         self._listener = socket.socket()
         self._listener.bind(('127.0.0.1', 0))
@@ -173,7 +176,8 @@ class _FakeViewerEndpoint:
         # `_FakeViewerEndpoint` on a new port, but possibly the same
         # declared pid if the global `_manager` singleton is reused
         # across tests) silently keep talking to this dead one instead of
-        # failing the pool's ping() health check and reconnecting.
+        # failing the pooled client's next call with an ``OSError``,
+        # which `_call_with_retry` answers by rebuilding the client once.
         self._conns_lock = threading.Lock()
         self._conns = []
         self._thread = threading.Thread(target=self._accept_loop,
@@ -212,6 +216,7 @@ class _FakeViewerEndpoint:
             self._handle(conn, request)
 
     def _handle(self, conn, request):
+        self.requests_served += 1
         method = request.get('method')
         handler = {
             'ping': self._handle_ping,
@@ -282,6 +287,15 @@ class _FakeViewerEndpoint:
                 pass  # peer already gone; nothing to shut down
             conn.close()
         self._thread.join(timeout=2)
+
+    def drop_connections(self):
+        """Sever every accepted connection (the listener stays up),
+        simulating a pooled client whose socket died while the viewer
+        lives on."""
+        with self._conns_lock:
+            conns = list(self._conns)
+        for conn in conns:
+            conn.close()
 
 
 class FakeViewer:

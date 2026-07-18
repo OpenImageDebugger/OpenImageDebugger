@@ -83,35 +83,57 @@ class SessionManager:
         self._cache = BufferCache(capacity=4)
         self._max_bytes = _parse_max_bytes()
 
-    def _client(self, info) -> ControlClient:
-        client = self._clients.get(info.pid)
-        if client is not None:
-            try:
-                client.ping()
-                return client
-            except OSError:
-                client.close()
-                del self._clients[info.pid]
-        client = ControlClient('127.0.0.1', info.port, info.token)
-        self._clients[info.pid] = client
-        return client
+    def _call_with_retry(self, pool, resolve, fn):
+        """
+        Run ``fn(client)`` against the pooled connection for the endpoint
+        ``resolve()`` names.
 
-    def _viewer_client(self, info) -> ControlClient:
-        # Pooled separately from debugger clients (own dict, keyed by the
-        # viewer's own pid): a debugger session and its paired viewer are
-        # different live endpoints and must never share a pool slot, even
-        # though nothing stops the two pid spaces from colliding.
-        client = self._viewer_clients.get(info.pid)
-        if client is not None:
+        The warm path is a single round-trip: no liveness ping. A
+        transport error (``OSError``; ``ConnectionError`` and timeouts
+        are subclasses) means the pooled socket went stale -- e.g. the
+        endpoint restarted -- so discovery is re-resolved and the client
+        rebuilt once against the fresh record (which may name a new
+        port, token, or even pid), then ``fn`` retried. Safe because
+        every verb is repeat-safe: ``set_view`` is absolute, ``plot``
+        re-displays the same buffer rather than duplicating it, the rest
+        are pure reads, and a repeated hello is harmless. A
+        ``ControlError`` is a real reply from the endpoint and is never
+        retried. Debugger and viewer clients live in separate pools: two
+        live endpoints whose pid spaces could collide must never share a
+        slot.
+        """
+        info = resolve()
+        client = pool.get(info.pid)
+        if client is None:
+            client = ControlClient('127.0.0.1', info.port, info.token)
+            pool[info.pid] = client
+        try:
+            return fn(client)
+        except OSError:
+            client.close()
+            del pool[info.pid]
+            info = resolve()
+            fresh = ControlClient('127.0.0.1', info.port, info.token)
+            pool[info.pid] = fresh
             try:
-                client.ping()
-                return client
+                return fn(fresh)
             except OSError:
-                client.close()
-                del self._viewer_clients[info.pid]
-        client = ControlClient('127.0.0.1', info.port, info.token)
-        self._viewer_clients[info.pid] = client
-        return client
+                # A second transport failure -- e.g. a timeout on a live
+                # but stalled endpoint -- can leave a half-completed
+                # exchange on the socket; if that client stayed pooled, a
+                # late reply would desync request/reply pairing on the
+                # next call. Never keep it.
+                fresh.close()
+                del pool[info.pid]
+                raise
+
+    def _call_debugger(self, session, fn):
+        return self._call_with_retry(
+            self._clients, lambda: self._resolve(session), fn)
+
+    def _call_viewer(self, session, fn):
+        return self._call_with_retry(
+            self._viewer_clients, lambda: self._resolve_viewer(session), fn)
 
     def _resolve(self, session):
         return pick_session(live_sessions(), session)
@@ -180,12 +202,14 @@ class SessionManager:
             return 'viewer', self._resolve_viewer(session)
 
     def list_buffers(self, session) -> dict:
-        kind, info = self._resolve_pixel_source(session)
+        kind, _ = self._resolve_pixel_source(session)
         if kind == 'viewer':
-            buffers = self._viewer_client(info).list_viewer_buffers()
+            buffers = self._call_viewer(
+                session, lambda c: c.list_viewer_buffers())
             return {'symbols': [b['name'] for b in buffers],
                     'stop_generation': 0}
-        symbols, generation = self._client(info).list_symbols()
+        symbols, generation = self._call_debugger(
+            session, lambda c: c.list_symbols())
         return {'symbols': symbols, 'stop_generation': generation}
 
     def fetch(self, session, symbol):
@@ -199,21 +223,44 @@ class SessionManager:
         state, so caching it under a constant key would serve stale
         pixels forever.
         """
-        kind, info = self._resolve_pixel_source(session)
+        kind, _ = self._resolve_pixel_source(session)
         if kind == 'viewer':
-            client = self._viewer_client(info)
-            viewer_meta, raw = client.get_buffer(symbol,
-                                                 max_bytes=self._max_bytes)
+            viewer_meta, raw = self._call_viewer(
+                session, lambda c: c.get_buffer(symbol,
+                                                max_bytes=self._max_bytes))
             meta = to_bridge_meta(viewer_meta)
             return meta, decode_buffer(meta, raw)
 
-        client = self._client(info)
-        generation = client.ping()
-        key = (info.pid, symbol, generation)
-        cached = self._cache.get(key)
+        # The ping is functional, not a liveness probe: it returns the
+        # current stop generation, which keys the per-stop cache. Ping,
+        # cache lookup, and (only on a miss) get_buffer all run on the SAME
+        # client inside ONE retry scope, and the key takes its pid from the
+        # record that scope actually resolved -- a mid-call re-resolution
+        # (endpoint restart, possibly under a new pid) can therefore never
+        # split the key across two endpoints, and a retry re-pings so the
+        # generation always matches the client that served the bytes.
+        used_info = None
+
+        def resolve():
+            nonlocal used_info
+            used_info = self._resolve(session)
+            return used_info
+
+        def ping_then_fetch(client):
+            generation = client.ping()
+            key = (used_info.pid, symbol, generation)
+            cached = self._cache.get(key)
+            if cached is not None:
+                return key, cached, None
+            meta, raw = client.get_buffer(symbol,
+                                          max_bytes=self._max_bytes)
+            return key, None, (meta, raw)
+
+        key, cached, fetched = self._call_with_retry(
+            self._clients, resolve, ping_then_fetch)
         if cached is not None:
             return cached
-        meta, raw = client.get_buffer(symbol, max_bytes=self._max_bytes)
+        meta, raw = fetched
         arr = decode_buffer(meta, raw)
         # Store under the same key we looked up (the ping generation), not
         # meta['stop_generation']: if the stop advanced between ping and
@@ -223,18 +270,17 @@ class SessionManager:
         return meta, arr
 
     def plot(self, session, symbol) -> None:
-        kind, info = self._resolve_pixel_source(session)
+        kind, _ = self._resolve_pixel_source(session)
         if kind == 'viewer':
             raise RuntimeError(
                 'the buffer is already displayed in that viewer')
-        self._client(info).plot(symbol)
+        self._call_debugger(session, lambda c: c.plot(symbol))
 
     def set_view(self, session, **fields) -> dict:
-        return self._viewer_client(self._resolve_viewer(session)) \
-            .set_view(**fields)
+        return self._call_viewer(session, lambda c: c.set_view(**fields))
 
     def get_view(self, session) -> dict:
-        return self._viewer_client(self._resolve_viewer(session)).get_view()
+        return self._call_viewer(session, lambda c: c.get_view())
 
 
 _INSTRUCTIONS = (
