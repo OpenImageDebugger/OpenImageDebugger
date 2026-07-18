@@ -49,11 +49,6 @@ class FramePacer {
     // none in progress, it is served on the next pace() entry.
     void wake();
 
-    // Thread-safe; the new cadence takes effect immediately (the current
-    // deadline is re-anchored to now + period). Used when the window moves
-    // to a monitor with a different refresh rate.
-    void set_period(std::chrono::nanoseconds period);
-
     // GL-thread only. Serves all pending burst wake() calls, one per
     // on_wake() invocation, until the frame deadline passes, advances the
     // deadline by one period -- clamped to now + period on overrun so a

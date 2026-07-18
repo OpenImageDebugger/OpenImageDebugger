@@ -68,13 +68,13 @@ def crop_region(arr: np.ndarray,
     return arr[y:y + h, x:x + w, :]
 
 
-# (session pid, symbol, stop generation) -> (metadata, decoded array)
-CacheKey = tuple[int, str, int]
+# (session pid, token, symbol, stop generation) -> (metadata, decoded array)
+CacheKey = tuple[int, str, str, int]
 CacheValue = tuple[dict, np.ndarray]
 
 
 class BufferCache:
-    """Small LRU keyed by (session pid, symbol, stop generation)."""
+    """Small LRU keyed by (session pid, token, symbol, stop generation)."""
 
     def __init__(self, capacity: int = 4):
         self._capacity = capacity

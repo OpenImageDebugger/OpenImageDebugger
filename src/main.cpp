@@ -391,19 +391,6 @@ void drain_agent(FrameContext& ctx) {
     }
 }
 
-// Re-derives the agent-run pacing period from the monitor currently under
-// the window (the display can change when the window is dragged to a
-// different-Hz monitor). Render cadence only -- agent latency is
-// wake-driven regardless of the period.
-void repace_if_monitor_changed(const oid::host::GlfwHostBackend& backend,
-                               oid::host::FramePacer& pacer,
-                               int& paced_hz) {
-    if (const int hz = backend.refresh_rate_hz(); hz != paced_hz) {
-        paced_hz = hz;
-        pacer.set_period(std::chrono::nanoseconds{std::chrono::seconds{1}} /
-                         hz);
-    }
-}
 #else
 void drain_agent(FrameContext& /*ctx*/) {}
 #endif
@@ -932,7 +919,7 @@ int main(int argc, char** argv) {
                                  oid::host::agent::AgentServerConfig{
                                      /*enabled=*/true, cli.agent_debugger_pid});
             pacer.emplace(std::chrono::nanoseconds{std::chrono::seconds{1}} /
-                          backend.refresh_rate_hz());
+                          backend.primary_refresh_rate_hz());
             agent_server->set_enqueue_listener([&p = *pacer] { p.wake(); });
             oid::platform::begin_agent_activity();
             // Only after the endpoint is actually up, and as the very last
@@ -1091,16 +1078,7 @@ int main(int argc, char** argv) {
         // pace() owns the frame cadence. A request wakes the pacing wait
         // and is drained within ~1 ms regardless of focus/occlusion,
         // instead of once per (possibly OS-throttled) present.
-        // The display can change under us (window dragged to a monitor
-        // with a different refresh rate); re-derive the pacing period about
-        // once a second. Render cadence only -- agent latency is
-        // wake-driven regardless of the period.
-        constexpr int REFRESH_RECHECK_FRAMES = 60;
-        int paced_hz = backend.refresh_rate_hz();
         while (loop.tick()) {
-            if (loop.frame_count() % REFRESH_RECHECK_FRAMES == 0) {
-                repace_if_monitor_changed(backend, *pacer, paced_hz);
-            }
             pacer->pace([&ctx] {
                 // Same poll-before-read contract as the frame lambda: the
                 // agent is a model consumer, so inbound IPC is reconciled

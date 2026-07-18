@@ -75,65 +75,28 @@ def _parse_max_bytes() -> int:
 
 
 class SessionManager:
-    """Connection pool + per-stop buffer cache over live sessions."""
+    """Per-stop buffer cache over live sessions (a fresh connection per call)."""
 
     def __init__(self):
-        self._clients: dict[int, ControlClient] = {}
-        self._viewer_clients: dict[int, ControlClient] = {}
         self._cache = BufferCache(capacity=4)
         self._max_bytes = _parse_max_bytes()
 
-    def _call_with_retry(self, pool, resolve, fn):
-        """
-        Run ``fn(client)`` against the pooled connection for the endpoint
-        ``resolve()`` names.
-
-        The warm path is a single round-trip: no liveness ping. A
-        transport error (``OSError``; ``ConnectionError`` and timeouts
-        are subclasses) means the pooled socket went stale -- e.g. the
-        endpoint restarted -- so discovery is re-resolved and the client
-        rebuilt once against the fresh record (which may name a new
-        port, token, or even pid), then ``fn`` retried. Safe because
-        every verb is repeat-safe: ``set_view`` is absolute, ``plot``
-        re-displays the same buffer rather than duplicating it, the rest
-        are pure reads, and a repeated hello is harmless. A
-        ``ControlError`` is a real reply from the endpoint and is never
-        retried. Debugger and viewer clients live in separate pools: two
-        live endpoints whose pid spaces could collide must never share a
-        slot.
-        """
-        info = resolve()
-        client = pool.get(info.pid)
-        if client is None:
-            client = ControlClient('127.0.0.1', info.port, info.token)
-            pool[info.pid] = client
-        try:
-            return fn(client)
-        except OSError:
-            client.close()
-            del pool[info.pid]
-            info = resolve()
-            fresh = ControlClient('127.0.0.1', info.port, info.token)
-            pool[info.pid] = fresh
-            try:
-                return fn(fresh)
-            except OSError:
-                # A second transport failure -- e.g. a timeout on a live
-                # but stalled endpoint -- can leave a half-completed
-                # exchange on the socket; if that client stayed pooled, a
-                # late reply would desync request/reply pairing on the
-                # next call. Never keep it.
-                fresh.close()
-                del pool[info.pid]
-                raise
+    def _connect(self, info):
+        return ControlClient('127.0.0.1', info.port, info.token)
 
     def _call_debugger(self, session, fn):
-        return self._call_with_retry(
-            self._clients, lambda: self._resolve(session), fn)
+        client = self._connect(self._resolve(session))
+        try:
+            return fn(client)
+        finally:
+            client.close()
 
     def _call_viewer(self, session, fn):
-        return self._call_with_retry(
-            self._viewer_clients, lambda: self._resolve_viewer(session), fn)
+        client = self._connect(self._resolve_viewer(session))
+        try:
+            return fn(client)
+        finally:
+            client.close()
 
     def _resolve(self, session):
         return pick_session(live_sessions(), session)
@@ -231,41 +194,27 @@ class SessionManager:
             meta = to_bridge_meta(viewer_meta)
             return meta, decode_buffer(meta, raw)
 
-        # The ping is functional, not a liveness probe: it returns the
-        # current stop generation, which keys the per-stop cache. Ping,
-        # cache lookup, and (only on a miss) get_buffer all run on the SAME
-        # client inside ONE retry scope, and the key takes its pid from the
-        # record that scope actually resolved -- a mid-call re-resolution
-        # (endpoint restart, possibly under a new pid) can therefore never
-        # split the key across two endpoints, and a retry re-pings so the
-        # generation always matches the client that served the bytes.
-        used_info = None
-
-        def resolve():
-            nonlocal used_info
-            used_info = self._resolve(session)
-            return used_info
-
-        def ping_then_fetch(client):
+        # ping is functional here (not a liveness probe): it returns the
+        # current stop generation, which keys the per-stop cache. One
+        # connection serves ping + cache-miss get_buffer, so the key always
+        # matches the endpoint that produced the bytes. info.token is
+        # included because it is per-instance (a restarted endpoint
+        # publishes a fresh random token): pid alone can be reused by an
+        # unrelated later session that happens to reach the same stop
+        # generation, and without the token that session would read back
+        # the previous session's cached bytes.
+        info = self._resolve(session)
+        client = self._connect(info)
+        try:
             generation = client.ping()
-            key = (used_info.pid, symbol, generation)
+            key = (info.pid, info.token, symbol, generation)
             cached = self._cache.get(key)
             if cached is not None:
-                return key, cached, None
-            meta, raw = client.get_buffer(symbol,
-                                          max_bytes=self._max_bytes)
-            return key, None, (meta, raw)
-
-        key, cached, fetched = self._call_with_retry(
-            self._clients, resolve, ping_then_fetch)
-        if cached is not None:
-            return cached
-        meta, raw = fetched
+                return cached
+            meta, raw = client.get_buffer(symbol, max_bytes=self._max_bytes)
+        finally:
+            client.close()
         arr = decode_buffer(meta, raw)
-        # Store under the same key we looked up (the ping generation), not
-        # meta['stop_generation']: if the stop advanced between ping and
-        # get_buffer those differ, and keying the entry off the lookup value
-        # is what guarantees the next same-stop fetch finds it.
         self._cache.put(key, (meta, arr))
         return meta, arr
 
