@@ -67,10 +67,12 @@ class ControlClient:
 
         The debugger endpoint's reply always carries 'stop_generation';
         the viewer endpoint's does not (a viewer has no stop notion, and
-        replies '{"ok": true}' instead). `SessionManager`'s viewer
-        connection pool still calls this to detect a dead connection, so
-        a missing key defaults to 0 rather than raising -- only the
-        debugger side relies on the returned value being meaningful.
+        replies '{"ok": true}' instead), so a missing key defaults to 0
+        rather than raising -- only the debugger side relies on the
+        returned value being meaningful. `SessionManager` no longer pings
+        for liveness (a stale pooled socket surfaces as OSError on the
+        call itself and is rebuilt once); its debugger fetch path still
+        calls this for the stop generation that keys the per-stop cache.
         """
         response, _ = self._call({'method': 'ping'})
         return response.get('stop_generation', 0)

@@ -29,6 +29,7 @@
 #include <atomic>
 #include <cstddef>
 #include <filesystem>
+#include <functional>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -77,6 +78,15 @@ class AgentServer {
     // Dispatches every request queued since the last call, on the calling
     // thread. Intended to be invoked once per frame from the main loop.
     void drain();
+
+    // Registers a listener to be invoked (without arguments) when a request is
+    // queued. Thread-safe; the listener is copied under lock and invoked
+    // outside the lock to avoid stalling other serve threads. Passing a
+    // default-constructed std::function (which is nullptr-like) deregisters
+    // the listener (e.g., to restore a no-op). Intended for the FramePacer to
+    // use: wake itself and force the main loop to drain() sooner on each
+    // request, instead of waiting for the next scheduled frame.
+    void set_enqueue_listener(std::function<void()> listener);
 
     // Stops accepting connections, joins the accept thread, and removes
     // the discovery file. Idempotent; also invoked by the destructor.
@@ -166,6 +176,11 @@ class AgentServer {
     // handle_accept() caps concurrent connections at MAX_CLIENTS. drain()
     // therefore processes at most MAX_CLIENTS requests per frame.
     std::vector<PendingRequest> pending_;
+
+    // Listener to invoke when a request is queued. Guarded by queue_mutex_.
+    // Thread-safe: copied under lock, invoked outside it to avoid stalling
+    // other serve threads' enqueues or drain().
+    std::function<void()> enqueue_listener_;
 
     std::filesystem::path discovery_path_;
     bool discovery_written_ = false;

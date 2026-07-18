@@ -192,6 +192,7 @@ if(OID_BUILD_IMGUI_FRONTEND)
       platform/native_file_dialog.cpp
       host/agent/native_view_model.cpp
       host/agent/agent_server.cpp
+      host/frame_pacer.cpp
       host/agent/discovery_file.cpp
     )
   endif()
@@ -209,9 +210,11 @@ if(OID_BUILD_IMGUI_FRONTEND)
   # They need AppKit/Foundation, plus UniformTypeIdentifiers for UTType.
   if(APPLE)
     target_sources(oidwindow PRIVATE host/app_icon_mac.mm
-                                     platform/native_file_dialog_mac.mm)
+                                     platform/native_file_dialog_mac.mm
+                                     platform/app_nap_mac.mm)
     set_source_files_properties(host/app_icon_mac.mm
                                 platform/native_file_dialog_mac.mm
+                                platform/app_nap_mac.mm
       PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
     target_link_libraries(oidwindow PRIVATE "-framework AppKit"
                                             "-framework Foundation"

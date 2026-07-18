@@ -445,3 +445,25 @@ TEST_F(AgentServerTest, DrainRunsOnCallingThread) {
 
     server.stop();
 }
+
+TEST_F(AgentServerTest, EnqueueListenerFiresWhenARequestIsQueued) {
+    // The native main loop registers a listener that wakes its FramePacer;
+    // this pins the seam: queuing a decoded request must invoke it.
+    FakeViewModel model;
+    AgentServerConfig cfg;
+    cfg.enabled = true;
+    AgentServer server(model, cfg);
+
+    std::atomic notifications{0};
+    server.set_enqueue_listener([&notifications] { ++notifications; });
+
+    asio::ip::tcp::socket sock = connect_to(server);
+    send_frame(sock, {{"method", "hello"}, {"token", server.token()}});
+    drain_until_reply(server, sock);
+    (void)read_frame(sock); // hello reply
+
+    // Exactly one frame was sent, so exactly one notification: an accidental
+    // double-notify per enqueue would be a real (if benign-looking) bug.
+    EXPECT_EQ(notifications.load(), 1);
+    server.stop();
+}

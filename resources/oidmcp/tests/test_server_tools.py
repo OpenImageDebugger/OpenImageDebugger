@@ -4,6 +4,7 @@ import pytest
 
 from oidmcp import server
 from oidmcp.analysis import compute_stats
+from oidmcp.protocol import ControlError
 
 
 @pytest.fixture
@@ -283,3 +284,57 @@ def test_list_sessions_pairs_debugger_and_viewer(live_endpoint, live_viewer):
     assert any(d['pid'] == session.pid for d in result['debuggers'])
     assert any(v['pid'] == viewer.pid and v['debugger_pid'] == session.pid
               for v in result['viewers'])
+
+
+# --- pooled-client retry (no per-call liveness ping) --------------------
+
+def test_warm_control_calls_are_single_round_trips(live_viewer):
+    viewer = live_viewer()
+    mgr = server.SessionManager()
+    mgr.set_view(None, zoom=1.5)
+    mgr.get_view(None)
+    # Two calls, two wire requests: no ping precedes a warm call.
+    assert viewer.endpoint.requests_served == 2
+
+
+def test_stale_pooled_client_is_rebuilt_once(live_viewer):
+    viewer = live_viewer()
+    mgr = server.SessionManager()
+    mgr.set_view(None, zoom=1.5)
+    viewer.endpoint.drop_connections()
+    view = mgr.get_view(None)  # transparent reconnect + single retry
+    assert view['zoom'] == pytest.approx(1.5)
+    assert viewer.endpoint.requests_served == 2
+
+
+def test_control_error_reply_is_not_retried(live_viewer):
+    viewer = live_viewer()
+    mgr = server.SessionManager()
+    with pytest.raises(ControlError):
+        mgr.fetch(None, 'missing')
+    # A real error reply must not be blindly re-sent.
+    assert viewer.endpoint.requests_served == 1
+
+
+def test_dead_viewer_propagates_after_one_rebuild(live_viewer):
+    viewer = live_viewer()
+    mgr = server.SessionManager()
+    mgr.set_view(None, zoom=1.0)
+    viewer.endpoint.close()
+    with pytest.raises(OSError):
+        mgr.get_view(None)
+
+
+def test_retry_re_resolves_a_restarted_viewer(live_viewer):
+    # The rebuild must target freshly re-resolved discovery, not the record
+    # captured before the failure: a restarted viewer publishes a new port
+    # and token (same pool key here: both fixtures default to os.getpid()).
+    old = live_viewer(start_time=100.0)
+    mgr = server.SessionManager()
+    mgr.set_view(None, zoom=1.5)         # pools a client to `old`
+    old.endpoint.close()                 # viewer "restarts"...
+    new = live_viewer(start_time=200.0)  # ...republishing discovery
+    view = mgr.set_view(None, zoom=2.0)  # stale socket -> re-resolve -> new
+    assert view['zoom'] == pytest.approx(2.0)
+    assert new.endpoint.requests_served == 1
+    assert old.endpoint.requests_served == 1

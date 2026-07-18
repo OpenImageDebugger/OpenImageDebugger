@@ -48,6 +48,8 @@
 #if !defined(__EMSCRIPTEN__)
 #include "host/agent/agent_server.h"
 #include "host/agent/native_view_model.h"
+#include "host/frame_pacer.h"
+#include "platform/app_nap.h"
 #endif
 #include "host/cli_options.h"
 #include "host/frame_loop.h"
@@ -386,6 +388,20 @@ struct FrameContext {
 void drain_agent(FrameContext& ctx) {
     if (ctx.agent != nullptr) {
         ctx.agent->drain();
+    }
+}
+
+// Re-derives the agent-run pacing period from the monitor currently under
+// the window (the display can change when the window is dragged to a
+// different-Hz monitor). Render cadence only -- agent latency is
+// wake-driven regardless of the period.
+void repace_if_monitor_changed(const oid::host::GlfwHostBackend& backend,
+                               oid::host::FramePacer& pacer,
+                               int& paced_hz) {
+    if (const int hz = backend.refresh_rate_hz(); hz != paced_hz) {
+        paced_hz = hz;
+        pacer.set_period(std::chrono::nanoseconds{std::chrono::seconds{1}} /
+                         hz);
     }
 }
 #else
@@ -892,6 +908,14 @@ int main(int argc, char** argv) {
     // requests for the per-frame drain() call below to dispatch on this
     // (the GL) thread. Native-only: the Emscripten build supplies its own
     // agent glue via the out-of-tree platform port and has no asio.
+    // Paces the agent-run render loop (vsync is off then). Declared BEFORE
+    // agent_server so it is destroyed after it on every exit path: even an
+    // exception unwind that never reaches the explicit stop() below runs
+    // ~AgentServer -- whose stop() joins every serve thread -- before the
+    // pacer goes away, so a serve thread can never wake() a destroyed
+    // pacer. (Initialization order is independent: the optionals are
+    // emplaced in dependency order inside the try block below.)
+    std::optional<oid::host::FramePacer> pacer;
     std::optional<oid::host::agent::NativeViewModel> agent_model;
     std::optional<oid::host::agent::AgentServer> agent_server;
     if (const char* v = std::getenv("OID_AGENT");
@@ -907,9 +931,22 @@ int main(int argc, char** argv) {
             agent_server.emplace(*agent_model,
                                  oid::host::agent::AgentServerConfig{
                                      /*enabled=*/true, cli.agent_debugger_pid});
+            pacer.emplace(std::chrono::nanoseconds{std::chrono::seconds{1}} /
+                          backend.refresh_rate_hz());
+            agent_server->set_enqueue_listener([&p = *pacer] { p.wake(); });
+            oid::platform::begin_agent_activity();
+            // Only after the endpoint is actually up, and as the very last
+            // step of agent startup: any earlier throw falls back to the
+            // default vsync loop, so vsync is never left off on a path
+            // that ends in plain loop.run().
+            backend.set_vsync(false);
         } catch (const std::exception& e) {
             agent_server.reset();
             agent_model.reset();
+            pacer.reset();
+            // Idempotent (and a no-op if begin never ran): the fallback
+            // non-agent run must not keep the App Nap opt-out active.
+            oid::platform::end_agent_activity();
             std::cerr << "[oid] agent endpoint disabled: " << e.what() << "\n";
         }
     }
@@ -1048,13 +1085,50 @@ int main(int argc, char** argv) {
                                   persist_settings_if_dirty(ctx);
                               }};
 
+#if !defined(__EMSCRIPTEN__)
+    if (pacer) {
+        // Agent run: the swap returns immediately (vsync off above), and
+        // pace() owns the frame cadence. A request wakes the pacing wait
+        // and is drained within ~1 ms regardless of focus/occlusion,
+        // instead of once per (possibly OS-throttled) present.
+        // The display can change under us (window dragged to a monitor
+        // with a different refresh rate); re-derive the pacing period about
+        // once a second. Render cadence only -- agent latency is
+        // wake-driven regardless of the period.
+        constexpr int REFRESH_RECHECK_FRAMES = 60;
+        int paced_hz = backend.refresh_rate_hz();
+        while (loop.tick()) {
+            if (loop.frame_count() % REFRESH_RECHECK_FRAMES == 0) {
+                repace_if_monitor_changed(backend, *pacer, paced_hz);
+            }
+            pacer->pace([&ctx] {
+                // Same poll-before-read contract as the frame lambda: the
+                // agent is a model consumer, so inbound IPC is reconciled
+                // into the model before draining -- a gap-drained readback
+                // must not answer with the previous frame's state, and a
+                // gap-applied set_view must land on the current model.
+                // Only the minimal reconcile runs here: the thumbnail
+                // bookkeeping in poll_ipc_and_update_thumbnails is
+                // render-side, budgeted once per frame, and never read by
+                // the agent.
+                ctx.ipc.poll();
+                drain_agent(ctx);
+            });
+        }
+    } else {
+        loop.run();
+    }
+#else
     loop.run();
+#endif
+
 #if !defined(__EMSCRIPTEN__)
     // Stop accepting/serving agent connections before the GL context and
     // Stage/Buffer state below are torn down, so no in-flight drain() call
     // can touch them.
     if (agent_server) {
         agent_server->stop();
+        oid::platform::end_agent_activity();
     }
 #endif
     // Force a final save if a debounced write was still pending when the

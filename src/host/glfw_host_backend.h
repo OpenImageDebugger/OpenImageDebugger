@@ -56,6 +56,17 @@ class GlfwHostBackend final : public HostBackend {
     void end_frame() override;
     void shutdown() override;
 
+    // Toggle vsync on the current GL context (initialize() leaves it
+    // current and defaults to on). Agent runs turn it off: FramePacer
+    // paces the loop instead, so the swap must not block on a present the
+    // OS may throttle for a background window.
+    void set_vsync(bool enabled);
+
+    // Refresh rate, in Hz, of the monitor showing the window (greatest
+    // overlap); the primary's when undetermined (no window yet, or the
+    // platform hides window positions), 60 when GLFW cannot say.
+    [[nodiscard]] int refresh_rate_hz() const;
+
     [[nodiscard]] GLFWwindow* window() const {
         return window_;
     }
