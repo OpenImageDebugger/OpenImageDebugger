@@ -1,5 +1,5 @@
 [project]
-name = "oidmcp"
+name = "oid-mcp"
 version = "0.2.0"
 description = "MCP server giving AI agents eyes on OpenImageDebugger buffers in live gdb/lldb sessions"
 requires-python = ">=3.10"
@@ -21,6 +21,15 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["oidmcp"]
+
+# The wire codec is single-sourced in the debugger-scripts tree
+# (resources/oidscripts). An installed wheel has no sibling resources/
+# checkout, so ship that tree inside the wheel as a top-level `oidscripts`
+# package (oidmcp/_wireframe.py accepts it there). Wheel-only publishing:
+# an sdist cannot reference ../oidscripts once unpacked, so Task 4 builds
+# and uploads the wheel only.
+[tool.hatch.build.targets.wheel.force-include]
+"../oidscripts" = "oidscripts"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
