@@ -73,9 +73,14 @@ jobs:
           # install runs, so there are no dependency versions to lock.
           # Run from a neutral directory so this checkout's source tree
           # does not shadow the wheel on the import path.
-          wheel="$(ls "$PWD"/dist/oid_mcp-*.whl)"
+          shopt -s nullglob
+          wheels=("$PWD"/dist/oid_mcp-*.whl)
+          if [ "${#wheels[@]}" -ne 1 ]; then
+            echo "expected exactly one built wheel, got ${#wheels[@]}: ${wheels[*]}" >&2
+            exit 1
+          fi
           cd /tmp
-          PYTHONPATH="$wheel" python3 \
+          PYTHONPATH="${wheels[0]}" python3 \
             -c "import oidmcp.protocol, oidmcp.discovery; print('wheel import OK')"
 
       - name: Publish to PyPI (trusted publishing)
