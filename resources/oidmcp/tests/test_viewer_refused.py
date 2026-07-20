@@ -68,8 +68,9 @@ def test_all_viewers_refused_raises_no_session(monkeypatch, tmp_path):
 
     monkeypatch.setattr(srv.SessionManager, '_connect', fake_connect)
 
+    mgr = srv.SessionManager()
     with pytest.raises(NoSessionError):
-        srv.SessionManager()._call_viewer(None, lambda c: 'never')
+        mgr._call_viewer(None, lambda c: 'never')
     assert not path.exists()
 
 
@@ -123,5 +124,6 @@ def test_unreapable_refused_viewer_does_not_loop_forever(monkeypatch, tmp_path):
 
     monkeypatch.setattr(srv.SessionManager, '_connect', fake_connect)
 
+    mgr = srv.SessionManager()
     with pytest.raises(NoSessionError):
-        srv.SessionManager()._call_viewer(None, lambda c: 'never')
+        mgr._call_viewer(None, lambda c: 'never')
