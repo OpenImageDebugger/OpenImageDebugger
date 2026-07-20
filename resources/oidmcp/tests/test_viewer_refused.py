@@ -71,3 +71,57 @@ def test_all_viewers_refused_raises_no_session(monkeypatch, tmp_path):
     with pytest.raises(NoSessionError):
         srv.SessionManager()._call_viewer(None, lambda c: 'never')
     assert not path.exists()
+
+
+def test_many_stale_viewers_do_not_hide_an_older_live_one(monkeypatch, tmp_path):
+    # Nine newer stale entries that all refuse, plus one older live viewer.
+    # A fixed small retry cap would give up before reaching the live one; the
+    # live-viewer-bounded walk must reap all nine and still serve the tenth.
+    stale = []
+    for i in range(9):
+        p = tmp_path / f'2{i:02d}.json'
+        p.write_text('{}')
+        stale.append(_viewer(p, port=1, start_time=100.0 + i))
+    good_path = tmp_path / '100.json'
+    good_path.write_text('{}')
+    good = _viewer(good_path, port=2, start_time=1.0)  # oldest -> tried last
+
+    def fake_live_viewers():
+        return [v for v in (*stale, good) if v.path.exists()]
+
+    monkeypatch.setattr(srv, 'live_viewers', fake_live_viewers)
+
+    client = _FakeClient()
+
+    def fake_connect(self, info):
+        if info.port == 2:
+            return client
+        raise ConnectionRefusedError()
+
+    monkeypatch.setattr(srv.SessionManager, '_connect', fake_connect)
+
+    result = srv.SessionManager()._call_viewer(None, lambda c: 'served')
+
+    assert result == 'served'
+    assert good_path.exists()                        # live entry untouched
+    assert all(not v.path.exists() for v in stale)   # every stale entry reaped
+    assert client.closed
+
+
+def test_unreapable_refused_viewer_does_not_loop_forever(monkeypatch, tmp_path):
+    # If a refused entry cannot be reaped (its file survives _reap), the walk
+    # must still terminate rather than spin forever on the same entry.
+    path = tmp_path / '300.json'
+    path.write_text('{}')
+    only = _viewer(path, port=1, start_time=1.0)
+
+    monkeypatch.setattr(srv, 'live_viewers', lambda: [only])  # never disappears
+    monkeypatch.setattr(srv, '_reap', lambda p: None)         # reap is a no-op
+
+    def fake_connect(self, info):
+        raise ConnectionRefusedError()
+
+    monkeypatch.setattr(srv.SessionManager, '_connect', fake_connect)
+
+    with pytest.raises(NoSessionError):
+        srv.SessionManager()._call_viewer(None, lambda c: 'never')

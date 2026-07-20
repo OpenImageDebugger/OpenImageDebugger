@@ -96,23 +96,30 @@ class SessionManager:
         # that wrote it lives on (a long-lived embedding host whose bridge
         # is gone): the reader's pid probe passes but the port refuses.
         # Treat connection-refused as "dead viewer": reap that file and
-        # re-resolve so another live viewer can win. Bounded, so a
-        # pathological discovery dir cannot loop forever.
-        for _ in range(8):
+        # re-resolve so another live viewer can win. The walk is bounded by
+        # the live viewers themselves -- each refusal reaps one entry, and
+        # an entry we cannot make progress on (no path, or a reap that left
+        # the file in place) stops the walk -- so many stale entries can
+        # never hide an older live viewer, yet a pathological discovery dir
+        # cannot loop forever.
+        reaped = set()
+        while True:
             info = self._resolve_viewer(session)
             try:
                 client = self._connect(info)
             except ConnectionRefusedError:
-                if info.path is not None:
-                    _reap(info.path)
+                if info.path is None or str(info.path) in reaped:
+                    raise NoSessionError(
+                        'viewer discovery entries kept refusing '
+                        'connections; restart the viewer window and '
+                        'retry.') from None
+                reaped.add(str(info.path))
+                _reap(info.path)
                 continue
             try:
                 return fn(client)
             finally:
                 client.close()
-        raise NoSessionError(
-            'viewer discovery entries kept refusing connections; restart '
-            'the viewer window and retry.')
 
     def _resolve(self, session):
         return pick_session(live_sessions(), session)
