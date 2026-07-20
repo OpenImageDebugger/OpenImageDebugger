@@ -1,6 +1,6 @@
 [project]
 name = "oid-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "MCP server giving AI agents eyes on OpenImageDebugger buffers in live gdb/lldb sessions"
 requires-python = ">=3.10"
 dependencies = [
@@ -26,8 +26,8 @@ packages = ["oidmcp"]
 # (resources/oidscripts). An installed wheel has no sibling resources/
 # checkout, so ship that tree inside the wheel as a top-level `oidscripts`
 # package (oidmcp/_wireframe.py accepts it there). Wheel-only publishing:
-# an sdist cannot reference ../oidscripts once unpacked, so Task 4 builds
-# and uploads the wheel only.
+# an sdist cannot reference ../oidscripts once unpacked, so the publish
+# workflow builds and uploads the wheel only.
 [tool.hatch.build.targets.wheel.force-include]
 "../oidscripts" = "oidscripts"
 
