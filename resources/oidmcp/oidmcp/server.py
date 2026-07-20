@@ -25,7 +25,7 @@ else:
 
 from .analysis import compute_stats, dump_npy, extract_values
 from .buffers import BufferCache, decode_buffer
-from .discovery import (NoSessionError, _pid_alive, live_sessions,
+from .discovery import (NoSessionError, _pid_alive, _reap, live_sessions,
                         live_viewers, pick_session)
 from .protocol import DEFAULT_MAX_BYTES, ControlClient, ControlError
 from .render import render_view
@@ -92,11 +92,27 @@ class SessionManager:
             client.close()
 
     def _call_viewer(self, session, fn):
-        client = self._connect(self._resolve_viewer(session))
-        try:
-            return fn(client)
-        finally:
-            client.close()
+        # A viewer discovery file can outlive its endpoint while the pid
+        # that wrote it lives on (a long-lived embedding host whose bridge
+        # is gone): the reader's pid probe passes but the port refuses.
+        # Treat connection-refused as "dead viewer": reap that file and
+        # re-resolve so another live viewer can win. Bounded, so a
+        # pathological discovery dir cannot loop forever.
+        for _ in range(8):
+            info = self._resolve_viewer(session)
+            try:
+                client = self._connect(info)
+            except ConnectionRefusedError:
+                if info.path is not None:
+                    _reap(info.path)
+                continue
+            try:
+                return fn(client)
+            finally:
+                client.close()
+        raise NoSessionError(
+            'viewer discovery entries kept refusing connections; restart '
+            'the viewer window and retry.')
 
     def _resolve(self, session):
         return pick_session(live_sessions(), session)
