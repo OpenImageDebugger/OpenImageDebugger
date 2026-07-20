@@ -42,10 +42,12 @@ from pathlib import Path
 _RESOURCES_DIR = Path(__file__).resolve().parents[2]
 _SITE_DIR = Path(__file__).resolve().parents[1]
 _PURELIB_DIR = Path(sysconfig.get_path('purelib'))
+# Single-sourced to avoid repeating the path components below.
+_OIDSCRIPTS_WIREFRAME = Path('oidscripts') / 'wireframe.py'
 _EXPECTED_WIREFRAMES = (
-    _RESOURCES_DIR / 'oidscripts' / 'wireframe.py',
-    _SITE_DIR / 'oidscripts' / 'wireframe.py',
-    _PURELIB_DIR / 'oidscripts' / 'wireframe.py',
+    _RESOURCES_DIR / _OIDSCRIPTS_WIREFRAME,
+    _SITE_DIR / _OIDSCRIPTS_WIREFRAME,
+    _PURELIB_DIR / _OIDSCRIPTS_WIREFRAME,
 )
 if str(_RESOURCES_DIR) not in sys.path:
     sys.path.append(str(_RESOURCES_DIR))
