@@ -68,14 +68,14 @@ jobs:
         shell: bash
         working-directory: resources/oidmcp
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          # Import needs only stdlib + the wheel itself; installing
-          # --no-deps keeps the publish job from resolving unpinned
-          # transitive dependency versions just to smoke-test the wheel.
-          uv venv /tmp/smoke
-          uv pip install --python /tmp/smoke/bin/python --no-deps \
-            "$(ls dist/oid_mcp-*.whl)"
-          /tmp/smoke/bin/python \
+          # oidmcp is pure Python, so the freshly built wheel imports
+          # directly off sys.path via zipimport — no package-manager
+          # install runs, so there are no dependency versions to lock.
+          # Run from a neutral directory so this checkout's source tree
+          # does not shadow the wheel on the import path.
+          wheel="$(ls "$PWD"/dist/oid_mcp-*.whl)"
+          cd /tmp
+          PYTHONPATH="$wheel" python3 \
             -c "import oidmcp.protocol, oidmcp.discovery; print('wheel import OK')"
 
       - name: Publish to PyPI (trusted publishing)
