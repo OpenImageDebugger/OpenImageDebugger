@@ -46,6 +46,16 @@ void install_platform_hooks() {
      * above */
 }
 
+// No-op on native: the native agent endpoint is assembled directly in
+// main.cpp (NativeViewModel + AgentServer); only a non-native platform
+// port needs these objects handed across the platform seam.
+void register_agent_targets(oid::host::IpcBufferModel& /*model*/,
+                            oid::host::StageManager& /*stages*/,
+                            oid::host::UiState& /*ui*/,
+                            std::shared_ptr<RenderCanvas> /*canvas*/) {
+    // Nothing to register on native; see the header comment.
+}
+
 struct SettingsBackend::Impl {
     host::SettingsStore store{host::config_file_path()};
 };

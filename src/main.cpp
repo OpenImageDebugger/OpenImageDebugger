@@ -890,6 +890,11 @@ int main(int argc, char** argv) {
 
     oid::host::StageView view{*canvas};
 
+    // Platform seam: hand non-native ports the same model/stages/ui/canvas
+    // this frontend renders through, for the port's own agent glue.
+    // Native's implementation is a no-op (its endpoint is assembled below).
+    oid::platform::register_agent_targets(model, stages, ui, canvas);
+
 #if !defined(__EMSCRIPTEN__)
     // Native agent endpoint: off unless OID_AGENT=1. `agent_model` adapts
     // the same model/stages/ui/canvas the ImGui frontend already renders
