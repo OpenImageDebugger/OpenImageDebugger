@@ -22,11 +22,31 @@ silently.
 
 import os
 import sys
+import sysconfig
 from pathlib import Path
 
-# resources/oidmcp/oidmcp/_wireframe.py -> parents[2] == resources/
+# Three supported layouts for the shared scripts tree:
+#   repo layout:      resources/oidmcp/oidmcp/_wireframe.py with the tree at
+#                     resources/oidscripts (parents[2] == resources/)
+#   installed layout: site-packages/oidmcp/_wireframe.py with oidscripts
+#                     shipped in the same site-packages by the wheel
+#                     (parents[1] == site-packages)
+#   editable-install layout: a local `uv run`/`pip install -e` dev sync
+#                     redirects oidmcp/_wireframe.py's own __file__ back to
+#                     this repo file (so parents[1] above is not the venv's
+#                     site-packages), yet the build backend still has to
+#                     materialize the force-included oidscripts tree as a
+#                     real copy in the running interpreter's site-packages,
+#                     since there is no editable/redirect mechanism for a
+#                     force-include mapped from outside the project root.
 _RESOURCES_DIR = Path(__file__).resolve().parents[2]
-_EXPECTED_WIREFRAME = _RESOURCES_DIR / 'oidscripts' / 'wireframe.py'
+_SITE_DIR = Path(__file__).resolve().parents[1]
+_PURELIB_DIR = Path(sysconfig.get_path('purelib'))
+_EXPECTED_WIREFRAMES = (
+    _RESOURCES_DIR / 'oidscripts' / 'wireframe.py',
+    _SITE_DIR / 'oidscripts' / 'wireframe.py',
+    _PURELIB_DIR / 'oidscripts' / 'wireframe.py',
+)
 if str(_RESOURCES_DIR) not in sys.path:
     sys.path.append(str(_RESOURCES_DIR))
 
@@ -44,14 +64,13 @@ except ImportError as exc:  # pragma: no cover - deployment misconfiguration
 # different module could encode frames incompatibly, so treat it as a
 # misconfiguration to fix, not a protocol to trust.
 _loaded = getattr(_wireframe, '__file__', None)
-if _loaded is not None and (
-        os.path.realpath(_loaded)
-        != os.path.realpath(_EXPECTED_WIREFRAME)):
+if _loaded is not None and os.path.realpath(_loaded) not in {
+        os.path.realpath(str(p)) for p in _EXPECTED_WIREFRAMES}:
     raise ImportError(  # pragma: no cover - conflicting oidscripts on path
-        'oid-mcp imported a foreign oidscripts.wireframe from %s; expected '
-        'the copy shipped with the debugger scripts at %s. Remove the '
-        'conflicting oidscripts from sys.path / PYTHONPATH.'
-        % (_loaded, _EXPECTED_WIREFRAME))
+        'oid-mcp imported a foreign oidscripts.wireframe %s; expected '
+        'one of %s. Remove the conflicting oidscripts from sys.path / '
+        'PYTHONPATH.'
+        % (_loaded, [str(p) for p in _EXPECTED_WIREFRAMES]))
 
 MAX_FRAME_BYTES = _wireframe.MAX_FRAME_BYTES
 recv_frame = _wireframe.recv_frame
