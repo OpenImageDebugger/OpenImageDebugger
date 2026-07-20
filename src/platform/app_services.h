@@ -33,6 +33,7 @@
 #include <vector>
 
 #include "host/settings/app_settings.h"
+#include "visualization/render_canvas.h"
 
 struct GLFWwindow;
 
@@ -43,6 +44,8 @@ class Buffer;
 namespace oid::host {
 class IpcClient;
 class IpcBufferModel;
+class StageManager;
+class UiState;
 struct ExportDialogState;
 } // namespace oid::host
 
@@ -66,6 +69,17 @@ void install_platform_hooks();
 // dialog and the frame-loop file-open queue. Call once, after the model is
 // constructed and before the main loop starts.
 void register_file_open_sink(host::IpcBufferModel& model);
+
+// Non-native: hands the out-of-tree platform port the same
+// model/stages/ui/canvas this frontend renders through, so the port's own
+// agent glue can adapt them behind the shared agent ViewModel seam
+// (host/agent/view_model.h). Native: no-op -- the native agent endpoint is
+// assembled directly in main.cpp (NativeViewModel + AgentServer). Call
+// once, after StageManager construction and before the frame loop starts.
+void register_agent_targets(oid::host::IpcBufferModel& model,
+                            oid::host::StageManager& stages,
+                            oid::host::UiState& ui,
+                            std::shared_ptr<RenderCanvas> canvas);
 
 // Settings persistence backend. Native: on-disk JSON store at the platform
 // config path. Non-native: no local file -- load() yields defaults (real
