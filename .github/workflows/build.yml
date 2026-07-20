@@ -153,16 +153,18 @@ jobs:
       # Pin uv to a specific version via the official action (verifies the
       # downloaded binary's checksum) rather than piping a remote install
       # script to sh.
-      - if: ${{ !contains(matrix.os, 'windows') }}
+      - if: ${{ !contains(matrix.os, 'windows') && !contains(matrix.os, 'intel') }}
         name: Install uv (e2e)
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           version: "0.11.28"
 
-      # Install the oid-mcp deps up front. The e2e keeps its lldb session alive
-      # with a fixed sleep, so a slow first-time dependency build (e.g.
-      # cryptography compiling from source) must not run inside that window.
-      - if: ${{ !contains(matrix.os, 'windows') }}
+      # Warm the oid-mcp deps up front so the timed e2e (its lldb session is
+      # held open with a fixed sleep) does not pay the first-install cost.
+      # Skipped on macOS Intel: cryptography (via mcp -> pyjwt[crypto]) ships
+      # no x86_64 macOS wheel, and --no-build forbids building it from source,
+      # so the Python e2e leg runs only where every locked dep is a wheel.
+      - if: ${{ !contains(matrix.os, 'windows') && !contains(matrix.os, 'intel') }}
         name: Warm the oid-mcp virtualenv (e2e)
         shell: bash
         working-directory: resources/oidmcp
@@ -172,11 +174,11 @@ jobs:
 
       # Allow lldb to launch/debug the freshly built fixture without an
       # interactive authorization prompt.
-      - if: contains(matrix.os, 'macos')
+      - if: contains(matrix.os, 'macos') && !contains(matrix.os, 'intel')
         name: Enable developer-mode debugging (macOS e2e)
         run: sudo /usr/sbin/DevToolsSecurity -enable
 
-      - if: ${{ !contains(matrix.os, 'windows') }}
+      - if: ${{ !contains(matrix.os, 'windows') && !contains(matrix.os, 'intel') }}
         name: Run lldb e2e smoke test
         shell: bash
         run: |
