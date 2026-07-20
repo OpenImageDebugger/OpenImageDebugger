@@ -69,9 +69,14 @@ jobs:
         working-directory: resources/oidmcp
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          uv run --isolated --no-project \
-            --with "$(ls dist/oid_mcp-*.whl)" \
-            python -c "import oidmcp.protocol, oidmcp.discovery; print('wheel import OK')"
+          # Import needs only stdlib + the wheel itself; installing
+          # --no-deps keeps the publish job from resolving unpinned
+          # transitive dependency versions just to smoke-test the wheel.
+          uv venv /tmp/smoke
+          uv pip install --python /tmp/smoke/bin/python --no-deps \
+            "$(ls dist/oid_mcp-*.whl)"
+          /tmp/smoke/bin/python \
+            -c "import oidmcp.protocol, oidmcp.discovery; print('wheel import OK')"
 
       - name: Publish to PyPI (trusted publishing)
         uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1
