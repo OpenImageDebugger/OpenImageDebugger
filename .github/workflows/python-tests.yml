@@ -53,4 +53,5 @@ jobs:
         working-directory: resources/oidmcp
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          uv run pytest -v
+          uv sync --frozen --no-build --no-install-project
+          .venv/bin/python -m pytest -v

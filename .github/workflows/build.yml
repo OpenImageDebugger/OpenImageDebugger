@@ -166,7 +166,9 @@ jobs:
         name: Warm the oid-mcp virtualenv (e2e)
         shell: bash
         working-directory: resources/oidmcp
-        run: uv run python -c "import oidmcp, numpy, PIL"
+        run: |
+          uv sync --frozen --no-build --no-install-project
+          .venv/bin/python -c "import oidmcp, numpy, PIL"
 
       # Allow lldb to launch/debug the freshly built fixture without an
       # interactive authorization prompt.

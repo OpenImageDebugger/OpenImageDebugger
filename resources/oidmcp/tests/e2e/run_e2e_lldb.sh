@@ -49,8 +49,14 @@ lldb --no-lldbinit --source "$WORK/cmds.lldb" "$WORK/fixture" < <(sleep 90) &
 LLDB_PID=$!
 
 cd "$HERE/../.."
+
+# Prepare the oid-mcp venv from the committed lockfile without a
+# network re-resolve (--frozen) and without executing any dependency
+# build scripts (--no-build); the local project is imported from
+# source via PYTHONPATH below, so it is not installed.
+uv sync --frozen --no-build --no-install-project
 STATUS=0
-OID_AGENT_DIR="$WORK/agent" uv run python tests/e2e/check_session.py \
+OID_AGENT_DIR="$WORK/agent" PYTHONPATH="$PWD" .venv/bin/python tests/e2e/check_session.py \
     || STATUS=$?
 
 kill "$LLDB_PID" 2>/dev/null || true
@@ -83,7 +89,7 @@ else
     VIEWER_PID=$!
 
     VIEWER_STATUS=0
-    OID_AGENT_DIR="$WORK/agent" uv run python tests/e2e/check_session.py viewer \
+    OID_AGENT_DIR="$WORK/agent" PYTHONPATH="$PWD" .venv/bin/python tests/e2e/check_session.py viewer \
         || VIEWER_STATUS=$?
 
     kill "$VIEWER_PID" 2>/dev/null || true
