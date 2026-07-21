@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import getpass
 import json
 import os
 import stat
@@ -36,15 +35,40 @@ class ViewerSessionInfo:
     debugger_pid: int | None
 
 
+def _home_dir():
+    # Passwd-based home so a stripped-env MCP subprocess and the GUI-launched
+    # viewer resolve the same dir independent of $HOME/$TMPDIR/$XDG_*. Returns
+    # None when the uid has no (or an empty) passwd entry and $HOME is unset;
+    # discovery_dir() then uses a per-uid temp dir so uids do not collide.
+    try:
+        import pwd
+        home = pwd.getpwuid(os.getuid()).pw_dir
+        if home:
+            return home
+    except (KeyError, ImportError, OSError):
+        pass  # no passwd entry -> try $HOME, then a per-uid temp dir
+    return os.environ.get('HOME') or None
+
+
 def discovery_dir() -> Path:
     override = os.environ.get('OID_AGENT_DIR')
     if override:
         return Path(override)
-    try:
-        user = getpass.getuser()
-    except Exception:
-        user = str(os.getuid()) if hasattr(os, 'getuid') else 'user'
-    return Path(tempfile.gettempdir()) / f'oid-agent-{user}'
+    if os.name == 'nt':
+        local = os.environ.get('LOCALAPPDATA')
+        if local:
+            return Path(local) / 'oid-agent'
+        profile = os.environ.get('USERPROFILE')
+        if profile:
+            return Path(profile) / 'AppData' / 'Local' / 'oid-agent'
+        # No LOCALAPPDATA/USERPROFILE: %TEMP% is already per-user.
+        return Path(tempfile.gettempdir()) / 'oid-agent'  # NOSONAR
+    home = _home_dir()
+    if home:
+        return Path(home) / '.oid-agent'
+    # No passwd entry and no $HOME: /tmp is shared, so key the fallback by uid
+    # to avoid collisions (a dir owned by another uid would be refused).
+    return Path(tempfile.gettempdir()) / f'oid-agent-{os.getuid()}'  # NOSONAR
 
 
 def viewer_discovery_dir() -> Path:

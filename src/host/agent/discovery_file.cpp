@@ -27,6 +27,7 @@
 
 #include <cerrno>
 #include <cstdlib>
+#include <format>
 #include <string_view>
 #include <system_error>
 #include <vector>
@@ -45,29 +46,28 @@ namespace oid::host::agent {
 
 namespace {
 
-// Mirrors oidmcp.discovery's user lookup (itself matching Python's
-// getpass.getuser()): the environment first, then the password database,
-// then the numeric uid as a last resort so this never throws.
-std::string current_user() {
-    // Mirror Python's getpass.getuser() (which oid-mcp's discovery.py uses) so
-    // the default discovery dir path agrees on both sides: try LOGNAME, USER,
-    // LNAME, USERNAME in that exact order before any platform fallback. (A
-    // different order here would break discovery whenever these env vars
-    // disagree.)
-    for (const char* var : {"LOGNAME", "USER", "LNAME", "USERNAME"}) {
-        if (const char* name = std::getenv(var); name && *name) { // NOSONAR
-            return name;
-        }
-    }
+// The home-directory base: the password database on POSIX (or
+// LOCALAPPDATA/USERPROFILE on Windows), so a stripped-env MCP subprocess and
+// the GUI-launched viewer resolve the same directory, agreeing byte-for-byte
+// with oid-mcp's discovery.py. Returns an empty path when the uid has no home;
+// base_discovery_dir() then uses a per-uid temp dir. $HOME is a POSIX fallback
+// only -- reading it (or $TMPDIR/$XDG_*) for the primary path would reintroduce
+// the launch-context mismatch this avoids.
+std::filesystem::path home_dir() {
 #ifdef _WIN32
-    // No POSIX password database on Windows: getpass.getuser() raises there and
-    // oid-mcp's discovery_dir() falls back to "user" (no os.getuid either).
-    return "user";
+    if (const char* local = std::getenv("LOCALAPPDATA");
+        local && *local) { // NOSONAR
+        return std::filesystem::path{local};
+    }
+    if (const char* profile = std::getenv("USERPROFILE"); // NOSONAR
+        profile != nullptr && *profile != '\0') {
+        return std::filesystem::path{profile} / "AppData" / "Local";
+    }
+    return {};
 #else
     // NOSONAR(cpp:S1912): ::getpwuid returns a pointer into shared static
-    // storage that another thread's lookup can overwrite; ::getpwuid_r fills
-    // our own buffer instead. Matches Python's pwd.getpwuid() fallback, then
-    // the uid string (discovery.py's final fallback when getpass raises).
+    // storage another thread's lookup can overwrite; ::getpwuid_r fills our
+    // own buffer instead.
     passwd pwd{};
     passwd* result = nullptr;
     long n = ::sysconf(_SC_GETPW_R_SIZE_MAX);
@@ -76,10 +76,16 @@ std::string current_user() {
     }
     if (std::vector<char> buf(static_cast<std::size_t>(n));
         getpwuid_r(getuid(), &pwd, buf.data(), buf.size(), &result) == 0 &&
-        result != nullptr && result->pw_name != nullptr) {
-        return std::string(result->pw_name);
+        result != nullptr && result->pw_dir != nullptr &&
+        *result->pw_dir != '\0') {
+        return std::filesystem::path{result->pw_dir};
     }
-    return std::to_string(static_cast<long>(getuid()));
+    // No passwd entry: fall back to $HOME, else signal "no home" so the caller
+    // uses a per-uid temp dir.
+    if (const char* home = std::getenv("HOME"); home && *home) { // NOSONAR
+        return std::filesystem::path{home};
+    }
+    return {};
 #endif
 }
 
@@ -88,11 +94,24 @@ std::filesystem::path base_discovery_dir() {
         override_dir != nullptr && *override_dir != '\0') {
         return std::filesystem::path{override_dir};
     }
-    // NOSONAR(cpp:S5443): the discovery dir must be the shipped
-    // $TMPDIR/oid-agent-<user> path that oid-mcp (discovery.py) globs to find
-    // viewers; prepare_private_dir hardens it (owner check, O_NOFOLLOW, 0700).
+    // Per-user home so the path is stable across launch contexts and agrees
+    // with oid-mcp's discovery.py; prepare_private_dir hardens it (owner check,
+    // O_NOFOLLOW, 0700).
+#ifdef _WIN32
+    if (const std::filesystem::path home = home_dir(); !home.empty()) {
+        return home / "oid-agent";
+    }
+    // No LOCALAPPDATA/USERPROFILE: %TEMP% is already per-user.
+    return std::filesystem::temp_directory_path() / "oid-agent"; // NOSONAR
+#else
+    if (const std::filesystem::path home = home_dir(); !home.empty()) {
+        return home / ".oid-agent";
+    }
+    // No passwd entry and no $HOME: /tmp is shared, so key the fallback by uid
+    // to avoid collisions (a dir owned by another uid would be refused).
     return std::filesystem::temp_directory_path() / // NOSONAR
-           ("oid-agent-" + current_user());
+           std::format("oid-agent-{}", getuid());
+#endif
 }
 
 } // namespace

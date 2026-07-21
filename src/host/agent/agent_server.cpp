@@ -292,7 +292,7 @@ const std::string& AgentServer::token() const {
 
 void AgentServer::publish_discovery() {
     const std::filesystem::path dir = viewer_discovery_dir();
-    // Harden the predictable base dir (dir's parent, tempdir/oid-agent-<user>)
+    // Harden the predictable base dir (dir's parent, <home>/.oid-agent)
     // before the viewer subdir. Previously only the leaf was checked, so a
     // base pre-planted as a symlink or owned by another user could redirect
     // where this token-bearing discovery file lands. Rejecting a symlinked /

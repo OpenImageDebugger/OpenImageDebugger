@@ -1,6 +1,8 @@
 import json
 import os
 import sys
+import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -286,3 +288,49 @@ def test_pid_alive_nonpositive_is_dead_without_probing(monkeypatch):
 
     assert discovery._pid_alive(0) is False
     assert discovery._pid_alive(-1) is False
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX passwd home')
+def test_discovery_dir_is_home_based_and_env_independent(monkeypatch):
+    # The dir must come from the passwd database, not $HOME/$TMPDIR/$XDG_*,
+    # so a stripped-env MCP subprocess and the GUI viewer agree. Skip where
+    # the uid has no passwd entry: _home_dir() then falls back to $HOME, which
+    # this env-independence assertion cannot hold for.
+    import pwd
+    try:
+        home = pwd.getpwuid(os.getuid()).pw_dir
+    except (KeyError, OSError):
+        pytest.skip('no passwd entry for this uid')
+    if not home:
+        pytest.skip('empty passwd home for this uid')
+    monkeypatch.delenv('OID_AGENT_DIR', raising=False)
+    for var in ('TMPDIR', 'HOME', 'XDG_RUNTIME_DIR', 'XDG_CACHE_HOME',
+                'USER', 'LOGNAME'):
+        monkeypatch.delenv(var, raising=False)
+    assert discovery.discovery_dir() == Path(home) / '.oid-agent'
+    # Skewing TMPDIR/HOME must not move it (passwd-based, not env-based).
+    monkeypatch.setenv('TMPDIR', '/env/ignored-tmpdir')
+    monkeypatch.setenv('HOME', '/env/ignored-home')
+    assert discovery.discovery_dir() == Path(home) / '.oid-agent'
+
+
+def test_discovery_dir_respects_override(monkeypatch):
+    monkeypatch.setenv('OID_AGENT_DIR', '/custom/base')
+    assert discovery.discovery_dir() == Path('/custom/base')
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX temp fallback')
+def test_discovery_dir_temp_fallback_is_per_uid(monkeypatch):
+    # No passwd entry and no $HOME: the fallback must be a per-uid temp dir so
+    # different uids do not contend for one shared /tmp/.oid-agent (which the
+    # owner check would then refuse).
+    import pwd
+
+    def _no_passwd(_uid):
+        raise KeyError('no passwd entry')
+
+    monkeypatch.delenv('OID_AGENT_DIR', raising=False)
+    monkeypatch.delenv('HOME', raising=False)
+    monkeypatch.setattr(pwd, 'getpwuid', _no_passwd)
+    expected = Path(tempfile.gettempdir()) / f'oid-agent-{os.getuid()}'
+    assert discovery.discovery_dir() == expected
