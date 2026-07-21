@@ -1,0 +1,11 @@
+# Commisery only manages the "v"-prefixed viewer release tags (e.g. v2.9.0).
+#
+# Without this, version-prefix defaults to "*", which means "the closest
+# existing version tag regardless of prefix". That made the auto-bumper latch
+# onto the manually-created oid-mcp-v* PyPI tags and mint further oid-mcp-v*
+# tags on merges to main -- without bumping the static oid-mcp version -- so
+# those PyPI publishes failed as duplicate uploads.
+#
+# The oid-mcp PyPI package is released manually and independently: bump
+# resources/oidmcp/pyproject.toml and push a matching oid-mcp-vX.Y.Z tag.
+version-prefix: "v"
