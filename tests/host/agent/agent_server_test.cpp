@@ -72,7 +72,10 @@ long current_pid() {
 class ScopedEnvVar {
   public:
     ScopedEnvVar(const char* name, const std::string& value) : name_(name) {
-        if (const char* prev = std::getenv(name)) {
+        // The prior value is only saved to restore on teardown; it is never
+        // used to open or create files, so reading a TMPDIR or *_DIR env var
+        // here is safe.
+        if (const char* prev = std::getenv(name)) { // NOSONAR(cpp:S5443)
             had_prev_ = true;
             prev_ = prev;
         }
@@ -467,3 +470,19 @@ TEST_F(AgentServerTest, EnqueueListenerFiresWhenARequestIsQueued) {
     EXPECT_EQ(notifications.load(), 1);
     server.stop();
 }
+
+#ifndef _WIN32
+// The default discovery dir must come from the passwd-database home, not
+// $HOME/$TMPDIR, so a stripped-env MCP subprocess and the GUI-launched viewer
+// resolve the same directory. (An empty OID_AGENT_DIR reads as "no override".)
+TEST(AgentDiscoveryDir, DefaultIsHomeBasedAndEnvIndependent) {
+    const ScopedEnvVar no_override("OID_AGENT_DIR", "");
+    const std::filesystem::path base = viewer_discovery_dir();
+    EXPECT_EQ(base.filename(), "viewer");
+    EXPECT_EQ(base.parent_path().filename(), ".oid-agent");
+    // Skewing TMPDIR/HOME must not move it (passwd-based, not env-based).
+    const ScopedEnvVar skew_tmp("TMPDIR", "/env/ignored-tmpdir");
+    const ScopedEnvVar skew_home("HOME", "/env/ignored-home");
+    EXPECT_EQ(viewer_discovery_dir(), base);
+}
+#endif

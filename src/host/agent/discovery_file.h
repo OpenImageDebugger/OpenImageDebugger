@@ -41,7 +41,7 @@ class DiscoveryError : public std::runtime_error {
 };
 
 // Directory holding per-viewer discovery files: <OID_AGENT_DIR> (if set)
-// or <tempdir>/oid-agent-<user>, plus a "viewer" subdirectory. That
+// or <home>/.oid-agent, plus a "viewer" subdirectory. That
 // subdirectory is what keeps the shipped flat *.json glob (which only
 // scans the parent directory for debugger sessions) from ever seeing a
 // viewer's discovery file, even though it never looks here regardless.

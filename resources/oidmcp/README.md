@@ -113,16 +113,13 @@ the same directory** (see [Troubleshooting](#troubleshooting)).
    | Variable | Default | Purpose |
    | --- | --- | --- |
    | `OID_MCP_MAX_BYTES` | `268435456` (256 MiB) | Reject buffers larger than this before transfer |
-   | `OID_AGENT_DIR` | `$TMPDIR/oid-agent-<user>/` | Discovery directory shared by debugger and server |
+   | `OID_AGENT_DIR` | `~/.oid-agent/` (`%LOCALAPPDATA%\oid-agent` on Windows) | Discovery directory shared by debugger and server |
 
-   > **Desktop editors and discovery.** A GUI client spawns `oid-mcp`
-   > from the app's environment, which may carry a different `$TMPDIR`
-   > than the terminal running your debugger — so the two default
-   > `$TMPDIR/oid-agent-<user>` paths won't match and `list_sessions`
-   > comes back empty. If that happens, pin `OID_AGENT_DIR` to the same
-   > private directory (e.g. `~/.oid-agent`) in both the client's `env`
-   > and the debugger's environment. See
-   > [Troubleshooting](#troubleshooting).
+   > **Discovery location.** The default directory is derived from your home
+   > directory (via the password database), so a GUI-spawned `oid-mcp` and a
+   > terminal debugger resolve the same path regardless of `$TMPDIR`/`$HOME`.
+   > To relocate it, set `OID_AGENT_DIR` in both environments to the same
+   > **absolute** path (`~` is not expanded).
 
 ## Use
 
@@ -207,7 +204,7 @@ debugger pid paired to a live viewer.
 
 - The endpoint only starts when `OID_AGENT=1` is set; it binds
   localhost with a per-session token (discovery files under
-  `$TMPDIR/oid-agent-<user>/`, override with `OID_AGENT_DIR`). It
+  `~/.oid-agent/`, override with `OID_AGENT_DIR`). It
   exposes debuggee memory to local processes that can read those
   files — the same trust domain as your user account.
 - Buffers transfer fully on first access per stop and are cached;
