@@ -618,6 +618,22 @@ def test_validate_map_node_shapes():
     assert declarative._validate_entry(bad) != []
 
 
+def test_validate_rejects_unexpected_node_keys():
+    # Node shape is dispatched by key presence, so a typo'd key (e.g.
+    # 'defualt' for 'default') would otherwise be silently ignored while
+    # the node still validates. Each recognized shape must reject extras.
+    bad_nodes = (
+        {'first_valid': ['{sym}.rows'], 'defualt': '{sym}.cols'},
+        {'if': '{channels} >= 3', 'then': '{sym}.rows',
+         'else': '{sym}.cols', 'elze': '{sym}.step'},
+        {'expr': '{sym}.depth', 'map': {'8': 640}, 'defualt': 480},
+    )
+    for bad_node in bad_nodes:
+        entry = dict(FLOOR_ENTRY, width=bad_node)
+        errors = declarative._validate_entry(entry)
+        assert any('unexpected key' in error for error in errors), bad_node
+
+
 def test_validate_display_name_placeholders():
     good = dict(FLOOR_ENTRY, display_name='{name} ({targ:0})')
     assert declarative._validate_entry(good) == []

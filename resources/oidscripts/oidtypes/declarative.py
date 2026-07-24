@@ -473,13 +473,26 @@ def _string_node_errors(text, available):
     return errors
 
 
+def _unexpected_key_errors(node, allowed, shape):
+    """
+    Reject keys a recognized value-node shape does not permit. Node shape
+    is dispatched by key presence, so an unlisted key is a typo (e.g.
+    'defualt' for 'default') that would otherwise be silently ignored.
+    """
+    extra = sorted(set(node) - allowed)
+    if not extra:
+        return []
+    keys = ', '.join(repr(key) for key in extra)
+    return [f'{shape} node has unexpected key(s) {keys}']
+
+
 def _validate_value_node(node, available, recurse):
     """
     Shared 'if'/'then'/'else' branch validation for dict-shaped value
     nodes. 'recurse' validates each branch with the caller's own node
     rules (general value nodes vs. pixel_layout literals).
     """
-    errors = []
+    errors = _unexpected_key_errors(node, {'if', 'then', 'else'}, 'if')
     if not isinstance(node['if'], str):
         errors.append('if condition must be an expression string')
     else:
@@ -553,7 +566,7 @@ def _validate_first_valid(candidates, available, number_policy):
 
 def _validate_map(node, available, number_policy):
     """expr/map: an expression selecting a value node, plus a default."""
-    errors = []
+    errors = _unexpected_key_errors(node, {'expr', 'map', 'default'}, 'map')
     if not isinstance(node['expr'], str):
         errors.append('map expr must be an expression string')
     else:
@@ -582,8 +595,10 @@ def _validate_node(node, available, number_policy=_NUMBER_ANY):
         return _string_node_errors(node, available)
     if isinstance(node, dict):
         if 'first_valid' in node:
-            return _validate_first_valid(node['first_valid'], available,
-                                         number_policy)
+            return (_unexpected_key_errors(node, {'first_valid'},
+                                           'first_valid')
+                    or _validate_first_valid(node['first_valid'], available,
+                                             number_policy))
         if 'if' in node:
             return _validate_value_node(
                 node, available,
@@ -873,7 +888,11 @@ def discover_user_type_files():
     """
     if OID_TYPES_PATH_ENV in os.environ:
         raw = os.environ[OID_TYPES_PATH_ENV]
-        return [path for path in raw.split(os.pathsep) if path]
+        # Trim each segment so a formatted list like
+        # '/a/types.json{sep} /b/types.json' does not yield ' /b/types.json',
+        # which would silently fail os.path.isfile() and be dropped.
+        parts = (path.strip() for path in raw.split(os.pathsep))
+        return [path for path in parts if path]
     directory = os.getcwd()
     while True:
         candidate = os.path.join(directory, '.oid', 'types.json')

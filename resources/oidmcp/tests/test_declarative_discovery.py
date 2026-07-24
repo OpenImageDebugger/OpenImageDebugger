@@ -162,6 +162,25 @@ def test_env_var_lists_files_in_order(tmp_path, monkeypatch):
     assert names == ['MyImage', 'Other']
 
 
+def test_env_var_trims_whitespace_around_separators(tmp_path, monkeypatch):
+    # A formatted list like 'a.json{sep} b.json' leaves a leading space on
+    # the second segment; without trimming it fails os.path.isfile() and is
+    # silently dropped. Both files must still be discovered and loaded.
+    first = tmp_path / 'first.json'
+    second = tmp_path / 'second.json'
+    write_doc(first, VALID_DOC)
+    write_doc(second, {'version': 1, 'types': [dict(
+        VALID_DOC['types'][0], name='Other', match='^Other$')]})
+    monkeypatch.setenv('OID_TYPES_PATH',
+                       ' ' + os.pathsep.join([str(first),
+                                              ' ' + str(second) + ' ']))
+    assert declarative.discover_user_type_files() == [str(first),
+                                                      str(second)]
+    names = [inspector.name
+             for inspector in declarative.load_user_inspectors()]
+    assert names == ['MyImage', 'Other']
+
+
 def test_walk_up_finds_nearest_types_json(tmp_path, monkeypatch):
     monkeypatch.delenv('OID_TYPES_PATH', raising=False)
     root_file = tmp_path / '.oid' / 'types.json'
