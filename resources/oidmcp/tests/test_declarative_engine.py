@@ -199,6 +199,34 @@ def test_evaluate_wraps_bridge_error_with_entry_and_field():
     assert '(img).cols' in message
 
 
+def test_evaluate_wraps_non_runtime_bridge_error():
+    # The bridge contract is RuntimeError on failure, but a backend may
+    # leak another exception type; the engine must still wrap it in
+    # EntryEvaluationError (with entry/field context, chaining the cause)
+    # rather than let it escape the declarative error layer.
+    bridge = RecordingBridge({'(img).cols': ValueError('backend boom')})
+    resolution = make_resolution(bridge)
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        resolution.evaluate('{sym}.cols')
+    assert excinfo.value.field == 'width'
+    assert isinstance(excinfo.value.__cause__, ValueError)
+
+
+def test_first_valid_falls_through_on_non_runtime_error():
+    # A non-RuntimeError from the first candidate must be normalized so
+    # first_valid still falls through to the next candidate.
+    bridge = RecordingBridge({
+        '(img).data.ptr': KeyError('no such member'),
+        '(img).data': 12345,
+    })
+    resolution = make_resolution(bridge, field='pointer')
+    candidates = ['{sym}.data.ptr', '{sym}.data']
+    value = declarative._resolve_first_valid(
+        resolution, candidates, declarative._leaf_int)
+    assert value == 12345
+    assert bridge.requests == ['(img).data.ptr', '(img).data']
+
+
 def test_first_valid_min_rejects_dynamic_targ_without_debugger():
     bridge = RecordingBridge({'(img).m_storage.m_rows': 8})
     resolution = make_resolution(

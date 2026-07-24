@@ -108,11 +108,14 @@ class GdbBridge(BridgeInterface):
         return gdb_object.cast(typename_pointer_obj)
 
     def evaluate_expression(self, expression):
+        # The interface contract is to raise RuntimeError on any failure so
+        # the declarative engine can treat evaluation errors uniformly, so
+        # normalize every backend exception (not just gdb.error) here.
         try:
             return gdb.parse_and_eval(expression)
-        except gdb.error as error:
+        except Exception as error:
             raise RuntimeError(
-                'Expression "{}" failed: {}'.format(expression, error))
+                f'Expression "{expression}" failed: {error}') from error
 
     def _get_observable_children_members(self, symbol, output_set, parent_name=''):
         if not parent_name:

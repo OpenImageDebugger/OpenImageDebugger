@@ -184,21 +184,32 @@ class LldbBridge(BridgeInterface):
         return lldb_object.get_casted_pointer()
 
     def evaluate_expression(self, expression):
-        frame = self._get_frame(
-            self._get_thread(self._get_process(self.get_lldb_backend())))
-        if frame is None:
-            raise RuntimeError(
-                'Expression "{}" failed: no stopped frame'.format(
-                    expression))
+        # The interface contract is to raise RuntimeError on any failure so
+        # the declarative engine can treat evaluation errors uniformly. The
+        # intentional RuntimeErrors below carry the best message; any other
+        # backend exception is normalized to RuntimeError in the fallback.
+        try:
+            frame = self._get_frame(
+                self._get_thread(self._get_process(
+                    self.get_lldb_backend())))
+            if frame is None:
+                raise RuntimeError(
+                    f'Expression "{expression}" failed: no stopped frame')
 
-        result = frame.EvaluateExpression(expression)
-        error = result.GetError()
-        if not result.IsValid() or (error is not None and error.Fail()):
-            message = error.GetCString() if error is not None else None
+            result = frame.EvaluateExpression(expression)
+            error = result.GetError()
+            if not result.IsValid() or (error is not None
+                                        and error.Fail()):
+                message = error.GetCString() if error is not None else None
+                raise RuntimeError(
+                    f'Expression "{expression}" failed: '
+                    f'{message or "invalid result"}')
+            return SymbolWrapper(result)
+        except RuntimeError:
+            raise
+        except Exception as error:
             raise RuntimeError(
-                'Expression "{}" failed: {}'.format(
-                    expression, message or 'invalid result'))
-        return SymbolWrapper(result)
+                f'Expression "{expression}" failed: {error}') from error
 
     def _get_observable_children_members(self, symbol, member_name_chain,
                                          output_set, visited_typenames=None):

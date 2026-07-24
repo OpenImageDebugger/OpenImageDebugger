@@ -291,12 +291,16 @@ class _Resolution:
                 f'template argument resolution failed in {text!r}: {error}')
 
     def _evaluate_via_bridge(self, substituted):
+        # The bridge contract is to raise RuntimeError on failure, but a
+        # backend may leak another exception type; wrap any failure so the
+        # error always carries entry/field context and first_valid can
+        # treat it uniformly as a fall-through.
         try:
             return self.bridge.evaluate_expression(substituted)
-        except RuntimeError as error:
+        except Exception as error:
             raise EntryEvaluationError(
                 self.entry_name, self.field,
-                f'{substituted!r} failed: {error}')
+                f'{substituted!r} failed: {error}') from error
 
     def evaluate_text(self, substituted):
         try:
@@ -822,7 +826,12 @@ def _load_types_file(path, accepted_languages=ACCEPTED_LANGUAGES):
                     'skipping')
         return []
     version = document.get('version')
-    if version != SUPPORTED_VERSION:
+    # Require a real int: JSON true/1.0 decode to Python True/1.0, and
+    # both == 1, so a plain '!=' check would let them past the gate.
+    valid_version = (isinstance(version, int)
+                     and not isinstance(version, bool)
+                     and version == SUPPORTED_VERSION)
+    if not valid_version:
         log.warning(f'Types file {path} has unsupported version '
                     f'{version!r} (expected {SUPPORTED_VERSION}); '
                     'skipping')

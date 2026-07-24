@@ -97,6 +97,22 @@ def test_wrong_version_warns_and_skips_file(tmp_path, caplog):
                if record.levelno == logging.WARNING)
 
 
+def test_non_integer_version_warns_and_skips_file(tmp_path, caplog):
+    # JSON true/1.0 decode to Python True/1.0, both of which == 1, so a
+    # plain '!=' gate would accept them as version 1. The loader must
+    # require a real int and reject these with a warning.
+    for bad_version in (True, 1.0):
+        caplog.clear()
+        caplog.set_level(logging.DEBUG, logger='oidscripts.logger')
+        types_file = tmp_path / 'types.json'
+        write_doc(types_file, dict(VALID_DOC, version=bad_version))
+        assert declarative._load_types_file(str(types_file)) == [], \
+            bad_version
+        assert any('version' in record.message.lower()
+                   for record in caplog.records
+                   if record.levelno == logging.WARNING), bad_version
+
+
 def test_unknown_language_entry_skipped_without_warning(tmp_path, caplog):
     caplog.set_level(logging.DEBUG, logger='oidscripts.logger')
     python_entry = dict(VALID_DOC['types'][0], name='PyImage',
