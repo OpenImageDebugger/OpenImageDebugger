@@ -166,14 +166,43 @@ def _resolve_targ_token(symbol_obj, token):
         return str(current)
 
 
+# Trailing reference markers ('&', '&&') and cv-qualifiers ('const',
+# 'volatile') that can follow a pointer star in a declared type, e.g.
+# 'T *&', 'T * const', 'T *const&'. cv-qualifier words are peeled only
+# when preceded by whitespace or '*', so a type whose name merely ends in
+# the letters 'const' (e.g. 'fooconst') is left intact. A template's inner
+# '*' ('std::vector<int*>') is never at the tail, so it never matches.
+_TRAILING_CV_REF = re.compile(
+    r'(?:\s*&&|\s*&|(?<=[\s*])\s*const\b|(?<=[\s*])\s*volatile\b|\s+)+$')
+
+
+def _is_pointer_type(type_string):
+    """
+    True when a declared type is a pointer that must be dereferenced for
+    '.' member access, including cv-qualified and reference-to-pointer
+    spellings: 'T *', 'T*', 'T * const', 'T *const', 'T *&', 'T *&&',
+    'T * const &'. A pointer-to-const ('const T *') still ends in the
+    pointer star and so counts too. Trailing reference and cv-qualifier
+    tokens are peeled before the star check, so a plain reference or value
+    ('T&', 'const T&', 'T const') is not a pointer, and a template holding
+    an inner pointer ('std::vector<int*>') is not either.
+    """
+    core = _TRAILING_CV_REF.sub('', type_string.rstrip()).rstrip()
+    return core.endswith('*')
+
+
 def _symbol_expression(obj_name, symbol_obj):
     """
-    {sym} substitution text. Pointer symbols get dereferenced here so
+    {sym} substitution text. Pointer symbols are dereferenced here so
     entries never spell out '->' (mirrors debugger member access, which
-    auto-dereferences picked objects).
+    auto-dereferences picked objects). A symbol counts as a pointer when
+    any of its spellings (declared or canonical) is pointer-like once cv
+    and reference qualifiers are stripped -- so 'T *', 'T * const' and
+    'T *&' all dereference, while a plain reference 'T&' does not (see
+    _is_pointer_type).
     """
     for type_string in _type_strings(symbol_obj):
-        if type_string.rstrip().endswith('*'):
+        if _is_pointer_type(type_string):
             return f'(*({obj_name}))'
     return f'({obj_name})'
 

@@ -94,6 +94,30 @@ def test_symbol_expression_derefs_typedefd_pointer():
     assert declarative._symbol_expression('img', aliased) == '(*(img))'
 
 
+def test_symbol_expression_derefs_qualified_pointer_spellings():
+    # const pointers, references-to-pointer, and no-space spellings are all
+    # pointers for '.' member access and must dereference. A pointer-to-
+    # const still ends in the star, so it counts too.
+    for spelling in ('cv::Mat*', 'cv::Mat *const', 'cv::Mat * const',
+                     'cv::Mat *&', 'cv::Mat *&&', 'cv::Mat* const &',
+                     'const cv::Mat *'):
+        symbol = FakeSymbol(TemplateTypeName(spelling))
+        assert declarative._symbol_expression('img', symbol) == '(*(img))', \
+            spelling
+
+
+def test_symbol_expression_does_not_deref_references_or_values():
+    # A plain reference, a cv-qualified value, and a template whose inner
+    # type is a pointer are values (or collapse to one) for '.' access and
+    # must NOT dereference.
+    for spelling in ('cv::Mat', 'cv::Mat&', 'cv::Mat &&', 'const cv::Mat&',
+                     'cv::Mat const', 'std::vector<int*>',
+                     'std::vector<int*> const&'):
+        symbol = FakeSymbol(TemplateTypeName(spelling))
+        assert declarative._symbol_expression('img', symbol) == '(img)', \
+            spelling
+
+
 def test_to_bool_handles_lldb_bool_strings():
     class Rendered:
         def __init__(self, text):
