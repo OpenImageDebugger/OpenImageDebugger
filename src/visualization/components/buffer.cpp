@@ -38,6 +38,7 @@
 #include "math/linear_algebra.h"
 #include "platform/gl_dialect.h"
 #include "visualization/game_object.h"
+#include "visualization/shader_pixel_layout.h"
 #include "visualization/shaders/oid_shaders.h"
 #include "visualization/stage.h"
 
@@ -476,13 +477,7 @@ int Buffer::get_display_channel_mode() const {
 }
 
 int Buffer::get_selected_channel_index() const {
-    if (pixel_layout_[0] == 'g') {
-        return 1;
-    }
-    if (pixel_layout_[0] == 'b') {
-        return 2;
-    }
-    return 0;
+    return selected_channel_index(pixel_layout_, channels_);
 }
 
 float Buffer::tile_coord_x(const int x) const {
@@ -578,10 +573,12 @@ bool Buffer::create_shader_program() {
         channel_type = ShaderProgram::TexelChannels::FORMAT_RGBA;
     }
 
+    // pixel_layout_ keeps whatever the type declared or the user selected; the
+    // shader gets the layout that is actually samplable for this texture.
     return buff_prog_.create(shader::BUFF_VERT_SHADER,
                              shader::BUFF_FRAG_SHADER,
                              channel_type,
-                             pixel_layout_,
+                             shader_pixel_layout(pixel_layout_, channels_),
                              {"mvp",
                               "sampler",
                               "brightness_contrast",
