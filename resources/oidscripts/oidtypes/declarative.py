@@ -314,12 +314,26 @@ def _resolve_map(resolution, node, leaf):
 
 def _leaf_int(resolution, node):
     value = resolution.evaluate(node) if isinstance(node, str) else node
+    if isinstance(value, (bool, float)):
+        # A JSON bool/float literal for an integer field would be silently
+        # coerced by int() (True -> 1, 640.9 -> 640) and corrupt the buffer
+        # geometry. Expression results are never a Python bool/float, so
+        # this only rejects literal mistakes.
+        raise EntryEvaluationError(
+            resolution.entry_name, resolution.field,
+            f'{value!r} is not an integer literal; use a whole number '
+            'or an expression')
     try:
-        return _to_int(value)
+        result = _to_int(value)
     except (TypeError, ValueError) as error:
         raise EntryEvaluationError(
             resolution.entry_name, resolution.field,
             f'{value!r} is not an integer: {error}')
+    if result < 0:
+        raise EntryEvaluationError(
+            resolution.entry_name, resolution.field,
+            f'{result} is negative; {resolution.field} must be non-negative')
+    return result
 
 
 def _leaf_bool(resolution, node):

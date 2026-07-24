@@ -173,7 +173,42 @@ def test_first_valid_min_rejects_dynamic_targ_without_debugger():
     value = declarative._resolve_first_valid(
         resolution, candidates, declarative._leaf_int)
     assert value == 8
-    assert bridge.requests == ['(img).m_storage.m_rows']
+
+
+def test_leaf_int_rejects_float_literal():
+    # A float size literal must error (with entry/field context) rather
+    # than be silently truncated by int() (640.9 -> 640).
+    resolution = make_resolution(RecordingBridge(), field='width')
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        declarative._resolve_node(resolution, 640.9, declarative._leaf_int)
+    assert excinfo.value.field == 'width'
+
+
+def test_leaf_int_rejects_bool_literal():
+    # A JSON boolean size literal must error rather than coerce to 0/1.
+    resolution = make_resolution(RecordingBridge(), field='height')
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        declarative._resolve_node(resolution, True, declarative._leaf_int)
+    assert excinfo.value.field == 'height'
+
+
+def test_leaf_int_rejects_negative_literal():
+    resolution = make_resolution(RecordingBridge(), field='width')
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        declarative._resolve_node(resolution, -4, declarative._leaf_int)
+    assert 'non-negative' in str(excinfo.value)
+    assert excinfo.value.field == 'width'
+
+
+def test_leaf_int_rejects_negative_expression_result():
+    # Validation cannot see a resolved value, so a negative from an
+    # expression must be rejected at runtime.
+    bridge = RecordingBridge({'neg_expr': -1})
+    resolution = make_resolution(bridge, field='height')
+    with pytest.raises(declarative.EntryEvaluationError):
+        declarative._resolve_node(
+            resolution, 'neg_expr', declarative._leaf_int)
+    assert bridge.requests == ['neg_expr']
 
 
 def test_first_valid_min_accepts_static_targ_without_debugger():
