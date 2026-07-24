@@ -107,3 +107,208 @@ def test_to_bool_handles_lldb_bool_strings():
     assert declarative._to_bool(1) is True
     assert declarative._to_bool(0) is False
     assert declarative._to_bool(True) is True
+
+
+class RecordingBridge:
+    """
+    Fake bridge for engine tests: records every expression string and
+    returns scripted results (or raises scripted errors). Tests assert on
+    the exact strings the debugger would receive — the single-evaluator
+    rule made visible.
+    """
+
+    def __init__(self, results=None):
+        self.requests = []
+        self.results = dict(results or {})
+
+    def evaluate_expression(self, expression):
+        self.requests.append(expression)
+        if expression not in self.results:
+            raise RuntimeError(
+                f'Expression "{expression}" failed: not scripted')
+        result = self.results[expression]
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+
+def make_resolution(bridge, type_name='MyImage', field='width'):
+    resolution = declarative._Resolution(
+        'TestEntry', 'img', FakeSymbol(TemplateTypeName(type_name)), bridge)
+    resolution.field = field
+    return resolution
+
+
+def test_evaluate_bare_int_skips_debugger():
+    bridge = RecordingBridge()
+    resolution = make_resolution(bridge)
+    resolution.placeholders['width'] = '10'
+    assert resolution.evaluate('{width}') == 10
+    assert bridge.requests == []
+
+
+def test_evaluate_sends_substituted_text_to_bridge():
+    bridge = RecordingBridge({'(img).cols': 640})
+    resolution = make_resolution(bridge)
+    assert resolution.evaluate('{sym}.cols') == 640
+    assert bridge.requests == ['(img).cols']
+
+
+def test_evaluate_wraps_bridge_error_with_entry_and_field():
+    bridge = RecordingBridge()
+    resolution = make_resolution(bridge)
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        resolution.evaluate('{sym}.cols')
+    message = str(excinfo.value)
+    assert "entry 'TestEntry'" in message
+    assert "field 'width'" in message
+    assert '(img).cols' in message
+
+
+def test_first_valid_min_rejects_dynamic_targ_without_debugger():
+    bridge = RecordingBridge({'(img).m_storage.m_rows': 8})
+    resolution = make_resolution(
+        bridge, type_name='Eigen::Matrix<float, -1, -1, 0, -1, -1>')
+    candidates = [{'expr': '{targ:1}', 'min': 1}, '{sym}.m_storage.m_rows']
+    value = declarative._resolve_first_valid(
+        resolution, candidates, declarative._leaf_int)
+    assert value == 8
+    assert bridge.requests == ['(img).m_storage.m_rows']
+
+
+def test_first_valid_min_accepts_static_targ_without_debugger():
+    bridge = RecordingBridge()
+    resolution = make_resolution(
+        bridge, type_name='Eigen::Matrix<float, 3, 4, 0, 3, 4>')
+    candidates = [{'expr': '{targ:1}', 'min': 1}, '{sym}.m_storage.m_rows']
+    assert declarative._resolve_first_valid(
+        resolution, candidates, declarative._leaf_int) == 3
+    assert bridge.requests == []
+
+
+def test_first_valid_falls_through_on_evaluation_error():
+    bridge = RecordingBridge({'(img).data': 12345})
+    resolution = make_resolution(bridge, field='pointer')
+    candidates = ['{sym}.data.ptr', '{sym}.data']
+    value = declarative._resolve_first_valid(
+        resolution, candidates, declarative._leaf_int)
+    assert value == 12345
+    assert bridge.requests == ['(img).data.ptr', '(img).data']
+
+
+def test_first_valid_exhausted_raises_entry_error():
+    bridge = RecordingBridge()
+    resolution = make_resolution(bridge)
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        declarative._resolve_first_valid(
+            resolution, ['{sym}.a', '{sym}.b'], declarative._leaf_int)
+    assert 'first_valid' in str(excinfo.value)
+
+
+def test_if_node_picks_branch_from_derived_placeholder():
+    bridge = RecordingBridge()
+    resolution = make_resolution(bridge)
+    node = {'if': '{transpose}', 'then': 3, 'else': 4}
+    resolution.placeholders['transpose'] = '1'
+    assert declarative._resolve_node(
+        resolution, node, declarative._leaf_int) == 3
+    resolution.placeholders['transpose'] = '0'
+    assert declarative._resolve_node(
+        resolution, node, declarative._leaf_int) == 4
+    assert bridge.requests == []
+
+
+def test_if_condition_can_use_debugger():
+    bridge = RecordingBridge({'3 >= 3': 1})
+    resolution = make_resolution(bridge)
+    resolution.placeholders['channels'] = '3'
+    node = {'if': '{channels} >= 3', 'then': 1, 'else': 2}
+    assert declarative._resolve_node(
+        resolution, node, declarative._leaf_int) == 1
+    assert bridge.requests == ['3 >= 3']
+
+
+def test_map_node_normalizes_integral_keys():
+    bridge = RecordingBridge({'(img).depth & 0xffffffff': 8})
+    resolution = make_resolution(bridge, field='dtype')
+    node = {'expr': '{sym}.depth & 0xffffffff',
+            'map': {'8': 'uint8', '64': 'float64'}}
+    assert declarative._resolve_node(
+        resolution, node,
+        declarative._leaf_dtype) == symbols.OID_TYPES_UINT8
+
+
+def test_map_node_stringifies_non_integral_results():
+    class Rendered:
+        def __str__(self):
+            return 'foo'
+
+    bridge = RecordingBridge({'(img).tag': Rendered()})
+    resolution = make_resolution(bridge, field='dtype')
+    node = {'expr': '{sym}.tag', 'map': {'foo': 'uint8'}}
+    assert declarative._resolve_node(
+        resolution, node,
+        declarative._leaf_dtype) == symbols.OID_TYPES_UINT8
+
+
+def test_map_node_miss_without_default_raises():
+    bridge = RecordingBridge({'(img).depth': 99})
+    resolution = make_resolution(bridge, field='dtype')
+    node = {'expr': '{sym}.depth', 'map': {'8': 'uint8'}}
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        declarative._resolve_node(resolution, node, declarative._leaf_dtype)
+    assert '99' in str(excinfo.value)
+
+
+def test_map_node_uses_default_on_miss():
+    bridge = RecordingBridge({'(img).depth': 99})
+    resolution = make_resolution(bridge, field='dtype')
+    node = {'expr': '{sym}.depth', 'map': {'8': 'uint8'},
+            'default': 'float32'}
+    assert declarative._resolve_node(
+        resolution, node,
+        declarative._leaf_dtype) == symbols.OID_TYPES_FLOAT32
+
+
+def test_dtype_name_from_template_arg_needs_no_debugger():
+    bridge = RecordingBridge()
+    resolution = make_resolution(
+        bridge, type_name='Eigen::Matrix<float, 3, 3, 0, 3, 3>',
+        field='dtype')
+    assert declarative._leaf_dtype(
+        resolution, '{targ:0}') == symbols.OID_TYPES_FLOAT32
+    assert bridge.requests == []
+
+
+def test_dtype_expression_result_must_be_valid_code():
+    bridge = RecordingBridge({'(img).flags & 7': 1})
+    resolution = make_resolution(bridge, field='dtype')
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        declarative._leaf_dtype(resolution, '{sym}.flags & 7')
+    assert 'valid OID pixel type' in str(excinfo.value)
+
+
+def test_dtype_near_miss_names_closest_known_name():
+    bridge = RecordingBridge()
+    resolution = make_resolution(bridge, field='dtype')
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        declarative._leaf_dtype(resolution, 'flaot32')
+    assert 'float32' in str(excinfo.value)
+
+
+def test_int_leaf_accepts_literals_and_expressions():
+    bridge = RecordingBridge({'(img).cols': 640})
+    resolution = make_resolution(bridge)
+    assert declarative._leaf_int(resolution, 7) == 7
+    assert declarative._leaf_int(resolution, '{sym}.cols') == 640
+
+
+def test_bool_leaf_handles_lldb_rendered_expression():
+    class Rendered:
+        def __str__(self):
+            return 'true'
+
+    bridge = RecordingBridge({'(0 & 1) == 0': Rendered()})
+    resolution = make_resolution(bridge, field='transpose')
+    assert declarative._leaf_bool(resolution, '(0 & 1) == 0') is True
+    assert declarative._leaf_bool(resolution, False) is False

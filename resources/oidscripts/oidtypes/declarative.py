@@ -12,6 +12,7 @@ interprets expression semantics itself, so the debugger remains the single
 source of expression meaning on every backend.
 """
 
+import difflib
 import json
 import os
 import re
@@ -196,3 +197,151 @@ def _to_bool(value):
         if text == 'false':
             return False
         raise ValueError(f'cannot interpret {value!r} as a boolean')
+
+
+class EntryEvaluationError(RuntimeError):
+    """Field evaluation failure carrying the entry and field context."""
+
+    def __init__(self, entry_name, field, detail):
+        super().__init__(f"entry '{entry_name}', field '{field}': {detail}")
+        self.entry_name = entry_name
+        self.field = field
+        self.detail = detail
+
+
+class _Resolution:
+    """
+    Per-plot resolution state for one entry: the substitution texts
+    resolved so far plus the error context (entry and field names). All
+    debugger traffic funnels through evaluate_text(), which also shortcuts
+    substituted text that is already a bare integer (e.g. a template
+    argument) so it never reaches the debugger.
+    """
+
+    def __init__(self, entry_name, obj_name, symbol_obj, bridge):
+        self.entry_name = entry_name
+        self.symbol_obj = symbol_obj
+        self.bridge = bridge
+        self.field = None
+        self.placeholders = {'sym': _symbol_expression(obj_name, symbol_obj)}
+
+    def substitute(self, text):
+        try:
+            return _substitute(
+                text, self.placeholders,
+                lambda token: _resolve_targ_token(self.symbol_obj, token))
+        except KeyError as error:
+            raise EntryEvaluationError(
+                self.entry_name, self.field,
+                f'unknown placeholder {{{error.args[0]}}} in {text!r}')
+        except Exception as error:
+            raise EntryEvaluationError(
+                self.entry_name, self.field,
+                f'template argument resolution failed in {text!r}: {error}')
+
+    def evaluate_text(self, substituted):
+        try:
+            return int(substituted.strip())
+        except ValueError:
+            pass
+        try:
+            return self.bridge.evaluate_expression(substituted)
+        except RuntimeError as error:
+            raise EntryEvaluationError(
+                self.entry_name, self.field,
+                f'{substituted!r} failed: {error}')
+
+    def evaluate(self, text):
+        return self.evaluate_text(self.substitute(text))
+
+
+def _resolve_node(resolution, node, leaf):
+    """Resolve a value node; 'leaf' interprets terminal scalars."""
+    if isinstance(node, dict):
+        if 'first_valid' in node:
+            return _resolve_first_valid(resolution, node['first_valid'], leaf)
+        if 'if' in node:
+            condition = _to_bool(resolution.evaluate(node['if']))
+            branch = node['then'] if condition else node['else']
+            return _resolve_node(resolution, branch, leaf)
+        return _resolve_map(resolution, node, leaf)
+    return leaf(resolution, node)
+
+
+def _resolve_first_valid(resolution, candidates, leaf):
+    """
+    Try candidates in order. A candidate is rejected when substitution or
+    evaluation fails, the result does not convert, or — for the
+    {"expr": …, "min": N} wrapper — the integer result is below N.
+    """
+    for candidate in candidates:
+        try:
+            if isinstance(candidate, dict) and 'min' in candidate:
+                value = _to_int(resolution.evaluate(candidate['expr']))
+                if value < candidate['min']:
+                    continue
+                return value
+            return _resolve_node(resolution, candidate, leaf)
+        except (EntryEvaluationError, TypeError, ValueError):
+            continue
+    raise EntryEvaluationError(
+        resolution.entry_name, resolution.field,
+        'all first_valid candidates failed')
+
+
+def _resolve_map(resolution, node, leaf):
+    raw = resolution.evaluate(node['expr'])
+    try:
+        key = str(int(raw))
+    except (TypeError, ValueError):
+        key = str(raw)
+    mapping = node['map']
+    if key in mapping:
+        return _resolve_node(resolution, mapping[key], leaf)
+    if 'default' in node:
+        return _resolve_node(resolution, node['default'], leaf)
+    raise EntryEvaluationError(
+        resolution.entry_name, resolution.field,
+        f'value {key!r} is not in the map and no default is given')
+
+
+def _leaf_int(resolution, node):
+    if isinstance(node, str):
+        return _to_int(resolution.evaluate(node))
+    return _to_int(node)
+
+
+def _leaf_bool(resolution, node):
+    if isinstance(node, str):
+        return _to_bool(resolution.evaluate(node))
+    return _to_bool(node)
+
+
+def _leaf_dtype(resolution, node):
+    """
+    dtype rule: after substitution a known dtype name resolves via the
+    table; anything else is a debugger expression whose integer result
+    must be a valid OID pixel type code.
+    """
+    if isinstance(node, str):
+        text = resolution.substitute(node).strip()
+        if text in DTYPE_NAMES:
+            return DTYPE_NAMES[text]
+        try:
+            code = _to_int(resolution.evaluate_text(text))
+        except (EntryEvaluationError, TypeError, ValueError) as error:
+            close = difflib.get_close_matches(text, DTYPE_NAMES, 1)
+            if close:
+                raise EntryEvaluationError(
+                    resolution.entry_name, resolution.field,
+                    f'{text!r} is not a known dtype name (closest is '
+                    f"'{close[0]}') and failed to evaluate: {error}")
+            raise
+    else:
+        code = _to_int(node)
+    if code not in VALID_DTYPE_CODES:
+        raise EntryEvaluationError(
+            resolution.entry_name, resolution.field,
+            f'{code} is not a valid OID pixel type code '
+            f'(valid: {sorted(VALID_DTYPE_CODES)})')
+    return code
