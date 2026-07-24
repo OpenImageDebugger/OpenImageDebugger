@@ -91,6 +91,7 @@ def get_debugger_bridge():
     """
     import traceback
     from oidscripts import typebridge
+    from oidscripts import conformance
 
     debugger_bridges = [
         import_lldb,
@@ -102,9 +103,12 @@ def get_debugger_bridge():
 
     for bridge in debugger_bridges:
         try:
-            return bridge(type_bridge_object)
+            bridge_instance = bridge(type_bridge_object)
         except Exception:
             error_traces.append(traceback.format_exc())
+            continue
+        conformance.register(bridge_instance, type_bridge_object)
+        return bridge_instance
 
     log.error('Could not instantiate any debugger bridge')
     log.error('\n'.join(error_traces))
