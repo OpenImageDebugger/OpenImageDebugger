@@ -296,11 +296,37 @@ def test_dtype_near_miss_names_closest_known_name():
     assert 'float32' in str(excinfo.value)
 
 
+def test_dtype_leaf_wraps_non_convertible_result_without_near_miss():
+    class Rendered:
+        def __str__(self):
+            return 'weird-tag'
+
+    bridge = RecordingBridge({'(img).tag': Rendered()})
+    resolution = make_resolution(bridge, field='dtype')
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        declarative._leaf_dtype(resolution, '{sym}.tag')
+    message = str(excinfo.value)
+    assert "entry 'TestEntry'" in message
+    assert "field 'dtype'" in message
+    assert not isinstance(excinfo.value, (TypeError, ValueError))
+
+
 def test_int_leaf_accepts_literals_and_expressions():
     bridge = RecordingBridge({'(img).cols': 640})
     resolution = make_resolution(bridge)
     assert declarative._leaf_int(resolution, 7) == 7
     assert declarative._leaf_int(resolution, '{sym}.cols') == 640
+
+
+def test_int_leaf_wraps_non_convertible_result_in_entry_error():
+    bridge = RecordingBridge({'(img).cols': 'not-a-number'})
+    resolution = make_resolution(bridge)
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        declarative._leaf_int(resolution, '{sym}.cols')
+    message = str(excinfo.value)
+    assert "entry 'TestEntry'" in message
+    assert "field 'width'" in message
+    assert not isinstance(excinfo.value, (TypeError, ValueError))
 
 
 def test_bool_leaf_handles_lldb_rendered_expression():

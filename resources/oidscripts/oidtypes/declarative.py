@@ -306,15 +306,23 @@ def _resolve_map(resolution, node, leaf):
 
 
 def _leaf_int(resolution, node):
-    if isinstance(node, str):
-        return _to_int(resolution.evaluate(node))
-    return _to_int(node)
+    value = resolution.evaluate(node) if isinstance(node, str) else node
+    try:
+        return _to_int(value)
+    except (TypeError, ValueError) as error:
+        raise EntryEvaluationError(
+            resolution.entry_name, resolution.field,
+            f'{value!r} is not an integer: {error}')
 
 
 def _leaf_bool(resolution, node):
-    if isinstance(node, str):
-        return _to_bool(resolution.evaluate(node))
-    return _to_bool(node)
+    value = resolution.evaluate(node) if isinstance(node, str) else node
+    try:
+        return _to_bool(value)
+    except (TypeError, ValueError) as error:
+        raise EntryEvaluationError(
+            resolution.entry_name, resolution.field,
+            f'{value!r} is not a boolean: {error}')
 
 
 def _leaf_dtype(resolution, node):
@@ -336,9 +344,19 @@ def _leaf_dtype(resolution, node):
                     resolution.entry_name, resolution.field,
                     f'{text!r} is not a known dtype name (closest is '
                     f"'{close[0]}') and failed to evaluate: {error}")
-            raise
+            if isinstance(error, EntryEvaluationError):
+                raise
+            raise EntryEvaluationError(
+                resolution.entry_name, resolution.field,
+                f'{text!r} did not evaluate to an integer dtype code: '
+                f'{error}')
     else:
-        code = _to_int(node)
+        try:
+            code = _to_int(node)
+        except (TypeError, ValueError) as error:
+            raise EntryEvaluationError(
+                resolution.entry_name, resolution.field,
+                f'{node!r} is not an integer dtype code: {error}')
     if code not in VALID_DTYPE_CODES:
         raise EntryEvaluationError(
             resolution.entry_name, resolution.field,
