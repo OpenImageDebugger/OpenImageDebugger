@@ -1,0 +1,8 @@
+# clang-format's JSON formatter would reflow our hand-authored JSON to the
+# C/C++ style in .clang-format (IndentWidth 4, ColumnLimit 80), wrapping long
+# string values. git-clang-format lists .json in its default extensions, so
+# the CI formatting gate would rewrite files like resources/oidmcp/server.json.
+# JSON in this repo is 2-space and clang-format does not own it. The globstar
+# is required: a bare `*` pattern is anchored to this directory and does not
+# cross `/` into subdirectories.
+**/*.json
