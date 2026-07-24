@@ -61,3 +61,14 @@ def test_template_argument_out_of_range_raises():
     t = TemplateTypeName('float')
     with pytest.raises(IndexError):
         t.template_argument(0)
+
+
+def test_canonical_property_defaults_to_name():
+    name = TemplateTypeName('Eigen::Matrix<float, 3, 3, 0, 3, 3>')
+    assert name.canonical == 'Eigen::Matrix<float, 3, 3, 0, 3, 3>'
+
+
+def test_canonical_property_returns_supplied_canonical():
+    name = TemplateTypeName(
+        'Eigen::MatrixXf', 'Eigen::Matrix<float, -1, -1, 0, -1, -1>')
+    assert name.canonical == 'Eigen::Matrix<float, -1, -1, 0, -1, -1>'

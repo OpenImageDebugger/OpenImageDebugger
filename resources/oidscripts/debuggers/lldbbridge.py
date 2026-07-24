@@ -183,6 +183,23 @@ class LldbBridge(BridgeInterface):
     def get_casted_pointer(self, typename, lldb_object):
         return lldb_object.get_casted_pointer()
 
+    def evaluate_expression(self, expression):
+        frame = self._get_frame(
+            self._get_thread(self._get_process(self.get_lldb_backend())))
+        if frame is None:
+            raise RuntimeError(
+                'Expression "{}" failed: no stopped frame'.format(
+                    expression))
+
+        result = frame.EvaluateExpression(expression)
+        error = result.GetError()
+        if not result.IsValid() or (error is not None and error.Fail()):
+            message = error.GetCString() if error is not None else None
+            raise RuntimeError(
+                'Expression "{}" failed: {}'.format(
+                    expression, message or 'invalid result'))
+        return SymbolWrapper(result)
+
     def _get_observable_children_members(self, symbol, member_name_chain,
                                          output_set, visited_typenames=None):
         # type: (lldb.SBValue, list[str], set, set) -> None

@@ -107,6 +107,13 @@ class GdbBridge(BridgeInterface):
         typename_pointer_obj = typename_obj.pointer()
         return gdb_object.cast(typename_pointer_obj)
 
+    def evaluate_expression(self, expression):
+        try:
+            return gdb.parse_and_eval(expression)
+        except gdb.error as error:
+            raise RuntimeError(
+                'Expression "{}" failed: {}'.format(expression, error))
+
     def _get_observable_children_members(self, symbol, output_set, parent_name=''):
         if not parent_name:
             parent_name = symbol.name
