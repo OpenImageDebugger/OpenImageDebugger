@@ -662,6 +662,25 @@ if(OID_BUILD_IMGUI_FRONTEND)
 
     add_test(NAME GlyphAtlasTests COMMAND glyph_atlas_test)
 
+    # Which layout the buffer fragment shader is compiled with, given the
+    # texture's channel count. Header-only rule, deliberately free of GL and
+    # canvas types so it needs no GL context.
+    add_executable(shader_pixel_layout_test
+        visualization/shader_pixel_layout_test.cpp
+    )
+
+    target_include_directories(shader_pixel_layout_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    )
+
+    target_link_libraries(shader_pixel_layout_test
+        PRIVATE
+        GTest::gtest_main
+        GTest::gtest
+    )
+
+    add_test(NAME ShaderPixelLayoutTests COMMAND shader_pixel_layout_test)
+
     # Test stb_glyph_atlas() out of host/text/stb_glyph_atlas.cpp: bakes
     # oid::GLYPH_TEXT from the embedded Roboto-Regular font (stb_truetype)
     # through the same finalize_strip_atlas() pipeline glyph_atlas_test above

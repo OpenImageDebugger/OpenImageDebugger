@@ -55,7 +55,7 @@
         "else": { "first_valid": [ { "expr": "{targ:1}", "min": 1 }, "{sym}.m_storage.m_rows" ] } },
       "pointer": { "first_valid": [ "{sym}.m_storage.m_data.array", "{sym}.m_storage.m_data" ] },
       "row_stride": "{width}",
-      "pixel_layout": "bgra"
+      "pixel_layout": "rgba"
     },
     {
       "name": "Eigen::Map",
@@ -71,7 +71,7 @@
         "else": { "first_valid": [ { "expr": "{targ:0.1}", "min": 1 }, "{sym}.m_rows.m_value" ] } },
       "pointer": "{sym}.m_data",
       "row_stride": { "first_valid": [ { "expr": "{sym}.m_stride.m_outer.m_value", "min": 1 }, "{width}" ] },
-      "pixel_layout": "bgra"
+      "pixel_layout": "rgba"
     }
   ]
 }

@@ -286,19 +286,19 @@ CLEAN_CASES = [
          {'display_name': 'm (%s)' % _EIGEN_STATIC, 'pointer': 16384,
           'width': 4, 'height': 3, 'channels': 1,
           'type': T.OID_TYPES_FLOAT32, 'row_stride': 4,
-          'pixel_layout': 'bgra', 'transpose_buffer': False}),
+          'pixel_layout': 'rgba', 'transpose_buffer': False}),
     Case('eigen_dynamic',
          _eigen_dynamic(_EIGEN_DYNAMIC, 5, 7, 16384), 'm', 'Eigen::Matrix',
          {'display_name': 'm (%s)' % _EIGEN_DYNAMIC, 'pointer': 16384,
           'width': 5, 'height': 7, 'channels': 1,
           'type': T.OID_TYPES_FLOAT64, 'row_stride': 5,
-          'pixel_layout': 'bgra', 'transpose_buffer': True}),
+          'pixel_layout': 'rgba', 'transpose_buffer': True}),
     Case('eigen_map',
          _eigen_map(_EIGEN_MAP, 20480), 'm', 'Eigen::Map',
          {'display_name': 'm (%s)' % _EIGEN_STATIC, 'pointer': 20480,
           'width': 4, 'height': 3, 'channels': 1,
           'type': T.OID_TYPES_FLOAT32, 'row_stride': 4,
-          'pixel_layout': 'bgra', 'transpose_buffer': False}),
+          'pixel_layout': 'rgba', 'transpose_buffer': False}),
 ]
 
 
@@ -390,6 +390,30 @@ def test_diff3_legacy_signed_iplimage_stride_collapses_to_zero():
     metadata = _legacy_metadata('IplImage', symbol, 'ipl')
     assert metadata['type'] == T.OID_TYPES_INT16   # dtype was already correct
     assert metadata['row_stride'] == 0            # the bug the JSON path fixes
+
+
+def test_diff7_single_channel_entries_declare_an_r_first_layout():
+    # #7: pixel_layout names the channel ORDER of multi-channel data, and its
+    # first character also selects which channel the viewer samples. A
+    # single-channel buffer is uploaded as GL_RED, where only .r carries data,
+    # so a layout starting with 'g'/'b'/'a' makes the fragment shader sample a
+    # constant 0 and the whole buffer renders black. The Eigen entries declared
+    # 'bgra' unconditionally even though Eigen matrices are always
+    # single-channel; the OpenCV entries already conditioned on {channels}.
+    for case in CLEAN_CASES:
+        metadata = _new_metadata(case.symbol, case.obj_name)
+        if metadata['channels'] == 1:
+            assert metadata['pixel_layout'][0] == 'r', (
+                '%s is single-channel but declares layout %r'
+                % (case.id, metadata['pixel_layout']))
+
+
+@legacy_only
+def test_diff7_legacy_eigen_declared_bgra_for_single_channel():
+    metadata = _legacy_metadata('Eigen::Matrix',
+                                _eigen_static(_EIGEN_STATIC, 16384), 'm')
+    assert metadata['channels'] == 1
+    assert metadata['pixel_layout'] == 'bgra'  # the bug the JSON path fixes
 
 
 # --- Editor schema tightness: schema-valid must imply loader-loadable ------

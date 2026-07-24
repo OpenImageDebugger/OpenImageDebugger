@@ -76,7 +76,7 @@ happens once per debug session; edits take effect the next session.
 | `dtype` | — (required) | value node → pixel type (see dtype rule) |
 | `channels` | `1` | value node → int; `0` is rejected downstream when the buffer is plotted, not at load |
 | `row_stride` | `"{width}"` | value node → int (pixels per row of the containing buffer) |
-| `pixel_layout` | `"rgba"` | 4 chars from `r g b a` (repeats allowed), or an if/else over such literals |
+| `pixel_layout` | `"rgba"` | 4 chars from `r g b a` (repeats allowed), or an if/else over such literals. Describes channel **order**, so it only carries meaning for multi-channel data: a single-channel buffer is always displayed from its one channel whatever the layout says. Use the `{channels} >= 3` if/else when an entry can be either |
 | `transpose` | `false` | value node → bool |
 | `display_name` | `"{name} ({type})"` | template string; placeholders `{name}` (variable name), `{type}` (type string), `{targ:…}`; not debugger-evaluated |
 | `language` | `"cpp"` | expression dialect; entries a backend can't evaluate are skipped |

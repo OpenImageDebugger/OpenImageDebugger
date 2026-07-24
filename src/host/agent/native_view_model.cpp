@@ -251,6 +251,12 @@ bool NativeViewModel::set_channel(const std::string_view name,
     if (index < 0 || index > 2) {
         return false;
     }
+    // A buffer only carries the channels it has. Isolating one it does not
+    // would leave view_of() reporting a channel that is not the one being
+    // rendered, since a single-channel buffer always renders from red.
+    if (index >= buffer->channels()) {
+        return false;
+    }
     buffer->set_pixel_layout(isolated_layout(index));
     buffer->set_display_channel_mode(1);
     return true;
