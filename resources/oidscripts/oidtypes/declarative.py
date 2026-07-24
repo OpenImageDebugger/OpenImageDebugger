@@ -490,3 +490,133 @@ def _validate_entry(entry):
                 f'display_name placeholder {{{token}}} is not supported '
                 '(use {name}, {type} or {targ:...})')
     return errors
+
+
+def _leaf_pointer(resolution, node):
+    # Pointer nodes are expression strings (validation enforces it); the
+    # result stays a debugger value so the bridge can cast it.
+    return resolution.evaluate(node)
+
+
+def _resolve_pixel_layout(resolution, node):
+    """
+    pixel_layout composes if/else nodes over literal layout strings, so
+    only the conditions ever reach the debugger.
+    """
+    while isinstance(node, dict):
+        condition = _to_bool(resolution.evaluate(node['if']))
+        node = node['then'] if condition else node['else']
+    return node
+
+
+def _resolve_display_name(template, obj_name, symbol_obj):
+    """
+    display_name is a plain template — no debugger evaluation. {name} is
+    the variable name, {type} the declared type string, {targ:...} a
+    template argument. A failing template falls back to the default
+    display so it can never sink an otherwise good plot.
+    """
+    values = {'name': obj_name, 'type': str(symbol_obj.type)}
+    try:
+        return _substitute(
+            template, values,
+            lambda token: _resolve_targ_token(symbol_obj, token))
+    except Exception:
+        return f'{obj_name} ({symbol_obj.type})'
+
+
+class DeclarativeInspector(interface.TypeInspectorInterface):
+    """
+    One declarative JSON entry, exposed through the same interface as a
+    hand-written Python inspector. Instances are built by the loader
+    from already-validated entries; TypeBridge and its consumers cannot
+    tell them apart from imperative inspectors.
+    """
+
+    def __init__(self, entry, source):
+        self._entry = entry
+        self._name = entry.get('name', entry['match'])
+        self._source = source
+        self._match_re = re.compile(entry['match'])
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def source(self):
+        return self._source
+
+    def _field_node(self, field):
+        entry = self._entry
+        return entry[field] if field in entry else FIELD_DEFAULTS[field]
+
+    def get_buffer_metadata(self, obj_name, picked_obj, debugger_bridge):
+        resolution = _Resolution(self._name, obj_name, picked_obj,
+                                 debugger_bridge)
+
+        resolution.field = 'dtype'
+        dtype = _resolve_node(resolution, self._field_node('dtype'),
+                              _leaf_dtype)
+        resolution.placeholders['dtype'] = str(dtype)
+        resolution.placeholders['elemsize'] = str(DTYPE_ELEMSIZE[dtype])
+
+        resolution.field = 'transpose'
+        transpose = _resolve_node(resolution, self._field_node('transpose'),
+                                  _leaf_bool)
+        resolution.placeholders['transpose'] = '1' if transpose else '0'
+
+        resolution.field = 'width'
+        width = _resolve_node(resolution, self._field_node('width'),
+                              _leaf_int)
+        resolution.placeholders['width'] = str(width)
+
+        resolution.field = 'height'
+        height = _resolve_node(resolution, self._field_node('height'),
+                               _leaf_int)
+        resolution.placeholders['height'] = str(height)
+
+        resolution.field = 'channels'
+        channels = _resolve_node(resolution, self._field_node('channels'),
+                                 _leaf_int)
+        resolution.placeholders['channels'] = str(channels)
+
+        resolution.field = 'pointer'
+        pointer_value = _resolve_node(resolution,
+                                      self._field_node('pointer'),
+                                      _leaf_pointer)
+        buffer = debugger_bridge.get_casted_pointer('char', pointer_value)
+        if buffer == 0x0:
+            raise EntryEvaluationError(self._name, 'pointer',
+                                       'received null buffer')
+
+        resolution.field = 'row_stride'
+        row_stride = _resolve_node(resolution,
+                                   self._field_node('row_stride'),
+                                   _leaf_int)
+        resolution.placeholders['row_stride'] = str(row_stride)
+
+        resolution.field = 'pixel_layout'
+        pixel_layout = _resolve_pixel_layout(
+            resolution, self._field_node('pixel_layout'))
+
+        display_name = _resolve_display_name(
+            self._field_node('display_name'), obj_name, picked_obj)
+
+        return {
+            'display_name': display_name,
+            'pointer': buffer,
+            'width': width,
+            'height': height,
+            'channels': channels,
+            'type': dtype,
+            'row_stride': row_stride,
+            'pixel_layout': pixel_layout,
+            'transpose_buffer': transpose,
+        }
+
+    def is_symbol_observable(self, symbol_obj, symbol_name):
+        for type_string in _type_strings(symbol_obj):
+            if self._match_re.match(type_string):
+                return True
+        return False

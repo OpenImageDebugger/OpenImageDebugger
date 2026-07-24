@@ -405,3 +405,123 @@ def test_validate_display_name_placeholders():
 def test_validate_null_field_is_rejected():
     entry = dict(FLOOR_ENTRY, channels=None)
     assert declarative._validate_entry(entry) != []
+
+
+MY_IMAGE_ENTRY = {
+    'name': 'MyImage',
+    'match': '^MyImage(?:\\s*[*&])?$',
+    'pointer': '{sym}.data',
+    'width': '{sym}.w',
+    'height': '{sym}.h',
+    'dtype': 'float32',
+}
+
+
+class CastingBridge(RecordingBridge):
+    """RecordingBridge plus the pointer-cast half of the bridge contract."""
+
+    def __init__(self, results=None):
+        super().__init__(results)
+        self.casts = []
+
+    def get_casted_pointer(self, typename, obj):
+        self.casts.append((typename, obj))
+        return obj
+
+
+def test_inspector_full_metadata_for_floor_entry():
+    bridge = CastingBridge({
+        '(img).data': 4096,
+        '(img).w': 640,
+        '(img).h': 480,
+    })
+    inspector = declarative.DeclarativeInspector(MY_IMAGE_ENTRY, 'test')
+    symbol = FakeSymbol(TemplateTypeName('MyImage'))
+    metadata = inspector.get_buffer_metadata('img', symbol, bridge)
+    assert metadata == {
+        'display_name': 'img (MyImage)',
+        'pointer': 4096,
+        'width': 640,
+        'height': 480,
+        'channels': 1,
+        'type': symbols.OID_TYPES_FLOAT32,
+        'row_stride': 640,
+        'pixel_layout': 'rgba',
+        'transpose_buffer': False,
+    }
+    assert bridge.casts == [('char', 4096)]
+
+
+def test_inspector_derefs_pointer_symbols():
+    bridge = CastingBridge({
+        '(*(img)).data': 4096,
+        '(*(img)).w': 8,
+        '(*(img)).h': 4,
+    })
+    inspector = declarative.DeclarativeInspector(MY_IMAGE_ENTRY, 'test')
+    symbol = FakeSymbol(TemplateTypeName('MyImage *'))
+    metadata = inspector.get_buffer_metadata('img', symbol, bridge)
+    assert metadata['width'] == 8
+    assert metadata['height'] == 4
+
+
+def test_inspector_raises_on_null_pointer():
+    bridge = CastingBridge({
+        '(img).data': 0,
+        '(img).w': 640,
+        '(img).h': 480,
+    })
+    inspector = declarative.DeclarativeInspector(MY_IMAGE_ENTRY, 'test')
+    symbol = FakeSymbol(TemplateTypeName('MyImage'))
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        inspector.get_buffer_metadata('img', symbol, bridge)
+    assert 'null' in str(excinfo.value)
+
+
+def test_inspector_matches_declared_and_canonical():
+    inspector = declarative.DeclarativeInspector(MY_IMAGE_ENTRY, 'test')
+    aliased = FakeSymbol(GdbStyleType('ImageAlias', 'MyImage'))
+    other = FakeSymbol(TemplateTypeName('NotMyImage'))
+    assert inspector.is_symbol_observable(aliased, 'img') is True
+    assert inspector.is_symbol_observable(other, 'img') is False
+
+
+def test_inspector_row_stride_uses_derived_placeholders():
+    entry = dict(MY_IMAGE_ENTRY, dtype='uint8', channels=3,
+                 row_stride='{sym}.step / {channels} / {elemsize}')
+    bridge = CastingBridge({
+        '(img).data': 4096,
+        '(img).w': 640,
+        '(img).h': 480,
+        '(img).step / 3 / 1': 1920,
+    })
+    inspector = declarative.DeclarativeInspector(entry, 'test')
+    symbol = FakeSymbol(TemplateTypeName('MyImage'))
+    metadata = inspector.get_buffer_metadata('img', symbol, bridge)
+    assert metadata['row_stride'] == 1920
+    assert metadata['channels'] == 3
+
+
+def test_inspector_display_name_with_targ():
+    entry = dict(MY_IMAGE_ENTRY, match='^Wrap<', name='Wrap',
+                 display_name='{name} ({targ:0})')
+    bridge = CastingBridge({
+        '(img).data': 4096,
+        '(img).w': 2,
+        '(img).h': 2,
+    })
+    inspector = declarative.DeclarativeInspector(entry, 'test')
+    symbol = FakeSymbol(TemplateTypeName('Wrap<float>'))
+    metadata = inspector.get_buffer_metadata('img', symbol, bridge)
+    assert metadata['display_name'] == 'img (float)'
+
+
+def test_resolve_pixel_layout_walks_if_chain():
+    bridge = RecordingBridge()
+    resolution = make_resolution(bridge, field='pixel_layout')
+    resolution.placeholders['channels'] = '3'
+    node = {'if': '{channels}', 'then': 'bgra', 'else': 'rgba'}
+    assert declarative._resolve_pixel_layout(resolution, node) == 'bgra'
+    resolution.placeholders['channels'] = '0'
+    assert declarative._resolve_pixel_layout(resolution, node) == 'rgba'
+    assert bridge.requests == []
