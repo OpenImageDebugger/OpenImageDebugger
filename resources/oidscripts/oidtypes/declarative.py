@@ -168,12 +168,30 @@ def _resolve_targ_token(symbol_obj, token):
 
 # Trailing reference markers ('&', '&&') and cv-qualifiers ('const',
 # 'volatile') that can follow a pointer star in a declared type, e.g.
-# 'T *&', 'T * const', 'T *const&'. cv-qualifier words are peeled only
-# when preceded by whitespace or '*', so a type whose name merely ends in
-# the letters 'const' (e.g. 'fooconst') is left intact. A template's inner
-# '*' ('std::vector<int*>') is never at the tail, so it never matches.
-_TRAILING_CV_REF = re.compile(
-    r'(?:\s*&&|\s*&|(?<=[\s*])\s*const\b|(?<=[\s*])\s*volatile\b|\s+)+$')
+# 'T *&', 'T * const', 'T *const&'. They are peeled one token at a time
+# with a plain rstrip loop rather than a single regex so that a long run
+# of whitespace cannot trigger catastrophic regex backtracking.
+_TRAILING_REF_MARKERS = ('&&', '&')
+_TRAILING_CV_WORDS = ('const', 'volatile')
+
+
+def _strip_trailing_pointer_qualifier(core):
+    """
+    Remove one trailing reference marker or cv-qualifier word from a
+    declared type, or return it unchanged when none is present. A
+    cv-qualifier word is only peeled when it is a standalone token
+    (preceded by whitespace or a '*'), so a type whose name merely ends in
+    those letters (e.g. 'fooconst') is left intact.
+    """
+    for marker in _TRAILING_REF_MARKERS:
+        if core.endswith(marker):
+            return core[:-len(marker)]
+    for word in _TRAILING_CV_WORDS:
+        if core.endswith(word):
+            before = core[:-len(word)]
+            if before and (before[-1].isspace() or before[-1] == '*'):
+                return before
+    return core
 
 
 def _is_pointer_type(type_string):
@@ -187,7 +205,13 @@ def _is_pointer_type(type_string):
     ('T&', 'const T&', 'T const') is not a pointer, and a template holding
     an inner pointer ('std::vector<int*>') is not either.
     """
-    core = _TRAILING_CV_REF.sub('', type_string.rstrip()).rstrip()
+    core = type_string.rstrip()
+    while True:
+        core = core.rstrip()
+        stripped = _strip_trailing_pointer_qualifier(core)
+        if stripped == core:
+            break
+        core = stripped
     return core.endswith('*')
 
 
@@ -475,7 +499,42 @@ def _validate_min_wrapper(candidate, available):
     return _string_node_errors(candidate['expr'], available)
 
 
-def _validate_first_valid(candidates, available, allow_number):
+# Numeric-literal policy for a field's value nodes, applied at the top
+# level and at every leaf nested inside first_valid/map/if:
+#   NONE    -- pointer: a bare number is never a valid value expression
+#              (it must resolve to a debugger value the bridge can cast).
+#   INTEGER -- sizes and dtype: an int literal is fine, but a bool/float
+#              literal would be silently coerced by int() at runtime
+#              (True -> 1, 5.9 -> 5), so reject it at load time for
+#              immediate feedback instead of a plot-time failure.
+#   ANY     -- transpose: any numeric literal is a valid value.
+_NUMBER_NONE = 'none'
+_NUMBER_INTEGER = 'integer'
+_NUMBER_ANY = 'any'
+
+_FIELD_NUMBER_POLICY = {
+    'dtype': _NUMBER_INTEGER,
+    'transpose': _NUMBER_ANY,
+    'width': _NUMBER_INTEGER,
+    'height': _NUMBER_INTEGER,
+    'channels': _NUMBER_INTEGER,
+    'pointer': _NUMBER_NONE,
+    'row_stride': _NUMBER_INTEGER,
+}
+
+
+def _numeric_literal_errors(node, number_policy):
+    """Problems for a bare numeric literal under a field's number policy."""
+    if number_policy == _NUMBER_NONE:
+        return ['pointer must be an expression or node, '
+                'not a literal number']
+    if number_policy == _NUMBER_INTEGER and isinstance(node, (bool, float)):
+        return [f'{node!r} is not an integer literal; '
+                'use a whole number or an expression']
+    return []
+
+
+def _validate_first_valid(candidates, available, number_policy):
     """first_valid: a non-empty array of value nodes or min-wrappers."""
     if not isinstance(candidates, list) or not candidates:
         return ['first_valid must be a non-empty array']
@@ -484,11 +543,11 @@ def _validate_first_valid(candidates, available, allow_number):
         if isinstance(candidate, dict) and 'min' in candidate:
             errors.extend(_validate_min_wrapper(candidate, available))
         else:
-            errors.extend(_validate_node(candidate, available, allow_number))
+            errors.extend(_validate_node(candidate, available, number_policy))
     return errors
 
 
-def _validate_map(node, available, allow_number):
+def _validate_map(node, available, number_policy):
     """expr/map: an expression selecting a value node, plus a default."""
     errors = []
     if not isinstance(node['expr'], str):
@@ -499,36 +558,35 @@ def _validate_map(node, available, allow_number):
         errors.append('map must be a non-empty object')
     else:
         for value in node['map'].values():
-            errors.extend(_validate_node(value, available, allow_number))
+            errors.extend(_validate_node(value, available, number_policy))
     if 'default' in node:
-        errors.extend(_validate_node(node['default'], available, allow_number))
+        errors.extend(_validate_node(node['default'], available,
+                                     number_policy))
     return errors
 
 
-def _validate_node(node, available, allow_number=True):
+def _validate_node(node, available, number_policy=_NUMBER_ANY):
     """
     Structural check of one value node. Returns a list of problems
-    (empty when valid). 'allow_number' is False for pointer fields, where
-    a literal number is never a valid debugger value expression -- not
-    only at the top level but anywhere inside first_valid/map/if.
+    (empty when valid). 'number_policy' controls which bare numeric
+    literals are acceptable here and at every leaf nested inside
+    first_valid/map/if (see _FIELD_NUMBER_POLICY).
     """
     if isinstance(node, (bool, int, float)):
-        if allow_number:
-            return []
-        return ['pointer must be an expression or node, not a literal number']
+        return _numeric_literal_errors(node, number_policy)
     if isinstance(node, str):
         return _string_node_errors(node, available)
     if isinstance(node, dict):
         if 'first_valid' in node:
             return _validate_first_valid(node['first_valid'], available,
-                                         allow_number)
+                                         number_policy)
         if 'if' in node:
             return _validate_value_node(
                 node, available,
                 lambda branch, avail: _validate_node(branch, avail,
-                                                     allow_number))
+                                                     number_policy))
         if 'expr' in node and 'map' in node:
-            return _validate_map(node, available, allow_number)
+            return _validate_map(node, available, number_policy)
         return ['unknown node shape (expected first_valid, if/then/else '
                 'or expr/map)']
     return [f'unsupported value type {type(node).__name__}']
@@ -568,10 +626,9 @@ def _validate_field(entry, field):
     available = frozenset(_DERIVED_BY_STAGE[field])
     if field == 'pixel_layout':
         problems = _validate_pixel_layout(node, available)
-    elif field == 'pointer':
-        problems = _validate_node(node, available, allow_number=False)
     else:
-        problems = _validate_node(node, available)
+        problems = _validate_node(node, available,
+                                  _FIELD_NUMBER_POLICY[field])
     return [f'field "{field}": {problem}' for problem in problems]
 
 
@@ -595,8 +652,10 @@ def _validate_entry(entry):
     """
     Load-time structural validation of one entry. Returns a list of
     problems; a non-empty list means the loader skips the entry with a
-    warning. Runtime evaluation of a validated entry can then only fail
-    inside the debugger (handled by EntryEvaluationError).
+    warning. Validation covers structure and literal types; a validated
+    entry can still fail at runtime (raised as EntryEvaluationError) on
+    values only known inside the debugger -- an out-of-range size, an
+    unknown dtype code, or an expression that does not evaluate.
     """
     if not isinstance(entry, dict):
         return ['entry must be an object']
@@ -798,12 +857,14 @@ def discover_user_type_files():
     """
     Paths of the user types files to load, in precedence order: the
     OID_TYPES_PATH environment variable (os.pathsep-separated file list)
-    when set, otherwise the nearest .oid/types.json walking up from the
-    current working directory.
+    when present, otherwise the nearest .oid/types.json walking up from
+    the current working directory. Presence, not truthiness, decides: an
+    explicitly empty OID_TYPES_PATH means "no user type files" and
+    disables the walk-up fallback, so it can be used to opt out entirely.
     """
-    env_value = os.environ.get(OID_TYPES_PATH_ENV)
-    if env_value:
-        return [path for path in env_value.split(os.pathsep) if path]
+    if OID_TYPES_PATH_ENV in os.environ:
+        raw = os.environ[OID_TYPES_PATH_ENV]
+        return [path for path in raw.split(os.pathsep) if path]
     directory = os.getcwd()
     while True:
         candidate = os.path.join(directory, '.oid', 'types.json')

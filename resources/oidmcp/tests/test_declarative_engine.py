@@ -118,6 +118,16 @@ def test_symbol_expression_does_not_deref_references_or_values():
             spelling
 
 
+def test_is_pointer_type_handles_long_whitespace_run():
+    # Regression: the trailing-qualifier peel is linear (a plain rstrip
+    # loop, not one backtracking regex), so a long run of whitespace after
+    # a type resolves quickly and correctly instead of hanging.
+    assert declarative._is_pointer_type('cv::Mat' + ' ' * 5000) is False
+    assert declarative._is_pointer_type('cv::Mat*' + ' ' * 5000) is True
+    assert declarative._is_pointer_type(
+        'cv::Mat *' + ' ' * 5000 + 'const') is True
+
+
 def test_to_bool_handles_lldb_bool_strings():
     class Rendered:
         def __init__(self, text):
@@ -500,6 +510,51 @@ def test_validate_allows_string_pointer_leaf_in_first_valid():
     entry = dict(FLOOR_ENTRY,
                  pointer={'first_valid': ['{sym}.data.ptr', '{sym}.data']})
     assert declarative._validate_entry(entry) == []
+
+
+def test_validate_rejects_bool_and_float_int_field_literals():
+    # A bool/float literal for an integer field loads "cleanly" but is
+    # rejected at runtime by _leaf_int (int() would coerce True->1,
+    # 640.9->640); reject it at load time so feedback is immediate.
+    for bad_width in (640.0, True):
+        entry = dict(FLOOR_ENTRY, width=bad_width)
+        errors = declarative._validate_entry(entry)
+        assert any('width' in error and 'integer literal' in error
+                   for error in errors), bad_width
+
+
+def test_validate_rejects_bool_and_float_dtype_literals():
+    # dtype has the same int() coercion hazard as the size fields.
+    for bad_dtype in (5.0, True):
+        entry = dict(FLOOR_ENTRY, dtype=bad_dtype)
+        errors = declarative._validate_entry(entry)
+        assert any('dtype' in error and 'integer literal' in error
+                   for error in errors), bad_dtype
+
+
+def test_validate_accepts_integer_dtype_and_size_literals():
+    # An int literal stays structurally valid; its value range and
+    # dtype-code validity are still enforced by the runtime leaf.
+    entry = dict(FLOOR_ENTRY, width=640, dtype=0)
+    assert declarative._validate_entry(entry) == []
+
+
+def test_validate_rejects_float_literal_nested_in_first_valid():
+    # The number policy must reach leaves nested in first_valid/map/if,
+    # not just the top-level node.
+    entry = dict(FLOOR_ENTRY,
+                 width={'first_valid': ['{sym}.cols', 640.5]})
+    errors = declarative._validate_entry(entry)
+    assert any('width' in error and 'integer literal' in error
+               for error in errors)
+
+
+def test_validate_accepts_bool_transpose_literal():
+    # transpose is a boolean field, so a bool literal is its natural value
+    # and must not be rejected by the integer-field number policy.
+    for transpose in (True, False):
+        entry = dict(FLOOR_ENTRY, transpose=transpose)
+        assert declarative._validate_entry(entry) == []
 
 
 def test_pointer_decimal_literal_resolves_via_debugger_not_int():

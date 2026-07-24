@@ -171,6 +171,18 @@ def test_walk_up_prefers_closest_directory(tmp_path, monkeypatch):
         str(tmp_path / 'a' / '.oid' / 'types.json'))]
 
 
+def test_empty_env_var_disables_discovery_without_walk_up(tmp_path,
+                                                          monkeypatch):
+    # An explicitly empty OID_TYPES_PATH means "no user type files": it is
+    # present, so it wins over the walk-up fallback and returns [] rather
+    # than loading a nearby .oid/types.json.
+    (tmp_path / '.oid').mkdir()
+    write_doc(tmp_path / '.oid' / 'types.json', VALID_DOC)
+    monkeypatch.setenv('OID_TYPES_PATH', '')
+    monkeypatch.chdir(tmp_path)
+    assert declarative.discover_user_type_files() == []
+
+
 def test_env_var_wins_over_walk_up(tmp_path, monkeypatch):
     env_file = tmp_path / 'from_env.json'
     write_doc(env_file, VALID_DOC)
