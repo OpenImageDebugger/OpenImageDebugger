@@ -401,6 +401,37 @@ def test_validate_rejects_literal_pointer():
     assert any('pointer' in error for error in errors)
 
 
+def test_validate_rejects_numeric_pointer_leaf_in_first_valid():
+    # A literal number is never a valid pointer expression -- not only at
+    # the top level but also as a leaf nested inside first_valid/map/if,
+    # where it would otherwise reach get_casted_pointer as a bare int.
+    entry = dict(FLOOR_ENTRY,
+                 pointer={'first_valid': ['{sym}.data', 0]})
+    errors = declarative._validate_entry(entry)
+    assert any('pointer' in error and 'literal number' in error
+               for error in errors)
+
+
+def test_validate_allows_string_pointer_leaf_in_first_valid():
+    entry = dict(FLOOR_ENTRY,
+                 pointer={'first_valid': ['{sym}.data.ptr', '{sym}.data']})
+    assert declarative._validate_entry(entry) == []
+
+
+def test_pointer_decimal_literal_resolves_via_debugger_not_int():
+    # A pointer expression that substitutes to a bare decimal must still be
+    # evaluated by the debugger so the result is a value object the bridge
+    # can cast; the int() fast path used by numeric fields would hand
+    # get_casted_pointer a Python int and break the cast.
+    sentinel = object()
+    bridge = RecordingBridge({'12345': sentinel})
+    resolution = make_resolution(bridge, field='pointer')
+    value = declarative._resolve_node(
+        resolution, '12345', declarative._leaf_pointer)
+    assert value is sentinel
+    assert bridge.requests == ['12345']
+
+
 def test_validate_first_valid_shapes():
     good = dict(FLOOR_ENTRY, width={'first_valid': [
         {'expr': '{targ:1}', 'min': 1}, '{sym}.rows']})

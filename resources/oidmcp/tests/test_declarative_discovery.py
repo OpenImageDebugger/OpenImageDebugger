@@ -66,6 +66,18 @@ def test_nonexistent_file_is_quiet(tmp_path, caplog):
                 if record.levelno >= logging.WARNING]
 
 
+def test_missing_builtin_types_file_warns(monkeypatch, caplog):
+    # A missing user file is normal (quiet), but a missing *builtin* file
+    # is a packaging error and must surface as a warning.
+    caplog.set_level(logging.DEBUG, logger='oidscripts.logger')
+    monkeypatch.setattr(declarative, 'BUILTIN_TYPES_FILENAME',
+                        'does_not_exist_builtin.json')
+    assert declarative.load_builtin_inspectors() == []
+    assert any('builtin types file' in record.message.lower()
+               for record in caplog.records
+               if record.levelno == logging.WARNING)
+
+
 def test_invalid_json_warns_and_skips_file(tmp_path, caplog):
     caplog.set_level(logging.DEBUG, logger='oidscripts.logger')
     types_file = tmp_path / 'types.json'

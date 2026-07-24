@@ -89,13 +89,11 @@ _DERIVED_BY_STAGE = {
     'pixel_layout': ('dtype', 'elemsize', 'transpose', 'width', 'height',
                      'channels', 'row_stride'),
 }
-_ALL_DERIVED = ('dtype', 'elemsize', 'transpose', 'width', 'height',
-                'channels', 'row_stride')
-
 # Only these brace tokens are placeholders; any other brace content (e.g.
-# C initializer braces) passes through substitution untouched.
+# C initializer braces) passes through substitution untouched. Lowercase
+# tokens (sym, name, type, field names) are all covered by [a-z_]+.
 _PLACEHOLDER_RE = re.compile(
-    r'\{(sym|name|type|targ:\d+(?:\.\d+)*|[a-z_]+)\}')
+    r'\{(targ:\d+(?:\.\d+)*|[a-z_]+)\}')
 _PIXEL_LAYOUT_RE = re.compile(r'^[rgba]{4}$')
 
 
@@ -239,11 +237,7 @@ class _Resolution:
                 self.entry_name, self.field,
                 f'template argument resolution failed in {text!r}: {error}')
 
-    def evaluate_text(self, substituted):
-        try:
-            return int(substituted.strip())
-        except ValueError:
-            pass
+    def _evaluate_via_bridge(self, substituted):
         try:
             return self.bridge.evaluate_expression(substituted)
         except RuntimeError as error:
@@ -251,8 +245,21 @@ class _Resolution:
                 self.entry_name, self.field,
                 f'{substituted!r} failed: {error}')
 
+    def evaluate_text(self, substituted):
+        try:
+            return int(substituted.strip())
+        except ValueError:
+            pass
+        return self._evaluate_via_bridge(substituted)
+
     def evaluate(self, text):
         return self.evaluate_text(self.substitute(text))
+
+    def evaluate_pointer(self, text):
+        # Pointer expressions must resolve to a debugger value object the
+        # bridge can cast, so evaluation always goes through the debugger
+        # and never takes the int() fast path used by numeric fields.
+        return self._evaluate_via_bridge(self.substitute(text))
 
 
 def _resolve_node(resolution, node, leaf):
@@ -397,51 +404,71 @@ def _validate_value_node(node, available, recurse):
     return errors
 
 
-def _validate_node(node, available):
+def _validate_min_wrapper(candidate, available):
+    """A first_valid min-wrapper: {"expr": <string>, "min": <integer>}."""
+    if (set(candidate) != {'expr', 'min'}
+            or not isinstance(candidate['expr'], str)
+            or isinstance(candidate['min'], bool)
+            or not isinstance(candidate['min'], int)):
+        return ['min wrapper must be '
+                '{"expr": <string>, "min": <integer>}']
+    return _string_node_errors(candidate['expr'], available)
+
+
+def _validate_first_valid(candidates, available, allow_number):
+    """first_valid: a non-empty array of value nodes or min-wrappers."""
+    if not isinstance(candidates, list) or not candidates:
+        return ['first_valid must be a non-empty array']
+    errors = []
+    for candidate in candidates:
+        if isinstance(candidate, dict) and 'min' in candidate:
+            errors.extend(_validate_min_wrapper(candidate, available))
+        else:
+            errors.extend(_validate_node(candidate, available, allow_number))
+    return errors
+
+
+def _validate_map(node, available, allow_number):
+    """expr/map: an expression selecting a value node, plus a default."""
+    errors = []
+    if not isinstance(node['expr'], str):
+        errors.append('map expr must be an expression string')
+    else:
+        errors.extend(_string_node_errors(node['expr'], available))
+    if not isinstance(node['map'], dict) or not node['map']:
+        errors.append('map must be a non-empty object')
+    else:
+        for value in node['map'].values():
+            errors.extend(_validate_node(value, available, allow_number))
+    if 'default' in node:
+        errors.extend(_validate_node(node['default'], available, allow_number))
+    return errors
+
+
+def _validate_node(node, available, allow_number=True):
     """
     Structural check of one value node. Returns a list of problems
-    (empty when valid).
+    (empty when valid). 'allow_number' is False for pointer fields, where
+    a literal number is never a valid debugger value expression -- not
+    only at the top level but anywhere inside first_valid/map/if.
     """
     if isinstance(node, (bool, int, float)):
-        return []
+        if allow_number:
+            return []
+        return ['pointer must be an expression or node, not a literal number']
     if isinstance(node, str):
         return _string_node_errors(node, available)
     if isinstance(node, dict):
         if 'first_valid' in node:
-            candidates = node['first_valid']
-            if not isinstance(candidates, list) or not candidates:
-                return ['first_valid must be a non-empty array']
-            errors = []
-            for candidate in candidates:
-                if isinstance(candidate, dict) and 'min' in candidate:
-                    if (set(candidate) != {'expr', 'min'}
-                            or not isinstance(candidate['expr'], str)
-                            or isinstance(candidate['min'], bool)
-                            or not isinstance(candidate['min'], int)):
-                        errors.append('min wrapper must be '
-                                      '{"expr": <string>, "min": <integer>}')
-                    else:
-                        errors.extend(_string_node_errors(
-                            candidate['expr'], available))
-                else:
-                    errors.extend(_validate_node(candidate, available))
-            return errors
+            return _validate_first_valid(node['first_valid'], available,
+                                         allow_number)
         if 'if' in node:
-            return _validate_value_node(node, available, _validate_node)
+            return _validate_value_node(
+                node, available,
+                lambda branch, avail: _validate_node(branch, avail,
+                                                     allow_number))
         if 'expr' in node and 'map' in node:
-            errors = []
-            if not isinstance(node['expr'], str):
-                errors.append('map expr must be an expression string')
-            else:
-                errors.extend(_string_node_errors(node['expr'], available))
-            if not isinstance(node['map'], dict) or not node['map']:
-                errors.append('map must be a non-empty object')
-            else:
-                for value in node['map'].values():
-                    errors.extend(_validate_node(value, available))
-            if 'default' in node:
-                errors.extend(_validate_node(node['default'], available))
-            return errors
+            return _validate_map(node, available, allow_number)
         return ['unknown node shape (expected first_valid, if/then/else '
                 'or expr/map)']
     return [f'unsupported value type {type(node).__name__}']
@@ -460,6 +487,50 @@ def _validate_pixel_layout(node, available):
             'if/then/else over literal layout strings']
 
 
+def _validate_match(entry):
+    """Validate the entry's match regex if present."""
+    if 'match' not in entry:
+        return []
+    if not isinstance(entry['match'], str):
+        return ['match must be a regex string']
+    try:
+        re.compile(entry['match'])
+    except re.error as error:
+        return [f'match regex does not compile: {error}']
+    return []
+
+
+def _validate_field(entry, field):
+    """Validate one resolvable field's value node, prefixed with its name."""
+    if field not in entry and field in REQUIRED_FIELDS:
+        return []  # absence already reported by the required-field check
+    node = entry[field] if field in entry else FIELD_DEFAULTS[field]
+    available = frozenset(_DERIVED_BY_STAGE[field])
+    if field == 'pixel_layout':
+        problems = _validate_pixel_layout(node, available)
+    elif field == 'pointer':
+        problems = _validate_node(node, available, allow_number=False)
+    else:
+        problems = _validate_node(node, available)
+    return [f'field "{field}": {problem}' for problem in problems]
+
+
+def _validate_display_name(entry):
+    """display_name is a plain template over {name}/{type}/{targ:...}."""
+    display_name = entry.get('display_name', FIELD_DEFAULTS['display_name'])
+    if not isinstance(display_name, str):
+        return ['display_name must be a string']
+    errors = []
+    for match_obj in _PLACEHOLDER_RE.finditer(display_name):
+        token = match_obj.group(1)
+        if token in ('name', 'type') or _is_targ_token(token):
+            continue
+        errors.append(
+            f'display_name placeholder {{{token}}} is not supported '
+            '(use {name}, {type} or {targ:...})')
+    return errors
+
+
 def _validate_entry(entry):
     """
     Load-time structural validation of one entry. Returns a list of
@@ -473,45 +544,17 @@ def _validate_entry(entry):
     for field in REQUIRED_FIELDS:
         if field not in entry:
             errors.append(f'missing required field "{field}"')
-    if 'match' in entry:
-        if not isinstance(entry['match'], str):
-            errors.append('match must be a regex string')
-        else:
-            try:
-                re.compile(entry['match'])
-            except re.error as error:
-                errors.append(f'match regex does not compile: {error}')
+    errors.extend(_validate_match(entry))
     for field in RESOLUTION_ORDER:
-        if field not in entry and field in REQUIRED_FIELDS:
-            continue  # absence already reported above
-        node = entry[field] if field in entry else FIELD_DEFAULTS[field]
-        available = frozenset(_DERIVED_BY_STAGE[field])
-        if field == 'pixel_layout':
-            problems = _validate_pixel_layout(node, available)
-        elif field == 'pointer' and isinstance(node, (bool, int, float)):
-            problems = ['pointer must be an expression or node, not a '
-                        'literal number']
-        else:
-            problems = _validate_node(node, available)
-        errors.extend(f'field "{field}": {problem}' for problem in problems)
-    display_name = entry.get('display_name', FIELD_DEFAULTS['display_name'])
-    if not isinstance(display_name, str):
-        errors.append('display_name must be a string')
-    else:
-        for match_obj in _PLACEHOLDER_RE.finditer(display_name):
-            token = match_obj.group(1)
-            if token in ('name', 'type') or _is_targ_token(token):
-                continue
-            errors.append(
-                f'display_name placeholder {{{token}}} is not supported '
-                '(use {name}, {type} or {targ:...})')
+        errors.extend(_validate_field(entry, field))
+    errors.extend(_validate_display_name(entry))
     return errors
 
 
 def _leaf_pointer(resolution, node):
     # Pointer nodes are expression strings (validation enforces it); the
     # result stays a debugger value so the bridge can cast it.
-    return resolution.evaluate(node)
+    return resolution.evaluate_pointer(node)
 
 
 def _resolve_pixel_layout(resolution, node):
@@ -721,4 +764,8 @@ def load_user_inspectors():
 
 def load_builtin_inspectors():
     path = os.path.join(os.path.dirname(__file__), BUILTIN_TYPES_FILENAME)
+    if not os.path.isfile(path):
+        log.warning(f'Builtin types file {path} is missing; no builtin '
+                    'declarative types will be available')
+        return []
     return _load_types_file(path)
