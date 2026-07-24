@@ -378,6 +378,25 @@ def _string_node_errors(text, available):
     return errors
 
 
+def _validate_value_node(node, available, recurse):
+    """
+    Shared 'if'/'then'/'else' branch validation for dict-shaped value
+    nodes. 'recurse' validates each branch with the caller's own node
+    rules (general value nodes vs. pixel_layout literals).
+    """
+    errors = []
+    if not isinstance(node['if'], str):
+        errors.append('if condition must be an expression string')
+    else:
+        errors.extend(_string_node_errors(node['if'], available))
+    for branch in ('then', 'else'):
+        if branch not in node:
+            errors.append(f'if node is missing "{branch}"')
+        else:
+            errors.extend(recurse(node[branch], available))
+    return errors
+
+
 def _validate_node(node, available):
     """
     Structural check of one value node. Returns a list of problems
@@ -408,17 +427,7 @@ def _validate_node(node, available):
                     errors.extend(_validate_node(candidate, available))
             return errors
         if 'if' in node:
-            errors = []
-            if not isinstance(node['if'], str):
-                errors.append('if condition must be an expression string')
-            else:
-                errors.extend(_string_node_errors(node['if'], available))
-            for branch in ('then', 'else'):
-                if branch not in node:
-                    errors.append(f'if node is missing "{branch}"')
-                else:
-                    errors.extend(_validate_node(node[branch], available))
-            return errors
+            return _validate_value_node(node, available, _validate_node)
         if 'expr' in node and 'map' in node:
             errors = []
             if not isinstance(node['expr'], str):
@@ -446,18 +455,7 @@ def _validate_pixel_layout(node, available):
         return [f'pixel_layout {node!r} must be exactly 4 characters '
                 'from "rgba"']
     if isinstance(node, dict) and 'if' in node:
-        errors = []
-        if not isinstance(node['if'], str):
-            errors.append('if condition must be an expression string')
-        else:
-            errors.extend(_string_node_errors(node['if'], available))
-        for branch in ('then', 'else'):
-            if branch not in node:
-                errors.append(f'if node is missing "{branch}"')
-            else:
-                errors.extend(
-                    _validate_pixel_layout(node[branch], available))
-        return errors
+        return _validate_value_node(node, available, _validate_pixel_layout)
     return ['pixel_layout must be a literal layout string or an '
             'if/then/else over literal layout strings']
 
