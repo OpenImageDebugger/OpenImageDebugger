@@ -346,6 +346,30 @@ def _leaf_bool(resolution, node):
             f'{value!r} is not a boolean: {error}')
 
 
+def _dtype_code_from_name_or_expr(resolution, text):
+    """
+    Resolve a substituted dtype string: a known dtype name via the table,
+    otherwise a debugger expression whose integer result is the code.
+    """
+    if text in DTYPE_NAMES:
+        return DTYPE_NAMES[text]
+    try:
+        return _to_int(resolution.evaluate_text(text))
+    except (EntryEvaluationError, TypeError, ValueError) as error:
+        close = difflib.get_close_matches(text, DTYPE_NAMES, 1)
+        if close:
+            raise EntryEvaluationError(
+                resolution.entry_name, resolution.field,
+                f'{text!r} is not a known dtype name (closest is '
+                f"'{close[0]}') and failed to evaluate: {error}")
+        if isinstance(error, EntryEvaluationError):
+            raise
+        raise EntryEvaluationError(
+            resolution.entry_name, resolution.field,
+            f'{text!r} did not evaluate to an integer dtype code: '
+            f'{error}')
+
+
 def _leaf_dtype(resolution, node):
     """
     dtype rule: after substitution a known dtype name resolves via the
@@ -353,34 +377,18 @@ def _leaf_dtype(resolution, node):
     must be a valid OID pixel type code.
     """
     if isinstance(node, str):
-        text = resolution.substitute(node).strip()
-        if text in DTYPE_NAMES:
-            return DTYPE_NAMES[text]
-        try:
-            code = _to_int(resolution.evaluate_text(text))
-        except (EntryEvaluationError, TypeError, ValueError) as error:
-            close = difflib.get_close_matches(text, DTYPE_NAMES, 1)
-            if close:
-                raise EntryEvaluationError(
-                    resolution.entry_name, resolution.field,
-                    f'{text!r} is not a known dtype name (closest is '
-                    f"'{close[0]}') and failed to evaluate: {error}")
-            if isinstance(error, EntryEvaluationError):
-                raise
-            raise EntryEvaluationError(
-                resolution.entry_name, resolution.field,
-                f'{text!r} did not evaluate to an integer dtype code: '
-                f'{error}')
+        code = _dtype_code_from_name_or_expr(
+            resolution, resolution.substitute(node).strip())
+    elif isinstance(node, (bool, float)):
+        # A JSON bool/float literal would be silently coerced by int()
+        # (True -> 1, 5.9 -> 5) into a different pixel type code.
+        # Expression results are never a Python bool/float, so this only
+        # rejects literal mistakes.
+        raise EntryEvaluationError(
+            resolution.entry_name, resolution.field,
+            f'{node!r} is not a dtype code; use a dtype name or a '
+            'whole-number code')
     else:
-        if isinstance(node, (bool, float)):
-            # A JSON bool/float literal would be silently coerced by int()
-            # (True -> 1, 5.9 -> 5) into a different pixel type code.
-            # Expression results are never a Python bool/float, so this only
-            # rejects literal mistakes.
-            raise EntryEvaluationError(
-                resolution.entry_name, resolution.field,
-                f'{node!r} is not a dtype code; use a dtype name or a '
-                'whole-number code')
         try:
             code = _to_int(node)
         except (TypeError, ValueError) as error:
