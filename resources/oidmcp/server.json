@@ -1,0 +1,17 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.openimagedebugger/oid-mcp",
+  "title": "OpenImageDebugger MCP",
+  "description": "MCP server giving AI agents eyes on OpenImageDebugger buffers in live gdb/lldb sessions",
+  "version": "0.3.1",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "oid-mcp",
+      "version": "0.3.1",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

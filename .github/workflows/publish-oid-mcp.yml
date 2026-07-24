@@ -21,7 +21,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-name: Publish oid-mcp to PyPI
+name: Publish oid-mcp
 
 on:
   push:
@@ -35,7 +35,7 @@ jobs:
   test:
     uses: ./.github/workflows/python-tests.yml
 
-  publish:
+  publish-pypi:
     needs: [test]
     runs-on: ubuntu-24.04
     environment: pypi
@@ -87,3 +87,61 @@ jobs:
         uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # release/v1
         with:
           packages-dir: resources/oidmcp/dist
+
+  # Runs after the PyPI publish so the version server.json points at
+  # already exists on PyPI -- the registry validates the package/version
+  # pair by querying PyPI directly, and a same-version-in-parallel race
+  # would fail that check.
+  publish-mcp-registry:
+    needs: [publish-pypi]
+    runs-on: ubuntu-24.04
+    permissions:
+      # GitHub OIDC (login github-oidc): the registry verifies the workflow
+      # identity, so no stored token is needed for the org namespace.
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # 7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Read package version
+        id: version
+        working-directory: resources/oidmcp
+        run: |
+          version=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Pinned to a fixed release with a hardcoded digest (not
+      # `releases/latest`) so the tool that performs the authenticated
+      # publish is reproducible and can't silently change under us. The
+      # runner is always linux/amd64, so a single digest covers it.
+      # --proto/--proto-redir keep the fetch (and any redirect) on HTTPS.
+      - name: Install mcp-publisher
+        env:
+          MCP_PUBLISHER_VERSION: v1.8.0
+          MCP_PUBLISHER_SHA256: 1370446bbe74d562608e8005a6ccce02d146a661fbd78674e11cc70b9618d6cf
+        run: |
+          curl --proto '=https' --tlsv1.2 --proto-redir '=https' -fsSL \
+            "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz" \
+            -o mcp-publisher.tar.gz
+          echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum -c -
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+          sudo mv mcp-publisher /usr/local/bin/
+
+      # server.json is checked in with a placeholder version; stamp it with
+      # the version actually just published to PyPI so the two never drift.
+      - name: Stamp server.json version
+        working-directory: resources/oidmcp
+        run: |
+          jq --arg v "${{ steps.version.outputs.version }}" \
+            '.version = $v | .packages[0].version = $v' server.json > server.json.tmp
+          mv server.json.tmp server.json
+
+      - name: Authenticate to MCP Registry
+        run: mcp-publisher login github-oidc
+
+      - name: Publish to MCP Registry
+        working-directory: resources/oidmcp
+        run: mcp-publisher publish

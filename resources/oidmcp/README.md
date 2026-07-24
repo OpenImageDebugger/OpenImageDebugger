@@ -1,5 +1,7 @@
 # oid-mcp
 
+<!-- mcp-name: io.github.openimagedebugger/oid-mcp -->
+
 MCP server that gives AI agents eyes on OpenImageDebugger buffers in a
 live gdb/lldb session: list observable symbols at a breakpoint, view
 renderings, read exact values, dump lossless `.npy` copies, and mirror
