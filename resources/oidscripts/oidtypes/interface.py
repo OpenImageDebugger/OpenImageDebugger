@@ -70,9 +70,9 @@ class TypeInspectorInterface(object):
          * transpose_buffer
 
          For information about these fields, consult the documentation for
-         oid_plot_buffer in the file $ROOT/src/oid_window.h. The module
-         oidtypes.opencv shows an example implementation for the OpenCV Mat
-         type.
+         oid_plot_buffer in the file $ROOT/src/oid_window.h. The built-in
+         types now live in oidtypes/builtin_types.json; doc/declarative-types.md
+         explains the declarative format and how to add your own type.
         """
         pass
 

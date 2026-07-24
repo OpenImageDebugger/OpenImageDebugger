@@ -5,6 +5,7 @@ Code responsible with directly interacting with LLDB
 """
 
 import lldb
+import re
 import time
 import threading
 
@@ -15,6 +16,11 @@ from oidscripts.debuggers.interfaces import BridgeInterface, \
 from oidscripts.debuggers.template_args import TemplateTypeName
 
 instance = None
+
+# A plain symbol name (identifier), as opposed to a dotted/complex expression.
+# These are looked up with frame.FindVariable(), which avoids lldb's expression
+# JIT and its trouble resolving heavy templated types (e.g. Eigen).
+_PLAIN_IDENTIFIER_RE = re.compile(r'^[A-Za-z_]\w*$')
 
 
 class LldbBridge(BridgeInterface):
@@ -122,8 +128,9 @@ class LldbBridge(BridgeInterface):
         thread = self._get_thread(process)
         frame = self._get_frame(thread)
 
-        if frame is None:
-            # Could not fetch frame from debugger state
+        if not frame:
+            # Could not fetch frame from debugger state (None, or an
+            # invalid SBFrame that is falsy but not None).
             return None
 
         # Prefer a direct variable lookup: it is the same robust path
@@ -182,6 +189,47 @@ class LldbBridge(BridgeInterface):
 
     def get_casted_pointer(self, typename, lldb_object):
         return lldb_object.get_casted_pointer()
+
+    def evaluate_expression(self, expression):
+        # The interface contract is to raise RuntimeError on any failure so
+        # the declarative engine can treat evaluation errors uniformly. The
+        # intentional RuntimeErrors below carry the best message; any other
+        # backend exception is normalized to RuntimeError in the fallback.
+        try:
+            frame = self._get_frame(
+                self._get_thread(self._get_process(
+                    self.get_lldb_backend())))
+            # _get_frame() can return an invalid SBFrame (falsy but not
+            # None), so use the same truthiness guard as
+            # get_available_symbols() rather than an "is None" check.
+            if not frame:
+                raise RuntimeError(
+                    f'Expression "{expression}" failed: no stopped frame')
+
+            # Prefer a direct variable lookup for plain symbol names: it is
+            # the same robust path get_buffer_metadata() uses and avoids
+            # lldb's expression JIT, which can fail to resolve heavy templated
+            # types (e.g. Eigen) on some architectures. Dotted or otherwise
+            # complex expressions still fall through to EvaluateExpression().
+            if _PLAIN_IDENTIFIER_RE.match(expression):
+                variable = frame.FindVariable(expression)
+                if variable.IsValid():
+                    return SymbolWrapper(variable)
+
+            result = frame.EvaluateExpression(expression)
+            error = result.GetError()
+            if not result.IsValid() or (error is not None
+                                        and error.Fail()):
+                message = error.GetCString() if error is not None else None
+                raise RuntimeError(
+                    f'Expression "{expression}" failed: '
+                    f'{message or "invalid result"}')
+            return SymbolWrapper(result)
+        except RuntimeError:
+            raise
+        except Exception as error:
+            raise RuntimeError(
+                f'Expression "{expression}" failed: {error}') from error
 
     def _get_observable_children_members(self, symbol, member_name_chain,
                                          output_set, visited_typenames=None):
@@ -253,7 +301,13 @@ class SymbolWrapper(DebuggerSymbolReference):
 
     def __int__(self):
         string_value = self._symbol.GetValue()
-        return int(string_value)
+        try:
+            # LLDB may render integers in decimal or hex (e.g. '0x10'); base 0
+            # parses both, plus the 0o/0b prefixes. Fall back to the scalar
+            # accessor when there is no parseable textual value.
+            return int(string_value, 0)
+        except (TypeError, ValueError):
+            return self._symbol.GetValueAsSigned()
 
     def __float__(self):
         string_value = self._symbol.GetValue()
@@ -269,9 +323,15 @@ class SymbolWrapper(DebuggerSymbolReference):
         return SymbolWrapper(child)
 
     def get_casted_pointer(self):
-        if self._symbol.TypeIsPointerType():
-            buff_addr = self._symbol.GetValueAsUnsigned()
-        else:
-            buff_addr = self._symbol.AddressOf().GetValueAsUnsigned()
+        symbol = self._symbol
+        if symbol.TypeIsPointerType():
+            return symbol.GetValueAsUnsigned()
 
-        return buff_addr
+        # A scalar integer result already *is* the address (e.g. a
+        # user-authored JSON expression yielding a uintptr_t, or a numeric
+        # literal like 0x...). Read its value directly; AddressOf() would
+        # instead return the address of the temporary that holds it.
+        if symbol.GetType().GetTypeFlags() & lldb.eTypeIsInteger:
+            return symbol.GetValueAsUnsigned()
+
+        return symbol.AddressOf().GetValueAsUnsigned()

@@ -29,8 +29,9 @@ struct Mat
     int flags; // OpenCV flags
     struct
     {
-        int buf[2]; // Buf[0] = width of the containing
-                    // buffer*channels; buff[1] = channels
+        int p[2]; // p[0] = byte row stride (cols*channels*elemsize),
+                  // p[1] = channels; named to match OpenCV's MatStep::p,
+                  // which the declarative cv::Mat entry reads via step.p[0].
     } step;
 
     Mat()
@@ -112,10 +113,10 @@ struct Mat
 
         T& operator()(int row, int col, int chan)
         {
-            size_t channels = m.step.buf[1];
+            size_t channels = m.step.p[1];
             size_t idx      = row * m.cols * channels + col * channels + chan;
             assert(idx >= 0);
-            assert(idx < m.rows * m.cols * m.step.buf[1]);
+            assert(idx < m.rows * m.cols * m.step.p[1]);
             return (static_cast<T*>(m.data))[idx];
         }
 
@@ -336,7 +337,7 @@ class Test : public TestFather
         broken.data        = &tst;
         broken.cols        = 1024;
         broken.rows        = 1024;
-        broken.step.buf[2] = 3;
+        broken.step.p[2] = 3;
         broken.release();
         ones<uint8_t>(W, H, C, TestField);
         i(0, 0, 0) = 255;

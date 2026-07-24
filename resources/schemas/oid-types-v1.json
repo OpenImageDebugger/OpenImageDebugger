@@ -1,0 +1,209 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/OpenImageDebugger/OpenImageDebugger/main/resources/schemas/oid-types-v1.json",
+  "title": "OpenImageDebugger declarative buffer types (v1)",
+  "type": "object",
+  "required": ["version", "types"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "$comment": "The loader requires a real Python int equal to 1 (it rejects bool and the float 1.0). JSON Schema draft-07 cannot distinguish the integral float 1.0 from 1, so a file with version: 1.0 validates here yet is still rejected by the loader. This is one instance of a schema-wide residual: draft-07's \"type\": \"integer\" accepts any integral-valued float (1.0, 640.0, 5.0, ...), and the loader rejects all of them wherever an integer field appears -- not just version 1.0."
+    },
+    "types": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/entry" }
+    }
+  },
+  "definitions": {
+    "entry": {
+      "type": "object",
+      "required": ["match", "pointer", "width", "height", "dtype"],
+      "properties": {
+        "name": { "type": "string" },
+        "match": { "type": "string" },
+        "language": { "type": "string" },
+        "pointer": { "$ref": "#/definitions/pointerValueNode" },
+        "width": { "$ref": "#/definitions/integerValueNode" },
+        "height": { "$ref": "#/definitions/integerValueNode" },
+        "dtype": { "$ref": "#/definitions/integerValueNode" },
+        "channels": { "$ref": "#/definitions/integerValueNode" },
+        "row_stride": { "$ref": "#/definitions/integerValueNode" },
+        "transpose": { "$ref": "#/definitions/valueNode" },
+        "pixel_layout": { "$ref": "#/definitions/pixelLayoutNode" },
+        "display_name": { "type": "string" }
+      }
+    },
+    "valueNode": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "$ref": "#/definitions/firstValidNode" },
+        { "$ref": "#/definitions/ifNode" },
+        { "$ref": "#/definitions/mapNode" }
+      ]
+    },
+    "firstValidNode": {
+      "type": "object",
+      "required": ["first_valid"],
+      "additionalProperties": false,
+      "properties": {
+        "first_valid": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/valueNode" },
+              { "$ref": "#/definitions/minWrapper" }
+            ]
+          }
+        }
+      }
+    },
+    "ifNode": {
+      "type": "object",
+      "required": ["if", "then", "else"],
+      "additionalProperties": false,
+      "properties": {
+        "if": { "type": "string" },
+        "then": { "$ref": "#/definitions/valueNode" },
+        "else": { "$ref": "#/definitions/valueNode" }
+      }
+    },
+    "mapNode": {
+      "type": "object",
+      "required": ["expr", "map"],
+      "additionalProperties": false,
+      "properties": {
+        "expr": { "type": "string" },
+        "map": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/definitions/valueNode" }
+        },
+        "default": { "$ref": "#/definitions/valueNode" }
+      }
+    },
+    "minWrapper": {
+      "type": "object",
+      "required": ["expr", "min"],
+      "additionalProperties": false,
+      "properties": {
+        "expr": { "type": "string" },
+        "min": { "type": "integer" }
+      }
+    },
+    "integerValueNode": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "integer" },
+        { "$ref": "#/definitions/integerFirstValidNode" },
+        { "$ref": "#/definitions/integerIfNode" },
+        { "$ref": "#/definitions/integerMapNode" }
+      ]
+    },
+    "integerFirstValidNode": {
+      "type": "object",
+      "required": ["first_valid"],
+      "additionalProperties": false,
+      "properties": {
+        "first_valid": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/integerValueNode" },
+              { "$ref": "#/definitions/minWrapper" }
+            ]
+          }
+        }
+      }
+    },
+    "integerIfNode": {
+      "type": "object",
+      "required": ["if", "then", "else"],
+      "additionalProperties": false,
+      "properties": {
+        "if": { "type": "string" },
+        "then": { "$ref": "#/definitions/integerValueNode" },
+        "else": { "$ref": "#/definitions/integerValueNode" }
+      }
+    },
+    "integerMapNode": {
+      "type": "object",
+      "required": ["expr", "map"],
+      "additionalProperties": false,
+      "properties": {
+        "expr": { "type": "string" },
+        "map": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/definitions/integerValueNode" }
+        },
+        "default": { "$ref": "#/definitions/integerValueNode" }
+      }
+    },
+    "pointerValueNode": {
+      "oneOf": [
+        { "type": "string" },
+        { "$ref": "#/definitions/pointerFirstValidNode" },
+        { "$ref": "#/definitions/pointerIfNode" },
+        { "$ref": "#/definitions/pointerMapNode" }
+      ]
+    },
+    "pointerFirstValidNode": {
+      "type": "object",
+      "required": ["first_valid"],
+      "additionalProperties": false,
+      "properties": {
+        "first_valid": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/pointerValueNode" }
+        }
+      }
+    },
+    "pointerIfNode": {
+      "type": "object",
+      "required": ["if", "then", "else"],
+      "additionalProperties": false,
+      "properties": {
+        "if": { "type": "string" },
+        "then": { "$ref": "#/definitions/pointerValueNode" },
+        "else": { "$ref": "#/definitions/pointerValueNode" }
+      }
+    },
+    "pointerMapNode": {
+      "type": "object",
+      "required": ["expr", "map"],
+      "additionalProperties": false,
+      "properties": {
+        "expr": { "type": "string" },
+        "map": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/definitions/pointerValueNode" }
+        },
+        "default": { "$ref": "#/definitions/pointerValueNode" }
+      }
+    },
+    "pixelLayoutNode": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[rgba]{4}$" },
+        { "$ref": "#/definitions/pixelLayoutIfNode" }
+      ]
+    },
+    "pixelLayoutIfNode": {
+      "type": "object",
+      "required": ["if", "then", "else"],
+      "additionalProperties": false,
+      "properties": {
+        "if": { "type": "string" },
+        "then": { "$ref": "#/definitions/pixelLayoutNode" },
+        "else": { "$ref": "#/definitions/pixelLayoutNode" }
+      }
+    }
+  }
+}
