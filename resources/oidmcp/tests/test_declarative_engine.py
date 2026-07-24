@@ -346,6 +346,31 @@ def test_dtype_leaf_wraps_non_convertible_result_without_near_miss():
     assert not isinstance(excinfo.value, (TypeError, ValueError))
 
 
+def test_dtype_leaf_accepts_integer_code_literal():
+    # A bare integer literal is a valid pixel type code and must pass
+    # through unchanged (0 == uint8).
+    resolution = make_resolution(RecordingBridge(), field='dtype')
+    assert declarative._leaf_dtype(
+        resolution, symbols.OID_TYPES_UINT8) == symbols.OID_TYPES_UINT8
+
+
+def test_leaf_dtype_rejects_float_literal():
+    # A JSON float dtype literal must error rather than be silently
+    # truncated by int() (5.9 -> 5) into a different pixel type code.
+    resolution = make_resolution(RecordingBridge(), field='dtype')
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        declarative._resolve_node(resolution, 5.9, declarative._leaf_dtype)
+    assert excinfo.value.field == 'dtype'
+
+
+def test_leaf_dtype_rejects_bool_literal():
+    # A JSON boolean dtype literal must error rather than coerce to 0/1.
+    resolution = make_resolution(RecordingBridge(), field='dtype')
+    with pytest.raises(declarative.EntryEvaluationError) as excinfo:
+        declarative._resolve_node(resolution, True, declarative._leaf_dtype)
+    assert excinfo.value.field == 'dtype'
+
+
 def test_int_leaf_accepts_literals_and_expressions():
     bridge = RecordingBridge({'(img).cols': 640})
     resolution = make_resolution(bridge)

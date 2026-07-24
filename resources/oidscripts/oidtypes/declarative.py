@@ -372,6 +372,15 @@ def _leaf_dtype(resolution, node):
                 f'{text!r} did not evaluate to an integer dtype code: '
                 f'{error}')
     else:
+        if isinstance(node, (bool, float)):
+            # A JSON bool/float literal would be silently coerced by int()
+            # (True -> 1, 5.9 -> 5) into a different pixel type code.
+            # Expression results are never a Python bool/float, so this only
+            # rejects literal mistakes.
+            raise EntryEvaluationError(
+                resolution.entry_name, resolution.field,
+                f'{node!r} is not a dtype code; use a dtype name or a '
+                'whole-number code')
         try:
             code = _to_int(node)
         except (TypeError, ValueError) as error:
