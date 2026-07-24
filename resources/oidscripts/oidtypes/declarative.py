@@ -620,3 +620,89 @@ class DeclarativeInspector(interface.TypeInspectorInterface):
             if self._match_re.match(type_string):
                 return True
         return False
+
+
+def _load_types_file(path, accepted_languages=ACCEPTED_LANGUAGES):
+    """
+    Load one types file into DeclarativeInspector instances, degrading
+    per layer: a nonexistent path is quietly ignored (debug log), an
+    unreadable or wrong-version file is skipped with a warning, and an
+    invalid entry is skipped with a warning while the rest of the file
+    still loads. Never raises.
+    """
+    if not os.path.isfile(path):
+        log.debug(f'Types file {path} does not exist; skipping')
+        return []
+    try:
+        with open(path, 'r', encoding='utf-8') as file_object:
+            document = json.load(file_object)
+    except (OSError, ValueError) as error:
+        log.warning(f'Could not read types file {path}: {error}')
+        return []
+    if not isinstance(document, dict):
+        log.warning(f'Types file {path} must contain a JSON object; '
+                    'skipping')
+        return []
+    version = document.get('version')
+    if version != SUPPORTED_VERSION:
+        log.warning(f'Types file {path} has unsupported version '
+                    f'{version!r} (expected {SUPPORTED_VERSION}); '
+                    'skipping')
+        return []
+    entries = document.get('types', [])
+    if not isinstance(entries, list):
+        log.warning(f'Types file {path}: "types" must be an array; '
+                    'skipping')
+        return []
+    inspectors = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            log.warning(f'Skipping non-object types entry in {path}')
+            continue
+        name = entry.get('name', entry.get('match', '?'))
+        language = entry.get('language', 'cpp')
+        if language not in accepted_languages:
+            log.debug(f'Skipping types entry {name!r} from {path}: '
+                      f'language {language!r} is not evaluated by this '
+                      'backend')
+            continue
+        problems = _validate_entry(entry)
+        if problems:
+            log.warning(f'Skipping types entry {name!r} from {path}: '
+                        + '; '.join(problems))
+            continue
+        inspectors.append(DeclarativeInspector(entry, path))
+    return inspectors
+
+
+def discover_user_type_files():
+    """
+    Paths of the user types files to load, in precedence order: the
+    OID_TYPES_PATH environment variable (os.pathsep-separated file list)
+    when set, otherwise the nearest .oid/types.json walking up from the
+    current working directory.
+    """
+    env_value = os.environ.get(OID_TYPES_PATH_ENV)
+    if env_value:
+        return [path for path in env_value.split(os.pathsep) if path]
+    directory = os.getcwd()
+    while True:
+        candidate = os.path.join(directory, '.oid', 'types.json')
+        if os.path.isfile(candidate):
+            return [candidate]
+        parent = os.path.dirname(directory)
+        if parent == directory:
+            return []
+        directory = parent
+
+
+def load_user_inspectors():
+    inspectors = []
+    for path in discover_user_type_files():
+        inspectors.extend(_load_types_file(path))
+    return inspectors
+
+
+def load_builtin_inspectors():
+    path = os.path.join(os.path.dirname(__file__), BUILTIN_TYPES_FILENAME)
+    return _load_types_file(path)

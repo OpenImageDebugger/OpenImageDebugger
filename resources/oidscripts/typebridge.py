@@ -13,6 +13,8 @@ from oidscripts import oidtypes
 
 from oidscripts.oidtypes.interface import TypeInspectorInterface
 
+from oidscripts.oidtypes import declarative
+
 
 class TypeBridge(object):
     """
@@ -26,9 +28,18 @@ class TypeBridge(object):
         for (_, mod_name, _) in pkgutil.iter_modules(oidtypes.__path__):
             importlib.import_module('.oidtypes.' + mod_name, __package__)
 
-        # Save instances of all TypeInspector implementations
+        # Registration order is precedence order (first match wins):
+        # workspace/user JSON entries, then user Python inspectors, then
+        # the builtin JSON entries.
+        self._type_inspectors.extend(declarative.load_user_inspectors())
+
         for inspector_class in TypeInspectorInterface.__subclasses__():
+            if inspector_class is declarative.DeclarativeInspector:
+                # Instantiated per JSON entry above/below, never bare.
+                continue
             self._type_inspectors.append(inspector_class())
+
+        self._type_inspectors.extend(declarative.load_builtin_inspectors())
 
     def get_buffer_metadata(self, symbol_name, picked_obj, debugger_bridge):
         """
