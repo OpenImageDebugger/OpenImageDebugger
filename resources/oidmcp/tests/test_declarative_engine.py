@@ -312,3 +312,96 @@ def test_bool_leaf_handles_lldb_rendered_expression():
     resolution = make_resolution(bridge, field='transpose')
     assert declarative._leaf_bool(resolution, '(0 & 1) == 0') is True
     assert declarative._leaf_bool(resolution, False) is False
+
+
+FLOOR_ENTRY = {
+    'match': '^MyImage$',
+    'pointer': '{sym}.data',
+    'width': '{sym}.w',
+    'height': '{sym}.h',
+    'dtype': 'float32',
+}
+
+
+def test_validate_floor_entry_is_clean():
+    assert declarative._validate_entry(dict(FLOOR_ENTRY)) == []
+
+
+def test_validate_reports_missing_required_fields():
+    entry = dict(FLOOR_ENTRY)
+    del entry['pointer']
+    errors = declarative._validate_entry(entry)
+    assert any('pointer' in error for error in errors)
+
+
+def test_validate_rejects_bad_match_regex():
+    entry = dict(FLOOR_ENTRY, match='(')
+    errors = declarative._validate_entry(entry)
+    assert any('match regex' in error for error in errors)
+
+
+def test_validate_rejects_not_yet_resolved_placeholder():
+    entry = dict(FLOOR_ENTRY, width='{channels} * 2')
+    errors = declarative._validate_entry(entry)
+    assert any('{channels}' in error and 'width' in error
+               for error in errors)
+
+
+def test_validate_allows_derived_placeholders_in_later_stages():
+    entry = dict(FLOOR_ENTRY,
+                 row_stride='{sym}.step / {channels} / {elemsize}')
+    assert declarative._validate_entry(entry) == []
+
+
+def test_validate_rejects_unknown_placeholder():
+    entry = dict(FLOOR_ENTRY, height='{bogus}')
+    errors = declarative._validate_entry(entry)
+    assert any('{bogus}' in error for error in errors)
+
+
+def test_validate_pixel_layout_literal_and_if():
+    good = dict(FLOOR_ENTRY, pixel_layout={
+        'if': '{channels} >= 3', 'then': 'bgra', 'else': 'rgba'})
+    assert declarative._validate_entry(good) == []
+    for bad_layout in ('bgr', 'xyzw', '{sym}.layout',
+                       {'if': '{channels} >= 3', 'then': 'bgra'}):
+        entry = dict(FLOOR_ENTRY, pixel_layout=bad_layout)
+        assert declarative._validate_entry(entry) != []
+
+
+def test_validate_rejects_literal_pointer():
+    entry = dict(FLOOR_ENTRY, pointer=1234)
+    errors = declarative._validate_entry(entry)
+    assert any('pointer' in error for error in errors)
+
+
+def test_validate_first_valid_shapes():
+    good = dict(FLOOR_ENTRY, width={'first_valid': [
+        {'expr': '{targ:1}', 'min': 1}, '{sym}.rows']})
+    assert declarative._validate_entry(good) == []
+    for bad_width in ({'first_valid': []},
+                      {'first_valid': [{'expr': 1, 'min': 1}]},
+                      {'foo': 1}):
+        entry = dict(FLOOR_ENTRY, width=bad_width)
+        assert declarative._validate_entry(entry) != []
+
+
+def test_validate_map_node_shapes():
+    good = dict(FLOOR_ENTRY, dtype={
+        'expr': '{sym}.depth', 'map': {'8': 'uint8'}, 'default': 'uint8'})
+    assert declarative._validate_entry(good) == []
+    bad = dict(FLOOR_ENTRY, dtype={'expr': '{sym}.depth', 'map': {}})
+    assert declarative._validate_entry(bad) != []
+
+
+def test_validate_display_name_placeholders():
+    good = dict(FLOOR_ENTRY, display_name='{name} ({targ:0})')
+    assert declarative._validate_entry(good) == []
+    bad = dict(FLOOR_ENTRY, display_name='{width} wide')
+    errors = declarative._validate_entry(bad)
+    assert any('display_name' in error for error in errors)
+
+
+def test_validate_null_field_is_rejected():
+    entry = dict(FLOOR_ENTRY, channels=None)
+    assert declarative._validate_entry(entry) != []

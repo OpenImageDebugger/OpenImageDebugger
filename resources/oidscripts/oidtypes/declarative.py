@@ -345,3 +345,148 @@ def _leaf_dtype(resolution, node):
             f'{code} is not a valid OID pixel type code '
             f'(valid: {sorted(VALID_DTYPE_CODES)})')
     return code
+
+
+def _string_node_errors(text, available):
+    """Placeholder-availability problems in one expression string."""
+    errors = []
+    for match_obj in _PLACEHOLDER_RE.finditer(text):
+        token = match_obj.group(1)
+        if token == 'sym' or _is_targ_token(token):
+            continue
+        if token not in available:
+            errors.append(
+                f'placeholder {{{token}}} is not available in this field')
+    return errors
+
+
+def _validate_node(node, available):
+    """
+    Structural check of one value node. Returns a list of problems
+    (empty when valid).
+    """
+    if isinstance(node, (bool, int, float)):
+        return []
+    if isinstance(node, str):
+        return _string_node_errors(node, available)
+    if isinstance(node, dict):
+        if 'first_valid' in node:
+            candidates = node['first_valid']
+            if not isinstance(candidates, list) or not candidates:
+                return ['first_valid must be a non-empty array']
+            errors = []
+            for candidate in candidates:
+                if isinstance(candidate, dict) and 'min' in candidate:
+                    if (set(candidate) != {'expr', 'min'}
+                            or not isinstance(candidate['expr'], str)
+                            or isinstance(candidate['min'], bool)
+                            or not isinstance(candidate['min'], int)):
+                        errors.append('min wrapper must be '
+                                      '{"expr": <string>, "min": <integer>}')
+                    else:
+                        errors.extend(_string_node_errors(
+                            candidate['expr'], available))
+                else:
+                    errors.extend(_validate_node(candidate, available))
+            return errors
+        if 'if' in node:
+            errors = []
+            if not isinstance(node['if'], str):
+                errors.append('if condition must be an expression string')
+            else:
+                errors.extend(_string_node_errors(node['if'], available))
+            for branch in ('then', 'else'):
+                if branch not in node:
+                    errors.append(f'if node is missing "{branch}"')
+                else:
+                    errors.extend(_validate_node(node[branch], available))
+            return errors
+        if 'expr' in node and 'map' in node:
+            errors = []
+            if not isinstance(node['expr'], str):
+                errors.append('map expr must be an expression string')
+            else:
+                errors.extend(_string_node_errors(node['expr'], available))
+            if not isinstance(node['map'], dict) or not node['map']:
+                errors.append('map must be a non-empty object')
+            else:
+                for value in node['map'].values():
+                    errors.extend(_validate_node(value, available))
+            if 'default' in node:
+                errors.extend(_validate_node(node['default'], available))
+            return errors
+        return ['unknown node shape (expected first_valid, if/then/else '
+                'or expr/map)']
+    return [f'unsupported value type {type(node).__name__}']
+
+
+def _validate_pixel_layout(node, available):
+    """pixel_layout: 4-char rgba literal, or if/else over such literals."""
+    if isinstance(node, str):
+        if _PIXEL_LAYOUT_RE.match(node):
+            return []
+        return [f'pixel_layout {node!r} must be exactly 4 characters '
+                'from "rgba"']
+    if isinstance(node, dict) and 'if' in node:
+        errors = []
+        if not isinstance(node['if'], str):
+            errors.append('if condition must be an expression string')
+        else:
+            errors.extend(_string_node_errors(node['if'], available))
+        for branch in ('then', 'else'):
+            if branch not in node:
+                errors.append(f'if node is missing "{branch}"')
+            else:
+                errors.extend(
+                    _validate_pixel_layout(node[branch], available))
+        return errors
+    return ['pixel_layout must be a literal layout string or an '
+            'if/then/else over literal layout strings']
+
+
+def _validate_entry(entry):
+    """
+    Load-time structural validation of one entry. Returns a list of
+    problems; a non-empty list means the loader skips the entry with a
+    warning. Runtime evaluation of a validated entry can then only fail
+    inside the debugger (handled by EntryEvaluationError).
+    """
+    if not isinstance(entry, dict):
+        return ['entry must be an object']
+    errors = []
+    for field in REQUIRED_FIELDS:
+        if field not in entry:
+            errors.append(f'missing required field "{field}"')
+    if 'match' in entry:
+        if not isinstance(entry['match'], str):
+            errors.append('match must be a regex string')
+        else:
+            try:
+                re.compile(entry['match'])
+            except re.error as error:
+                errors.append(f'match regex does not compile: {error}')
+    for field in RESOLUTION_ORDER:
+        if field not in entry and field in REQUIRED_FIELDS:
+            continue  # absence already reported above
+        node = entry[field] if field in entry else FIELD_DEFAULTS[field]
+        available = frozenset(_DERIVED_BY_STAGE[field])
+        if field == 'pixel_layout':
+            problems = _validate_pixel_layout(node, available)
+        elif field == 'pointer' and isinstance(node, (bool, int, float)):
+            problems = ['pointer must be an expression or node, not a '
+                        'literal number']
+        else:
+            problems = _validate_node(node, available)
+        errors.extend(f'field "{field}": {problem}' for problem in problems)
+    display_name = entry.get('display_name', FIELD_DEFAULTS['display_name'])
+    if not isinstance(display_name, str):
+        errors.append('display_name must be a string')
+    else:
+        for match_obj in _PLACEHOLDER_RE.finditer(display_name):
+            token = match_obj.group(1)
+            if token in ('name', 'type') or _is_targ_token(token):
+                continue
+            errors.append(
+                f'display_name placeholder {{{token}}} is not supported '
+                '(use {name}, {type} or {targ:...})')
+    return errors
