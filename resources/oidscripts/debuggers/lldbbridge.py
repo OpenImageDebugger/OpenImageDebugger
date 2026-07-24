@@ -122,8 +122,9 @@ class LldbBridge(BridgeInterface):
         thread = self._get_thread(process)
         frame = self._get_frame(thread)
 
-        if frame is None:
-            # Could not fetch frame from debugger state
+        if not frame:
+            # Could not fetch frame from debugger state (None, or an
+            # invalid SBFrame that is falsy but not None).
             return None
 
         # Prefer a direct variable lookup: it is the same robust path
@@ -182,6 +183,37 @@ class LldbBridge(BridgeInterface):
 
     def get_casted_pointer(self, typename, lldb_object):
         return lldb_object.get_casted_pointer()
+
+    def evaluate_expression(self, expression):
+        # The interface contract is to raise RuntimeError on any failure so
+        # the declarative engine can treat evaluation errors uniformly. The
+        # intentional RuntimeErrors below carry the best message; any other
+        # backend exception is normalized to RuntimeError in the fallback.
+        try:
+            frame = self._get_frame(
+                self._get_thread(self._get_process(
+                    self.get_lldb_backend())))
+            # _get_frame() can return an invalid SBFrame (falsy but not
+            # None), so use the same truthiness guard as
+            # get_available_symbols() rather than an "is None" check.
+            if not frame:
+                raise RuntimeError(
+                    f'Expression "{expression}" failed: no stopped frame')
+
+            result = frame.EvaluateExpression(expression)
+            error = result.GetError()
+            if not result.IsValid() or (error is not None
+                                        and error.Fail()):
+                message = error.GetCString() if error is not None else None
+                raise RuntimeError(
+                    f'Expression "{expression}" failed: '
+                    f'{message or "invalid result"}')
+            return SymbolWrapper(result)
+        except RuntimeError:
+            raise
+        except Exception as error:
+            raise RuntimeError(
+                f'Expression "{expression}" failed: {error}') from error
 
     def _get_observable_children_members(self, symbol, member_name_chain,
                                          output_set, visited_typenames=None):

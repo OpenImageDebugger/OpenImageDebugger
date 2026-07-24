@@ -100,3 +100,8 @@ class TemplateTypeName(str):
         args = split_template_args(self._canonical)
         token = args[index]
         return TemplateTypeName(token)
+
+    @property
+    def canonical(self):
+        """The fully expanded type name backing template_argument()."""
+        return self._canonical

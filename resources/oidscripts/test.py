@@ -177,6 +177,16 @@ class DummyDebugger(BridgeInterface):
         """
         return debugger_object
 
+    def evaluate_expression(self, expression):
+        """
+        The dummy debugger has no symbol table, so it cannot evaluate
+        arbitrary program expressions. Raise RuntimeError per the
+        BridgeInterface contract so callers treat it as an evaluation
+        failure rather than hitting the not-implemented sentinel.
+        """
+        raise RuntimeError(
+            f'DummyDebugger cannot evaluate expression: {expression}')
+
     def register_event_handlers(self, events):
         """
         No need to register events in this example

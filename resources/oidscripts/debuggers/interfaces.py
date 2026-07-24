@@ -78,6 +78,18 @@ class BridgeInterface(object):
         raise __not_implemented_error
 
     @abc.abstractmethod
+    def evaluate_expression(self, expression):
+        # type: (str) -> DebuggerSymbolReference
+        """
+        Evaluate the debugger expression string 'expression' in the
+        currently selected frame and return the resulting symbol
+        reference. Must raise RuntimeError if the debugger cannot
+        evaluate the expression, so that callers can treat evaluation
+        failure uniformly across backends.
+        """
+        raise __not_implemented_error
+
+    @abc.abstractmethod
     def get_available_symbols(self):
         """
         Get all visible symbols in the current context of debugging.
