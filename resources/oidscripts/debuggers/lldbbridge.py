@@ -122,8 +122,9 @@ class LldbBridge(BridgeInterface):
         thread = self._get_thread(process)
         frame = self._get_frame(thread)
 
-        if frame is None:
-            # Could not fetch frame from debugger state
+        if not frame:
+            # Could not fetch frame from debugger state (None, or an
+            # invalid SBFrame that is falsy but not None).
             return None
 
         # Prefer a direct variable lookup: it is the same robust path
@@ -192,7 +193,10 @@ class LldbBridge(BridgeInterface):
             frame = self._get_frame(
                 self._get_thread(self._get_process(
                     self.get_lldb_backend())))
-            if frame is None:
+            # _get_frame() can return an invalid SBFrame (falsy but not
+            # None), so use the same truthiness guard as
+            # get_available_symbols() rather than an "is None" check.
+            if not frame:
                 raise RuntimeError(
                     f'Expression "{expression}" failed: no stopped frame')
 
