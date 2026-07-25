@@ -45,11 +45,12 @@
                 // The oid_breakpoint marker. Every fixture is constructed by
                 // this line, and breaking earlier catches half-built objects,
                 // which read as garbage dimensions rather than failing
-                // visibly. It is also the only nearby line that emits code:
-                // the (void) casts below it generate none, so a breakpoint
-                // set on one of those cannot bind and silently slides down to
-                // the closing return.
-                "breakpoint set --file realtypes.cpp --line 252"
+                // visibly. Matched by source pattern rather than by line
+                // number, which moves every time a fixture is added. The
+                // marker is also the only nearby line that emits code: the
+                // (void) casts below it generate none, so a breakpoint set on
+                // one cannot bind and silently slides to the closing return.
+                "breakpoint set --file realtypes.cpp --source-pattern-regexp \"oid_breakpoint = 0\""
             ]
         }
     ]

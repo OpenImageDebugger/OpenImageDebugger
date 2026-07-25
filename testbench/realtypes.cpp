@@ -12,6 +12,9 @@
  *     type NAME and reads members by name, so faithful local structs with the
  *     same member names and legacy constant values exercise those two entries
  *     exactly as the real types would.
+ *   - One deliberately oversized cv::Mat crosses the viewer's 8 MiB
+ *     per-message budget, so plotting it exercises the chunked transfer path
+ *     that every other fixture here is too small to reach.
  *
  * This target is built only when OpenCV and Eigen are found (see CMakeLists).
  * Set a breakpoint on the marked line in main(), run under a debugger with OID
@@ -69,6 +72,10 @@ namespace {
 constexpr int kW = 160;
 constexpr int kH = 120;
 
+// Dimensions of the oversized fixture; see make_mat_chunked_64f().
+constexpr int kBigW = 1024;
+constexpr int kBigH = 1025;
+
 // CvMat.type packs the depth (which doubles as the OID dtype code) in the low
 // 3 bits and (channels - 1) in the CV_CN_SHIFT (=3) field. CV_8U is OpenCV's
 // own macro (== 0) from <opencv2/core.hpp>.
@@ -100,12 +107,32 @@ cv::Mat make_mat_32fc1() {
     return m;
 }
 
+// Oversized single-channel float64: the only fixture here that is about the
+// transfer rather than a type entry. 1025 rows x 1024 float64 = 8,396,800
+// bytes, just past the viewer's 8 MiB per-message budget, so it crosses the
+// wire as a begin + one full 1024-row strip + a 1-row remainder instead of a
+// single message. float64 also makes bytes-per-row eight times the element
+// stride, which is where a transfer that measures strips in the wrong unit
+// goes wrong. Values ramp with the row, so a dropped tail reads as a flat
+// band rather than as plausible data.
+cv::Mat make_mat_chunked_64f() {
+    cv::Mat m(kBigH, kBigW, CV_64FC1);
+    for (int y = 0; y < m.rows; ++y) {
+        for (int x = 0; x < m.cols; ++x) {
+            m.at<double>(y, x) =
+                static_cast<double>(y) + static_cast<double>(x) / kBigW;
+        }
+    }
+    return m;
+}
+
 } // namespace
 
 int main() {
     // --- OpenCV cv::Mat (real library) ---
     cv::Mat mat_8uc3 = make_mat_8uc3();
     cv::Mat mat_32fc1 = make_mat_32fc1();
+    cv::Mat mat_chunked_64f = make_mat_chunked_64f();
 
     // --- CvMat (legacy struct), single-channel 8-bit ---
     std::vector<unsigned char> cvmat_backing(static_cast<std::size_t>(kW) * kH);
