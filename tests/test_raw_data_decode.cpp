@@ -25,6 +25,7 @@
 
 #include <cstring>
 #include <gtest/gtest.h>
+#include <limits>
 #include <numbers>
 #include <vector>
 
@@ -114,4 +115,144 @@ TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_NegativeValue) {
 
 TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_Zero) {
     TestSingleDoubleValue(0.0);
+}
+
+TEST(RawDataDecodeTest, GeometryFitsPayloadAcceptsExactLowerBound) {
+    // width=4, height=3, channels=2, stride=6 (pixels/row), FLOAT32:
+    // pixels_needed = (height-1)*stride + width = 2*6+4 = 16 pixels,
+    // i.e. 16 * channels(2) * type_size(FLOAT32=4) = 128 bytes.
+    EXPECT_TRUE(geometry_fits_payload(4, 3, 2, 6, BufferType::FLOAT32, 128));
+}
+
+TEST(RawDataDecodeTest, GeometryFitsPayloadRejectsOneByteShortOfLowerBound) {
+    EXPECT_FALSE(geometry_fits_payload(4, 3, 2, 6, BufferType::FLOAT32, 127));
+}
+
+TEST(RawDataDecodeTest, GeometryFitsPayloadAcceptsTrimmedLastRowStridePadding) {
+    // stride(6) > width(4): a fully stride-padded buffer would need
+    // stride*height*channels*type_size = 6*3*2*4 = 144 bytes. The lower
+    // bound (128, from the exact-bound test above) must still be accepted
+    // -- that's what lets a producer omit trailing padding on the last row.
+    EXPECT_TRUE(geometry_fits_payload(4, 3, 2, 6, BufferType::FLOAT32, 128));
+}
+
+TEST(RawDataDecodeTest, GeometryFitsPayloadRejectsNonPositiveWidth) {
+    EXPECT_FALSE(
+        geometry_fits_payload(0, 2, 1, 2, BufferType::UNSIGNED_BYTE, 1000));
+    EXPECT_FALSE(
+        geometry_fits_payload(-1, 2, 1, 2, BufferType::UNSIGNED_BYTE, 1000));
+}
+
+TEST(RawDataDecodeTest, GeometryFitsPayloadRejectsNonPositiveHeight) {
+    EXPECT_FALSE(
+        geometry_fits_payload(2, 0, 1, 2, BufferType::UNSIGNED_BYTE, 1000));
+    EXPECT_FALSE(
+        geometry_fits_payload(2, -1, 1, 2, BufferType::UNSIGNED_BYTE, 1000));
+}
+
+TEST(RawDataDecodeTest, GeometryFitsPayloadRejectsNonPositiveChannels) {
+    EXPECT_FALSE(
+        geometry_fits_payload(2, 2, 0, 2, BufferType::UNSIGNED_BYTE, 1000));
+    EXPECT_FALSE(
+        geometry_fits_payload(2, 2, -1, 2, BufferType::UNSIGNED_BYTE, 1000));
+}
+
+TEST(RawDataDecodeTest, GeometryFitsPayloadRejectsStrideBelowWidth) {
+    EXPECT_FALSE(
+        geometry_fits_payload(4, 2, 1, 3, BufferType::UNSIGNED_BYTE, 1000));
+}
+
+TEST(RawDataDecodeTest, GeometryFitsPayloadAcceptsStrideEqualToWidth) {
+    // stride == width is the tightest legal packing (no row padding at all).
+    EXPECT_TRUE(
+        geometry_fits_payload(4, 2, 1, 4, BufferType::UNSIGNED_BYTE, 8));
+}
+
+TEST(RawDataDecodeTest, GeometryFitsPayloadUsesWireByteCountForFloat64) {
+    // FLOAT64 wire elements are 8 bytes; make_buffer_record() later halves
+    // this to float32, but the check must validate the wire size against
+    // type_size(FLOAT64), not the post-narrowing size, so it agrees with
+    // what the renderer (which reads the narrowed buffer as float32) needs.
+    EXPECT_TRUE(geometry_fits_payload(2, 2, 1, 2, BufferType::FLOAT64, 32));
+    EXPECT_FALSE(geometry_fits_payload(2, 2, 1, 2, BufferType::FLOAT64, 31));
+}
+
+TEST(RawDataDecodeTest, GeometryFitsPayloadDoesNotOverflowOnHostileGeometry) {
+    // pixels_needed * element_size overflows 64 bits if computed by direct
+    // multiplication; the division-based check must still correctly reject
+    // a payload nowhere near large enough, rather than wrapping around to a
+    // deceptively small (and thus falsely satisfied) requirement.
+    constexpr int width = 1000000;
+    constexpr int height = 1000000;
+    constexpr int stride = 1000000000;
+    constexpr int channels = 1000000000;
+    EXPECT_FALSE(geometry_fits_payload(
+        width, height, channels, stride, BufferType::FLOAT64, 0));
+    EXPECT_FALSE(geometry_fits_payload(
+        width, height, channels, stride, BufferType::FLOAT64, 1000000));
+}
+
+TEST(RawDataDecodeTest,
+     PaddedPayloadSizeReturnsExactByteCountForKnownGeometry) {
+    // width=4, height=3, channels=2, stride=6, FLOAT32:
+    // stride*height*channels*type_size = 6*3*2*4 = 144 bytes.
+    const auto size = padded_payload_size(4, 3, 2, 6, BufferType::FLOAT32);
+    ASSERT_TRUE(size.has_value());
+    EXPECT_EQ(*size, 144u);
+}
+
+TEST(RawDataDecodeTest, PaddedPayloadSizeRejectsNonPositiveWidth) {
+    EXPECT_FALSE(
+        padded_payload_size(0, 2, 1, 2, BufferType::UNSIGNED_BYTE).has_value());
+    EXPECT_FALSE(padded_payload_size(-1, 2, 1, 2, BufferType::UNSIGNED_BYTE)
+                     .has_value());
+}
+
+TEST(RawDataDecodeTest, PaddedPayloadSizeRejectsNonPositiveHeight) {
+    EXPECT_FALSE(
+        padded_payload_size(2, 0, 1, 2, BufferType::UNSIGNED_BYTE).has_value());
+    EXPECT_FALSE(padded_payload_size(2, -1, 1, 2, BufferType::UNSIGNED_BYTE)
+                     .has_value());
+}
+
+TEST(RawDataDecodeTest, PaddedPayloadSizeRejectsNonPositiveChannels) {
+    EXPECT_FALSE(
+        padded_payload_size(2, 2, 0, 2, BufferType::UNSIGNED_BYTE).has_value());
+    EXPECT_FALSE(padded_payload_size(2, 2, -1, 2, BufferType::UNSIGNED_BYTE)
+                     .has_value());
+}
+
+TEST(RawDataDecodeTest, PaddedPayloadSizeRejectsStrideBelowWidth) {
+    EXPECT_FALSE(
+        padded_payload_size(4, 2, 1, 3, BufferType::UNSIGNED_BYTE).has_value());
+}
+
+TEST(RawDataDecodeTest, PaddedPayloadSizeDoesNotOverflowOnHostileGeometry) {
+    // stride*height*channels*type_size overflows 64 bits if computed by
+    // direct multiplication; each factor must be checked before it is
+    // applied, rather than wrapping around to a deceptively small value.
+    constexpr int width = 1000000;
+    constexpr int height = 1000000;
+    constexpr int stride = 1000000000;
+    constexpr int channels = 1000000000;
+    EXPECT_FALSE(padded_payload_size(
+                     width, height, channels, stride, BufferType::FLOAT64)
+                     .has_value());
+}
+
+TEST(RawDataDecodeTest, PaddedPayloadSizeChecksTheFinalFactorToo) {
+    // The case above trips the guard on `channels`, leaving the last factor
+    // unexercised. Here stride*height*channels fits comfortably and only
+    // multiplying by sizeof(double) overflows, so a regression that applied
+    // the element size unchecked would return a wrapped size instead of
+    // nullopt.
+    constexpr int max_int = std::numeric_limits<int>::max();
+    EXPECT_FALSE(
+        padded_payload_size(1, max_int, 1, max_int, BufferType::FLOAT64)
+            .has_value());
+    // Same geometry at one byte per element is representable, so the
+    // rejection above is the overflow guard and not the geometry itself.
+    EXPECT_TRUE(
+        padded_payload_size(1, max_int, 1, max_int, BufferType::UNSIGNED_BYTE)
+            .has_value());
 }

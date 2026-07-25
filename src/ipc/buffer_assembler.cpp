@@ -29,6 +29,8 @@
 #include <cstring>
 #include <utility>
 
+#include "raw_data_decode.h"
+
 namespace oid {
 
 bool BufferAssembler::begin(BeginParams params) {
@@ -36,20 +38,22 @@ bool BufferAssembler::begin(BeginParams params) {
     // this name, or its chunks would keep landing in the previous
     // allocation, under the previous geometry.
     auto name = params.variable_name;
-    // Validate while height is still `int`, before any unsigned cast can
-    // turn a negative value into a huge row count.
-    if (params.height <= 0) {
+    // Exact, not a lower bound: chunk() spaces rows by
+    // total_byte_size / height, so the payload must have a uniform row size.
+    // Requiring the padded size also makes the total divisible by height, so
+    // bytes-per-row is always meaningful.
+    const auto required =
+        padded_payload_size(params.width,
+                            params.height,
+                            params.channels,
+                            params.stride,
+                            static_cast<BufferType>(params.type));
+    if (!required || *required != params.total_byte_size) {
         in_progress_.erase(name);
         return false;
     }
     const auto height = static_cast<std::size_t>(params.height);
     const auto total = params.total_byte_size;
-    // The allocation must divide evenly into rows, else bytes-per-row is
-    // meaningless and a malformed transfer would otherwise be accepted.
-    if (total < height || total % height != 0) {
-        in_progress_.erase(name);
-        return false;
-    }
 
     InProgress entry{.params = std::move(params),
                      .bytes = std::vector<std::byte>(total, std::byte{}),
