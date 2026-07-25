@@ -25,16 +25,36 @@
 
 #include "buffer_assembler.h"
 
+#include <algorithm>
 #include <cstring>
 #include <utility>
 
 namespace oid {
 
 void BufferAssembler::begin(BeginParams params) {
+    // A rejected begin must also drop any transfer already in flight under
+    // this name, or its chunks would keep landing in the previous
+    // allocation, under the previous geometry.
+    auto name = params.variable_name;
+    // Validate while height is still `int`, before any unsigned cast can
+    // turn a negative value into a huge row count.
+    if (params.height <= 0) {
+        in_progress_.erase(name);
+        return;
+    }
+    const auto height = static_cast<std::size_t>(params.height);
     const auto total = params.total_byte_size;
-    auto& [entryParams, entryBytes] = in_progress_[params.variable_name];
-    entryParams = std::move(params);
-    entryBytes.assign(total, std::byte{});
+    // The allocation must divide evenly into rows, else bytes-per-row is
+    // meaningless and a malformed transfer would otherwise be accepted.
+    if (total < height || total % height != 0) {
+        in_progress_.erase(name);
+        return;
+    }
+
+    InProgress entry{.params = std::move(params),
+                     .bytes = std::vector<std::byte>(total, std::byte{}),
+                     .rows_received = std::vector<bool>(height, false)};
+    in_progress_.insert_or_assign(std::move(name), std::move(entry));
 }
 
 bool BufferAssembler::chunk(const std::string& name,
@@ -45,14 +65,27 @@ bool BufferAssembler::chunk(const std::string& name,
     if (it == in_progress_.end()) {
         return false;
     }
-    auto& [entryParams, entryBytes] = it->second;
-    const auto stride = static_cast<std::size_t>(entryParams.stride);
-    const auto offset = row_offset * stride;
-    if (const auto expected = row_count * stride;
+    auto& [entryParams, entryBytes, rowsReceived] = it->second;
+    const auto height = static_cast<std::size_t>(entryParams.height);
+
+    // Checked bound: row_offset > height rules out wraparound below.
+    if (row_offset > height || row_count > height - row_offset) {
+        return false;
+    }
+
+    // `stride` is row stride in elements, not bytes; derive real
+    // bytes-per-row from the allocation so multi-channel / multi-byte
+    // element buffers assemble correctly.
+    const auto bytes_per_row = entryBytes.size() / height;
+    const auto offset = row_offset * bytes_per_row;
+    if (const auto expected = row_count * bytes_per_row;
         bytes.size() != expected || offset + bytes.size() > entryBytes.size()) {
         return false;
     }
     std::memcpy(entryBytes.data() + offset, bytes.data(), bytes.size());
+    std::fill_n(rowsReceived.begin() + static_cast<std::ptrdiff_t>(row_offset),
+                row_count,
+                true);
     return true;
 }
 
@@ -61,7 +94,12 @@ std::optional<AssembledBuffer> BufferAssembler::end(const std::string& name) {
     if (it == in_progress_.end()) {
         return std::nullopt;
     }
-    auto& [params, bytes] = it->second;
+    auto& [params, bytes, rowsReceived] = it->second;
+    // Refuse a partial transfer rather than hand back a zero-filled buffer.
+    if (!std::ranges::all_of(rowsReceived, [](const bool r) { return r; })) {
+        in_progress_.erase(it);
+        return std::nullopt;
+    }
     AssembledBuffer out{.variable_name = std::move(params.variable_name),
                         .display_name = std::move(params.display_name),
                         .pixel_layout = std::move(params.pixel_layout),
