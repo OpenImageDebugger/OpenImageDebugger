@@ -282,28 +282,7 @@ enable it only in trusted, local development.
 See [`resources/oidmcp/README.md`](resources/oidmcp/README.md) for
 deployment and usage instructions.
 
-## Basic configuration
-
-The settings file for the plugin can be located under
-`$HOME/.config/OpenImageDebugger.ini`. You can change the following settings:
-
-* **Rendering**
-  * *maximum_framerate* Determines the maximum framerate for the buffer
-  rendering backend. Must be greater than 0.
-* **UI** - thanks to @a-hromov for the contribution
-  * *list_position* Determines the position of symbols list.
-    * `left` Default value.
-    * `right`
-    * `top`
-    * `bottom`
-  * *minmax_compact* Changes the position of min/max intensity controller.
-    * `true` Places min/max intensity controller in the same row with the toolbar.
-    * `false` Places min/max intensity controller below the toolbar. Default value.
-  * *colorspace* Selects the order of colorspace channels on the UI.
-    * `rgba` Default value.
-    * `bgra`
-
-## Advanced configuration
+## Configuration
 
 By default, the plugin works with several data types, including OpenCV's `Mat`,
 `CvMat` and `IplImage` and Eigen's `Matrix` and `Map`.
@@ -350,3 +329,22 @@ Implement a `TypeInspectorInterface` subclass from
 [doc/python-inspectors.md](doc/python-inspectors.md) for the full instructions —
 the interface methods, the buffer-metadata dictionary contract, and the debug
 decorators.
+
+### Resetting the UI
+
+Open Image Debugger remembers its window size and position, the width of the
+symbol list pane, the auto-contrast and link-views toggles, the buffers you
+viewed last, and the directory you last exported to. The application writes
+this state itself — it is not a preferences file meant to be edited by hand —
+and keeps it in `OpenImageDebugger/imgui_settings.json` under:
+
+| OS | Directory |
+| --- | --- |
+| Linux | `$XDG_CONFIG_HOME`, or `$HOME/.config` when that is unset |
+| macOS | `$HOME/Library/Application Support` |
+| Windows | `%APPDATA%` |
+
+Delete that file while the viewer is not running to restore the defaults — a
+running viewer rewrites it shortly after any change to that state, and again
+when it exits. This is the fix if the viewer reopens at a window position that
+is off-screen.
