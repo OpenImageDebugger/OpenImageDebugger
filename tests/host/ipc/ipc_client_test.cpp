@@ -31,6 +31,8 @@
 #include <array>
 #include <cstring>
 #include <deque>
+#include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string_view>
 
@@ -135,6 +137,17 @@ struct ThrowingTransport final : ITransport {
     }
 };
 
+// Redirects std::cerr into a buffer for the test's duration, restoring the
+// original streambuf on destruction (production code logs via std::cerr
+// directly, so this is the only hook available to observe it).
+struct CerrCapture {
+    std::ostringstream out;
+    std::streambuf* saved = std::cerr.rdbuf(out.rdbuf());
+    ~CerrCapture() {
+        std::cerr.rdbuf(saved);
+    }
+};
+
 // Captures the bytes a MessageComposer would send, without a real socket.
 static std::vector<std::byte> frame(const MessageComposer& c) {
     struct Cap final : ITransport {
@@ -152,6 +165,60 @@ static std::vector<std::byte> frame(const MessageComposer& c) {
     Cap cap;
     c.send(cap);
     return cap.b;
+}
+
+// Builds a PLOT_BUFFER_BEGIN frame for `name`: single-channel, row-major
+// geometry (channels=1, stride=width) so callers only need to pick width,
+// height and the total payload size.
+static std::vector<std::byte> begin_frame(const std::string& name,
+                                          const int width,
+                                          const int height,
+                                          const std::size_t total_byte_size) {
+    MessageComposer c;
+    c.push(MessageType::PLOT_BUFFER_BEGIN)
+        .push(name)
+        .push(std::string("disp"))
+        .push(std::string("rgb"))
+        .push(false)
+        .push(width)
+        .push(height)
+        .push(1)
+        .push(width)
+        .push(static_cast<int>(BufferType::UNSIGNED_BYTE))
+        .push(total_byte_size);
+    return frame(c);
+}
+
+static std::vector<std::byte>
+chunk_frame(const std::string& name,
+            const std::size_t row_offset,
+            const std::size_t row_count,
+            const std::span<const std::byte> bytes) {
+    MessageComposer c;
+    c.push(MessageType::PLOT_BUFFER_CHUNK)
+        .push(name)
+        .push(row_offset)
+        .push(row_count)
+        .push(bytes);
+    return frame(c);
+}
+
+static std::vector<std::byte> end_frame(const std::string& name) {
+    MessageComposer c;
+    c.push(MessageType::PLOT_BUFFER_END).push(name);
+    return frame(c);
+}
+
+// Counts non-overlapping occurrences of `needle` in `haystack`; used instead
+// of find() != npos so tests assert an exact log count, not just presence.
+static std::size_t count_occurrences(const std::string& haystack,
+                                     const std::string& needle) {
+    std::size_t count = 0;
+    for (std::size_t pos = haystack.find(needle); pos != std::string::npos;
+         pos = haystack.find(needle, pos + needle.size())) {
+        ++count;
+    }
+    return count;
 }
 
 TEST(IpcClient, PlotBufferContentsUpsertsModel) {
@@ -346,6 +413,201 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
     ASSERT_EQ(model.at(0).bytes.size(), 24u);
     for (auto b : model.at(0).bytes) {
         EXPECT_EQ(b, std::byte{9});
+    }
+}
+
+TEST(IpcClient, RejectedChunkAbortsTransferSoAWellFormedRetryCannotResumeIt) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    std::vector bytes(8, std::byte{1}); // 2 rows x 4 bytes/row
+
+    {
+        MessageComposer c;
+        c.push(MessageType::PLOT_BUFFER_BEGIN)
+            .push(std::string("v"))
+            .push(std::string("disp"))
+            .push(std::string("rgb"))
+            .push(false)
+            .push(4)
+            .push(2)
+            .push(1)
+            .push(4)
+            .push(static_cast<int>(BufferType::UNSIGNED_BYTE))
+            .push(bytes.size());
+        t.feed(frame(c));
+    }
+    {
+        // row_offset 5 is out of range for height 2: chunk() rejects it,
+        // which must abort the transfer outright.
+        MessageComposer c;
+        c.push(MessageType::PLOT_BUFFER_CHUNK)
+            .push(std::string("v"))
+            .push(std::size_t{5})
+            .push(std::size_t{1})
+            .push(std::span<const std::byte>(bytes));
+        t.feed(frame(c));
+    }
+    {
+        // A well-formed chunk covering every row, sent right after: without
+        // abort() this alone would complete the transfer, masking the
+        // earlier rejection instead of surfacing it.
+        MessageComposer c;
+        c.push(MessageType::PLOT_BUFFER_CHUNK)
+            .push(std::string("v"))
+            .push(std::size_t{0})
+            .push(std::size_t{2})
+            .push(std::span<const std::byte>(bytes));
+        t.feed(frame(c));
+    }
+    {
+        MessageComposer c;
+        c.push(MessageType::PLOT_BUFFER_END).push(std::string("v"));
+        t.feed(frame(c));
+    }
+
+    host::IpcClient client(t, model);
+    {
+        CerrCapture cap; // silence the expected diagnostic in test output
+        client.poll();
+    }
+
+    // Aborted transfer: even the later well-formed retry can't resume it.
+    EXPECT_EQ(model.size(), 0u);
+}
+
+TEST(IpcClient, RepeatedChunkFailuresForOneTransferReportOnlyOnce) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    std::vector bytes(8, std::byte{1});
+
+    {
+        MessageComposer c;
+        c.push(MessageType::PLOT_BUFFER_BEGIN)
+            .push(std::string("v"))
+            .push(std::string("disp"))
+            .push(std::string("rgb"))
+            .push(false)
+            .push(4)
+            .push(2)
+            .push(1)
+            .push(4)
+            .push(static_cast<int>(BufferType::UNSIGNED_BYTE))
+            .push(bytes.size());
+        t.feed(frame(c));
+    }
+    // First chunk aborts the transfer; every one after fails too (unknown
+    // name) -- a naive implementation would log all of these.
+    constexpr int kBadChunks = 200;
+    for (int i = 0; i < kBadChunks; ++i) {
+        MessageComposer c;
+        c.push(MessageType::PLOT_BUFFER_CHUNK)
+            .push(std::string("v"))
+            .push(std::size_t{5})
+            .push(std::size_t{1})
+            .push(std::span<const std::byte>(bytes));
+        t.feed(frame(c));
+    }
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    const std::string logged = cap.out.str();
+    EXPECT_EQ(std::ranges::count(logged, '\n'), 1);
+    EXPECT_NE(logged.find("PLOT_BUFFER_CHUNK"), std::string::npos);
+    EXPECT_NE(logged.find("'v'"), std::string::npos);
+}
+
+TEST(IpcClient, StrayChunksForNeverBegunNamesAreSilent) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    const std::vector bytes(4, std::byte{1});
+    t.feed(chunk_frame("a", 0, 1, bytes));
+    t.feed(chunk_frame("b", 0, 1, bytes));
+    t.feed(chunk_frame("c", 0, 1, bytes));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_TRUE(cap.out.str().empty());
+}
+
+TEST(IpcClient, LaterTransferForSameNameStillReportsAfterEarlierRefusal) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+
+    // First attempt: invalid geometry refuses the BEGIN outright.
+    t.feed(begin_frame("v", 4, 0, 0)); // height <= 0 -> rejected
+
+    // Second attempt: a fresh, valid transfer under the same name that is
+    // then refused too (wrong-sized chunk). The old code tracked "already
+    // reported" per name with no bound on how long that lasts, so a second,
+    // unrelated failure for "v" could go unreported forever; it must not.
+    t.feed(begin_frame("v", 4, 2, 8));
+    const std::vector wrong_size_bytes(3, std::byte{1});
+    t.feed(chunk_frame("v", 0, 1, wrong_size_bytes));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("rejected PLOT_BUFFER_BEGIN"), std::string::npos);
+    EXPECT_NE(logged.find("rejected PLOT_BUFFER_CHUNK"), std::string::npos);
+}
+
+// Sharper version of the above: no intervening successful begin() at all, so
+// the only way a second BEGIN failure for "v" can be reported is if rejected
+// BEGINs are never gated by "already reported" in the first place. This is
+// the precise regression test for the suppression half of the bug: the old
+// per-name "already reported" set was cleared only by a successful begin()
+// or by end() running for that name, so a peer that only ever sends invalid
+// BEGINs for "v" got exactly one diagnostic, forever, no matter how many
+// distinct malformed attempts followed.
+TEST(IpcClient, RepeatedInvalidBeginsForSameNameEachReport) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    t.feed(begin_frame("v", 4, 0, 0)); // height <= 0 -> rejected
+    t.feed(begin_frame("v", 4, 0, 0)); // rejected again, unrelated attempt
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_EQ(count_occurrences(cap.out.str(), "rejected PLOT_BUFFER_BEGIN"),
+              2u);
+}
+
+TEST(IpcClient, StrayEndIsSilentButRealIncompleteTransferStillLogs) {
+    // A PLOT_BUFFER_END for a name with no transfer in flight is a stray
+    // (e.g. the tail of an already-reported refusal) and must be silent.
+    {
+        FakeTransport t;
+        host::IpcBufferModel model;
+        t.feed(end_frame("v"));
+
+        host::IpcClient client(t, model);
+        CerrCapture cap;
+        client.poll();
+
+        EXPECT_TRUE(cap.out.str().empty());
+    }
+    // A valid BEGIN whose rows are never fully covered before END is a
+    // genuine incomplete transfer and must still be reported.
+    {
+        FakeTransport t;
+        host::IpcBufferModel model;
+        t.feed(begin_frame("v", 4, 2, 8));
+        const std::vector bytes(4, std::byte{9});
+        t.feed(chunk_frame("v", 0, 1, bytes)); // only row 0 of 2 covered
+        t.feed(end_frame("v"));
+
+        host::IpcClient client(t, model);
+        CerrCapture cap;
+        client.poll();
+
+        EXPECT_NE(cap.out.str().find("incomplete transfer"), std::string::npos);
     }
 }
 
