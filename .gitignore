@@ -6,6 +6,11 @@ build/
 
 # Visual Studio Code project settings
 .vscode/
+# ...except the testbench debug configs, which are part of the fixtures:
+# they carry the breakpoints and build steps needed to drive them under a
+# debugger, so they are shared rather than per-developer settings.
+!testbench/.vscode/
+!testbench/.vscode/launch.json
 
 # Qt Creator project settings
 CMakeLists.txt.user
