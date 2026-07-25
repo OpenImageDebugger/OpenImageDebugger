@@ -682,6 +682,25 @@ if(OID_BUILD_IMGUI_FRONTEND)
 
     add_test(NAME ShaderPixelLayoutTests COMMAND shader_pixel_layout_test)
 
+    # Whether a buffer's bytes can hold every pixel its geometry addresses,
+    # and how wide an element is once the renderer has it. Same shape as the
+    # rule above: header-only, no GL context needed.
+    add_executable(buffer_span_fits_test
+        visualization/buffer_span_fits_test.cpp
+    )
+
+    target_include_directories(buffer_span_fits_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    )
+
+    target_link_libraries(buffer_span_fits_test
+        PRIVATE
+        GTest::gtest_main
+        GTest::gtest
+    )
+
+    add_test(NAME BufferSpanFitsTests COMMAND buffer_span_fits_test)
+
     # Test stb_glyph_atlas() out of host/text/stb_glyph_atlas.cpp: bakes
     # oid::GLYPH_TEXT from the embedded Roboto-Regular font (stb_truetype)
     # through the same finalize_strip_atlas() pipeline glyph_atlas_test above
