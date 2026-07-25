@@ -50,6 +50,19 @@ void IpcClient::poll() {
             dispatch(header);
         } catch (const std::runtime_error&) { // SocketTimeoutError, base catch
             return; // cross-shared-lib RTTI-safe; drop the partial message
+        } catch (const std::length_error&) {
+            // MessageDecoder's own size guards keep resize() from throwing
+            // this, but other allocations driven by peer-supplied sizes and
+            // reachable from dispatch() (e.g. BufferAssembler::begin(), on a
+            // 32-bit size_t) are not guarded that way. Only length_error is
+            // caught, not its logic_error base: the siblings of that base
+            // signal bugs here rather than hostile input, and swallowing
+            // them would hide them. Its type_info is a single shared symbol
+            // like std::runtime_error's above, so this is RTTI-safe across
+            // the same shared-lib boundary.
+            std::cerr << "[OID] container limit exceeded decoding a message; "
+                         "dropped\n";
+            return;
         } catch (const std::bad_alloc&) {
             // A buffer's size comes from the peer. Sizes are capped before
             // any allocation, but the cap is generous enough that the request
@@ -236,7 +249,7 @@ void IpcClient::handle_plot_buffer_begin() {
         std::cerr << "[OID] rejected PLOT_BUFFER_BEGIN for '" << name << "': ";
         if (!known_type) {
             std::cerr << "unknown buffer type " << type_int << "\n";
-        } else if (received > MAX_BUFFER_BYTES) {
+        } else if (exceeds_max_buffer_bytes(received)) {
             std::cerr << received << " bytes exceeds the " << MAX_BUFFER_BYTES
                       << " byte limit\n";
         } else if (!displayable) {
@@ -277,9 +290,14 @@ void IpcClient::handle_plot_buffer_chunk() {
     // drops, so every later chunk -- of that transfer, or of a name that
     // never had a BEGIN -- finds nothing and stays silent.
     if (assembler_.abort(name)) {
+        // row_offset and row_count are logged separately rather than as a
+        // computed row_offset + row_count endpoint: that sum is unchecked
+        // std::size_t addition, and a peer sending huge values -- already
+        // rejected for the transfer itself -- would wrap it into an end row
+        // smaller than the start row.
         std::cerr << "[OID] rejected PLOT_BUFFER_CHUNK for '" << name
-                  << "': rows [" << row_offset << ", " << row_offset + row_count
-                  << "), " << bytes.size() << " bytes received\n";
+                  << "': row_offset " << row_offset << ", row_count "
+                  << row_count << ", " << bytes.size() << " bytes received\n";
     }
 }
 

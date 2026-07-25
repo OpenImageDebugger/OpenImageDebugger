@@ -259,9 +259,19 @@ class MessageDecoder {
         // throw here has consumed only the length prefix, whereas a
         // bad_alloc from resize() would leave the payload unread and every
         // later message decoding from the wrong offset.
-        if (container_size > MAX_BUFFER_BYTES) {
+        if (exceeds_max_buffer_bytes(container_size)) {
             throw MessageDecodeError{"declared payload exceeds the maximum "
                                      "buffer size"};
+        }
+        // Reachable only where size_t is 32 bits, i.e. the wasm build: there
+        // MAX_BUFFER_BYTES's 16 GiB ceiling can never be exceeded, so it
+        // cannot catch a length past what the container can represent;
+        // max_size() is the real limit there. resize() would otherwise throw
+        // std::length_error, which is not a std::runtime_error and would
+        // escape poll()'s catch. Keep this guard.
+        if (container_size > value.max_size()) {
+            throw MessageDecodeError{
+                "declared payload exceeds the container limit"};
         }
         value.resize(container_size);
         read_impl(std::span{value.data(), container_size});
@@ -281,6 +291,12 @@ class MessageDecoder {
         if (symbol_length > MAX_STRING_BYTES) {
             throw MessageDecodeError{"declared string exceeds the maximum "
                                      "length"};
+        }
+        // Reachable only where size_t is 32 bits, i.e. the wasm build: same
+        // reasoning as the vector overload above. Keep this guard.
+        if (symbol_length > value.max_size()) {
+            throw MessageDecodeError{
+                "declared string exceeds the container limit"};
         }
         value.resize(symbol_length);
         // std::string uses char* internally, convert to std::byte* for

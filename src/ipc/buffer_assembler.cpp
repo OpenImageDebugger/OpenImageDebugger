@@ -46,7 +46,7 @@ bool BufferAssembler::begin(BeginParams params) {
     }
     // The declaration is untrusted and drives the allocation right below, so
     // cap it before allocating rather than relying on the allocator to fail.
-    if (params.total_byte_size > MAX_BUFFER_BYTES) {
+    if (exceeds_max_buffer_bytes(params.total_byte_size)) {
         in_progress_.erase(name);
         return false;
     }

@@ -138,6 +138,24 @@ struct ThrowingTransport final : ITransport {
     }
 };
 
+// Transport whose receive() throws std::length_error, standing in for a
+// peer-supplied size overrunning a container elsewhere in the receive path
+// (e.g. BufferAssembler::begin()'s vector construction on a 32-bit size_t)
+// that this fake cannot reach directly.
+struct LengthErrorTransport final : ITransport {
+    void send(std::span<const std::byte>) override {
+        // Nothing to record: only the receive side is under test here.
+    }
+
+    [[noreturn]] std::size_t receive(std::span<std::byte>) override {
+        throw std::length_error("simulated container overrun");
+    }
+
+    bool has_data() const override {
+        return true;
+    }
+};
+
 // Redirects std::cerr into a buffer for the test's duration, restoring the
 // original streambuf on destruction (production code logs via std::cerr
 // directly, so this is the only hook available to observe it).
@@ -842,7 +860,7 @@ TEST(IpcClient, BeginAcceptsGeometryExactlyAtDisplayLimits) {
 TEST(IpcClient, BeginRejectsHugeGeometryWithTheDisplayLimitsDiagnostic) {
     FakeTransport t;
     host::IpcBufferModel model;
-    constexpr int huge = std::numeric_limits<int>::max();
+    constexpr int huge = (std::numeric_limits<int>::max)();
     t.feed(begin_frame_ex(
         "v", huge, huge, 4, huge, BufferType::FLOAT64, std::size_t{8}));
 
@@ -1025,6 +1043,39 @@ TEST(IpcClient, RepeatedChunkFailuresForOneTransferReportOnlyOnce) {
     EXPECT_NE(logged.find("'v'"), std::string::npos);
 }
 
+TEST(IpcClient, RejectedChunkLogsRowOffsetAndRowCountWithoutWrappedEndpoint) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    t.feed(begin_frame("v", 4, 2, 8));
+
+    // row_offset + row_count overflows std::size_t and wraps to 0: a
+    // naively-computed endpoint would print an end row smaller than the
+    // start row, which is what this test guards against. row_count is
+    // chosen so its digits never appear inside row_offset's, so a substring
+    // search for it is unambiguous.
+    constexpr auto row_offset = (std::numeric_limits<std::size_t>::max)() - 999;
+    constexpr std::size_t row_count = 1000;
+    const std::vector bytes(5, std::byte{1});
+    t.feed(chunk_frame("v", row_offset, row_count, bytes));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("rejected PLOT_BUFFER_CHUNK for 'v'"),
+              std::string::npos);
+    EXPECT_NE(logged.find(std::to_string(row_offset)), std::string::npos);
+    // row_count is never printed by the old "rows [start, end)" phrasing
+    // (only the wrapped sum is), so this alone fails against that code.
+    EXPECT_NE(logged.find(std::to_string(row_count)), std::string::npos);
+    EXPECT_NE(logged.find(std::to_string(bytes.size()) + " bytes received"),
+              std::string::npos);
+    // The old phrasing would print ", 0)" here (row_offset + row_count
+    // wraps to 0); that text must be gone.
+    EXPECT_EQ(logged.find(", 0)"), std::string::npos);
+}
+
 TEST(IpcClient, StrayChunksForNeverBegunNamesAreSilent) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -1147,6 +1198,24 @@ TEST(IpcClient, PollDoesNotThrowOnTruncatedMessage) {
     EXPECT_NO_THROW(client.poll());
 
     EXPECT_EQ(model.size(), 0u); // partial message dropped, not half-applied
+}
+
+// MessageDecoder's own size guards keep it from throwing std::length_error,
+// but other peer-size-driven allocations reachable from dispatch() (e.g.
+// BufferAssembler::begin()'s vector construction, on a 32-bit size_t) are not
+// guarded that way, and poll() backstops those. The throw is driven straight
+// from the transport so the test does not depend on any of them being
+// reachable on this host.
+TEST(IpcClient, PollCatchesLengthErrorBackstopWithoutCrashing) {
+    LengthErrorTransport t;
+    host::IpcBufferModel model;
+
+    host::IpcClient client(t, model);
+    CerrCapture cap; // silence the expected diagnostic in test output
+    EXPECT_NO_THROW(client.poll());
+
+    EXPECT_EQ(model.size(), 0u);
+    EXPECT_NE(cap.out.str().find("dropped"), std::string::npos);
 }
 
 TEST(IpcClient, RestoresAvailableUnexpiredBuffersOnSetAvailableSymbols) {

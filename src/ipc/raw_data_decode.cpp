@@ -85,7 +85,7 @@ std::optional<std::size_t> padded_payload_size(const int width,
     }
     // Each factor is checked before it is applied: hostile geometry can
     // overflow this product, and a wrapped result would look plausible.
-    constexpr auto LIMIT = std::numeric_limits<std::size_t>::max();
+    constexpr auto LIMIT = (std::numeric_limits<std::size_t>::max)();
     auto size = static_cast<std::size_t>(stride);
     for (const std::size_t factor : {static_cast<std::size_t>(height),
                                      static_cast<std::size_t>(channels),

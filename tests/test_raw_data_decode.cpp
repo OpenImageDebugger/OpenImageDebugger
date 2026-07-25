@@ -268,7 +268,7 @@ TEST(RawDataDecodeTest, PaddedPayloadSizeChecksTheFinalFactorToo) {
     // multiplying by sizeof(double) overflows, so a regression that applied
     // the element size unchecked would return a wrapped size instead of
     // nullopt.
-    constexpr int max_int = std::numeric_limits<int>::max();
+    constexpr int max_int = (std::numeric_limits<int>::max)();
     EXPECT_FALSE(
         padded_payload_size(1, max_int, 1, max_int, BufferType::FLOAT64)
             .has_value());
