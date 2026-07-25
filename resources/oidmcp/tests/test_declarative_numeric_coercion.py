@@ -8,9 +8,6 @@ holds a buffer address. Both regressed under LLDB: ``int('0x10')`` raised
 integer value (the address of the temporary) instead of the value itself.
 """
 
-import sys
-import types
-
 from oidscripts.oidtypes.declarative import _to_int
 
 
@@ -36,16 +33,12 @@ def test_to_int_passthrough_int():
 # --- LLDB SymbolWrapper numeric / pointer accessors --------------------------
 #
 # lldbbridge hard-imports the `lldb` module, which is unavailable off a live
-# debugger. Install a minimal stub carrying the one constant the code reads
-# (eTypeIsInteger) so the pure Python of SymbolWrapper can be exercised.
+# debugger. conftest.py installs the shared stub carrying the constant this
+# file reads (eTypeIsInteger) before any test module is collected, so the
+# pure Python of SymbolWrapper can be exercised here without a local one.
 
-_LLDB_STUB = types.ModuleType('lldb')
-_LLDB_STUB.eTypeIsInteger = 1 << 8
-_LLDB_STUB.SBValue = object
-sys.modules.setdefault('lldb', _LLDB_STUB)
-
-import lldb  # noqa: E402  (the stub above, unless a real lldb is present)
-from oidscripts.debuggers.lldbbridge import SymbolWrapper  # noqa: E402
+import lldb
+from oidscripts.debuggers.lldbbridge import SymbolWrapper
 
 
 class _FakeSBType:
