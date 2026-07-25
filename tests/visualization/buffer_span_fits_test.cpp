@@ -23,6 +23,7 @@
  * IN THE SOFTWARE.
  */
 
+#include <cstdint>
 #include <limits>
 
 #include <gtest/gtest.h>
@@ -81,6 +82,22 @@ TEST(BufferSpanFits, RejectsTheHugeStepUnderRead) {
 TEST(BufferSpanFits, DoesNotOverflowOnHostileGeometry) {
     constexpr int huge = (std::numeric_limits<int>::max)();
     EXPECT_FALSE(buffer_span_fits(huge, huge, 4, huge, sizeof(float), 1024));
+}
+
+// Guards the 32-bit build specifically. (height - 1) * step here is exactly
+// 2^32, which wraps to zero in a 32-bit size_t and would make these four bytes
+// look sufficient for the whole geometry. The arithmetic is done in 64 bits so
+// the real requirement survives; this assertion is trivially true on a 64-bit
+// host and is the only thing standing behind wasm, where it is not.
+TEST(BufferSpanFits, DoesNotWrapWhereSizeTIsThirtyTwoBits) {
+    constexpr int step = 65536;
+    constexpr int height = 65537; // (height - 1) * step == 2^32
+    EXPECT_FALSE(buffer_span_fits(4, height, 1, step, 1, 4));
+    // The same geometry with genuinely sufficient bytes is still accepted, so
+    // the rejection above is the bound and not a blanket refusal.
+    constexpr std::uint64_t needed =
+        (static_cast<std::uint64_t>(height) - 1) * step + 4;
+    EXPECT_TRUE(buffer_span_fits(4, height, 1, step, 1, needed));
 }
 
 // A float64 buffer sized as the renderer sees it (four bytes per element) is
