@@ -64,11 +64,11 @@ class BufferAssembler {
         std::size_t total_byte_size;
     };
 
-    // Start transfer for buffer `name`. Returns void: invalid geometry
-    // (height <= 0, or total_byte_size not an exact multiple of height) is
-    // rejected by simply not starting the transfer, so chunk()/end() then
-    // fail closed for `name` as if begin() was never called.
-    void begin(BeginParams params);
+    // Start transfer for buffer `name`. Returns false (without starting) if
+    // geometry is invalid (height <= 0, or total_byte_size not an exact
+    // multiple of height); chunk()/end() then fail closed for `name` as if
+    // begin() was never called. Returns true once the transfer has started.
+    [[nodiscard]] bool begin(BeginParams params);
 
     // Append row-strip chunk. Returns false if name unknown, rows out of
     // bounds, or size mismatch.
@@ -80,6 +80,12 @@ class BufferAssembler {
     // Finish transfer, moving bytes out and dropping entry. Returns nullopt
     // if name unknown or if any row was never received.
     [[nodiscard]] std::optional<AssembledBuffer> end(const std::string& name);
+
+    // Drop any in-progress transfer for `name`. Returns true if one existed.
+    bool abort(const std::string& name);
+
+    // True while a transfer for `name` is in flight (begun, not yet ended).
+    [[nodiscard]] bool has_in_progress(const std::string& name) const;
 
   private:
     struct InProgress {

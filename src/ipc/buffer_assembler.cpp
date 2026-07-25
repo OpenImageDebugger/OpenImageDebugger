@@ -31,7 +31,7 @@
 
 namespace oid {
 
-void BufferAssembler::begin(BeginParams params) {
+bool BufferAssembler::begin(BeginParams params) {
     // A rejected begin must also drop any transfer already in flight under
     // this name, or its chunks would keep landing in the previous
     // allocation, under the previous geometry.
@@ -40,7 +40,7 @@ void BufferAssembler::begin(BeginParams params) {
     // turn a negative value into a huge row count.
     if (params.height <= 0) {
         in_progress_.erase(name);
-        return;
+        return false;
     }
     const auto height = static_cast<std::size_t>(params.height);
     const auto total = params.total_byte_size;
@@ -48,13 +48,14 @@ void BufferAssembler::begin(BeginParams params) {
     // meaningless and a malformed transfer would otherwise be accepted.
     if (total < height || total % height != 0) {
         in_progress_.erase(name);
-        return;
+        return false;
     }
 
     InProgress entry{.params = std::move(params),
                      .bytes = std::vector<std::byte>(total, std::byte{}),
                      .rows_received = std::vector<bool>(height, false)};
     in_progress_.insert_or_assign(std::move(name), std::move(entry));
+    return true;
 }
 
 bool BufferAssembler::chunk(const std::string& name,
@@ -112,6 +113,14 @@ std::optional<AssembledBuffer> BufferAssembler::end(const std::string& name) {
                         .bytes = std::move(bytes)};
     in_progress_.erase(it);
     return out;
+}
+
+bool BufferAssembler::abort(const std::string& name) {
+    return in_progress_.erase(name) != 0;
+}
+
+bool BufferAssembler::has_in_progress(const std::string& name) const {
+    return in_progress_.contains(name);
 }
 
 } // namespace oid

@@ -27,6 +27,7 @@
 
 #include <chrono>
 #include <deque>
+#include <iostream>
 #include <set>
 #include <stdexcept>
 #include <utility>
@@ -184,7 +185,13 @@ void IpcClient::handle_plot_buffer_begin() {
     decoder.read(type_int);
     params.type = type_int;
     decoder.read(params.total_byte_size);
-    assembler_.begin(std::move(params));
+    const std::string name = params.variable_name;
+    // Each rejected BEGIN is a distinct attempted transfer, so there is no
+    // flood to collapse and nothing to remember between calls.
+    if (!assembler_.begin(std::move(params))) {
+        std::cerr << "[OID] rejected PLOT_BUFFER_BEGIN for '" << name
+                  << "': invalid geometry\n";
+    }
 }
 
 void IpcClient::handle_plot_buffer_chunk() {
@@ -197,12 +204,27 @@ void IpcClient::handle_plot_buffer_chunk() {
         .read(row_offset)
         .read(row_count)
         .read(bytes);
-    (void)assembler_.chunk(name, row_offset, row_count, bytes);
+    if (!assembler_.chunk(name, row_offset, row_count, bytes)) {
+        // Already unusable: holding the allocation until PLOT_BUFFER_END
+        // would only waste memory. Gating the report on abort() having
+        // dropped something is what collapses the flood: the first bad chunk
+        // reports and drops, so every later chunk -- of that transfer, or of
+        // a name that never had a BEGIN -- finds nothing and stays silent.
+        if (assembler_.abort(name)) {
+            std::cerr << "[OID] rejected PLOT_BUFFER_CHUNK for '" << name
+                      << "': rows [" << row_offset << ", "
+                      << row_offset + row_count << "), " << bytes.size()
+                      << " bytes received\n";
+        }
+    }
 }
 
 void IpcClient::handle_plot_buffer_end() {
     std::string name;
     MessageDecoder{transport_}.read(name);
+    // Captured before end() (which erases the entry): an END for a name
+    // with nothing in flight is a stray, not a genuine incomplete transfer.
+    const bool was_in_progress = assembler_.has_in_progress(name);
     if (auto assembled = assembler_.end(name)) {
         model_.upsert(make_buffer_record(
             {.variable_name = std::move(assembled->variable_name),
@@ -215,6 +237,9 @@ void IpcClient::handle_plot_buffer_end() {
              .stride = assembled->stride,
              .type = static_cast<BufferType>(assembled->type),
              .bytes = std::move(assembled->bytes)}));
+    } else if (was_in_progress) {
+        std::cerr << "[OID] rejected PLOT_BUFFER_END for '" << name
+                  << "': incomplete transfer\n";
     }
 }
 
