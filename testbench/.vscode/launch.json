@@ -12,7 +12,8 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(CodeLLDB) Launch testbench (no build)",
+            "name": "(CodeLLDB) Launch testbench",
+            "preLaunchTask": "build testbench",
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/testbench",
@@ -29,10 +30,10 @@
             // The real-library fixture: one live instance of every built-in
             // buffer type (cv::Mat, CvMat, IplImage, and five Eigen variants)
             // against the actual OpenCV and Eigen headers, for plotting by
-            // hand. Build it first -- it is a separate target, and CMake only
-            // offers it when both libraries are found:
-            //     cmake --build build --target testbench_realtypes
-            "name": "(CodeLLDB) Launch realtypes fixture (no build)",
+            // hand. The pre-launch task builds it; CMake only offers the
+            // target when both libraries are found.
+            "name": "(CodeLLDB) Launch realtypes fixture",
+            "preLaunchTask": "build realtypes fixture",
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/testbench_realtypes",

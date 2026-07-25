@@ -12,9 +12,10 @@
  *     type NAME and reads members by name, so faithful local structs with the
  *     same member names and legacy constant values exercise those two entries
  *     exactly as the real types would.
- *   - One deliberately oversized cv::Mat crosses the viewer's 8 MiB
- *     per-message budget, so plotting it exercises the chunked transfer path
- *     that every other fixture here is too small to reach.
+ *   - Two deliberately large cv::Mats sit either side of the viewer's 8 MiB
+ *     per-message budget: one just over it, to exercise the chunked transfer
+ *     path every other fixture here is too small to reach, and one exactly on
+ *     it, which must still cross as a single message.
  *
  * This target is built only when OpenCV and Eigen are found (see CMakeLists).
  * Set a breakpoint on the marked line in main(), run under a debugger with OID
@@ -126,6 +127,23 @@ cv::Mat make_mat_chunked_64f() {
     return m;
 }
 
+// The other side of the same boundary: 1024 rows x 1024 float64 is 8,388,608
+// bytes, which is the per-message budget exactly. The sender's test is
+// "payload <= budget", so this must still cross as a single message while the
+// fixture above, one row larger, must not. It is also an exact multiple of the
+// page size the extension reads memory in, so nothing here is a remainder --
+// the case where an off-by-one leaves a page unread or requests an empty one.
+cv::Mat make_mat_budget_edge_64f() {
+    cv::Mat m(kBigW, kBigW, CV_64FC1);
+    for (int y = 0; y < m.rows; ++y) {
+        for (int x = 0; x < m.cols; ++x) {
+            m.at<double>(y, x) =
+                static_cast<double>(x) + static_cast<double>(y) / kBigW;
+        }
+    }
+    return m;
+}
+
 } // namespace
 
 int main() {
@@ -133,6 +151,7 @@ int main() {
     cv::Mat mat_8uc3 = make_mat_8uc3();
     cv::Mat mat_32fc1 = make_mat_32fc1();
     cv::Mat mat_chunked_64f = make_mat_chunked_64f();
+    cv::Mat mat_budget_edge_64f = make_mat_budget_edge_64f();
 
     // --- CvMat (legacy struct), single-channel 8-bit ---
     std::vector<unsigned char> cvmat_backing(static_cast<std::size_t>(kW) * kH);
