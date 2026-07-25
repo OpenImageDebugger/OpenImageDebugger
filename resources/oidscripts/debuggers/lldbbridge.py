@@ -23,6 +23,109 @@ instance = None
 _PLAIN_IDENTIFIER_RE = re.compile(r'^[A-Za-z_]\w*$')
 
 
+def frame_from_debugger(debugger):
+    # type: (lldb.SBDebugger) -> lldb.SBFrame
+    """Walk debugger -> process -> thread -> frame, picking the thread with
+    a real stop reason. Every step is guarded with `not x` rather than
+    `is None`: SB objects are falsy when invalid but are not None."""
+    # Local, not the module import above: re-resolves sys.modules at call
+    # time. The module import binds once, permanently, on first import, so
+    # a caller holding a different `lldb` (oid_resolve_host.py, under test)
+    # would otherwise never be seen here.
+    import lldb
+    if not debugger:
+        return None
+    target = debugger.GetSelectedTarget()
+    if not target:
+        return None
+    process = target.process
+    if not process:
+        return None
+    for thread in process:
+        stop_reason = thread.GetStopReason()
+        if stop_reason != lldb.eStopReasonNone and \
+                stop_reason != lldb.eStopReasonInvalid:
+            return thread.GetSelectedFrame()
+    return None
+
+
+def evaluate_in_frame(frame, expression):
+    # type: (lldb.SBFrame, str) -> SymbolWrapper
+    """Evaluate `expression` in `frame`: FindVariable fast path for a plain
+    identifier (sidesteps lldb's expression JIT, which struggles with heavy
+    templated types e.g. Eigen), else EvaluateExpression. Raises
+    RuntimeError on failure."""
+    if _PLAIN_IDENTIFIER_RE.match(expression):
+        variable = frame.FindVariable(expression)
+        if variable.IsValid():
+            return SymbolWrapper(variable)
+
+    result = frame.EvaluateExpression(expression)
+    # A result can be truthy yet invalid, and GetError() need not return an
+    # object, so guard both rather than chaining off either; result itself
+    # may also be falsy/None outright (e.g. a dead frame).
+    error = result.GetError() if result else None
+    if not result or not result.IsValid() or \
+            (error is not None and error.Fail()):
+        message = error.GetCString() if error is not None else None
+        raise RuntimeError(
+            f'Expression "{expression}" failed: '
+            f'{message or "invalid result"}')
+    return SymbolWrapper(result)
+
+
+def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
+                   record_hit):
+    # type: (lldb.SBValue, list, frozenset, TypeInspectorInterface, callable) -> None
+    """Recursive descent into `symbol`'s members, calling
+    `record_hit(qualified_name, SymbolWrapper)` for each observable one."""
+    if symbol.GetTypeName() in visited_typenames:
+        return  # this type is already on the path from the root
+    # Mark this symbol's type, not the child's, before descending: the
+    # latter trips the recursive call's own guard on its first check,
+    # stopping traversal after one hop. Copy rather than mutate, so
+    # sibling branches don't block each other from descending a type.
+    visited_typenames = visited_typenames | {symbol.GetTypeName()}
+
+    for member_idx in range(symbol.GetNumChildren()):
+        symbol_member = symbol.GetChildAtIndex(member_idx)
+        chain = member_name_chain + [str(symbol_member.name)]
+        wrapped = SymbolWrapper(symbol_member)
+        if type_bridge.is_symbol_observable(wrapped, symbol_member.name):
+            record_hit('.'.join(chain), wrapped)
+        else:
+            _walk_members(symbol_member, chain, visited_typenames,
+                          type_bridge, record_hit)
+
+
+def observable_symbols(frame, type_bridge):
+    # type: (lldb.SBFrame, TypeInspectorInterface) -> list
+    """Every observable symbol in `frame`: top-level plus struct/class
+    members reached by recursive descent (e.g. `this.image`). Returns
+    (qualified_name, SymbolWrapper) pairs, deduped, in discovery order --
+    callers shape the pairs into whatever result they need."""
+    found = []
+    seen = set()
+
+    def emit(qualified_name, wrapped):
+        if qualified_name not in seen:
+            seen.add(qualified_name)
+            found.append((qualified_name, wrapped))
+
+    for symbol in frame.GetVariables(True, True, True, True):
+        name = symbol.name
+        if not name:
+            continue
+        wrapped = SymbolWrapper(symbol)
+        if type_bridge.is_symbol_observable(wrapped, name):
+            emit(name, wrapped)
+        member_name_chain = [name] if name != 'this' else []
+        _walk_members(symbol, member_name_chain, frozenset(), type_bridge,
+                      emit)
+
+    return found
+
+
 class LldbBridge(BridgeInterface):
     """
     LLDB Bridge class, exposing the common expected interface for the OpenImageDebugger
@@ -196,89 +299,26 @@ class LldbBridge(BridgeInterface):
         # intentional RuntimeErrors below carry the best message; any other
         # backend exception is normalized to RuntimeError in the fallback.
         try:
-            frame = self._get_frame(
-                self._get_thread(self._get_process(
-                    self.get_lldb_backend())))
-            # _get_frame() can return an invalid SBFrame (falsy but not
-            # None), so use the same truthiness guard as
-            # get_available_symbols() rather than an "is None" check.
+            # frame_from_debugger() can return an invalid SBFrame (falsy but
+            # not None), so use a truthiness guard rather than "is None".
+            frame = frame_from_debugger(self.get_lldb_backend())
             if not frame:
                 raise RuntimeError(
                     f'Expression "{expression}" failed: no stopped frame')
-
-            # Prefer a direct variable lookup for plain symbol names: it is
-            # the same robust path get_buffer_metadata() uses and avoids
-            # lldb's expression JIT, which can fail to resolve heavy templated
-            # types (e.g. Eigen) on some architectures. Dotted or otherwise
-            # complex expressions still fall through to EvaluateExpression().
-            if _PLAIN_IDENTIFIER_RE.match(expression):
-                variable = frame.FindVariable(expression)
-                if variable.IsValid():
-                    return SymbolWrapper(variable)
-
-            result = frame.EvaluateExpression(expression)
-            error = result.GetError()
-            if not result.IsValid() or (error is not None
-                                        and error.Fail()):
-                message = error.GetCString() if error is not None else None
-                raise RuntimeError(
-                    f'Expression "{expression}" failed: '
-                    f'{message or "invalid result"}')
-            return SymbolWrapper(result)
+            return evaluate_in_frame(frame, expression)
         except RuntimeError:
             raise
         except Exception as error:
             raise RuntimeError(
                 f'Expression "{expression}" failed: {error}') from error
 
-    def _get_observable_children_members(self, symbol, member_name_chain,
-                                         output_set, visited_typenames=None):
-        # type: (lldb.SBValue, list[str], set, set) -> None
-        if visited_typenames is None:
-            visited_typenames = set()
-        if symbol.GetTypeName() in visited_typenames:
-            # Prevent endless recursion in cyclic data types
-            return
-
-        for member_idx in range(symbol.GetNumChildren()):
-            symbol_member = symbol.GetChildAtIndex(
-                member_idx)  # type: lldb.SBValue
-
-            member_name_chain_current = member_name_chain.copy()
-            member_name_chain_current.append(str(symbol_member.name))
-
-            symbol_wrapper = SymbolWrapper(symbol_member)
-            if self._type_bridge.is_symbol_observable(symbol_wrapper,
-                                                      symbol_member.name):
-                member_name_current = '.'.join(member_name_chain_current)
-                output_set.add(member_name_current)
-            else:
-                if symbol_member.name != symbol_member.GetTypeName():
-                    visited_typenames.add(symbol_member.GetTypeName())
-                self._get_observable_children_members(symbol_member,
-                                                      member_name_chain_current,
-                                                      output_set,
-                                                      visited_typenames)
-
     def get_available_symbols(self):
-        frame = self._get_frame(
-            self._get_thread(self._get_process(self.get_lldb_backend())))
+        frame = frame_from_debugger(self.get_lldb_backend())
         if not frame:
             return set()
-
-        available_symbols = set()
-
-        for symbol in frame.GetVariables(True, True, True, True):
-            symbol_wrapper = SymbolWrapper(symbol)
-            if self._type_bridge.is_symbol_observable(symbol_wrapper,
-                                                      symbol.name):
-                available_symbols.add(symbol.name)
-            # Check for members of current field, if it is a class
-            member_name_chain = [symbol.name] if symbol.name != 'this' else []
-            self._get_observable_children_members(symbol, member_name_chain,
-                                                  available_symbols)
-
-        return available_symbols
+        # Callers historically get bare names; observable_symbols() returns
+        # richer (name, wrapper) pairs so other callers can shape their own.
+        return {name for name, _ in observable_symbols(frame, self._type_bridge)}
 
     def stop_hook(self, *args):
         with self._lock:
