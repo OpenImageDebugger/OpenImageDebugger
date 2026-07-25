@@ -1,0 +1,34 @@
+{
+    // Pre-launch builds for the debug configs in launch.json. Both configure
+    // first: `cmake -B build` is a cheap no-op once the cache exists, and it
+    // means F5 works from a fresh checkout instead of failing on a missing
+    // build directory.
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build realtypes fixture",
+            "type": "shell",
+            "command": "cmake -S . -B build && cmake --build build --target testbench_realtypes",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "detail": "Configure if needed, then build testbench_realtypes. CMake only offers this target when OpenCV and Eigen are both found."
+        },
+        {
+            "label": "build testbench",
+            "type": "shell",
+            "command": "cmake -S . -B build && cmake --build build --target testbench",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$gcc",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Configure if needed, then build the dependency-free testbench."
+        }
+    ]
+}
