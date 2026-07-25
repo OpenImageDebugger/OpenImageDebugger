@@ -37,6 +37,7 @@
 #include "camera.h"
 #include "math/linear_algebra.h"
 #include "platform/gl_dialect.h"
+#include "visualization/buffer_span_fits.h"
 #include "visualization/game_object.h"
 #include "visualization/shader_pixel_layout.h"
 #include "visualization/shaders/oid_shaders.h"
@@ -399,6 +400,28 @@ void Buffer::configure(const BufferParams& params) {
         buffer_size > MAX_BUFFER_BYTES) {
         std::cerr << "[Error] Buffer size too large: " << buffer_size
                   << " bytes (maximum: " << MAX_BUFFER_BYTES << " bytes)"
+                  << std::endl;
+        return;
+    }
+
+    // The ceiling above bounds how much memory a buffer may claim; this bounds
+    // how little. Drawing indexes as (y * step + x) * channels and nothing on
+    // that path checks the span, so a buffer describing more pixels than it
+    // carries reads off the end. The wire layer refuses such a buffer on the
+    // way in, but one can also arrive from a file, and this is the layer they
+    // share.
+    if (const auto element_size = display_element_size(params.type);
+        !buffer_span_fits(params.buffer_width_i,
+                          params.buffer_height_i,
+                          params.channels,
+                          params.step,
+                          element_size,
+                          params.buffer.size())) {
+        std::cerr << "[Error] Buffer too small for its geometry: "
+                  << params.buffer.size() << " bytes cannot hold "
+                  << params.buffer_width_i << "x" << params.buffer_height_i
+                  << "x" << params.channels << " at step " << params.step
+                  << " and " << element_size << " bytes per element"
                   << std::endl;
         return;
     }
