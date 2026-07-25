@@ -42,14 +42,9 @@ namespace oid {
 namespace BufferConstants {
 constexpr int MAX_TEXTURE_SIZE = 2048;
 constexpr float ZOOM_BORDER_THRESHOLD = 40.0f;
-constexpr int MIN_BUFFER_DIMENSION = 1;
-constexpr int MAX_BUFFER_DIMENSION =
-    131072; // 2^17 = 128K (closest power of 2 to 100k)
-constexpr int MIN_CHANNELS = 1;
-constexpr int MAX_CHANNELS = 4;
-// Defined in ipc/raw_data_decode.h so the IPC layer can refuse an oversized
-// declaration before allocating, rather than the two limits drifting apart.
-constexpr std::uint64_t MAX_BUFFER_SIZE = MAX_BUFFER_BYTES;
+// The buffer dimension, channel and byte limits are not here: they live in
+// ipc/raw_data_decode.h, below this layer, so the wire code can refuse a
+// buffer this one would only reject later. Use them by their own names.
 } // namespace BufferConstants
 
 struct BufferParams {

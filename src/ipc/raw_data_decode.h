@@ -48,6 +48,25 @@ enum class BufferType {
 // ceiling Buffer::update() enforces before uploading a texture.
 constexpr std::uint64_t MAX_BUFFER_BYTES = 16ULL * 1024ULL * 1024ULL * 1024ULL;
 
+// What the viewer can actually display. They live here, below the renderer,
+// so the wire layer can refuse a buffer it would otherwise allocate and then
+// have Buffer::configure() drop.
+constexpr int MIN_BUFFER_DIMENSION = 1;
+constexpr int MAX_BUFFER_DIMENSION = 131072; // 2^17, ~the 100k practical max
+constexpr int MIN_CHANNEL_COUNT = 1;
+constexpr int MAX_CHANNEL_COUNT = 4;
+
+// True if the geometry is one the renderer will accept. Deliberately separate
+// from the sizing helpers below: those answer whether a payload can be
+// measured, this answers whether the result is displayable, and the two
+// refusals want different diagnostics.
+[[nodiscard]] constexpr bool
+within_display_limits(const int width, const int height, const int channels) {
+    return width >= MIN_BUFFER_DIMENSION && width <= MAX_BUFFER_DIMENSION &&
+           height >= MIN_BUFFER_DIMENSION && height <= MAX_BUFFER_DIMENSION &&
+           channels >= MIN_CHANNEL_COUNT && channels <= MAX_CHANNEL_COUNT;
+}
+
 // True if `type` is a value this protocol defines. The wire carries a plain
 // int, and an unknown one would otherwise be silently taken as UNSIGNED_BYTE
 // by type_size()'s default while drawing no pixel label at all.

@@ -354,25 +354,24 @@ void Buffer::configure(const BufferParams& params) {
     // Validate dimensions
     if (!validate_dimension(params.buffer_width_i,
                             "width",
-                            BufferConstants::MIN_BUFFER_DIMENSION,
-                            BufferConstants::MAX_BUFFER_DIMENSION)) {
+                            MIN_BUFFER_DIMENSION,
+                            MAX_BUFFER_DIMENSION)) {
         return;
     }
 
     if (!validate_dimension(params.buffer_height_i,
                             "height",
-                            BufferConstants::MIN_BUFFER_DIMENSION,
-                            BufferConstants::MAX_BUFFER_DIMENSION)) {
+                            MIN_BUFFER_DIMENSION,
+                            MAX_BUFFER_DIMENSION)) {
         return;
     }
 
     // Validate channel count
-    if (params.channels < BufferConstants::MIN_CHANNELS ||
-        params.channels > BufferConstants::MAX_CHANNELS) {
+    if (params.channels < MIN_CHANNEL_COUNT ||
+        params.channels > MAX_CHANNEL_COUNT) {
         std::cerr << "[Error] Invalid channel count: " << params.channels
-                  << " (must be between " << BufferConstants::MIN_CHANNELS
-                  << " and " << BufferConstants::MAX_CHANNELS << ")"
-                  << std::endl;
+                  << " (must be between " << MIN_CHANNEL_COUNT << " and "
+                  << MAX_CHANNEL_COUNT << ")" << std::endl;
         return;
     }
 
@@ -397,10 +396,10 @@ void Buffer::configure(const BufferParams& params) {
     // on the 64-bit desktop build).
     if (const auto buffer_size =
             static_cast<std::uint64_t>(params.buffer.size());
-        buffer_size > BufferConstants::MAX_BUFFER_SIZE) {
+        buffer_size > MAX_BUFFER_BYTES) {
         std::cerr << "[Error] Buffer size too large: " << buffer_size
-                  << " bytes (maximum: " << BufferConstants::MAX_BUFFER_SIZE
-                  << " bytes)" << std::endl;
+                  << " bytes (maximum: " << MAX_BUFFER_BYTES << " bytes)"
+                  << std::endl;
         return;
     }
 
