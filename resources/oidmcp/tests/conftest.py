@@ -6,6 +6,7 @@ import sys
 import tempfile
 import threading
 import time
+import types
 from pathlib import Path
 
 # Make `import oidscripts.agentendpoint` work: the endpoint lives in the
@@ -15,8 +16,153 @@ RESOURCES_DIR = str(Path(__file__).resolve().parents[2])
 if RESOURCES_DIR not in sys.path:
     sys.path.append(RESOURCES_DIR)
 
+# resources/oidscripts/debuggers/lldbbridge.py hard-imports `lldb`, which is
+# only available inside a live debugger's embedded interpreter -- never in
+# a plain pytest run. Several test modules exercise lldbbridge (directly, or
+# indirectly through oid_resolve_host's lazy imports), so something has to
+# put a stub `lldb` in sys.modules before any of them get collected.
+#
+# This MUST be the only place that does it. lldbbridge.py's own
+# `import lldb` runs once, the first time lldbbridge is imported in the
+# process, and permanently binds its module-level `lldb` name to whatever
+# object was in sys.modules at that instant -- later replacing
+# sys.modules['lldb'] does not rebind it. conftest.py is always imported
+# before any test module, so installing the stub here (with setdefault, so
+# a real `lldb` -- present when this suite runs inside a debugger's
+# interpreter -- always wins) guarantees every test sees the same object,
+# regardless of collection order or which file pytest starts with. A second
+# stub installed locally in a test module only "wins" by accident of
+# collection order (setdefault is a no-op once this one has already run),
+# which is exactly the flake this stub exists to prevent -- do not add
+# another one.
+_LLDB_STUB = types.ModuleType('lldb')
+_LLDB_STUB.eTypeIsInteger = 1 << 8
+_LLDB_STUB.SBValue = object
+sys.modules.setdefault('lldb', _LLDB_STUB)
+
 from oidscripts import wireframe as wf
 from oidscripts.debuggers.interfaces import raise_if_too_large
+
+
+class FakeSBType:
+    """Just enough of lldb.SBType for SymbolWrapper's constructor."""
+
+    def __init__(self, name):
+        self._name = name
+
+    def IsValid(self):
+        return True
+
+    def GetCanonicalType(self):
+        return self
+
+    def GetName(self):
+        return self._name
+
+
+class FakeSBValue:
+    """A minimal SBValue-like tree node for exercising
+    lldbbridge.observable_symbols()'s recursive member traversal without a
+    real debugger. `children` may itself reference an ancestor node to
+    build a genuine cycle."""
+
+    def __init__(self, name, typename, children=()):
+        self.name = name
+        self._typename = typename
+        self._children = list(children)
+
+    def GetTypeName(self):
+        return self._typename
+
+    def GetType(self):
+        return FakeSBType(self._typename)
+
+    def GetNumChildren(self):
+        return len(self._children)
+
+    def GetChildAtIndex(self, index):
+        return self._children[index]
+
+    def set_children(self, children):
+        """Populated after construction so a node can point back at an
+        already-built ancestor (a real cycle)."""
+        self._children = list(children)
+
+
+class FakeTypeBridge:
+    """Type-bridge stand-in for the traversal tests: a symbol is
+    observable iff its type name is one of `observable_typenames`.
+    `SymbolWrapper.type` is a TemplateTypeName (a str subclass), which
+    compares and hashes as the plain type-name string."""
+
+    def __init__(self, observable_typenames):
+        self._observable_typenames = set(observable_typenames)
+
+    def is_symbol_observable(self, symbol_wrapper, _name):
+        return symbol_wrapper.type in self._observable_typenames
+
+
+class FakeStopReason:
+    """Stop-reason constants matching lldb's eStopReasonNone/eStopReason
+    Invalid pair, for frame_from_debugger()/current_host() tests."""
+
+    NONE = 0
+    INVALID = 1
+    STOPPED = 2
+
+
+class FakeThread:
+    def __init__(self, stop_reason, frame=None):
+        self._stop_reason = stop_reason
+        self._frame = frame
+
+    def GetStopReason(self):
+        return self._stop_reason
+
+    def GetSelectedFrame(self):
+        return self._frame
+
+
+class FakeProcess:
+    def __init__(self, threads):
+        self._threads = threads
+
+    def __iter__(self):
+        return iter(self._threads)
+
+
+class FakeTarget:
+    def __init__(self, process):
+        self.process = process
+
+
+class FakeDebugger:
+    def __init__(self, target):
+        self._target = target
+
+    def GetSelectedTarget(self):
+        return self._target
+
+
+class FakeFrame:
+    """A stand-in for a valid SBFrame: truthy, identity-comparable."""
+
+
+def fake_lldb_module(frame_attr=None, selected_frame=None):
+    """A minimal `lldb`-module stand-in with one not-stopped and one
+    stopped thread, for frame_from_debugger()/current_host() tests."""
+    fake_lldb = types.ModuleType('lldb')
+    fake_lldb.eStopReasonNone = FakeStopReason.NONE
+    fake_lldb.eStopReasonInvalid = FakeStopReason.INVALID
+    if frame_attr is not None:
+        fake_lldb.frame = frame_attr
+
+    not_stopped = FakeThread(FakeStopReason.NONE)
+    stopped = FakeThread(FakeStopReason.STOPPED, frame=selected_frame)
+    process = FakeProcess([not_stopped, stopped])
+    target = FakeTarget(process)
+    fake_lldb.debugger = FakeDebugger(target)
+    return fake_lldb
 
 
 class FakeBridge:
