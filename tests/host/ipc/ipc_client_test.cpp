@@ -189,6 +189,32 @@ static std::vector<std::byte> begin_frame(const std::string& name,
     return frame(c);
 }
 
+// Like begin_frame, but exposes channels, stride and type: the
+// geometry-vs-payload checks need shapes begin_frame's fixed
+// channels=1/stride=width can't reach.
+static std::vector<std::byte>
+begin_frame_ex(const std::string& name,
+               const int width,
+               const int height,
+               const int channels,
+               const int stride,
+               const BufferType type,
+               const std::size_t total_byte_size) {
+    MessageComposer c;
+    c.push(MessageType::PLOT_BUFFER_BEGIN)
+        .push(name)
+        .push(std::string("disp"))
+        .push(std::string("rgb"))
+        .push(false)
+        .push(width)
+        .push(height)
+        .push(channels)
+        .push(stride)
+        .push(static_cast<int>(type))
+        .push(total_byte_size);
+    return frame(c);
+}
+
 static std::vector<std::byte>
 chunk_frame(const std::string& name,
             const std::size_t row_offset,
@@ -211,10 +237,10 @@ static std::vector<std::byte> end_frame(const std::string& name) {
 
 // Counts non-overlapping occurrences of `needle` in `haystack`; used instead
 // of find() != npos so tests assert an exact log count, not just presence.
-static std::size_t count_occurrences(const std::string& haystack,
-                                     const std::string& needle) {
+static std::size_t count_occurrences(const std::string_view haystack,
+                                     const std::string_view needle) {
     std::size_t count = 0;
-    for (std::size_t pos = haystack.find(needle); pos != std::string::npos;
+    for (std::size_t pos = haystack.find(needle); pos != std::string_view::npos;
          pos = haystack.find(needle, pos + needle.size())) {
         ++count;
     }
@@ -225,6 +251,8 @@ TEST(IpcClient, PlotBufferContentsUpsertsModel) {
     FakeTransport t;
     host::IpcBufferModel model;
     MessageComposer c;
+    // 2x2 rgb8, unpadded: stride counts PIXELS per row, so it equals width
+    // here, and the payload is channels * stride * height = 12 bytes.
     std::vector bytes(12, std::byte{5});
     c.push(MessageType::PLOT_BUFFER_CONTENTS)
         .push(std::string("v"))
@@ -234,7 +262,7 @@ TEST(IpcClient, PlotBufferContentsUpsertsModel) {
         .push(2)
         .push(2)
         .push(3)
-        .push(6)
+        .push(2)
         .push(BufferType::UNSIGNED_BYTE)
         .push(std::span<const std::byte>(bytes));
     t.feed(frame(c));
@@ -244,8 +272,76 @@ TEST(IpcClient, PlotBufferContentsUpsertsModel) {
 
     ASSERT_EQ(model.size(), 1u);
     EXPECT_EQ(model.at(0).variable_name, "v");
-    EXPECT_EQ(model.at(0).step, 6);
+    EXPECT_EQ(model.at(0).step, 2);
     EXPECT_EQ(model.at(0).bytes.size(), 12u);
+}
+
+// The single-shot sibling of the chunked-path fix: PLOT_BUFFER_CONTENTS
+// carries its whole payload in one message, with no BufferAssembler::begin()
+// to reject it, so handle_plot_buffer_contents() must apply the same check
+// itself.
+TEST(IpcClient, PlotBufferContentsRejectsPayloadTooSmallForGeometry) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    MessageComposer c;
+    // width=4, height=2, channels=1, stride=100000, FLOAT32 needs 100004
+    // pixels x 4 bytes; 2 bytes is nowhere close.
+    const std::vector bytes(2, std::byte{5});
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
+        .push(std::string("v"))
+        .push(std::string("disp"))
+        .push(std::string("rgb"))
+        .push(false)
+        .push(4)
+        .push(2)
+        .push(1)
+        .push(100000)
+        .push(BufferType::FLOAT32)
+        .push(std::span<const std::byte>(bytes));
+    t.feed(frame(c));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_EQ(model.size(), 0u);
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("rejected PLOT_BUFFER_CONTENTS"), std::string::npos);
+    EXPECT_NE(logged.find("'v'"), std::string::npos);
+    EXPECT_NE(logged.find("payload too small for geometry"), std::string::npos);
+}
+
+// The other half of the deliberate asymmetry: this is the exact geometry
+// LastRowOmittingTrailingStridePaddingIsRejectedOnChunkedPath refuses, and
+// the single-shot path takes it. Nothing here assembles row strips, so a
+// non-uniform final row is harmless and the floor is all that is required.
+TEST(IpcClient, PlotBufferContentsAcceptsLastRowOmittingStridePadding) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    MessageComposer c;
+    // width=3, height=2, channels=1, stride=5 (pixels/row): floor is
+    // (height-1)*stride+width = 8 bytes, fully padded would be 10.
+    const std::vector bytes(8, std::byte{5});
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
+        .push(std::string("v"))
+        .push(std::string("disp"))
+        .push(std::string("rgb"))
+        .push(false)
+        .push(3)
+        .push(2)
+        .push(1)
+        .push(5)
+        .push(BufferType::UNSIGNED_BYTE)
+        .push(std::span<const std::byte>(bytes));
+    t.feed(frame(c));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    ASSERT_EQ(model.size(), 1u);
+    EXPECT_EQ(model.at(0).bytes.size(), 8u);
+    EXPECT_TRUE(cap.out.str().empty());
 }
 
 TEST(IpcClient, SetAvailableSymbolsPopulatesList) {
@@ -372,6 +468,8 @@ TEST(IpcClient, RequestPlotSends) {
 TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
     FakeTransport t;
     host::IpcBufferModel model;
+    // 4x2 rgb8, unpadded: stride counts PIXELS per row, so it equals width
+    // here, and the payload is channels * stride * height = 24 bytes.
     std::vector bytes(24, std::byte{9});
 
     {
@@ -385,7 +483,7 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
             .push(4)
             .push(2)
             .push(3)
-            .push(12)
+            .push(4)
             .push(static_cast<int>(BufferType::UNSIGNED_BYTE))
             .push(total);
         t.feed(frame(c));
@@ -414,6 +512,178 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
     for (auto b : model.at(0).bytes) {
         EXPECT_EQ(b, std::byte{9});
     }
+}
+
+// The reported failure mode: a huge stride paired with a tiny, but
+// height-divisible, total_byte_size sails through the old height-only/
+// divisibility checks. begin() must now refuse it outright, so the buffer
+// never reaches the model even if well-formed chunks and an END follow.
+TEST(IpcClient, BeginRejectsGeometryTooLargeForPayload) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    // width=4, height=2, channels=1, stride=100000, FLOAT32: needs
+    // (height-1)*stride+width = 100004 pixels, but total_byte_size=2 covers
+    // zero (2 / type_size(FLOAT32) == 0).
+    t.feed(begin_frame_ex("v", 4, 2, 1, 100000, BufferType::FLOAT32, 2));
+    const std::vector bytes(2, std::byte{9}); // 1 byte/row, height-divisible
+    t.feed(chunk_frame("v", 0, 2, bytes));
+    t.feed(end_frame("v"));
+
+    host::IpcClient client(t, model);
+    {
+        CerrCapture cap; // silence the expected diagnostic
+        client.poll();
+    }
+
+    EXPECT_EQ(model.size(), 0u);
+}
+
+// begin() must reject non-positive width/channels and stride < width: none
+// of these are checked by the pre-existing height/divisibility validation,
+// so a peer could otherwise declare a shape the payload cannot back.
+TEST(IpcClient, BeginRejectsNonPositiveWidthChannelsAndStrideBelowWidth) {
+    // width <= 0.
+    {
+        FakeTransport t;
+        host::IpcBufferModel model;
+        t.feed(begin_frame_ex("v", 0, 2, 1, 1, BufferType::UNSIGNED_BYTE, 2));
+        host::IpcClient client(t, model);
+        CerrCapture cap;
+        client.poll();
+        EXPECT_NE(cap.out.str().find("rejected PLOT_BUFFER_BEGIN"),
+                  std::string::npos);
+    }
+    // channels <= 0.
+    {
+        FakeTransport t;
+        host::IpcBufferModel model;
+        t.feed(begin_frame_ex("v", 4, 2, 0, 4, BufferType::UNSIGNED_BYTE, 8));
+        host::IpcClient client(t, model);
+        CerrCapture cap;
+        client.poll();
+        EXPECT_NE(cap.out.str().find("rejected PLOT_BUFFER_BEGIN"),
+                  std::string::npos);
+    }
+    // stride < width.
+    {
+        FakeTransport t;
+        host::IpcBufferModel model;
+        t.feed(begin_frame_ex("v", 4, 2, 1, 2, BufferType::UNSIGNED_BYTE, 8));
+        host::IpcClient client(t, model);
+        CerrCapture cap;
+        client.poll();
+        EXPECT_NE(cap.out.str().find("rejected PLOT_BUFFER_BEGIN"),
+                  std::string::npos);
+    }
+}
+
+// A producer that trims the trailing stride padding off only the last row is
+// rejected on the chunked path: chunk() spaces every strip by
+// total_byte_size / height, so a non-uniform final row has nowhere to go.
+// (The single-shot path still accepts this shape via geometry_fits_payload,
+// unaffected by this test.) This exercises stride > width so the fully
+// padded size (stride*height = 10) differs from the trimmed lower bound
+// ((height-1)*stride+width = 8) that used to be let through.
+TEST(IpcClient, LastRowOmittingTrailingStridePaddingIsRejectedOnChunkedPath) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    // width=3, height=2, channels=1, stride=5 (pixels/row): trimmed lower
+    // bound is 8 bytes, the exact padded size begin() now requires is 10.
+    constexpr std::size_t trimmed_total = 8;
+    t.feed(begin_frame_ex(
+        "v", 3, 2, 1, 5, BufferType::UNSIGNED_BYTE, trimmed_total));
+    const std::vector bytes(trimmed_total, std::byte{7});
+    t.feed(chunk_frame("v", 0, 2, bytes));
+    t.feed(end_frame("v"));
+
+    host::IpcClient client(t, model);
+    {
+        CerrCapture cap; // silence the expected diagnostic
+        client.poll();
+    }
+
+    EXPECT_EQ(model.size(), 0u);
+}
+
+// Pins the exact contradiction the design review found: a geometry that
+// geometry_fits_payload() (the single-shot floor) accepts outright is still
+// refused on the chunked path, because chunk() needs every row spaced by a
+// single uniform size and this payload only has one if the trimmed last row
+// is ignored.
+TEST(IpcClient, BeginRejectsFloorAcceptedGeometryThatIsNotFullyPadded) {
+    // width=4, height=3, channels=2, stride=6, FLOAT32: floor =
+    // ((3-1)*6+4)*2*4 = 128 bytes; the fully padded size begin() now
+    // requires is stride*height*channels*type_size = 6*3*2*4 = 144.
+    constexpr std::size_t floor_total = 128;
+    ASSERT_TRUE(
+        geometry_fits_payload(4, 3, 2, 6, BufferType::FLOAT32, floor_total));
+
+    FakeTransport t;
+    host::IpcBufferModel model;
+    t.feed(begin_frame_ex("v", 4, 3, 2, 6, BufferType::FLOAT32, floor_total));
+    const std::vector bytes(floor_total, std::byte{5});
+    t.feed(chunk_frame("v", 0, 3, bytes));
+    t.feed(end_frame("v"));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_EQ(model.size(), 0u);
+    // The empty model alone proves nothing here: 128 / 3 truncates to 42
+    // bytes per row, so even a wrongly accepted BEGIN would refuse the
+    // 128-byte chunk and leave the model empty. The diagnostic is what
+    // discriminates -- it names BEGIN only when begin() did the refusing,
+    // and CHUNK otherwise.
+    EXPECT_NE(cap.out.str().find("rejected PLOT_BUFFER_BEGIN"),
+              std::string::npos);
+}
+
+TEST(IpcClient, BeginRejectsPayloadOneByteAboveOrBelowPaddedSize) {
+    // width=4, height=1, channels=2, stride=6, FLOAT32: padded size is
+    // stride*height*channels*type_size = 6*1*2*4 = 48. height=1 is
+    // deliberate: with height>1 an off-by-one payload is already caught by
+    // the divisibility the exact size implies, so only height=1 leaves the
+    // exact comparison itself as the thing under test.
+    for (const std::size_t total : {std::size_t{47}, std::size_t{49}}) {
+        FakeTransport t;
+        host::IpcBufferModel model;
+        t.feed(begin_frame_ex("v", 4, 1, 2, 6, BufferType::FLOAT32, total));
+        // Chunk sized exactly as the old code would have computed
+        // bytes-per-row (total / height), followed by END: a full,
+        // internally-consistent round trip, so a wrongly-accepted begin()
+        // would actually complete the transfer instead of silently stalling
+        // on a missing END.
+        const std::vector bytes(total, std::byte{9});
+        t.feed(chunk_frame("v", 0, 1, bytes));
+        t.feed(end_frame("v"));
+
+        host::IpcClient client(t, model);
+        CerrCapture cap; // silence the expected diagnostic
+        client.poll();
+
+        EXPECT_EQ(model.size(), 0u);
+    }
+}
+
+TEST(IpcClient, BeginAcceptsExactlyPaddedSizeAndRoundTripsIntoModel) {
+    // Same geometry as the contradiction test above, but with the fully
+    // padded size (144) rather than the floor (128).
+    constexpr int height = 3;
+    constexpr std::size_t total = 144;
+    FakeTransport t;
+    host::IpcBufferModel model;
+    t.feed(begin_frame_ex("v", 4, height, 2, 6, BufferType::FLOAT32, total));
+    const std::vector bytes(total, std::byte{3});
+    t.feed(chunk_frame("v", 0, static_cast<std::size_t>(height), bytes));
+    t.feed(end_frame("v"));
+
+    host::IpcClient client(t, model);
+    client.poll();
+
+    ASSERT_EQ(model.size(), 1u);
+    EXPECT_EQ(model.at(0).variable_name, "v");
+    EXPECT_EQ(model.at(0).bytes.size(), total);
 }
 
 TEST(IpcClient, RejectedChunkAbortsTransferSoAWellFormedRetryCannotResumeIt) {

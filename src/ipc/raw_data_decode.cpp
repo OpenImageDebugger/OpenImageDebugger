@@ -28,6 +28,7 @@
 #include <algorithm>
 
 #include <bit>
+#include <limits>
 
 namespace oid {
 
@@ -43,6 +44,49 @@ make_float_buffer_from_double(const std::vector<std::byte>& buff_double) {
     });
 
     return buff_float;
+}
+
+bool geometry_fits_payload(const int width,
+                           const int height,
+                           const int channels,
+                           const int stride,
+                           const BufferType type,
+                           const std::size_t byte_count) {
+    if (width <= 0 || height <= 0 || channels <= 0 || stride < width) {
+        return false;
+    }
+    const auto element_size =
+        static_cast<std::uint64_t>(channels) * type_size(type);
+    const auto pixels_needed = (static_cast<std::uint64_t>(height) - 1) *
+                                   static_cast<std::uint64_t>(stride) +
+                               static_cast<std::uint64_t>(width);
+    // Divided rather than multiplied: pixels_needed * element_size can
+    // overflow 64 bits for hostile geometry, the quotient cannot.
+    return static_cast<std::uint64_t>(byte_count) / element_size >=
+           pixels_needed;
+}
+
+std::optional<std::size_t> padded_payload_size(const int width,
+                                               const int height,
+                                               const int channels,
+                                               const int stride,
+                                               const BufferType type) {
+    if (width <= 0 || height <= 0 || channels <= 0 || stride < width) {
+        return std::nullopt;
+    }
+    // Each factor is checked before it is applied: hostile geometry can
+    // overflow this product, and a wrapped result would look plausible.
+    constexpr auto LIMIT = std::numeric_limits<std::size_t>::max();
+    auto size = static_cast<std::size_t>(stride);
+    for (const std::size_t factor : {static_cast<std::size_t>(height),
+                                     static_cast<std::size_t>(channels),
+                                     type_size(type)}) {
+        if (size > LIMIT / factor) {
+            return std::nullopt;
+        }
+        size *= factor;
+    }
+    return size;
 }
 
 } // namespace oid

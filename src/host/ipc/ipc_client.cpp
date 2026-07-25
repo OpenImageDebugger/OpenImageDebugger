@@ -34,6 +34,7 @@
 
 #include "host/ipc/buffer_decode.h"
 #include "host/settings/app_settings.h"
+#include "ipc/raw_data_decode.h"
 
 namespace oid::host {
 
@@ -158,6 +159,12 @@ void IpcClient::handle_plot_buffer_contents() const {
         .read(stride)
         .read(type)
         .read(bytes);
+    if (!geometry_fits_payload(
+            width, height, channels, stride, type, bytes.size())) {
+        std::cerr << "[OID] rejected PLOT_BUFFER_CONTENTS for '"
+                  << variable_name << "': payload too small for geometry\n";
+        return;
+    }
     model_.upsert(make_buffer_record({.variable_name = std::move(variable_name),
                                       .display_name = std::move(display_name),
                                       .pixel_layout = std::move(pixel_layout),
@@ -204,18 +211,18 @@ void IpcClient::handle_plot_buffer_chunk() {
         .read(row_offset)
         .read(row_count)
         .read(bytes);
-    if (!assembler_.chunk(name, row_offset, row_count, bytes)) {
-        // Already unusable: holding the allocation until PLOT_BUFFER_END
-        // would only waste memory. Gating the report on abort() having
-        // dropped something is what collapses the flood: the first bad chunk
-        // reports and drops, so every later chunk -- of that transfer, or of
-        // a name that never had a BEGIN -- finds nothing and stays silent.
-        if (assembler_.abort(name)) {
-            std::cerr << "[OID] rejected PLOT_BUFFER_CHUNK for '" << name
-                      << "': rows [" << row_offset << ", "
-                      << row_offset + row_count << "), " << bytes.size()
-                      << " bytes received\n";
-        }
+    if (assembler_.chunk(name, row_offset, row_count, bytes)) {
+        return;
+    }
+    // Already unusable: holding the allocation until PLOT_BUFFER_END would
+    // only waste memory. Gating the report on abort() having dropped
+    // something is what collapses the flood: the first bad chunk reports and
+    // drops, so every later chunk -- of that transfer, or of a name that
+    // never had a BEGIN -- finds nothing and stays silent.
+    if (assembler_.abort(name)) {
+        std::cerr << "[OID] rejected PLOT_BUFFER_CHUNK for '" << name
+                  << "': rows [" << row_offset << ", " << row_offset + row_count
+                  << "), " << bytes.size() << " bytes received\n";
     }
 }
 

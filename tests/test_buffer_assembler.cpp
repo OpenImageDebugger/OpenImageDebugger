@@ -24,6 +24,7 @@
  */
 
 #include "ipc/buffer_assembler.h"
+#include "ipc/raw_data_decode.h"
 
 #include <gtest/gtest.h>
 
@@ -31,11 +32,13 @@ using namespace oid;
 
 namespace {
 
-BufferAssembler::BeginParams make_begin(const std::string& name,
-                                        const int width,
-                                        const int height,
-                                        const int stride,
-                                        const std::size_t total) {
+BufferAssembler::BeginParams
+make_begin(const std::string& name,
+           const int width,
+           const int height,
+           const int stride,
+           const std::size_t total,
+           const BufferType type = BufferType::UNSIGNED_BYTE) {
     return BufferAssembler::BeginParams{.variable_name = name,
                                         .display_name = name,
                                         .pixel_layout = "rgba",
@@ -44,7 +47,7 @@ BufferAssembler::BeginParams make_begin(const std::string& name,
                                         .height = height,
                                         .channels = 1,
                                         .stride = stride,
-                                        .type = 0,
+                                        .type = static_cast<int>(type),
                                         .total_byte_size = total};
 }
 
@@ -119,7 +122,10 @@ TEST(BufferAssemblerTests, RejectsChunkAndEndForUnknownBuffer) {
 
 // Regression test: `stride` is row stride in elements, not bytes. For a
 // multi-byte element the geometry must come from the payload (total bytes /
-// height), or rows silently go missing while size checks still pass.
+// height), or rows silently go missing while size checks still pass. Type is
+// FLOAT64 (not the helper's UNSIGNED_BYTE default) so `total` -- sized for
+// 8-byte doubles -- is the geometry's exact padded size, as begin() now
+// requires.
 TEST(BufferAssemblerTests, AssemblesMultiByteElementBufferFromPayloadGeometry) {
     constexpr int width = 4;
     constexpr int height = 6;
@@ -127,7 +133,8 @@ TEST(BufferAssemblerTests, AssemblesMultiByteElementBufferFromPayloadGeometry) {
     constexpr std::size_t bytes_per_row = width * sizeof(double);
     constexpr std::size_t total = bytes_per_row * height;
     BufferAssembler a;
-    ASSERT_TRUE(a.begin(make_begin("buf", width, height, stride, total)));
+    ASSERT_TRUE(a.begin(
+        make_begin("buf", width, height, stride, total, BufferType::FLOAT64)));
 
     const auto full = iota_bytes(total);
 
@@ -153,7 +160,8 @@ TEST(BufferAssemblerTests, RejectsWrongSizedChunkForMultiByteElementBuffer) {
     constexpr std::size_t bytes_per_row = width * sizeof(double);
     constexpr std::size_t total = bytes_per_row * height;
     BufferAssembler a;
-    ASSERT_TRUE(a.begin(make_begin("buf", width, height, stride, total)));
+    ASSERT_TRUE(a.begin(
+        make_begin("buf", width, height, stride, total, BufferType::FLOAT64)));
     // One byte short of a single row.
     const auto strip = iota_bytes(bytes_per_row - 1);
     EXPECT_FALSE(a.chunk("buf", 0, 1, std::span{strip.data(), strip.size()}));

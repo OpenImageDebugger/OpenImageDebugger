@@ -29,6 +29,7 @@
 #include <cstddef> // for std::size_t
 #include <cstdint> // for std::uint8_t
 
+#include <optional>
 #include <vector> // for std::vector
 
 namespace oid {
@@ -44,6 +45,26 @@ enum class BufferType {
 
 std::vector<std::byte>
 make_float_buffer_from_double(const std::vector<std::byte>& buff_double);
+
+// True if `byte_count` wire bytes can hold every pixel the declared geometry
+// addresses. The last row needs only `width` pixels, not the full `stride`,
+// so a producer that trims trailing row padding is still accepted. It is a
+// floor for one contiguous payload, which is what the single-shot path
+// needs, and it implies nothing about rows being uniformly sized.
+[[nodiscard]] bool geometry_fits_payload(int width,
+                                         int height,
+                                         int channels,
+                                         int stride,
+                                         BufferType type,
+                                         std::size_t byte_count);
+
+// Bytes a fully padded buffer of this geometry occupies, every row carrying
+// its whole stride. nullopt if the geometry is not renderable (non-positive
+// dimensions, or a stride narrower than the width) or if the size overflows.
+// Row-strip assembly needs this rather than the floor above, because it
+// addresses rows by a single fixed size.
+[[nodiscard]] std::optional<std::size_t> padded_payload_size(
+    int width, int height, int channels, int stride, BufferType type);
 
 [[nodiscard]] constexpr std::size_t type_size(const BufferType type) noexcept {
     using enum BufferType;

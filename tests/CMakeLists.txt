@@ -135,6 +135,7 @@ target_link_libraries(test_buffer_assembler
 
 target_sources(test_buffer_assembler PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/buffer_assembler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ipc/raw_data_decode.cpp
 )
 
 add_test(NAME BufferAssemblerTests COMMAND test_buffer_assembler)
