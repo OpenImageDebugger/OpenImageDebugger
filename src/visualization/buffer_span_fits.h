@@ -27,6 +27,7 @@
 #define VISUALIZATION_BUFFER_SPAN_FITS_H_
 
 #include <cstddef>
+#include <cstdint>
 
 #include "ipc/raw_data_decode.h"
 
@@ -82,14 +83,18 @@ display_element_size(const BufferType type) noexcept {
         element_size == 0) {
         return false;
     }
-    const auto elements_per_pixel = static_cast<std::size_t>(channels);
-    // Divided rather than multiplied: the equivalent product overflows for
-    // hostile geometry, the quotient cannot.
+    // Widened to 64 bits deliberately, not left as size_t: on the 32-bit wasm
+    // build (height - 1) * step wraps for large-but-legal ints, which would
+    // make an undersized buffer look like it fits and defeat the whole check.
+    // Every input is an int or a size_t, so at 64 bits nothing here can
+    // overflow: the largest product is below 2^62.
+    const auto bytes_per_pixel = static_cast<std::uint64_t>(channels) *
+                                 static_cast<std::uint64_t>(element_size);
     const auto affordable_pixels =
-        byte_count / (elements_per_pixel * element_size);
-    const auto addressed_pixels = (static_cast<std::size_t>(height) - 1) *
-                                      static_cast<std::size_t>(step) +
-                                  static_cast<std::size_t>(width);
+        static_cast<std::uint64_t>(byte_count) / bytes_per_pixel;
+    const auto addressed_pixels = (static_cast<std::uint64_t>(height) - 1) *
+                                      static_cast<std::uint64_t>(step) +
+                                  static_cast<std::uint64_t>(width);
     return affordable_pixels >= addressed_pixels;
 }
 
