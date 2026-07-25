@@ -28,6 +28,7 @@
 #include <chrono>
 #include <deque>
 #include <iostream>
+#include <new>
 #include <set>
 #include <stdexcept>
 #include <utility>
@@ -49,6 +50,13 @@ void IpcClient::poll() {
             dispatch(header);
         } catch (const std::runtime_error&) { // SocketTimeoutError, base catch
             return; // cross-shared-lib RTTI-safe; drop the partial message
+        } catch (const std::bad_alloc&) {
+            // A buffer's size comes from the peer. Sizes are capped before
+            // any allocation, but the cap is generous enough that the request
+            // can still fail on a loaded machine: drop the message rather
+            // than take the viewer down with it.
+            std::cerr << "[OID] out of memory decoding a message; dropped\n";
+            return;
         }
     }
 }
@@ -159,6 +167,12 @@ void IpcClient::handle_plot_buffer_contents() const {
         .read(stride)
         .read(type)
         .read(bytes);
+    if (!is_known_buffer_type(static_cast<int>(type))) {
+        std::cerr << "[OID] rejected PLOT_BUFFER_CONTENTS for '"
+                  << variable_name << "': unknown buffer type "
+                  << static_cast<int>(type) << "\n";
+        return;
+    }
     if (!geometry_fits_payload(
             width, height, channels, stride, type, bytes.size())) {
         std::cerr << "[OID] rejected PLOT_BUFFER_CONTENTS for '"
@@ -193,11 +207,37 @@ void IpcClient::handle_plot_buffer_begin() {
     params.type = type_int;
     decoder.read(params.total_byte_size);
     const std::string name = params.variable_name;
+    // Captured before the move so a refusal can say what it wanted. These
+    // mirror begin()'s rejection reasons one for one, so the message is never
+    // at odds with the decision.
+    const auto wire_type = static_cast<BufferType>(params.type);
+    const bool known_type = is_known_buffer_type(wire_type);
+    // padded_payload_size() reports nullopt for two different things, so the
+    // shape is checked separately to tell them apart in the message.
+    const bool renderable = params.width > 0 && params.height > 0 &&
+                            params.channels > 0 &&
+                            params.stride >= params.width;
+    const auto expected = padded_payload_size(
+        params.width, params.height, params.channels, params.stride, wire_type);
+    const auto received = params.total_byte_size;
     // Each rejected BEGIN is a distinct attempted transfer, so there is no
     // flood to collapse and nothing to remember between calls.
     if (!assembler_.begin(std::move(params))) {
-        std::cerr << "[OID] rejected PLOT_BUFFER_BEGIN for '" << name
-                  << "': invalid geometry\n";
+        std::cerr << "[OID] rejected PLOT_BUFFER_BEGIN for '" << name << "': ";
+        if (!known_type) {
+            std::cerr << "unknown buffer type " << type_int << "\n";
+        } else if (received > MAX_BUFFER_BYTES) {
+            std::cerr << received << " bytes exceeds the " << MAX_BUFFER_BYTES
+                      << " byte limit\n";
+        } else if (expected.has_value()) {
+            std::cerr << "geometry needs " << *expected << " bytes, got "
+                      << received << "\n";
+        } else if (renderable) {
+            std::cerr << "geometry is too large to size in bytes\n";
+        } else {
+            std::cerr << "geometry is not renderable (width, height and "
+                         "channels must be positive, and stride >= width)\n";
+        }
     }
 }
 

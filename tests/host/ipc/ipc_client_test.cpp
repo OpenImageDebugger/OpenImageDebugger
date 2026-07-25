@@ -32,6 +32,7 @@
 #include <cstring>
 #include <deque>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
@@ -635,8 +636,133 @@ TEST(IpcClient, BeginRejectsFloorAcceptedGeometryThatIsNotFullyPadded) {
     // 128-byte chunk and leave the model empty. The diagnostic is what
     // discriminates -- it names BEGIN only when begin() did the refusing,
     // and CHUNK otherwise.
-    EXPECT_NE(cap.out.str().find("rejected PLOT_BUFFER_BEGIN"),
-              std::string::npos);
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("rejected PLOT_BUFFER_BEGIN"), std::string::npos);
+    // Naming both sizes is what makes this failure self-diagnosing for a
+    // producer that computes the total from the trimmed lower bound.
+    EXPECT_NE(logged.find("needs 144 bytes"), std::string::npos);
+    EXPECT_NE(logged.find("got 128"), std::string::npos);
+}
+
+// An unknown type would fall through type_size()'s default and be measured
+// as one byte per element, so the size arithmetic would use the wrong
+// element width without anything noticing.
+TEST(IpcClient, BeginRejectsUnknownBufferType) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    // 1 is deliberately absent from BufferType; the enum skips it.
+    constexpr int unknown_type = 1;
+    MessageComposer c;
+    c.push(MessageType::PLOT_BUFFER_BEGIN)
+        .push(std::string("v"))
+        .push(std::string("disp"))
+        .push(std::string("rgb"))
+        .push(false)
+        .push(4)
+        .push(2)
+        .push(1)
+        .push(4)
+        .push(unknown_type)
+        .push(std::size_t{8});
+    t.feed(frame(c));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_EQ(model.size(), 0u);
+    // 8 bytes is exactly the padded size at one byte per element, so only
+    // the type check can be doing the refusing here.
+    EXPECT_NE(cap.out.str().find("unknown buffer type 1"), std::string::npos);
+}
+
+TEST(IpcClient, PlotBufferContentsRejectsUnknownBufferType) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    const std::vector bytes(8, std::byte{5});
+    MessageComposer c;
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
+        .push(std::string("v"))
+        .push(std::string("disp"))
+        .push(std::string("rgb"))
+        .push(false)
+        .push(4)
+        .push(2)
+        .push(1)
+        .push(4)
+        .push(1) // absent from BufferType
+        .push(std::span<const std::byte>(bytes));
+    t.feed(frame(c));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_EQ(model.size(), 0u);
+    EXPECT_NE(cap.out.str().find("unknown buffer type 1"), std::string::npos);
+}
+
+// The declared size drives an allocation, so it is capped before allocating
+// rather than left for the allocator to refuse. Nothing is allocated here:
+// the BEGIN only carries the number.
+TEST(IpcClient, BeginRejectsDeclarationAboveTheByteLimit) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    // stride 2^20 x height 2^15 x 1 channel x 1 byte = 32 GiB, which is
+    // exactly its own padded size -- so the cap, not the geometry, refuses.
+    constexpr int stride = 1 << 20;
+    constexpr int height = 1 << 15;
+    constexpr std::size_t declared =
+        static_cast<std::size_t>(stride) * static_cast<std::size_t>(height);
+    ASSERT_GT(declared, MAX_BUFFER_BYTES);
+    t.feed(begin_frame_ex(
+        "v", stride, height, 1, stride, BufferType::UNSIGNED_BYTE, declared));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_EQ(model.size(), 0u);
+    EXPECT_NE(cap.out.str().find("exceeds the"), std::string::npos);
+}
+
+// padded_payload_size() reports nullopt both for a shape that makes no sense
+// and for one whose byte count will not fit, and those need different
+// messages: this geometry is entirely well-formed, just too big to measure.
+TEST(IpcClient, BeginDistinguishesAnOversizedGeometryFromAnInvalidOne) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    constexpr int huge = std::numeric_limits<int>::max();
+    t.feed(begin_frame_ex(
+        "v", huge, huge, 4, huge, BufferType::FLOAT64, std::size_t{8}));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_EQ(model.size(), 0u);
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("too large to size"), std::string::npos);
+    EXPECT_EQ(logged.find("not renderable"), std::string::npos);
+}
+
+// The other rejection reason: a shape that has no size at all, rather than
+// one whose size disagrees with the payload.
+TEST(IpcClient, BeginReportsUnrenderableGeometryDistinctly) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    // stride < width: no padded size exists, so there is no byte count to
+    // quote back.
+    t.feed(begin_frame_ex("v", 8, 2, 1, 4, BufferType::UNSIGNED_BYTE, 16));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_EQ(model.size(), 0u);
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("not renderable"), std::string::npos);
+    EXPECT_EQ(logged.find("needs"), std::string::npos);
 }
 
 TEST(IpcClient, BeginRejectsPayloadOneByteAboveOrBelowPaddedSize) {

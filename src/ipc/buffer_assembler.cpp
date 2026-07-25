@@ -38,17 +38,29 @@ bool BufferAssembler::begin(BeginParams params) {
     // this name, or its chunks would keep landing in the previous
     // allocation, under the previous geometry.
     auto name = params.variable_name;
+    // An unknown type would be taken as UNSIGNED_BYTE by type_size(), so the
+    // size arithmetic below would silently use the wrong element width.
+    if (!is_known_buffer_type(params.type)) {
+        in_progress_.erase(name);
+        return false;
+    }
+    // The declaration is untrusted and drives the allocation right below, so
+    // cap it before allocating rather than relying on the allocator to fail.
+    if (params.total_byte_size > MAX_BUFFER_BYTES) {
+        in_progress_.erase(name);
+        return false;
+    }
     // Exact, not a lower bound: chunk() spaces rows by
     // total_byte_size / height, so the payload must have a uniform row size.
     // Requiring the padded size also makes the total divisible by height, so
     // bytes-per-row is always meaningful.
-    const auto required =
-        padded_payload_size(params.width,
-                            params.height,
-                            params.channels,
-                            params.stride,
-                            static_cast<BufferType>(params.type));
-    if (!required || *required != params.total_byte_size) {
+    if (const auto required =
+            padded_payload_size(params.width,
+                                params.height,
+                                params.channels,
+                                params.stride,
+                                static_cast<BufferType>(params.type));
+        !required.has_value() || *required != params.total_byte_size) {
         in_progress_.erase(name);
         return false;
     }

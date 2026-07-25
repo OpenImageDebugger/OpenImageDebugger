@@ -30,6 +30,7 @@
 #include <gtest/gtest.h>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string_view>
 #include <thread>
 #include <vector>
@@ -300,6 +301,35 @@ TEST_F(MessageExchangeTest, MessageDecoderReadVector) {
 
     EXPECT_EQ(result.size(), test_vector.size());
     EXPECT_EQ(std::memcmp(result.data(), test_vector.data(), result.size()), 0);
+}
+
+// A peer-supplied length drives the resize, so an impossible one must be
+// refused rather than handed to the allocator: a bad_alloc there would leave
+// the payload unread and every later message decoding from the wrong offset.
+TEST_F(MessageExchangeTest, MessageDecoderRejectsOversizedVectorLength) {
+    ConnectSockets();
+
+    const auto absurd = static_cast<std::size_t>(MAX_BUFFER_BYTES) + 1;
+    std::array<char, sizeof(std::size_t)> buffer{};
+    std::memcpy(buffer.data(), &absurd, sizeof(std::size_t));
+    client_transport_->send(as_bytes_span(buffer));
+
+    MessageDecoder decoder(*server_transport_);
+    std::vector<std::byte> result;
+    EXPECT_THROW(decoder.read(result), MessageDecodeError);
+}
+
+TEST_F(MessageExchangeTest, MessageDecoderRejectsOversizedStringLength) {
+    ConnectSockets();
+
+    const auto absurd = MAX_STRING_BYTES + 1;
+    std::array<char, sizeof(std::size_t)> buffer{};
+    std::memcpy(buffer.data(), &absurd, sizeof(std::size_t));
+    client_transport_->send(as_bytes_span(buffer));
+
+    MessageDecoder decoder(*server_transport_);
+    std::string result;
+    EXPECT_THROW(decoder.read(result), MessageDecodeError);
 }
 
 TEST_F(MessageExchangeTest, MessageDecoderReadStringContainer) {

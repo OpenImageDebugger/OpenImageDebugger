@@ -52,6 +52,11 @@ bool geometry_fits_payload(const int width,
                            const int stride,
                            const BufferType type,
                            const std::size_t byte_count) {
+    // type_size() reports one byte for anything it does not recognise, which
+    // would silently measure the payload with the wrong element width.
+    if (!is_known_buffer_type(type)) {
+        return false;
+    }
     if (width <= 0 || height <= 0 || channels <= 0 || stride < width) {
         return false;
     }
@@ -71,6 +76,10 @@ std::optional<std::size_t> padded_payload_size(const int width,
                                                const int channels,
                                                const int stride,
                                                const BufferType type) {
+    // As above: an unrecognised type would be sized as one byte per element.
+    if (!is_known_buffer_type(type)) {
+        return std::nullopt;
+    }
     if (width <= 0 || height <= 0 || channels <= 0 || stride < width) {
         return std::nullopt;
     }

@@ -47,8 +47,9 @@ constexpr int MAX_BUFFER_DIMENSION =
     131072; // 2^17 = 128K (closest power of 2 to 100k)
 constexpr int MIN_CHANNELS = 1;
 constexpr int MAX_CHANNELS = 4;
-constexpr std::uint64_t MAX_BUFFER_SIZE =
-    16ULL * 1024ULL * 1024ULL * 1024ULL; // 16GB
+// Defined in ipc/raw_data_decode.h so the IPC layer can refuse an oversized
+// declaration before allocating, rather than the two limits drifting apart.
+constexpr std::uint64_t MAX_BUFFER_SIZE = MAX_BUFFER_BYTES;
 } // namespace BufferConstants
 
 struct BufferParams {
