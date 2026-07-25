@@ -29,6 +29,7 @@
 #include <cstddef> // for std::size_t
 #include <cstdint> // for std::uint8_t
 
+#include <limits>
 #include <optional>
 #include <vector> // for std::vector
 
@@ -47,6 +48,20 @@ enum class BufferType {
 // untrusted wire declaration can make the viewer allocate, and is the same
 // ceiling Buffer::update() enforces before uploading a texture.
 constexpr std::uint64_t MAX_BUFFER_BYTES = 16ULL * 1024ULL * 1024ULL * 1024ULL;
+
+// True if `byte_count` is past the ceiling above. Always false where size_t
+// cannot represent such a value -- the 32-bit wasm build -- because comparing
+// directly there is a tautology and a hard error under -Werror. That build is
+// bounded by the container's own max_size() instead.
+[[nodiscard]] constexpr bool
+exceeds_max_buffer_bytes(const std::size_t byte_count) {
+    if constexpr ((std::numeric_limits<std::size_t>::max)() >
+                  MAX_BUFFER_BYTES) {
+        return byte_count > MAX_BUFFER_BYTES;
+    } else {
+        return false;
+    }
+}
 
 // What the viewer can actually display. They live here, below the renderer,
 // so the wire layer can refuse a buffer it would otherwise allocate and then
