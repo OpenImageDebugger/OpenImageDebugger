@@ -726,10 +726,120 @@ TEST(IpcClient, BeginRejectsDeclarationAboveTheByteLimit) {
     EXPECT_NE(cap.out.str().find("exceeds the"), std::string::npos);
 }
 
-// padded_payload_size() reports nullopt both for a shape that makes no sense
-// and for one whose byte count will not fit, and those need different
-// messages: this geometry is entirely well-formed, just too big to measure.
-TEST(IpcClient, BeginDistinguishesAnOversizedGeometryFromAnInvalidOne) {
+// The design review's motivating example: this geometry is otherwise
+// completely valid -- padded_payload_size(1, 131073, 1, 1, UNSIGNED_BYTE) is
+// exactly 131073, matching total_byte_size -- so only the new display-limits
+// check can be refusing it. Before this fix, begin() would have allocated,
+// assembled, and handed it to the model, for Buffer::configure() to drop.
+TEST(IpcClient, BeginRejectsGeometryOutsideDisplayLimits) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    // height = MAX_BUFFER_DIMENSION + 1.
+    t.feed(begin_frame_ex(
+        "v", 1, 131073, 1, 1, BufferType::UNSIGNED_BYTE, std::size_t{131073}));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_EQ(model.size(), 0u);
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("rejected PLOT_BUFFER_BEGIN"), std::string::npos);
+    EXPECT_NE(logged.find("display limits"), std::string::npos);
+}
+
+// Same check, the other geometry axis: channels one past MAX_CHANNEL_COUNT,
+// on the chunked path. The payload backs this shape exactly (4*2*5*1 = 40
+// bytes), so again only the display-limits check can be refusing it.
+TEST(IpcClient, BeginRejectsChannelsAboveDisplayLimit) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    t.feed(begin_frame_ex(
+        "v", 4, 2, 5, 4, BufferType::UNSIGNED_BYTE, std::size_t{40}));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_EQ(model.size(), 0u);
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("rejected PLOT_BUFFER_BEGIN"), std::string::npos);
+    EXPECT_NE(logged.find("display limits"), std::string::npos);
+}
+
+// The single-shot sibling of BeginRejectsGeometryOutsideDisplayLimits: same
+// geometry, but via PLOT_BUFFER_CONTENTS, which has no BufferAssembler::begin
+// to reject it, so handle_plot_buffer_contents() must apply the same check
+// itself.
+TEST(IpcClient, PlotBufferContentsRejectsGeometryOutsideDisplayLimits) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    const std::vector bytes(131073, std::byte{5});
+    MessageComposer c;
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
+        .push(std::string("v"))
+        .push(std::string("disp"))
+        .push(std::string("rgb"))
+        .push(false)
+        .push(1)
+        .push(131073) // height = MAX_BUFFER_DIMENSION + 1
+        .push(1)
+        .push(1)
+        .push(BufferType::UNSIGNED_BYTE)
+        .push(std::span<const std::byte>(bytes));
+    t.feed(frame(c));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    EXPECT_EQ(model.size(), 0u);
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("rejected PLOT_BUFFER_CONTENTS"), std::string::npos);
+    EXPECT_NE(logged.find("display limits"), std::string::npos);
+}
+
+// The boundary itself must not be off by one: height == MAX_BUFFER_DIMENSION
+// and channels == MAX_CHANNEL_COUNT together are still accepted and round
+// trip into the model. (This passes even before the fix -- it pins the
+// boundary, it is not a regression test for the new check.)
+TEST(IpcClient, BeginAcceptsGeometryExactlyAtDisplayLimits) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    constexpr int width = 1;
+    constexpr int stride = 1;
+    constexpr int height = 131072; // MAX_BUFFER_DIMENSION
+    constexpr int channels = 4;    // MAX_CHANNEL_COUNT
+    // UNSIGNED_BYTE keeps this well under MAX_BUFFER_BYTES despite the
+    // maximal height and channel count: 1 * 131072 * 4 * 1 = 512 KiB.
+    constexpr std::size_t total =
+        static_cast<std::size_t>(width) * height * channels;
+    t.feed(begin_frame_ex("v",
+                          width,
+                          height,
+                          channels,
+                          stride,
+                          BufferType::UNSIGNED_BYTE,
+                          total));
+    const std::vector bytes(total, std::byte{3});
+    t.feed(chunk_frame("v", 0, static_cast<std::size_t>(height), bytes));
+    t.feed(end_frame("v"));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    ASSERT_EQ(model.size(), 1u);
+    EXPECT_EQ(model.at(0).bytes.size(), total);
+    EXPECT_TRUE(cap.out.str().empty());
+}
+
+// Before the display-limits check existed, this geometry reached
+// padded_payload_size(), overflowed there, and was reported as "too large to
+// size in bytes". The display-limits check now runs first (width and height
+// are each far past MAX_BUFFER_DIMENSION) and refuses it earlier with a more
+// specific reason, so the overflow branch is never reached for this input.
+TEST(IpcClient, BeginRejectsHugeGeometryWithTheDisplayLimitsDiagnostic) {
     FakeTransport t;
     host::IpcBufferModel model;
     constexpr int huge = std::numeric_limits<int>::max();
@@ -742,7 +852,8 @@ TEST(IpcClient, BeginDistinguishesAnOversizedGeometryFromAnInvalidOne) {
 
     EXPECT_EQ(model.size(), 0u);
     const std::string logged = cap.out.str();
-    EXPECT_NE(logged.find("too large to size"), std::string::npos);
+    EXPECT_NE(logged.find("display limits"), std::string::npos);
+    EXPECT_EQ(logged.find("too large to size"), std::string::npos);
     EXPECT_EQ(logged.find("not renderable"), std::string::npos);
 }
 

@@ -192,6 +192,28 @@ TEST(RawDataDecodeTest, GeometryFitsPayloadDoesNotOverflowOnHostileGeometry) {
         width, height, channels, stride, BufferType::FLOAT64, 1000000));
 }
 
+TEST(RawDataDecodeTest, WithinDisplayLimitsAcceptsBoundaryValues) {
+    EXPECT_TRUE(within_display_limits(
+        MIN_BUFFER_DIMENSION, MIN_BUFFER_DIMENSION, MIN_CHANNEL_COUNT));
+    EXPECT_TRUE(within_display_limits(
+        MAX_BUFFER_DIMENSION, MAX_BUFFER_DIMENSION, MAX_CHANNEL_COUNT));
+}
+
+TEST(RawDataDecodeTest, WithinDisplayLimitsRejectsOnePastEachBound) {
+    EXPECT_FALSE(within_display_limits(
+        MIN_BUFFER_DIMENSION - 1, MIN_BUFFER_DIMENSION, MIN_CHANNEL_COUNT));
+    EXPECT_FALSE(within_display_limits(
+        MIN_BUFFER_DIMENSION, MIN_BUFFER_DIMENSION - 1, MIN_CHANNEL_COUNT));
+    EXPECT_FALSE(within_display_limits(
+        MIN_BUFFER_DIMENSION, MIN_BUFFER_DIMENSION, MIN_CHANNEL_COUNT - 1));
+    EXPECT_FALSE(within_display_limits(
+        MAX_BUFFER_DIMENSION + 1, MAX_BUFFER_DIMENSION, MAX_CHANNEL_COUNT));
+    EXPECT_FALSE(within_display_limits(
+        MAX_BUFFER_DIMENSION, MAX_BUFFER_DIMENSION + 1, MAX_CHANNEL_COUNT));
+    EXPECT_FALSE(within_display_limits(
+        MAX_BUFFER_DIMENSION, MAX_BUFFER_DIMENSION, MAX_CHANNEL_COUNT + 1));
+}
+
 TEST(RawDataDecodeTest,
      PaddedPayloadSizeReturnsExactByteCountForKnownGeometry) {
     // width=4, height=3, channels=2, stride=6, FLOAT32:

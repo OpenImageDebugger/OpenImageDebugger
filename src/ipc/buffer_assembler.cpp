@@ -50,6 +50,13 @@ bool BufferAssembler::begin(BeginParams params) {
         in_progress_.erase(name);
         return false;
     }
+    // The renderer would refuse this geometry anyway (Buffer::configure());
+    // catching it here means the transfer never gets allocated and assembled
+    // first.
+    if (!within_display_limits(params.width, params.height, params.channels)) {
+        in_progress_.erase(name);
+        return false;
+    }
     // Exact, not a lower bound: chunk() spaces rows by
     // total_byte_size / height, so the payload must have a uniform row size.
     // Requiring the padded size also makes the total divisible by height, so

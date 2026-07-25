@@ -173,6 +173,14 @@ void IpcClient::handle_plot_buffer_contents() const {
                   << static_cast<int>(type) << "\n";
         return;
     }
+    if (!within_display_limits(width, height, channels)) {
+        std::cerr << "[OID] rejected PLOT_BUFFER_CONTENTS for '"
+                  << variable_name
+                  << "': geometry exceeds the display limits (max dimension "
+                  << MAX_BUFFER_DIMENSION << ", max " << MAX_CHANNEL_COUNT
+                  << " channels)\n";
+        return;
+    }
     if (!geometry_fits_payload(
             width, height, channels, stride, type, bytes.size())) {
         std::cerr << "[OID] rejected PLOT_BUFFER_CONTENTS for '"
@@ -217,6 +225,8 @@ void IpcClient::handle_plot_buffer_begin() {
     const bool renderable = params.width > 0 && params.height > 0 &&
                             params.channels > 0 &&
                             params.stride >= params.width;
+    const bool displayable =
+        within_display_limits(params.width, params.height, params.channels);
     const auto expected = padded_payload_size(
         params.width, params.height, params.channels, params.stride, wire_type);
     const auto received = params.total_byte_size;
@@ -229,10 +239,17 @@ void IpcClient::handle_plot_buffer_begin() {
         } else if (received > MAX_BUFFER_BYTES) {
             std::cerr << received << " bytes exceeds the " << MAX_BUFFER_BYTES
                       << " byte limit\n";
+        } else if (!displayable) {
+            std::cerr << "geometry exceeds the display limits (max dimension "
+                      << MAX_BUFFER_DIMENSION << ", max " << MAX_CHANNEL_COUNT
+                      << " channels)\n";
         } else if (expected.has_value()) {
             std::cerr << "geometry needs " << *expected << " bytes, got "
                       << received << "\n";
         } else if (renderable) {
+            // Reachable only where size_t is 32 bits, i.e. the wasm build:
+            // with a 64-bit size_t the display limits above already bound the
+            // product some three orders of magnitude below overflow. Keep it.
             std::cerr << "geometry is too large to size in bytes\n";
         } else {
             std::cerr << "geometry is not renderable (width, height and "
