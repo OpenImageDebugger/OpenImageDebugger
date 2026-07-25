@@ -59,6 +59,11 @@ enum class MessageType {
     PLOT_BUFFER_END = 12
 };
 
+// Ceiling on a decoded string length. Names, pixel layouts and session JSON
+// are the only strings on this wire; the bound exists so a peer-supplied
+// length cannot drive an unbounded allocation, not to constrain real data.
+constexpr std::size_t MAX_STRING_BYTES = 16ULL * 1024ULL * 1024ULL;
+
 // C++20 concept to replace SFINAE for primitive type checking
 template <typename T>
 concept PrimitiveType =
@@ -92,6 +97,14 @@ class SocketTimeoutError final : public std::runtime_error {
     const std::source_location& loc = std::source_location::current()) {
     throw SocketTimeoutError{operation, loc};
 }
+
+// A message that cannot be decoded, as opposed to one that has not arrived
+// yet. Derives from std::runtime_error for the same cross-module RTTI reason
+// as SocketTimeoutError above: callers catch the base, never this type.
+class MessageDecodeError final : public std::runtime_error {
+  public:
+    using std::runtime_error::runtime_error;
+};
 
 struct MessageBlock {
     [[nodiscard]] virtual std::size_t size() const noexcept = 0;
@@ -241,6 +254,15 @@ class MessageDecoder {
             return size;
         }();
 
+        // The length comes from the peer and drives the allocation below.
+        // Refuse an impossible one rather than ask the allocator for it: a
+        // throw here has consumed only the length prefix, whereas a
+        // bad_alloc from resize() would leave the payload unread and every
+        // later message decoding from the wrong offset.
+        if (container_size > MAX_BUFFER_BYTES) {
+            throw MessageDecodeError{"declared payload exceeds the maximum "
+                                     "buffer size"};
+        }
         value.resize(container_size);
         read_impl(std::span{value.data(), container_size});
 
@@ -254,6 +276,12 @@ class MessageDecoder {
             return length;
         }();
 
+        // As above. Strings on this wire are names, pixel layouts and session
+        // JSON, none of which approach this bound.
+        if (symbol_length > MAX_STRING_BYTES) {
+            throw MessageDecodeError{"declared string exceeds the maximum "
+                                     "length"};
+        }
         value.resize(symbol_length);
         // std::string uses char* internally, convert to std::byte* for
         // read_impl

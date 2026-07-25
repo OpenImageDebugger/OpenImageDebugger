@@ -43,6 +43,24 @@ enum class BufferType {
     FLOAT64 = 6
 };
 
+// Largest buffer, in bytes, that any path will accept. Bounds what an
+// untrusted wire declaration can make the viewer allocate, and is the same
+// ceiling Buffer::update() enforces before uploading a texture.
+constexpr std::uint64_t MAX_BUFFER_BYTES = 16ULL * 1024ULL * 1024ULL * 1024ULL;
+
+// True if `type` is a value this protocol defines. The wire carries a plain
+// int, and an unknown one would otherwise be silently taken as UNSIGNED_BYTE
+// by type_size()'s default while drawing no pixel label at all.
+[[nodiscard]] constexpr bool is_known_buffer_type(const BufferType type) {
+    using enum BufferType;
+    return type == UNSIGNED_BYTE || type == UNSIGNED_SHORT || type == SHORT ||
+           type == INT32 || type == FLOAT32 || type == FLOAT64;
+}
+
+[[nodiscard]] constexpr bool is_known_buffer_type(const int type) {
+    return is_known_buffer_type(static_cast<BufferType>(type));
+}
+
 std::vector<std::byte>
 make_float_buffer_from_double(const std::vector<std::byte>& buff_double);
 

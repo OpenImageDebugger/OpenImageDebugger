@@ -129,8 +129,10 @@ void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params) {
 
     for (int c = start_ch; c < end_ch; ++c) {
         constexpr auto label_length{30};
-        auto pix_label = std::string{};
-        pix_label.reserve(label_length);
+        // A plain char buffer, not a std::string: pix2str() writes through
+        // this pointer and terminates it by hand, which would be writing past
+        // a string's size() into merely reserved capacity.
+        std::array<char, label_length> pix_label{};
 
         // For single-channel mode, center the value; otherwise use original
         // calculation
