@@ -47,6 +47,19 @@ Entries are matched in precedence order and the **first match wins**:
 So a workspace entry overrides everything, and the built-ins come last. Loading
 happens once per debug session; edits take effect the next session.
 
+### Validation while you edit
+
+Point your file at the schema and any JSON-aware editor will check it as you
+type — a wrong `version`, a missing required field, a misspelled key:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/OpenImageDebugger/OpenImageDebugger/main/resources/schemas/oid-types-v1.json",
+  "version": 1,
+  "types": []
+}
+```
+
 ## File shape
 
 ```json
@@ -61,10 +74,11 @@ happens once per debug session; edits take effect the next session.
 - `version` — required; the v1 loader accepts exactly `1` and skips any other
   file with a warning.
 - `types` — array of entries; array order is precedence order within the file.
-- Unknown keys at the document and entry level are ignored (forward
-  compatibility). Keys inside a value-node object (`if`/`then`/`else`,
-  `first_valid`, `expr`/`map`) are not — an unrecognized one is rejected as
-  a typo.
+- Unknown keys at the document level are tolerated (forward compatibility),
+  so a file written for a future OID still loads. An unknown key inside an
+  entry is not tolerated — see "Error handling" below. Keys inside a
+  value-node object (`if`/`then`/`else`, `first_valid`, `expr`/`map`) are
+  rejected too, as a typo.
 
 ## Entry fields
 
@@ -81,6 +95,7 @@ happens once per debug session; edits take effect the next session.
 | `display_name` | `"{name} ({type})"` | template string; placeholders `{name}` (variable name), `{type}` (type string), `{targ:…}`; not debugger-evaluated |
 | `language` | `"cpp"` | expression dialect; entries a backend can't evaluate are skipped |
 | `name` | the `match` pattern | identifier used in error messages and the conformance tool |
+| `description` | none — absent when unset | free text about the entry; never evaluated, never displayed. JSON has no comments, so this is where an expression gets explained |
 
 ## Value grammar
 
@@ -146,6 +161,12 @@ the entry, while the rest of the file still loads. At plot time, an evaluation
 failure (bad expression, exhausted `first_valid`, invalid/unmapped dtype, null
 pointer) is reported with the entry name, the field, and the **substituted**
 expression text.
+
+An entry carrying a key that is not in the field list above is **skipped**,
+with a warning naming the offending key. This is deliberate: a misspelled
+field name is not applied, so the entry would otherwise run with a default
+silently substituted for the value its author intended. Use `description` for
+notes — JSON has no comment syntax.
 
 ## Migrating a Python inspector
 
