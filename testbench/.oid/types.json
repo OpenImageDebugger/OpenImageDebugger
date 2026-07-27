@@ -1,0 +1,47 @@
+{
+  "$schema": "https://raw.githubusercontent.com/OpenImageDebugger/OpenImageDebugger/main/resources/schemas/oid-types-v1.json",
+  "version": 1,
+  "types": [
+    {
+      "name": "PackedGray8",
+      "description": "Five required fields only; everything else defaults.",
+      "match": "^(?:const\\s+)?PackedGray8(?:\\s*[*&])?$",
+      "pointer": "{sym}.data",
+      "width": "{sym}.w",
+      "height": "{sym}.h",
+      "dtype": "uint8"
+    },
+    {
+      "name": "PaddedBgr8",
+      "description": "stride_bytes is in bytes, so it divides down to pixels.",
+      "match": "^(?:const\\s+)?PaddedBgr8(?:\\s*[*&])?$",
+      "pointer": "{sym}.data",
+      "width": "{sym}.w",
+      "height": "{sym}.h",
+      "channels": "{sym}.channels",
+      "dtype": "uint8",
+      "row_stride": "{sym}.stride_bytes / {channels} / {elemsize}",
+      "pixel_layout": "bgra"
+    },
+    {
+      "name": "PackedRgba8",
+      "description": "channels as a literal rather than a field read.",
+      "match": "^(?:const\\s+)?PackedRgba8(?:\\s*[*&])?$",
+      "pointer": "{sym}.data",
+      "width": "{sym}.w",
+      "height": "{sym}.h",
+      "channels": 4,
+      "dtype": "uint8",
+      "pixel_layout": "rgba"
+    },
+    {
+      "name": "DepthF64",
+      "description": "Double precision, single channel.",
+      "match": "^(?:const\\s+)?DepthF64(?:\\s*[*&])?$",
+      "pointer": "{sym}.samples",
+      "width": "{sym}.w",
+      "height": "{sym}.h",
+      "dtype": "float64"
+    }
+  ]
+}

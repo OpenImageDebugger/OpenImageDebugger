@@ -16,6 +16,8 @@
  *     per-message budget: one just over it, to exercise the chunked transfer
  *     path every other fixture here is too small to reach, and one exactly on
  *     it, which must still cross as a single message.
+ *   - Four structs no built-in entry matches, described only by
+ *     testbench/.oid/types.json -- the user-supplied side of the format.
  *
  * This target is built only when OpenCV and Eigen are found (see CMakeLists).
  * Set a breakpoint on the marked line in main(), run under a debugger with OID
@@ -57,6 +59,41 @@ struct CvMat {
 // bit 31; the declarative entry recovers the value with `depth & 0xffffffff`.
 constexpr int IPL_DEPTH_8U = 8;
 constexpr int IPL_DEPTH_16S = static_cast<int>(0x80000010u);
+
+// --- Custom types ----------------------------------------------------------
+// Described only by testbench/.oid/types.json. Global scope for the same
+// reason as the two structs above.
+
+// Five required fields only: channels, row_stride and pixel_layout default.
+struct PackedGray8 {
+    unsigned char* data;
+    int w;
+    int h;
+};
+
+// stride_bytes is in bytes, so the entry divides it down to pixels. Declares
+// bgra, so the blue and red ramps swap if the layout is ignored.
+struct PaddedBgr8 {
+    unsigned char* data;
+    int w;
+    int h;
+    int channels;
+    int stride_bytes;
+};
+
+// Packed with alpha; its entry states channels as a literal 4.
+struct PackedRgba8 {
+    unsigned char* data;
+    int w;
+    int h;
+};
+
+// Double precision, single channel.
+struct DepthF64 {
+    double* samples;
+    int w;
+    int h;
+};
 
 // Reads: .imageData, .width, .height, .nChannels, .depth, .widthStep.
 struct IplImage {
@@ -289,6 +326,69 @@ int main() {
                Eigen::OuterStride<>>
         eig_map_strided(stride_backing.data(), 6, 8, Eigen::OuterStride<>(12));
 
+    // --- Custom types (testbench/.oid/types.json) ---
+    // If these plot, the user-supplied types file was found and evaluated.
+    // If not, the Debug Console names the file or the offending key.
+    constexpr int kCustomW = 64;
+    constexpr int kCustomH = 48;
+
+    // Horizontal ramp.
+    std::vector<unsigned char> gray_backing(static_cast<std::size_t>(kCustomW) *
+                                            kCustomH);
+    for (int y = 0; y < kCustomH; ++y) {
+        for (int x = 0; x < kCustomW; ++x) {
+            gray_backing[static_cast<std::size_t>(y) * kCustomW + x] =
+                static_cast<unsigned char>(x * 4);
+        }
+    }
+    PackedGray8 custom_gray{gray_backing.data(), kCustomW, kCustomH};
+
+    // 192 bytes of pixels per row, padded to 204 (68 whole pixels). Padding
+    // is saturated, so a wrong stride shows as a white band.
+    constexpr int kBgrStrideBytes = 204;
+    std::vector<unsigned char> bgr_backing(
+        static_cast<std::size_t>(kBgrStrideBytes) * kCustomH, 0xff);
+    for (int y = 0; y < kCustomH; ++y) {
+        for (int x = 0; x < kCustomW; ++x) {
+            unsigned char* px = bgr_backing.data() +
+                                static_cast<std::size_t>(y) * kBgrStrideBytes +
+                                x * 3;
+            px[0] = static_cast<unsigned char>(x * 4);       // B
+            px[1] = static_cast<unsigned char>(y * 5);       // G
+            px[2] = static_cast<unsigned char>(255 - x * 4); // R
+        }
+    }
+    PaddedBgr8 custom_bgr{
+        bgr_backing.data(), kCustomW, kCustomH, 3, kBgrStrideBytes};
+
+    // Red rises left to right, green top to bottom.
+    std::vector<unsigned char> rgba_backing(static_cast<std::size_t>(kCustomW) *
+                                            kCustomH * 4);
+    for (int y = 0; y < kCustomH; ++y) {
+        for (int x = 0; x < kCustomW; ++x) {
+            unsigned char* px =
+                rgba_backing.data() +
+                (static_cast<std::size_t>(y) * kCustomW + x) * 4;
+            px[0] = static_cast<unsigned char>(x * 4); // R
+            px[1] = static_cast<unsigned char>(y * 5); // G
+            px[2] = 128;                               // B
+            px[3] = 255;                               // A
+        }
+    }
+    PackedRgba8 custom_rgba{rgba_backing.data(), kCustomW, kCustomH};
+
+    // Metres, ramped so the min/max readout is worth reading.
+    std::vector<double> depth_backing(static_cast<std::size_t>(kCustomW) *
+                                      kCustomH);
+    for (int y = 0; y < kCustomH; ++y) {
+        for (int x = 0; x < kCustomW; ++x) {
+            depth_backing[static_cast<std::size_t>(y) * kCustomW + x] =
+                0.5 + static_cast<double>(x) / 100.0 +
+                static_cast<double>(y) / 1000.0;
+        }
+    }
+    DepthF64 custom_depth{depth_backing.data(), kCustomW, kCustomH};
+
     std::cout << "Fixtures live: mat_8uc3 " << mat_8uc3.cols << "x"
               << mat_8uc3.rows << ", eig_dyn " << eig_dyn.rows() << "x"
               << eig_dyn.cols() << ". Break on the next line and plot each.\n";
@@ -305,6 +405,10 @@ int main() {
     (void)eig_rowmajor;
     (void)eig_map;
     (void)eig_map_strided;
+    (void)custom_gray;
+    (void)custom_bgr;
+    (void)custom_rgba;
+    (void)custom_depth;
 
     return 0;
 }
