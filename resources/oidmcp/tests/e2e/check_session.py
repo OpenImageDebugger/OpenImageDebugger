@@ -57,8 +57,62 @@ def check_debugger() -> int:
         print('FAIL: unexpected values')
         return 1
 
+    status = check_custom_type(client, symbols)
     client.close()
+    if status:
+        return status
     print('PASS')
+    return 0
+
+
+def check_custom_type(client, symbols) -> int:
+    """
+    Resolve the fixture's RgbFrame, which no builtin entry matches.
+
+    Reaching it at all proves the engine loaded custom_types.json from
+    OID_TYPES_PATH; reading the right pixels out of it proves the JSON's
+    field expressions were evaluated against the real debugger rather than
+    guessed. row_stride carries the weight here: the fixture pads every row
+    to 60 bytes (20 pixels) against a 16-pixel width, so a stride the engine
+    computed as the width would still return a correct row 0 and garbage
+    afterwards.
+    """
+    if 'frame' not in symbols:
+        print('FAIL: frame not observable -- custom_types.json did not load')
+        return 1
+
+    meta, raw = client.get_buffer('frame')
+    print(f'custom type meta: {meta}')
+    if int(meta['row_stride']) != 20:
+        print(f"FAIL: row_stride {meta['row_stride']}, expected 20 pixels "
+              '(60 bytes / 3 channels / 1 byte)')
+        return 1
+
+    arr = decode_buffer(meta, raw)
+    print(f'custom buffer: shape={arr.shape} dtype={arr.dtype}')
+    if arr.shape != (8, 16, 3) or arr.dtype != np.uint8:
+        print('FAIL: unexpected shape or dtype for the custom type')
+        return 1
+
+    rows, cols = np.mgrid[0:8, 0:16]
+    expected = np.stack([(cols * 16) & 0xff,
+                         (rows * 32) & 0xff,
+                         ((rows + cols) * 8) & 0xff],
+                        axis=-1).astype(np.uint8)
+    if not np.array_equal(arr, expected):
+        # The last row is the one a wrong stride corrupts, so name it.
+        print('FAIL: custom buffer pixels differ; '
+              f'row 0 ok={np.array_equal(arr[0], expected[0])} '
+              f'row 7 ok={np.array_equal(arr[7], expected[7])}')
+        return 1
+
+    # Padding must never reach the caller: 0xff anywhere means whole rows
+    # were taken from the gaps rather than de-strided past them.
+    if (arr == 0xff).all(axis=2).any():
+        print('FAIL: saturated pixel found -- padding leaked into the buffer')
+        return 1
+
+    print('custom type: PASS')
     return 0
 
 

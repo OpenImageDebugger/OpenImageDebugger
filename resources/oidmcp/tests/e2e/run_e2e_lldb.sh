@@ -39,6 +39,11 @@ EOF
 
 export OID_AGENT=1
 export OID_AGENT_DIR="$WORK/agent"
+# Custom-type leg: RgbFrame in the fixture matches no builtin entry, so if the
+# checker resolves it, the only thing that can have resolved it is this file.
+# Set here rather than in the lldb command file because the engine reads it
+# from the environment of the debugger's own interpreter.
+export OID_TYPES_PATH="$HERE/custom_types.json"
 
 # `command script import oid.py` runs its main(), which builds the
 # LldbBridge; that bridge runs queue_request() callbacks on its own
