@@ -50,7 +50,7 @@ happens once per debug session; edits take effect the next session.
 ### Validation while you edit
 
 Point your file at the schema and any JSON-aware editor will check it as you
-type — a wrong `version`, a missing required field, a misspelled key:
+type: a missing required field, a misspelled key, most invalid values.
 
 ```json
 {
@@ -204,9 +204,11 @@ division collapses into a single term instead of the if/elif ladder:
   "pointer": "{sym}.data",
   "width": "{sym}.cols",
   "height": "{sym}.rows",
-  "channels": "(({sym}.flags & 4088) >> 3) + 1",
+  "channels": { "if":   "((({sym}.flags & 4088) >> 3) + 1) <= 4",
+                "then": "(({sym}.flags & 4088) >> 3) + 1",
+                "else": "(({sym}.flags & 4064) >> 5) + 1" },
   "dtype": "{sym}.flags & 7",
-  "row_stride": "{sym}.step.buf[0] / {channels} / {elemsize}",
+  "row_stride": "{sym}.step.p[0] / {channels} / {elemsize}",
   "pixel_layout": { "if": "{channels} >= 3", "then": "bgra", "else": "rgba" }
 }
 ```
@@ -214,6 +216,9 @@ division collapses into a single term instead of the if/elif ladder:
 Because `flags & 7` already yields an OID type code (`0, 2, 3, 4, 5, 6`),
 `dtype` is a plain expression and needs no `map`; the `pixel_layout` if/else
 picks BGRA for color Mats and RGBA otherwise.
+
+The `channels` if/else is there because OpenCV widened `CV_CN_MASK` across
+versions: the entry tries the old mask and falls back to the wider one.
 
 ### IplImage — the thorough case
 
@@ -250,14 +255,15 @@ The declarative equivalent — the shipped built-in — is:
              "map": { "8": "uint8", "2147483656": "uint8",
                       "16": "uint16", "2147483664": "int16",
                       "32": "float32", "64": "float64" } },
-  "row_stride": "{sym}.widthStep / {elemsize}",
+  "row_stride": "{sym}.widthStep / {channels} / {elemsize}",
   "pixel_layout": { "if": "{channels} >= 3", "then": "bgra", "else": "rgba" }
 }
 ```
 
-The `map` node replaces the Python `types` dict; `{elemsize}` (derived from the
-resolved dtype) replaces the hand-written `/ depth * 8`, which also fixes the
-row stride for signed depths, where the old arithmetic collapsed to zero.
+The `map` node replaces the Python `types` dict. `widthStep` counts bytes for a
+whole row, so reaching pixels divides by `{channels}` as well as `{elemsize}`.
+`{elemsize}` also replaces the hand-written `/ depth * 8`, which fixes the row
+stride for signed depths, where the old arithmetic collapsed to zero.
 
 Verify a migration against a live symbol with the conformance tool at the
 debugger prompt:
