@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/OpenImageDebugger/OpenImageDebugger/main/resources/schemas/oid-types-v1.json",
+  "version": 1,
+  "types": [
+    {
+      "name": "RgbFrame",
+      "match": "^(?:const\\s+)?RgbFrame(?:\\s*[*&])?$",
+      "pointer": "{sym}.pixels",
+      "width": "{sym}.cols",
+      "height": "{sym}.rows",
+      "channels": "{sym}.channel_count",
+      "dtype": "uint8",
+      "row_stride": "{sym}.stride_bytes / {channels} / {elemsize}",
+      "pixel_layout": "rgba"
+    }
+  ]
+}
