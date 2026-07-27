@@ -463,6 +463,14 @@ SCHEMA_REJECTED_FIXTURES = {
     'map_value_non_node_dict':
         _minimal_entry(height={'expr': '{sym}.h',
                                'map': {'8': {'bogus': 1}}}),
+    'entry_unknown_key':
+        _minimal_entry(widht='{sym}.w'),
+    'entry_unknown_key_alongside_valid':
+        _minimal_entry(channels='{sym}.c', bogus=1),
+    'description_not_a_string':
+        _minimal_entry(description=5),
+    'description_is_none':
+        _minimal_entry(description=None),
 }
 
 
@@ -568,3 +576,27 @@ def test_version_one_accepted_by_both(tmp_path):
 
     schema = json.loads(EDITOR_SCHEMA.read_text(encoding='utf-8'))
     jsonschema.validate(document, schema)  # does not raise
+
+
+# --- Unknown entry keys ---------------------------------------------------
+#
+# A typo'd field name used to load silently: the loader ignored the unknown
+# key and the entry ran with a default in place of the field the author
+# meant to set. Both sides now reject it, which keeps the bidirectional
+# contract intact -- tightening only the schema would make a loader-accepted
+# entry schema-invalid.
+
+def test_description_is_a_known_key_on_both_sides():
+    entry = _minimal_entry(description='why the mask is 4088')
+    assert declarative._validate_entry(entry) == []
+
+    schema = json.loads(EDITOR_SCHEMA.read_text(encoding='utf-8'))
+    jsonschema.validate({'version': 1, 'types': [entry]}, schema)
+
+
+def test_known_entry_keys_matches_the_schema_exactly():
+    # The two lists are maintained by hand in different files and different
+    # languages; if they drift, one side accepts what the other rejects.
+    schema = json.loads(EDITOR_SCHEMA.read_text(encoding='utf-8'))
+    schema_keys = set(schema['definitions']['entry']['properties'])
+    assert declarative.KNOWN_ENTRY_KEYS == schema_keys

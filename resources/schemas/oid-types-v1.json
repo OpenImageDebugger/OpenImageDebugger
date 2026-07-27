@@ -19,9 +19,14 @@
   "definitions": {
     "entry": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["match", "pointer", "width", "height", "dtype"],
       "properties": {
         "name": { "type": "string" },
+        "description": {
+          "type": "string",
+          "description": "Free-text note about this entry. Ignored at load time."
+        },
         "match": { "type": "string" },
         "language": { "type": "string" },
         "pointer": { "$ref": "#/definitions/pointerValueNode" },

@@ -187,12 +187,29 @@ def test_entry_recursion_error_skips_entry_rest_of_file_loads(tmp_path,
                if record.levelno == logging.WARNING)
 
 
-def test_unknown_fields_are_ignored(tmp_path):
-    entry = dict(VALID_DOC['types'][0], frobnicate=True)
-    document = {'version': 1, 'types': [entry], 'future_key': {}}
+def test_unknown_document_level_fields_are_ignored(tmp_path):
+    # A document-level key this loader does not recognize (e.g. a future
+    # format addition) must not stop the file from loading. Entry-level
+    # unknown keys are a different matter -- see
+    # test_unknown_entry_key_warns_and_skips_entry below.
+    document = dict(VALID_DOC, future_key={})
     types_file = tmp_path / 'types.json'
     write_doc(types_file, document)
     assert len(declarative._load_types_file(str(types_file))) == 1
+
+
+def test_unknown_entry_key_warns_and_skips_entry(tmp_path, caplog):
+    # A misspelled field name used to load silently, running with a default
+    # in place of the value its author meant to set. The entry is now
+    # skipped with a warning naming the key.
+    caplog.set_level(logging.DEBUG, logger='oidscripts.logger')
+    entry = dict(VALID_DOC['types'][0], frobnicate=True)
+    document = {'version': 1, 'types': [entry]}
+    types_file = tmp_path / 'types.json'
+    write_doc(types_file, document)
+    assert declarative._load_types_file(str(types_file)) == []
+    assert any('frobnicate' in record.message for record in caplog.records
+               if record.levelno == logging.WARNING)
 
 
 def test_env_var_lists_files_in_order(tmp_path, monkeypatch):
