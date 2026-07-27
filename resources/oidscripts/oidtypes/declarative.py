@@ -62,6 +62,16 @@ DTYPE_ELEMSIZE = {
 }
 
 REQUIRED_FIELDS = ('match', 'pointer', 'width', 'height', 'dtype')
+# Every key an entry may carry. Kept in lockstep with the `entry` definition
+# in resources/schemas/oid-types-v1.json: an editor validating against that
+# schema and this loader have to agree on what a valid entry looks like, in
+# both directions. `description` is free text, ignored at load time -- JSON
+# has no comments, so it is the only place to explain an expression.
+KNOWN_ENTRY_KEYS = frozenset({
+    'name', 'description', 'match', 'language', 'pointer', 'width',
+    'height', 'channels', 'dtype', 'row_stride', 'pixel_layout',
+    'transpose', 'display_name',
+})
 FIELD_DEFAULTS = {
     'channels': 1,
     'row_stride': '{width}',
@@ -702,6 +712,21 @@ def _validate_display_name(entry):
     return errors
 
 
+def _validate_description(entry):
+    """
+    description is free text with no default: unlike display_name it is
+    optional, so a missing key stays valid and only a present-but-wrong-type
+    value is rejected. isinstance(True, str) is False, so a bool is rejected
+    naturally along with every other non-string JSON shape (int, list,
+    object, null).
+    """
+    if 'description' not in entry:
+        return []
+    if not isinstance(entry['description'], str):
+        return ['description must be a string']
+    return []
+
+
 def _validate_entry(entry):
     """
     Load-time structural validation of one entry. Returns a list of
@@ -717,10 +742,16 @@ def _validate_entry(entry):
     for field in REQUIRED_FIELDS:
         if field not in entry:
             errors.append(f'missing required field "{field}"')
+    unknown = sorted(set(entry) - KNOWN_ENTRY_KEYS)
+    if unknown:
+        errors.append(
+            'unknown key(s) %s; a misspelled field is ignored rather than '
+            'applied, so the entry is skipped' % unknown)
     errors.extend(_validate_match(entry))
     for field in RESOLUTION_ORDER:
         errors.extend(_validate_field(entry, field))
     errors.extend(_validate_display_name(entry))
+    errors.extend(_validate_description(entry))
     return errors
 
 
