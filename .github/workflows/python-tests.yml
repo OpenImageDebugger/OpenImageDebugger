@@ -48,6 +48,8 @@ jobs:
       # The oid-mcp test suite is pure Python (it drives the endpoint through
       # in-process fakes), so it needs no debugger or OID build. uv resolves
       # the runtime + dev deps from resources/oidmcp/pyproject.toml.
+      # (test_gdb_live.py skips itself here unless the runner image happens
+      # to ship gdb; the gdb-live job below runs it unconditionally.)
       - name: Run oid-mcp test suite
         shell: bash
         working-directory: resources/oidmcp
@@ -55,3 +57,38 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           uv sync --frozen --no-build --no-install-project
           .venv/bin/python -m pytest -v
+
+  gdb-live:
+    name: Python tests (gdb, ${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-26.04]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # 7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install gdb and g++
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gdb g++
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.28"
+
+      # The rest of the suite proves the resolver against in-process fakes;
+      # this lane proves the same two entry points inside gdb's embedded
+      # Python — block iteration, parse_and_eval field reads, and the
+      # user-types latch — against the checked-in testbench types.json.
+      - name: Run the gdb resolver test
+        shell: bash
+        working-directory: resources/oidmcp
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv sync --frozen --no-build --no-install-project
+          .venv/bin/python -m pytest -v -ra tests/test_gdb_live.py
