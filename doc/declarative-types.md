@@ -97,6 +97,11 @@ type: a missing required field, a misspelled key, most invalid values.
 | `name` | the `match` pattern | identifier used in error messages and the conformance tool |
 | `description` | none — absent when unset | free text about the entry; never evaluated, never displayed. JSON has no comments, so this is where an expression gets explained |
 
+Write template arguments with `,\s*` rather than a literal comma-space:
+debug-info readers disagree on the spacing (`Foo<unsigned char, 3>` vs
+`Foo<unsigned char,3>`), and a regex that encodes one spelling silently never
+matches under the other. `{targ:N}` extraction is unaffected either way.
+
 ## Value grammar
 
 A field value is a **scalar** or one of **three object nodes**.
