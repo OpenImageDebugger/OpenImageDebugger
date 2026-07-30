@@ -5,8 +5,12 @@ node resolution and entry validation. No debugger involved — a recording
 fake bridge stands in for expression evaluation.
 """
 
+import json
+import os
+
 import pytest
 
+from oidscripts import oidtypes
 from oidscripts import symbols
 from oidscripts.debuggers.template_args import TemplateTypeName
 from oidscripts.oidtypes import declarative
@@ -842,3 +846,34 @@ def test_first_valid_min_returns_leaf_result_for_valid_value():
     assert declarative._resolve_first_valid(
         resolution, candidates,
         declarative._leaf_dtype) == symbols.OID_TYPES_FLOAT32
+
+
+def test_match_tolerates_both_template_comma_spellings():
+    # Debug-info readers disagree on template-argument spacing: some spell
+    # Tile<unsigned char, 3>, others Tile<unsigned char,3>. An entry written
+    # with ',\s*' must match both.
+    entry = {
+        'name': 'TileU8x3',
+        'match': r'^(?:const\s+)?Tile<unsigned char,\s*3>(?:\s*[*&])?$',
+        'pointer': '{sym}.data',
+        'width': '{sym}.w',
+        'height': '{sym}.h',
+        'dtype': 'uint8',
+    }
+    inspector = declarative.DeclarativeInspector(entry, 'test')
+    for spelling in ('Tile<unsigned char, 3>', 'Tile<unsigned char,3>'):
+        symbol = FakeSymbol(TemplateTypeName(spelling))
+        assert inspector.is_symbol_observable(symbol, 'tile'), spelling
+
+
+def test_builtin_matchers_never_encode_a_comma_space():
+    # A literal ', ' in a builtin match regex silently unmatches readers
+    # that drop the space. Builtins must stay comma-agnostic.
+    path = os.path.join(os.path.dirname(oidtypes.__file__),
+                        'builtin_types.json')
+    with open(path, 'r', encoding='utf-8') as fh:
+        doc = json.load(fh)
+    for entry in doc['types']:
+        assert ', ' not in entry['match'], (
+            "builtin '%s' encodes a literal comma-space in its match regex"
+            % entry['name'])
