@@ -22,8 +22,26 @@ CONTRACT_KEYS = ('display_name', 'width', 'height', 'channels', 'type',
 # Guards against a page overrunning a transport's ~1024-character string
 # ceiling -- the exact failure mode paging exists to prevent. Each item
 # carries a name plus a type string, and a canonical Eigen type name alone
-# can exceed 70 characters, so even a modest item count adds up fast.
-MAX_OBSERVABLE_PAGE_LIMIT = 8
+# can exceed 70 characters, so even a modest item count adds up fast. This
+# is a default, not a hard limit: a caller whose own transport can carry
+# more is free to ask for a bigger page (see MAX_OBSERVABLE_PAGE_LIMIT
+# below). A caller that asks for nothing gets this value.
+DEFAULT_OBSERVABLE_PAGE_LIMIT = 8
+
+# The ceiling any caller's limit is clamped to, kept deliberately separate
+# from the default above: the default protects a caller stuck with a
+# roughly 1024-character transport, but that budget belongs to the
+# caller's transport, not to the engine, so it must not cap every caller.
+# The ceiling exists only to stop a request for something absurd.
+#
+# Sized the same way the default is: each item is JSON with a name plus a
+# type string, and a canonical template type name can run past 70
+# characters, so call it on the order of 100-150 bytes once the
+# surrounding quotes, colon, and comma are counted. 128 items keeps a
+# full page within roughly 16KB, comfortably above what the default
+# guards against, while still a concrete, finite stop rather than no
+# limit at all.
+MAX_OBSERVABLE_PAGE_LIMIT = 128
 
 
 def _emit(payload):
@@ -78,7 +96,7 @@ def resolve(name, host=None):
         return _emit({'error': 'malformed metadata for %r: %s' % (name, exc)})
 
 
-def list_observable(offset=0, limit=MAX_OBSERVABLE_PAGE_LIMIT, host=None):
+def list_observable(offset=0, limit=DEFAULT_OBSERVABLE_PAGE_LIMIT, host=None):
     """A page of plottable symbols, so a long list cannot overrun a
     transport's string ceiling.
 
