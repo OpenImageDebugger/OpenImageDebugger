@@ -143,6 +143,70 @@ def test_list_observable_clamps_a_limit_above_the_maximum():
     assert out['total'] == total_symbols
 
 
+def test_list_observable_defaults_to_eight_when_no_limit_is_passed():
+    """Separating the default from the ceiling must not move the default:
+    a caller that asks for nothing still gets eight."""
+    syms = [{'name': 'v%d' % i, 'type': 'cv::Mat'} for i in range(20)]
+    host = FakeHost(symbols=syms)
+
+    out = _payload(oid_resolve.list_observable(host=host))
+
+    assert oid_resolve.DEFAULT_OBSERVABLE_PAGE_LIMIT == 8
+    assert len(out['items']) == oid_resolve.DEFAULT_OBSERVABLE_PAGE_LIMIT
+
+
+def test_list_observable_honors_a_limit_between_the_default_and_the_ceiling():
+    """The whole point of separating the two roles: a caller whose own
+    transport can carry more than the default must no longer be cut down
+    to it, as long as it asks for no more than the ceiling."""
+    limit = oid_resolve.DEFAULT_OBSERVABLE_PAGE_LIMIT + 10
+    assert limit < oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT
+    syms = [{'name': 'v%d' % i, 'type': 'cv::Mat'} for i in range(limit + 5)]
+    host = FakeHost(symbols=syms)
+
+    out = _payload(oid_resolve.list_observable(0, limit, host=host))
+
+    assert len(out['items']) == limit
+
+
+def test_list_observable_honors_a_limit_exactly_at_the_ceiling():
+    ceiling = oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT
+    syms = [{'name': 'v%d' % i, 'type': 'cv::Mat'} for i in range(ceiling + 5)]
+    host = FakeHost(symbols=syms)
+
+    out = _payload(oid_resolve.list_observable(0, ceiling, host=host))
+
+    assert len(out['items']) == ceiling
+
+
+def test_list_observable_clamps_a_limit_one_above_the_ceiling():
+    ceiling = oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT
+    syms = [{'name': 'v%d' % i, 'type': 'cv::Mat'} for i in range(ceiling + 5)]
+    host = FakeHost(symbols=syms)
+
+    out = _payload(oid_resolve.list_observable(0, ceiling + 1, host=host))
+
+    assert len(out['items']) == ceiling
+
+
+def test_list_observable_total_reports_every_symbol_regardless_of_page_size():
+    """total must reflect the true symbol count whether the caller takes
+    a small page, the default, or the whole list in one go."""
+    total_symbols = oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT + 37
+    syms = [{'name': 'v%d' % i, 'type': 'cv::Mat'}
+            for i in range(total_symbols)]
+    host = FakeHost(symbols=syms)
+
+    small_page = _payload(oid_resolve.list_observable(0, 3, host=host))
+    default_page = _payload(oid_resolve.list_observable(host=host))
+    full_page = _payload(
+        oid_resolve.list_observable(0, total_symbols, host=host))
+
+    assert small_page['total'] == total_symbols
+    assert default_page['total'] == total_symbols
+    assert full_page['total'] == total_symbols
+
+
 def test_payloads_always_carry_the_sentinel():
     assert oid_resolve.resolve('m', host=FakeHost(metadata=BASE)).endswith(SENTINEL)
     assert oid_resolve.list_observable(0, 1, host=FakeHost()).endswith(SENTINEL)
