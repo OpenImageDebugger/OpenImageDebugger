@@ -22,14 +22,27 @@ instance = None
 # JIT and its trouble resolving heavy templated types (e.g. Eigen).
 _PLAIN_IDENTIFIER_RE = re.compile(r'^[A-Za-z_]\w*$')
 
-# The type classes whose children are the type's own declared members.
-# Anything else (an array above all) has children that are elements, and
-# an element is reached by subscripting, which no name the member walk can
-# spell does. This is the same judgement the gdb path makes with
-# TYPE_CODE_STRUCT before calling fields().
-_MEMBER_BEARING_TYPE_CLASSES = (lldb.eTypeClassStruct |
-                                lldb.eTypeClassClass |
-                                lldb.eTypeClassUnion)
+def _member_bearing_type_classes():
+    # type: () -> int
+    """The type classes whose children are the type's own declared members.
+
+    Anything else (an array above all) has children that are elements, and
+    an element is reached by subscripting, which no name the member walk
+    can spell does. This is the same judgement the gdb path makes with
+    TYPE_CODE_STRUCT before calling fields().
+
+    Read here rather than at import, and with defaults, because an `lldb`
+    that imports and carries nothing is a state this project supports: a
+    gdb interpreter can have a placeholder on its path, and selecting gdb
+    depends on importing this module without incident. Touching an lldb
+    attribute at import turns that into a hard failure for callers that
+    never reach the lldb path at all. A mask of zero then means no value
+    is descended into, which costs nothing: there is no live process to
+    descend in.
+    """
+    return (getattr(lldb, 'eTypeClassStruct', 0) |
+            getattr(lldb, 'eTypeClassClass', 0) |
+            getattr(lldb, 'eTypeClassUnion', 0))
 
 
 def frame_from_debugger(debugger):
@@ -102,7 +115,7 @@ def _children_are_declared_members(symbol):
         if not symbol_type.IsValid():
             return False
         symbol_type = symbol_type.GetCanonicalType()
-    return bool(symbol_type.GetTypeClass() & _MEMBER_BEARING_TYPE_CLASSES)
+    return bool(symbol_type.GetTypeClass() & _member_bearing_type_classes())
 
 
 def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
