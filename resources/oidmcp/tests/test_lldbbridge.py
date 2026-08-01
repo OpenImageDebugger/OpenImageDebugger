@@ -457,3 +457,31 @@ def test_importing_with_an_inert_lldb_does_not_raise(monkeypatch):
     monkeypatch.delitem(sys.modules, 'oidscripts.debuggers.lldbbridge')
 
     importlib.import_module('oidscripts.debuggers.lldbbridge')
+
+
+def test_type_class_mask_follows_a_later_real_lldb(monkeypatch):
+    """The mask must come from the lldb in force now, not at import.
+
+    A module-level `import lldb` binds once and permanently, so a module
+    imported while lldb was inert keeps reading the inert one even after a
+    real lldb is in place. The mask would stay empty, no value would be
+    descended into, and buffers held as struct members would go missing
+    from the listing with nothing reported.
+    """
+    import importlib
+    import sys
+    import types
+
+    monkeypatch.setitem(sys.modules, 'lldb', types.ModuleType('lldb'))
+    monkeypatch.delitem(sys.modules, 'oidscripts.debuggers.lldbbridge')
+    imported_while_inert = importlib.import_module(
+        'oidscripts.debuggers.lldbbridge')
+
+    real = types.ModuleType('lldb')
+    real.eTypeClassStruct = 16384
+    real.eTypeClassClass = 8
+    real.eTypeClassUnion = 65536
+    monkeypatch.setitem(sys.modules, 'lldb', real)
+
+    assert imported_while_inert._member_bearing_type_classes() == (
+        16384 | 8 | 65536)

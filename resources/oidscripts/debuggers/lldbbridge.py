@@ -40,6 +40,14 @@ def _member_bearing_type_classes():
     is descended into, which costs nothing: there is no live process to
     descend in.
     """
+    # Local, not the module-level name, for the same reason
+    # frame_from_debugger takes one: that name binds once, permanently, to
+    # whatever was in sys.modules the first time this module was imported.
+    # A module imported while lldb was inert would keep reading the inert
+    # one after a real lldb arrived, the mask would stay empty, nothing
+    # would be descended into, and buffers held as members would vanish
+    # from the listing with nothing said.
+    import lldb
     return (getattr(lldb, 'eTypeClassStruct', 0) |
             getattr(lldb, 'eTypeClassClass', 0) |
             getattr(lldb, 'eTypeClassUnion', 0))
