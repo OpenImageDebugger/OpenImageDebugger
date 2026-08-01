@@ -22,6 +22,15 @@ instance = None
 # JIT and its trouble resolving heavy templated types (e.g. Eigen).
 _PLAIN_IDENTIFIER_RE = re.compile(r'^[A-Za-z_]\w*$')
 
+# The type classes whose children are the type's own declared members.
+# Anything else (an array above all) has children that are elements, and
+# an element is reached by subscripting, which no name the member walk can
+# spell does. This is the same judgement the gdb path makes with
+# TYPE_CODE_STRUCT before calling fields().
+_MEMBER_BEARING_TYPE_CLASSES = (lldb.eTypeClassStruct |
+                                lldb.eTypeClassClass |
+                                lldb.eTypeClassUnion)
+
 
 def frame_from_debugger(debugger):
     # type: (lldb.SBDebugger) -> lldb.SBFrame
@@ -74,6 +83,28 @@ def evaluate_in_frame(frame, expression):
     return SymbolWrapper(result)
 
 
+def _children_are_declared_members(symbol):
+    # type: (lldb.SBValue) -> bool
+    """Whether `symbol`'s children are its type's declared members rather
+    than the elements of a sequence.
+
+    Pointers and references peel first: `this` is a pointer, and lldb
+    serves a pointer-to-class's children as the pointee's members, which
+    is the only reason a member of `this` surfaces at all."""
+    symbol_type = symbol.GetType()
+    if not symbol_type.IsValid():
+        return False
+    symbol_type = symbol_type.GetCanonicalType()
+    while symbol_type.IsPointerType() or symbol_type.IsReferenceType():
+        symbol_type = symbol_type.GetPointeeType() \
+            if symbol_type.IsPointerType() \
+            else symbol_type.GetDereferencedType()
+        if not symbol_type.IsValid():
+            return False
+        symbol_type = symbol_type.GetCanonicalType()
+    return bool(symbol_type.GetTypeClass() & _MEMBER_BEARING_TYPE_CLASSES)
+
+
 def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
                    record_hit):
     # type: (lldb.SBValue, list, frozenset, TypeInspectorInterface, callable) -> None
@@ -81,14 +112,24 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     `record_hit(qualified_name, SymbolWrapper)` for each observable one."""
     if symbol.GetTypeName() in visited_typenames:
         return  # this type is already on the path from the root
+    if not _children_are_declared_members(symbol):
+        return  # a sequence, a scalar: no named member to reach
     # Mark this symbol's type, not the child's, before descending: the
     # latter trips the recursive call's own guard on its first check,
     # stopping traversal after one hop. Copy rather than mutate, so
     # sibling branches don't block each other from descending a type.
     visited_typenames = visited_typenames | {symbol.GetTypeName()}
 
-    for member_idx in range(symbol.GetNumChildren()):
-        symbol_member = symbol.GetChildAtIndex(member_idx)
+    # The value as the compiler declares it. A data formatter's children
+    # are its own invention: a std::vector's children ARE its elements,
+    # 57600 of them for a 160x120x3 image, so walking the formatted view
+    # makes listing a frame's symbols cost one wrap and one type test per
+    # element of every container in scope. The non-synthetic view of that
+    # same vector has three children however many bytes it holds.
+    declared = symbol.GetNonSyntheticValue()
+
+    for member_idx in range(declared.GetNumChildren()):
+        symbol_member = declared.GetChildAtIndex(member_idx)
         chain = member_name_chain + [str(symbol_member.name)]
         wrapped = SymbolWrapper(symbol_member)
         if type_bridge.is_symbol_observable(wrapped, symbol_member.name):

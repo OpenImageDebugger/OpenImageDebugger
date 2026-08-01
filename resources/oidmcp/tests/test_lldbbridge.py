@@ -12,6 +12,7 @@ import sys
 
 import pytest
 from conftest import (
+    LLDB,
     FakeDebugger,
     FakeFrame,
     FakeSBType,
@@ -270,6 +271,100 @@ def test_observable_symbols_visits_both_siblings_through_the_same_type():
     found = _observable_names(root, observable_typenames={'Buffer'})
 
     assert found == {'root.a.image', 'root.b.image'}
+
+
+# --- the descent's cost must scale with how many symbols a frame has, not
+# with how much data they hold. A value with a data formatter serves its
+# ELEMENTS as children, so enumerating them costs one wrap and one type
+# test per element (three seconds, on a frame holding one small image),
+# and no element can be a hit the containing value would not already be.
+
+def _container_local(element_count):
+    """A container-shaped local: `element_count` formatter-provided
+    elements over three declared members. That is the shape lldb reports
+    for a std::vector, whose non-synthetic view is the three pointers
+    __begin_/__end_/__end_cap_ however many bytes it holds. Elements are
+    given an observable type, so a walk that enumerates them is caught by
+    what it emits as well as by what it fetches."""
+    members = [FakeSBValue(member_name, 'unsigned char *',
+                           type_class=LLDB.eTypeClassPointer)
+               for member_name in ('__begin_', '__end_', '__end_cap_')]
+    return FakeSBValue('backing', 'std::vector<unsigned char>',
+                       children=members,
+                       synthetic_child_count=element_count,
+                       element_typename='Buffer')
+
+
+def test_a_sequence_shaped_value_is_not_enumerated():
+    backing = _container_local(element_count=100_000)
+
+    found = _observable_names(backing, observable_typenames={'Buffer'})
+
+    # Not one element fetched, and none emitted: an element is reached by
+    # subscripting the container, which no name the walk can spell does.
+    assert backing.child_fetches == 3
+    assert found == set()
+
+
+def test_child_fetches_do_not_grow_with_the_child_count():
+    small = _container_local(element_count=1_000)
+    large = _container_local(element_count=100_000)
+
+    _observable_names(small, observable_typenames={'Buffer'})
+    _observable_names(large, observable_typenames={'Buffer'})
+
+    # A hundredfold more data, the same amount of work.
+    assert large.child_fetches == small.child_fetches
+
+
+def test_an_array_valued_member_is_not_enumerated():
+    # An array's children are declared, not formatter-provided, so the
+    # non-synthetic view does not rescue this one: the type class has to.
+    elements = [FakeSBValue('[%d]' % index, 'Buffer') for index in range(500)]
+    pixels = FakeSBValue('pixels', 'unsigned char[500]', children=elements,
+                         type_class=LLDB.eTypeClassArray)
+    holder = FakeSBValue('holder', 'Holder', children=[pixels])
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert pixels.child_fetches == 0
+    assert found == set()
+
+
+def test_a_buffer_held_as_a_struct_member_is_still_found_beside_a_container():
+    # The member-held buffer is the reason the descent exists. A refused
+    # sibling must not end the walk, nor cost the struct its own members.
+    image = FakeSBValue('image', 'Buffer')
+    holder = FakeSBValue('holder', 'Holder',
+                         children=[_container_local(element_count=100_000),
+                                   image])
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert 'holder.image' in found
+
+
+def test_a_member_of_this_still_surfaces_bare():
+    # `this` is a pointer, and lldb serves a pointer-to-class's children
+    # as the pointee's members; observable_symbols() drops the leading
+    # segment so the emitted name is one the frame can evaluate.
+    image = FakeSBValue('image', 'Buffer')
+    this = FakeSBValue('this', 'Holder *', children=[image],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+
+    found = _observable_names(this, observable_typenames={'Buffer'})
+
+    assert found == {'image'}
+
+
+def test_a_scalar_local_is_not_descended_into():
+    # Nothing to find behind a builtin, and lldb reports one child for a
+    # pointer-to-scalar. Refusing both keeps the walk off the data.
+    scalar = FakeSBValue('width', 'int', type_class=LLDB.eTypeClassBuiltin)
+
+    assert _observable_names(scalar, observable_typenames={'Buffer'}) == set()
+    assert scalar.child_fetches == 0
 
 
 # --- LldbBridge.evaluate_expression / get_available_symbols: thin wrappers
