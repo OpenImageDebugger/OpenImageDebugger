@@ -438,3 +438,22 @@ def test_evaluate_expression_wraps_a_non_runtime_error_from_the_shared_evaluator
 
     with pytest.raises(RuntimeError):
         bridge.evaluate_expression('x')
+
+
+def test_importing_with_an_inert_lldb_does_not_raise(monkeypatch):
+    """An `lldb` that imports but carries nothing is a supported state.
+
+    A gdb interpreter can have a placeholder `lldb` on its path, and
+    current_host() relies on reaching the gdb probe in that case. Reading
+    any lldb attribute while this module is being imported turns that
+    supported state into a hard failure for callers that never touch the
+    lldb path at all.
+    """
+    import importlib
+    import sys
+    import types
+
+    monkeypatch.setitem(sys.modules, 'lldb', types.ModuleType('lldb'))
+    monkeypatch.delitem(sys.modules, 'oidscripts.debuggers.lldbbridge')
+
+    importlib.import_module('oidscripts.debuggers.lldbbridge')
