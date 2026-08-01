@@ -37,18 +37,38 @@ if RESOURCES_DIR not in sys.path:
 # another one.
 _LLDB_STUB = types.ModuleType('lldb')
 _LLDB_STUB.eTypeIsInteger = 1 << 8
+# Type-class bits, carrying lldb's own values. lldbbridge reads these to
+# decide which values it may descend into: a struct's children are its
+# declared members, an array's are elements.
+_LLDB_STUB.eTypeClassArray = 1
+_LLDB_STUB.eTypeClassBuiltin = 4
+_LLDB_STUB.eTypeClassClass = 8
+_LLDB_STUB.eTypeClassPointer = 4096
+_LLDB_STUB.eTypeClassReference = 8192
+_LLDB_STUB.eTypeClassStruct = 16384
+_LLDB_STUB.eTypeClassUnion = 65536
 _LLDB_STUB.SBValue = object
-sys.modules.setdefault('lldb', _LLDB_STUB)
+# Whichever module actually ended up installed: the stub, or a real lldb
+# when this suite runs inside a debugger's interpreter. The fakes below
+# read their type-class constants from it, so they always agree with the
+# ones lldbbridge itself is looking at.
+LLDB = sys.modules.setdefault('lldb', _LLDB_STUB)
 
 from oidscripts import wireframe as wf
 from oidscripts.debuggers.interfaces import raise_if_too_large
 
 
 class FakeSBType:
-    """Just enough of lldb.SBType for SymbolWrapper's constructor."""
+    """Just enough of lldb.SBType for SymbolWrapper's constructor and for
+    lldbbridge's descent guard: a type class, plus the pointer/reference
+    peeling the guard performs before testing it. The default type class
+    is a struct, so a node built without one is descended into."""
 
-    def __init__(self, name):
+    def __init__(self, name, type_class=None, pointee=None):
         self._name = name
+        self._type_class = (LLDB.eTypeClassStruct if type_class is None
+                            else type_class)
+        self._pointee = pointee
 
     def IsValid(self):
         return True
@@ -59,28 +79,86 @@ class FakeSBType:
     def GetName(self):
         return self._name
 
+    def GetTypeClass(self):
+        return self._type_class
+
+    def IsPointerType(self):
+        return self._type_class == LLDB.eTypeClassPointer
+
+    def IsReferenceType(self):
+        return self._type_class == LLDB.eTypeClassReference
+
+    def GetPointeeType(self):
+        # An unspecified pointee is a scalar, the commonest case (`char *`).
+        return self._pointee if self._pointee is not None \
+            else FakeSBType(self._name, LLDB.eTypeClassBuiltin)
+
+    def GetDereferencedType(self):
+        return self.GetPointeeType()
+
 
 class FakeSBValue:
     """A minimal SBValue-like tree node for exercising
     lldbbridge.observable_symbols()'s recursive member traversal without a
     real debugger. `children` may itself reference an ancestor node to
-    build a genuine cycle."""
+    build a genuine cycle.
 
-    def __init__(self, name, typename, children=()):
+    `children` are the value's DECLARED members, what lldb serves from
+    the non-synthetic view. `synthetic_child_count` puts a data formatter
+    in play: GetNumChildren() then reports that many ELEMENTS and
+    GetChildAtIndex() manufactures them on demand, which is exactly what
+    lldb reports for a std::vector (57600 children for 57600 bytes, over
+    three declared members). Every child served is counted in
+    `child_fetches`, on the owning node whether it came from the
+    formatter or from the declared view, so a test can assert the total
+    does not track the element count."""
+
+    def __init__(self, name, typename, children=(), type_class=None,
+                 pointee_type_class=None, synthetic_child_count=None,
+                 element_typename='Element'):
         self.name = name
         self._typename = typename
         self._children = list(children)
+        self._type_class = type_class
+        self._pointee_type_class = pointee_type_class
+        self._synthetic_child_count = synthetic_child_count
+        self._element_typename = element_typename
+        self._declared_view = None
+        self._fetch_owner = self
+        self.child_fetches = 0
 
     def GetTypeName(self):
         return self._typename
 
     def GetType(self):
-        return FakeSBType(self._typename)
+        pointee = None
+        if self._pointee_type_class is not None:
+            pointee = FakeSBType(self._typename, self._pointee_type_class)
+        return FakeSBType(self._typename, self._type_class, pointee)
+
+    def GetNonSyntheticValue(self):
+        """lldb hands back the same value with formatters switched off,
+        exposing the type's declared members instead of the formatter's
+        elements. Without a formatter in play it is the value itself."""
+        if self._synthetic_child_count is None:
+            return self
+        if self._declared_view is None:
+            view = FakeSBValue(self.name, self._typename, self._children,
+                               type_class=self._type_class,
+                               pointee_type_class=self._pointee_type_class)
+            view._fetch_owner = self
+            self._declared_view = view
+        return self._declared_view
 
     def GetNumChildren(self):
+        if self._synthetic_child_count is not None:
+            return self._synthetic_child_count
         return len(self._children)
 
     def GetChildAtIndex(self, index):
+        self._fetch_owner.child_fetches += 1
+        if self._synthetic_child_count is not None:
+            return FakeSBValue('[%d]' % index, self._element_typename)
         return self._children[index]
 
     def set_children(self, children):
