@@ -32,6 +32,7 @@
 #include "host/agent/natural_pixel_layout.h"
 #include "host/agent/wire_buffer_type.h"
 #include "host/ui/panels/panel_accessors.h"
+#include "host/util/log_preview.h"
 #include "visualization/components/buffer.h"
 #include "visualization/components/camera.h"
 
@@ -245,16 +246,21 @@ bool NativeViewModel::set_channel(const std::string_view name,
         if (const auto decision = natural_pixel_layout(record, current_layout);
             decision.layout) {
             if (decision.cleared_isolation) {
-                std::cerr << "[OID] set_channel(all) for '" << name
-                          << "': invalid pixel_layout '" << record.pixel_layout
+                std::cerr << "[OID] set_channel(all) for '"
+                          << log_preview(name, NAME_PREVIEW_CHARS)
+                          << "': invalid pixel_layout '"
+                          << log_preview(record.pixel_layout)
                           << "' on record; clearing the isolated '"
-                          << current_layout << "' layout, defaulting to '"
-                          << *decision.layout << "'\n";
+                          << log_preview(current_layout)
+                          << "' layout, defaulting to '" << *decision.layout
+                          << "'\n";
             }
             buffer->set_pixel_layout(*decision.layout);
         } else {
-            std::cerr << "[OID] set_channel(all) for '" << name
-                      << "': invalid pixel_layout '" << record.pixel_layout
+            std::cerr << "[OID] set_channel(all) for '"
+                      << log_preview(name, NAME_PREVIEW_CHARS)
+                      << "': invalid pixel_layout '"
+                      << log_preview(record.pixel_layout)
                       << "' on record; keeping the buffer's current layout\n";
         }
         buffer->set_display_channel_mode(-1);
