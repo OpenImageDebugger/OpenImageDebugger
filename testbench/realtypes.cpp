@@ -410,5 +410,32 @@ int main() {
     (void)custom_rgba;
     (void)custom_depth;
 
+        // Same fixtures, hit repeatedly, with the pixels different every time.
+    // A viewer that draws only the first stop's contents looks exactly like
+    // one that redraws correctly, until something actually moves on screen.
+    // Plot a buffer at the first stop, then continue: the gray ramp slides
+    // sideways, the depth plane lifts, and the green channel of the padded
+    // rows walks, so three different declared-type paths are visibly
+    // refreshed rather than merely re-sent.
+    for (int step = 1; step <= 8; ++step) {
+        for (int y = 0; y < kCustomH; ++y) {
+            for (int x = 0; x < kCustomW; ++x) {
+                const std::size_t i =
+                    static_cast<std::size_t>(y) * kCustomW + x;
+                gray_backing[i] =
+                    static_cast<unsigned char>((x + step * 16) * 4);
+                depth_backing[i] += 0.25;
+                unsigned char* px = bgr_backing.data() +
+                                    static_cast<std::size_t>(y) *
+                                        kBgrStrideBytes +
+                                    x * 3;
+                px[1] = static_cast<unsigned char>((y * 5 + step * 24) & 0xff);
+            }
+        }
+        // >>> SET A BREAKPOINT ON THE NEXT LINE TO WATCH BUFFERS UPDATE <<<
+        volatile int oid_breakpoint_step = step;
+        (void)oid_breakpoint_step;
+    }
+
     return 0;
 }
