@@ -441,6 +441,64 @@ TEST(IpcClient, ReplotWithInvalidLayoutKeepsExistingValidLayout) {
     EXPECT_NE(logged.find("pixel_layout ''"), std::string::npos);
 }
 
+// The kept layout's premise dies with the channel count: a layout declared
+// for the record's OLD shape must not survive onto a replot that changes
+// how many channels there are, or the preserved swizzle addresses
+// components the new texture does not have. A reshaping replot with an
+// invalid layout takes the default instead.
+TEST(IpcClient, AReshapingReplotWithInvalidLayoutTakesTheDefault) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+
+    // First plot: 2x2, 3-channel, valid "bgra" layout.
+    {
+        MessageComposer c;
+        std::vector bytes(12, std::byte{5});
+        c.push(MessageType::PLOT_BUFFER_CONTENTS)
+            .push(std::string("v"))
+            .push(std::string("disp"))
+            .push(std::string("bgra"))
+            .push(false)
+            .push(2)
+            .push(2)
+            .push(3)
+            .push(2)
+            .push(BufferType::UNSIGNED_BYTE)
+            .push(std::span<const std::byte>(bytes));
+        t.feed(frame(c));
+    }
+    host::IpcClient client(t, model);
+    client.poll();
+    ASSERT_EQ(model.at(0).pixel_layout, "bgra");
+
+    // Replot with TWO channels and an invalid layout: the old 3-channel
+    // "bgra" must not be carried onto the reshaped record.
+    {
+        MessageComposer c;
+        std::vector bytes(8, std::byte{9});
+        c.push(MessageType::PLOT_BUFFER_CONTENTS)
+            .push(std::string("v"))
+            .push(std::string("disp"))
+            .push(std::string(""))
+            .push(false)
+            .push(2)
+            .push(2)
+            .push(2)
+            .push(2)
+            .push(BufferType::UNSIGNED_BYTE)
+            .push(std::span<const std::byte>(bytes));
+        t.feed(frame(c));
+    }
+    CerrCapture cap;
+    client.poll();
+
+    ASSERT_EQ(model.size(), 1u);
+    EXPECT_EQ(model.at(0).channels, 2);
+    EXPECT_EQ(model.at(0).pixel_layout, "rgba")
+        << "a layout declared for another channel count is not kept";
+    EXPECT_NE(cap.out.str().find("rgba"), std::string::npos);
+}
+
 // Defect, other half: a variable's very first plot ever, with an invalid
 // layout ("xyzq": four characters, but outside the r/g/b/a alphabet the
 // shader swizzles by) for a multi-channel buffer. There is no existing
@@ -555,6 +613,43 @@ TEST(IpcClient, ControlCharactersInARejectedLayoutAreEchoedVisibly) {
         << "the newline lands as its visible escape";
     EXPECT_NE(logged.find("\\x1b"), std::string::npos)
         << "the escape byte lands as its visible escape";
+}
+
+// The C1 controls are one layer up from the raw bytes: U+009B (CSI) arrives
+// as the UTF-8 pair 0xc2 0x9b, which a Unicode-aware consumer decodes into
+// a control character no C0 byte scan ever sees. Exactly those pairs land
+// as visible escapes; every other multi-byte sequence passes through
+// untouched, since 0x80..0x9f CONTINUATION bytes are how ordinary non-ASCII
+// text is spelled.
+TEST(IpcClient, C1ControlsInARejectedLayoutAreEchoedVisibly) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    MessageComposer c;
+    std::vector bytes(12, std::byte{5});
+    const auto hostile = std::string("a\xc2\x9b"
+                                     "b");
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
+        .push(std::string("v"))
+        .push(std::string("disp"))
+        .push(hostile)
+        .push(false)
+        .push(2)
+        .push(2)
+        .push(3)
+        .push(2)
+        .push(BufferType::UNSIGNED_BYTE)
+        .push(std::span<const std::byte>(bytes));
+    t.feed(frame(c));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    const std::string logged = cap.out.str();
+    EXPECT_EQ(logged.find("\xc2\x9b"), std::string::npos)
+        << "the encoded CSI must not reach the log";
+    EXPECT_NE(logged.find("\\u009b"), std::string::npos)
+        << "the C1 control lands as its visible escape";
 }
 
 // The variable name travels the same wire as the layout and lands in the
