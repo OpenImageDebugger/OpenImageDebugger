@@ -35,6 +35,7 @@
 
 #include "host/ipc/buffer_decode.h"
 #include "host/settings/app_settings.h"
+#include "host/util/log_preview.h"
 #include "ipc/raw_data_decode.h"
 
 namespace oid::host {
@@ -430,8 +431,10 @@ std::string IpcClient::resolve_pixel_layout(const std::string_view context,
         }
         if (const std::string& kept = model_.at(i).pixel_layout;
             is_valid_pixel_layout(kept)) {
-            std::cerr << "[OID] " << context << " for '" << variable_name
-                      << "': invalid pixel_layout '" << declared_layout
+            std::cerr << "[OID] " << context << " for '"
+                      << log_preview(variable_name, NAME_PREVIEW_CHARS)
+                      << "': invalid pixel_layout '"
+                      << log_preview(declared_layout)
                       << "'; keeping the existing '" << kept << "' layout\n";
             return kept;
         }
@@ -439,9 +442,10 @@ std::string IpcClient::resolve_pixel_layout(const std::string_view context,
     }
     // Nothing valid to keep either (first plot ever, or an equally invalid
     // existing record): fall back to the documented default, loudly.
-    std::cerr << "[OID] " << context << " for '" << variable_name
-              << "': invalid pixel_layout '" << declared_layout << "' for a "
-              << channels << "-channel buffer; defaulting to \""
+    std::cerr << "[OID] " << context << " for '"
+              << log_preview(variable_name, NAME_PREVIEW_CHARS)
+              << "': invalid pixel_layout '" << log_preview(declared_layout)
+              << "' for a " << channels << "-channel buffer; defaulting to \""
               << DEFAULT_PIXEL_LAYOUT << "\"\n";
     return std::string(DEFAULT_PIXEL_LAYOUT);
 }

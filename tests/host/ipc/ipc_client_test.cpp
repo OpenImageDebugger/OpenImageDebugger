@@ -478,6 +478,120 @@ TEST(IpcClient, FirstPlotWithInvalidLayoutForMultiChannelDefaultsLoudly) {
     EXPECT_NE(logged.find("xyzq"), std::string::npos);
 }
 
+// The echo of the rejected value must stay bounded: the wire allows strings
+// far larger than any legitimate layout, and a diagnostic must not let one
+// malformed message turn into megabytes of synchronous stderr. A long
+// rejected value is echoed as a short preview plus its byte count, never
+// verbatim.
+TEST(IpcClient, ALargeInvalidLayoutIsEchoedBounded) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    MessageComposer c;
+    std::vector bytes(12, std::byte{5});
+    const std::string huge(1024, 'x');
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
+        .push(std::string("v"))
+        .push(std::string("disp"))
+        .push(huge)
+        .push(false)
+        .push(2)
+        .push(2)
+        .push(3)
+        .push(2)
+        .push(BufferType::UNSIGNED_BYTE)
+        .push(std::span<const std::byte>(bytes));
+    t.feed(frame(c));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    ASSERT_EQ(model.size(), 1u);
+    EXPECT_EQ(model.at(0).pixel_layout, "rgba");
+    const std::string logged = cap.out.str();
+    EXPECT_EQ(logged.find(huge), std::string::npos)
+        << "the peer-supplied value must never be echoed verbatim";
+    // The exact preview shape, not merely "less than everything": a
+    // regression to a hundreds-of-bytes echo must fail here too.
+    EXPECT_NE(logged.find(std::string(16, 'x') + "... (1024 bytes)"),
+              std::string::npos)
+        << "the echo is the 16-character preview plus the size";
+    EXPECT_EQ(logged.find(std::string(17, 'x')), std::string::npos)
+        << "not one character more than the bound";
+}
+
+// The length bound alone does not make the echo safe: sixteen characters of
+// newlines or terminal escapes still forge log lines. Control characters in
+// the rejected value must land as visible escapes, never raw.
+TEST(IpcClient, ControlCharactersInARejectedLayoutAreEchoedVisibly) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    MessageComposer c;
+    std::vector bytes(12, std::byte{5});
+    const auto hostile = std::string("a\nb\x1b[31m");
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
+        .push(std::string("v"))
+        .push(std::string("disp"))
+        .push(hostile)
+        .push(false)
+        .push(2)
+        .push(2)
+        .push(3)
+        .push(2)
+        .push(BufferType::UNSIGNED_BYTE)
+        .push(std::span<const std::byte>(bytes));
+    t.feed(frame(c));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    ASSERT_EQ(model.size(), 1u);
+    EXPECT_EQ(model.at(0).pixel_layout, "rgba");
+    const std::string logged = cap.out.str();
+    EXPECT_EQ(logged.find('\x1b'), std::string::npos)
+        << "no raw escape byte may reach the log";
+    EXPECT_NE(logged.find("\\n"), std::string::npos)
+        << "the newline lands as its visible escape";
+    EXPECT_NE(logged.find("\\x1b"), std::string::npos)
+        << "the escape byte lands as its visible escape";
+}
+
+// The variable name travels the same wire as the layout and lands in the
+// same diagnostic, so it gets the same treatment: a control character in it
+// must not forge log lines just because the layout half is already safe.
+TEST(IpcClient, ControlCharactersInTheNameAreEchoedVisiblyToo) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    MessageComposer c;
+    std::vector bytes(12, std::byte{5});
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
+        .push(std::string("evil\nname"))
+        .push(std::string("disp"))
+        .push(std::string("xyzq"))
+        .push(false)
+        .push(2)
+        .push(2)
+        .push(3)
+        .push(2)
+        .push(BufferType::UNSIGNED_BYTE)
+        .push(std::span<const std::byte>(bytes));
+    t.feed(frame(c));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    ASSERT_EQ(model.size(), 1u);
+    const std::string logged = cap.out.str();
+    // One trailing newline per message and nothing else: the name's own
+    // newline must land as its visible escape.
+    EXPECT_NE(logged.find("evil\\nname"), std::string::npos)
+        << "the name lands as its visible escape: " << logged;
+    EXPECT_EQ(logged.find("evil\nname"), std::string::npos)
+        << "the raw newline must not reach the log: " << logged;
+}
+
 // The convention this whole check must not disturb: a single-channel
 // buffer's empty pixel_layout is legitimate (see BufferRecord::pixel_layout,
 // buffer_model.h, and layout_for_channels(), file_buffer_loader.cpp), not a
