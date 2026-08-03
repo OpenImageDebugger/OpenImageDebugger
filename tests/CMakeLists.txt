@@ -925,6 +925,19 @@ if(OID_BUILD_IMGUI_FRONTEND)
     target_link_libraries(wire_buffer_type_test PRIVATE GTest::gtest_main GTest::gtest)
     add_test(NAME WireBufferTypeTests COMMAND wire_buffer_type_test)
 
+    # Test natural_pixel_layout(): the decision set_channel(-1, _) ("all")
+    # makes about which layout to restore on the live buffer, extracted out of
+    # NativeViewModel::set_channel so it is testable without the
+    # render-thread-bound NativeViewModel/Stage/Buffer (same rationale as
+    # wire_buffer_type_test above). Header-only, no GL/engine deps.
+    add_executable(natural_pixel_layout_test
+        host/agent/natural_pixel_layout_test.cpp)
+    target_include_directories(natural_pixel_layout_test
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+    target_link_libraries(natural_pixel_layout_test
+        PRIVATE GTest::gtest_main GTest::gtest)
+    add_test(NAME NaturalPixelLayoutTests COMMAND natural_pixel_layout_test)
+
     # FramePacer: deterministic ordering/count tests for agent-run frame
     # pacing (pending-wake service, burst coalescing, deadline return).
     add_executable(frame_pacer_test host/frame_pacer_test.cpp

@@ -210,7 +210,15 @@ static std::vector<std::byte> begin_frame(const std::string& name,
 
 // Like begin_frame, but exposes channels, stride and type: the
 // geometry-vs-payload checks need shapes begin_frame's fixed
-// channels=1/stride=width can't reach.
+// channels=1/stride=width can't reach. Declares "rgba" regardless of
+// `channels` for convenience, not fidelity: a real wire client would send ""
+// for the channels=1 callers instead (see BufferRecord::pixel_layout,
+// buffer_model.h). None of these tests assert on pixel_layout, and a
+// single-channel declared layout is used as-is regardless of validity
+// (ipc_client.cpp), so that mismatch is harmless here; it matters only for
+// the multi-channel callers, where a real layout is always four characters,
+// so "rgba" (not a shorter placeholder like "rgb") avoids spuriously
+// tripping the invalid-layout fallback.
 static std::vector<std::byte>
 begin_frame_ex(const std::string& name,
                const int width,
@@ -223,7 +231,7 @@ begin_frame_ex(const std::string& name,
     c.push(MessageType::PLOT_BUFFER_BEGIN)
         .push(name)
         .push(std::string("disp"))
-        .push(std::string("rgb"))
+        .push(std::string("rgba"))
         .push(false)
         .push(width)
         .push(height)
@@ -271,12 +279,15 @@ TEST(IpcClient, PlotBufferContentsUpsertsModel) {
     host::IpcBufferModel model;
     MessageComposer c;
     // 2x2 rgb8, unpadded: stride counts PIXELS per row, so it equals width
-    // here, and the payload is channels * stride * height = 12 bytes.
+    // here, and the payload is channels * stride * height = 12 bytes. A real
+    // multi-channel layout is always four characters (see
+    // BufferRecord::pixel_layout, buffer_model.h), so "rgba" is used here
+    // even though only 3 channels are declared.
     std::vector bytes(12, std::byte{5});
     c.push(MessageType::PLOT_BUFFER_CONTENTS)
         .push(std::string("v"))
         .push(std::string("disp"))
-        .push(std::string("rgb"))
+        .push(std::string("rgba"))
         .push(false)
         .push(2)
         .push(2)
@@ -360,6 +371,141 @@ TEST(IpcClient, PlotBufferContentsAcceptsLastRowOmittingStridePadding) {
 
     ASSERT_EQ(model.size(), 1u);
     EXPECT_EQ(model.at(0).bytes.size(), 8u);
+    EXPECT_TRUE(cap.out.str().empty());
+}
+
+// Defect: a replot whose pixel_layout is invalid (here, empty, as if a
+// degraded resend dropped the format hint) must never overwrite a valid
+// layout the record already holds. IpcBufferModel::upsert() replaces the
+// whole record, so without this check the corruption would sit silent in
+// the model (Buffer::configure()'s own guard hides it from the render)
+// until something else re-derives from the record and makes it real. The
+// existing valid layout must stand, loudly.
+TEST(IpcClient, ReplotWithInvalidLayoutKeepsExistingValidLayout) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+
+    // First plot: 2x2, 3-channel, valid "bgra" layout.
+    {
+        MessageComposer c;
+        std::vector bytes(12, std::byte{5});
+        c.push(MessageType::PLOT_BUFFER_CONTENTS)
+            .push(std::string("v"))
+            .push(std::string("disp"))
+            .push(std::string("bgra"))
+            .push(false)
+            .push(2)
+            .push(2)
+            .push(3)
+            .push(2)
+            .push(BufferType::UNSIGNED_BYTE)
+            .push(std::span<const std::byte>(bytes));
+        t.feed(frame(c));
+    }
+    host::IpcClient client(t, model);
+    client.poll();
+    ASSERT_EQ(model.size(), 1u);
+    ASSERT_EQ(model.at(0).pixel_layout, "bgra");
+
+    // Replot of the same variable and geometry, but an empty layout: the
+    // degraded resend this test models.
+    {
+        MessageComposer c;
+        std::vector bytes(12, std::byte{9});
+        c.push(MessageType::PLOT_BUFFER_CONTENTS)
+            .push(std::string("v"))
+            .push(std::string("disp"))
+            .push(std::string(""))
+            .push(false)
+            .push(2)
+            .push(2)
+            .push(3)
+            .push(2)
+            .push(BufferType::UNSIGNED_BYTE)
+            .push(std::span<const std::byte>(bytes));
+        t.feed(frame(c));
+    }
+    CerrCapture cap;
+    client.poll();
+
+    ASSERT_EQ(model.size(), 1u);
+    // The corruption this guards against: the valid layout must survive.
+    EXPECT_EQ(model.at(0).pixel_layout, "bgra");
+    // The rest of the replot still lands; only the layout is kept.
+    EXPECT_EQ(model.at(0).bytes[0], std::byte{9});
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("PLOT_BUFFER_CONTENTS"), std::string::npos);
+    EXPECT_NE(logged.find("'v'"), std::string::npos);
+    EXPECT_NE(logged.find("bgra"), std::string::npos);
+    // The rejected value itself (empty here) is echoed, not just implied.
+    EXPECT_NE(logged.find("pixel_layout ''"), std::string::npos);
+}
+
+// Defect, other half: a variable's very first plot ever, with an invalid
+// layout ("xyzq": four characters, but outside the r/g/b/a alphabet the
+// shader swizzles by) for a multi-channel buffer. There is no existing
+// record to fall back on, so this must land with the documented default,
+// loudly.
+TEST(IpcClient, FirstPlotWithInvalidLayoutForMultiChannelDefaultsLoudly) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    MessageComposer c;
+    std::vector bytes(12, std::byte{5});
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
+        .push(std::string("v"))
+        .push(std::string("disp"))
+        .push(std::string("xyzq"))
+        .push(false)
+        .push(2)
+        .push(2)
+        .push(3)
+        .push(2)
+        .push(BufferType::UNSIGNED_BYTE)
+        .push(std::span<const std::byte>(bytes));
+    t.feed(frame(c));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    ASSERT_EQ(model.size(), 1u);
+    EXPECT_EQ(model.at(0).pixel_layout, "rgba"); // the documented default
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("PLOT_BUFFER_CONTENTS"), std::string::npos);
+    EXPECT_NE(logged.find("'v'"), std::string::npos);
+    EXPECT_NE(logged.find("rgba"), std::string::npos);
+    // The rejected value itself is echoed, not just the fallback it produced.
+    EXPECT_NE(logged.find("xyzq"), std::string::npos);
+}
+
+// The convention this whole check must not disturb: a single-channel
+// buffer's empty pixel_layout is legitimate (see BufferRecord::pixel_layout,
+// buffer_model.h, and layout_for_channels(), file_buffer_loader.cpp), not a
+// corruption, so it must upsert exactly as before: silently, and unchanged.
+TEST(IpcClient, SingleChannelEmptyLayoutStillUpsertsSilently) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    MessageComposer c;
+    std::vector bytes(4, std::byte{5});
+    c.push(MessageType::PLOT_BUFFER_CONTENTS)
+        .push(std::string("v"))
+        .push(std::string("disp"))
+        .push(std::string(""))
+        .push(false)
+        .push(2)
+        .push(2)
+        .push(1)
+        .push(2)
+        .push(BufferType::UNSIGNED_BYTE)
+        .push(std::span<const std::byte>(bytes));
+    t.feed(frame(c));
+
+    host::IpcClient client(t, model);
+    CerrCapture cap;
+    client.poll();
+
+    ASSERT_EQ(model.size(), 1u);
+    EXPECT_EQ(model.at(0).pixel_layout, "");
     EXPECT_TRUE(cap.out.str().empty());
 }
 
@@ -488,7 +634,10 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
     FakeTransport t;
     host::IpcBufferModel model;
     // 4x2 rgb8, unpadded: stride counts PIXELS per row, so it equals width
-    // here, and the payload is channels * stride * height = 24 bytes.
+    // here, and the payload is channels * stride * height = 24 bytes. A real
+    // multi-channel layout is always four characters (see
+    // BufferRecord::pixel_layout, buffer_model.h), so "rgba" is used here
+    // even though only 3 channels are declared.
     std::vector bytes(24, std::byte{9});
 
     {
@@ -497,7 +646,7 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
         c.push(MessageType::PLOT_BUFFER_BEGIN)
             .push(std::string("v"))
             .push(std::string("disp"))
-            .push(std::string("rgb"))
+            .push(std::string("rgba"))
             .push(false)
             .push(4)
             .push(2)
@@ -531,6 +680,73 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
     for (auto b : model.at(0).bytes) {
         EXPECT_EQ(b, std::byte{9});
     }
+}
+
+// The BEGIN/CHUNK/END assembly path's sibling of
+// ReplotWithInvalidLayoutKeepsExistingValidLayout above:
+// handle_plot_buffer_end() upserts from the assembled transfer via its own call
+// site, independent of handle_plot_buffer_contents(), so it needs its own guard
+// against the same corruption.
+TEST(IpcClient, ChunkedReplotWithInvalidLayoutKeepsExistingValidLayout) {
+    FakeTransport t;
+    host::IpcBufferModel model;
+    // 4x2, 3-channel, valid "bgra" layout.
+    std::vector bytes(24, std::byte{5});
+    {
+        MessageComposer c;
+        c.push(MessageType::PLOT_BUFFER_BEGIN)
+            .push(std::string("v"))
+            .push(std::string("disp"))
+            .push(std::string("bgra"))
+            .push(false)
+            .push(4)
+            .push(2)
+            .push(3)
+            .push(4)
+            .push(static_cast<int>(BufferType::UNSIGNED_BYTE))
+            .push(bytes.size());
+        t.feed(frame(c));
+    }
+    t.feed(chunk_frame("v", 0, 2, bytes));
+    t.feed(end_frame("v"));
+
+    host::IpcClient client(t, model);
+    client.poll();
+    ASSERT_EQ(model.size(), 1u);
+    ASSERT_EQ(model.at(0).pixel_layout, "bgra");
+
+    // Replot of the same variable and geometry, but an empty layout.
+    std::vector bytes2(24, std::byte{9});
+    {
+        MessageComposer c;
+        c.push(MessageType::PLOT_BUFFER_BEGIN)
+            .push(std::string("v"))
+            .push(std::string("disp"))
+            .push(std::string(""))
+            .push(false)
+            .push(4)
+            .push(2)
+            .push(3)
+            .push(4)
+            .push(static_cast<int>(BufferType::UNSIGNED_BYTE))
+            .push(bytes2.size());
+        t.feed(frame(c));
+    }
+    t.feed(chunk_frame("v", 0, 2, bytes2));
+    t.feed(end_frame("v"));
+
+    CerrCapture cap;
+    client.poll();
+
+    ASSERT_EQ(model.size(), 1u);
+    EXPECT_EQ(model.at(0).pixel_layout, "bgra");
+    EXPECT_EQ(model.at(0).bytes[0], std::byte{9});
+    const std::string logged = cap.out.str();
+    EXPECT_NE(logged.find("PLOT_BUFFER_END"), std::string::npos);
+    EXPECT_NE(logged.find("'v'"), std::string::npos);
+    EXPECT_NE(logged.find("bgra"), std::string::npos);
+    // The rejected value itself (empty here) is echoed, not just implied.
+    EXPECT_NE(logged.find("pixel_layout ''"), std::string::npos);
 }
 
 // The reported failure mode: a huge stride paired with a tiny, but
