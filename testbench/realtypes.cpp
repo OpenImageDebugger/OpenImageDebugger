@@ -18,14 +18,21 @@
  *     it, which must still cross as a single message.
  *   - Four structs no built-in entry matches, described only by
  *     testbench/.oid/types.json -- the user-supplied side of the format.
+ *   - A parked worker thread holds worker_mat, so every stop shows two
+ *     threads whose top frames share an index, and what gets listed and
+ *     plotted can be checked to follow the selected thread rather than
+ *     the frame index alone.
  *
  * This target is built only when OpenCV and Eigen are found (see CMakeLists).
  * Set a breakpoint on the marked line in main(), run under a debugger with OID
  * active, and plot each variable. Each fixture notes what it is meant to check.
  */
+#include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #include <opencv2/core.hpp>
@@ -181,9 +188,43 @@ cv::Mat make_mat_budget_edge_64f() {
     return m;
 }
 
+// --- Second thread ---------------------------------------------------------
+
+std::atomic<bool> worker_ready{false};
+std::atomic<bool> worker_done{false};
+
+// Parks a second thread holding its own buffer, so a stopped session shows
+// two threads. Main sits at frame 0 of its breakpoint and this thread's top
+// frame is also frame 0 (inside the sleep), which makes switching to it the
+// selection change easiest to mistake for no change at all: after selecting
+// this thread, what is listed and plotted must be its own, above all
+// worker_mat from the worker_thread_main frame, with main's fixtures
+// restored on the way back. The buffer is fully built before worker_ready
+// flips, and main waits for that flag before its first stop, so the buffer
+// is never seen half-constructed.
+void worker_thread_main() {
+    cv::Mat worker_mat(kH, kW, CV_8UC1);
+    for (int y = 0; y < worker_mat.rows; ++y) {
+        for (int x = 0; x < worker_mat.cols; ++x) {
+            // Diagonal bars: unmistakably not one of main's ramps.
+            worker_mat.at<unsigned char>(y, x) =
+                static_cast<unsigned char>(((x + 2 * y) & 0x1f) * 8);
+        }
+    }
+    worker_ready.store(true);
+    while (!worker_done.load()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    (void)worker_mat;
+}
+
 } // namespace
 
 int main() {
+    // Started before anything else so the worker is parked and ready long
+    // before the first breakpoint below; joined before returning.
+    std::thread worker(worker_thread_main);
+
     // --- OpenCV cv::Mat (real library) ---
     cv::Mat mat_8uc3 = make_mat_8uc3();
     cv::Mat mat_32fc1 = make_mat_32fc1();
@@ -389,9 +430,16 @@ int main() {
     }
     DepthF64 custom_depth{depth_backing.data(), kCustomW, kCustomH};
 
+    // Never stop before the worker says its buffer exists: a breakpoint
+    // reached first would show that thread mid-construction.
+    while (!worker_ready.load()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
     std::cout << "Fixtures live: mat_8uc3 " << mat_8uc3.cols << "x"
               << mat_8uc3.rows << ", eig_dyn " << eig_dyn.rows() << "x"
-              << eig_dyn.cols() << ". Break on the next line and plot each.\n";
+              << eig_dyn.cols() << "; worker thread parked holding worker_mat."
+              << " Break on the next line and plot each.\n";
 
     // >>> SET YOUR BREAKPOINT ON THE NEXT LINE <<<
     // Every fixture above is in scope here; plot each by name, then continue.
@@ -437,5 +485,7 @@ int main() {
         (void)oid_breakpoint_step;
     }
 
+    worker_done.store(true);
+    worker.join();
     return 0;
 }
