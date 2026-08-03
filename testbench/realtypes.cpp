@@ -220,8 +220,21 @@ void worker_thread_main() {
 
 int main() {
     // Started before anything else so the worker is parked and ready long
-    // before the first breakpoint below; joined before returning.
-    std::thread worker(worker_thread_main);
+    // before the first breakpoint below. Joined by scope rather than by
+    // reaching the end of main: destroying a joinable std::thread
+    // terminates the program, and whether an uncaught exception unwinds
+    // this far at all is implementation-defined, so the join must not
+    // depend on getting past every fixture construction below.
+    struct WorkerGuard {
+        std::thread thread;
+        ~WorkerGuard() {
+            worker_done.store(true);
+            worker_done.notify_one();
+            if (thread.joinable()) {
+                thread.join();
+            }
+        }
+    } worker{std::thread(worker_thread_main)};
 
     // --- OpenCV cv::Mat (real library) ---
     cv::Mat mat_8uc3 = make_mat_8uc3();
@@ -483,8 +496,5 @@ int main() {
         (void)oid_breakpoint_step;
     }
 
-    worker_done.store(true);
-    worker_done.notify_one();
-    worker.join();
     return 0;
 }
