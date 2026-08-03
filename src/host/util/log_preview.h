@@ -39,6 +39,52 @@ namespace oid::host {
 // name still has to be findable in the debuggee.
 inline constexpr std::size_t NAME_PREVIEW_CHARS = 64;
 
+namespace detail {
+
+// Appends the escaped form of the character starting at text[i], answering
+// how many source bytes it consumed.
+//
+// C0 controls and DEL land as \xNN escapes. U+0080..U+009F (the C1
+// controls, CSI among them) arrive as the UTF-8 pairs 0xc2 0x80..0x9f:
+// decoded, they steer a Unicode-aware consumer the way a C0 byte steers a
+// plain one, and no scan of single bytes below 0x20 ever sees them, so
+// exactly those pairs land as \u00NN escapes. Lone 0x80..0x9f bytes pass
+// through: they are the continuation bytes ordinary non-ASCII text is made
+// of, and escaping those would mangle every such name.
+[[nodiscard]] inline std::size_t append_escaped(const std::string_view text,
+                                                const std::size_t i,
+                                                std::string& out) {
+    const char c = text[i];
+    if (c == '\n') {
+        out += "\\n";
+        return 1;
+    }
+    if (c == '\r') {
+        out += "\\r";
+        return 1;
+    }
+    if (c == '\t') {
+        out += "\\t";
+        return 1;
+    }
+    const auto byte = static_cast<unsigned char>(c);
+    if (byte == 0xc2 && i + 1 < text.size()) {
+        if (const auto next = static_cast<unsigned char>(text[i + 1]);
+            next >= 0x80 && next <= 0x9f) {
+            out += std::format("\\u{:04x}", next);
+            return 2;
+        }
+    }
+    if (byte < 0x20 || byte == 0x7f) {
+        out += std::format("\\x{:02x}", byte);
+        return 1;
+    }
+    out += c;
+    return 1;
+}
+
+} // namespace detail
+
 // Renders an untrusted string safe to interpolate into one log line.
 //
 // Two hazards, both closed here rather than at each call site: the value may
@@ -55,41 +101,9 @@ inline constexpr std::size_t NAME_PREVIEW_CHARS = 64;
         truncated ? value.substr(0, max_chars) : value;
     std::string out;
     out.reserve(shown.size() + 16);
-    for (std::size_t i = 0; i < shown.size(); ++i) {
-        const char c = shown[i];
-        switch (c) {
-        case '\n':
-            out += "\\n";
-            break;
-        case '\r':
-            out += "\\r";
-            break;
-        case '\t':
-            out += "\\t";
-            break;
-        default:
-            const auto byte = static_cast<unsigned char>(c);
-            // U+0080..U+009F (the C1 controls, CSI among them) arrive as
-            // the UTF-8 pairs 0xc2 0x80..0x9f: decoded, they steer a
-            // Unicode-aware consumer the way a C0 byte steers a plain one,
-            // and no scan of single bytes below 0x20 ever sees them. Only
-            // the exact pairs are rewritten: lone 0x80..0x9f bytes are the
-            // continuation bytes ordinary non-ASCII text is made of, and
-            // escaping those would mangle every such name.
-            if (byte == 0xc2 && i + 1 < shown.size()) {
-                if (const auto next = static_cast<unsigned char>(shown[i + 1]);
-                    next >= 0x80 && next <= 0x9f) {
-                    out += std::format("\\u{:04x}", next);
-                    ++i;
-                    continue;
-                }
-            }
-            if (byte < 0x20 || byte == 0x7f) {
-                out += std::format("\\x{:02x}", byte);
-            } else {
-                out += c;
-            }
-        }
+    std::size_t i = 0;
+    while (i < shown.size()) {
+        i += detail::append_escaped(shown, i, out);
     }
     if (truncated) {
         out += std::format("... ({} bytes)", value.size());
