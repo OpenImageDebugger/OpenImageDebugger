@@ -28,7 +28,6 @@
  * active, and plot each variable. Each fixture notes what it is meant to check.
  */
 #include <atomic>
-#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -195,7 +194,7 @@ std::atomic<bool> worker_done{false};
 
 // Parks a second thread holding its own buffer, so a stopped session shows
 // two threads. Main sits at frame 0 of its breakpoint and this thread's top
-// frame is also frame 0 (inside the sleep), which makes switching to it the
+// frame is also frame 0 (inside its wait), which makes switching to it the
 // selection change easiest to mistake for no change at all: after selecting
 // this thread, what is listed and plotted must be its own, above all
 // worker_mat from the worker_thread_main frame, with main's fixtures
@@ -212,9 +211,8 @@ void worker_thread_main() {
         }
     }
     worker_ready.store(true);
-    while (!worker_done.load()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
+    worker_ready.notify_one();
+    worker_done.wait(false);
     (void)worker_mat;
 }
 
@@ -431,10 +429,10 @@ int main() {
     DepthF64 custom_depth{depth_backing.data(), kCustomW, kCustomH};
 
     // Never stop before the worker says its buffer exists: a breakpoint
-    // reached first would show that thread mid-construction.
-    while (!worker_ready.load()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
+    // reached first would show that thread mid-construction. Deliberately
+    // unbounded: this program's job is to sit under a debugger, where any
+    // wall-clock deadline would expire while a human is merely paused.
+    worker_ready.wait(false);
 
     std::cout << "Fixtures live: mat_8uc3 " << mat_8uc3.cols << "x"
               << mat_8uc3.rows << ", eig_dyn " << eig_dyn.rows() << "x"
@@ -486,6 +484,7 @@ int main() {
     }
 
     worker_done.store(true);
+    worker_done.notify_one();
     worker.join();
     return 0;
 }
