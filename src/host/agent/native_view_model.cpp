@@ -25,7 +25,6 @@
 
 #include "host/agent/native_view_model.h"
 
-#include <array>
 #include <cmath>
 #include <iostream>
 #include <numbers>
@@ -65,9 +64,11 @@ double normalize_degrees(const double radians) {
 
 // Pixel layout that isolates a single channel for Buffer's "specific
 // channel" display mode (set_display_channel_mode(1)): index 0/1/2 -> R/G/B.
+// Reads ISOLATION_LAYOUTS (natural_pixel_layout.h) rather than its own
+// literal array, so this and is_isolation_layout() can never drift apart on
+// what counts as an isolation swizzle.
 const char* isolated_layout(const int index) {
-    static constexpr std::array LAYOUTS{"rrra", "ggga", "bbba"};
-    return LAYOUTS[static_cast<std::size_t>(index)];
+    return ISOLATION_LAYOUTS[static_cast<std::size_t>(index)];
 }
 
 } // namespace
@@ -235,11 +236,22 @@ bool NativeViewModel::set_channel(const std::string_view name,
         // A guess is never stamped onto a buffer that already carries a
         // valid layout of its own: when the record cannot name a valid one
         // (see natural_pixel_layout.h), the buffer's current layout stays,
-        // loudly, rather than being overwritten with a default that may be
-        // wrong.
+        // loudly, unless that current layout is itself an isolation swizzle
+        // installed by the index arm below, in which case leaving it in
+        // place would contradict the very "all channels" switch being
+        // requested here, so the default is restored instead, loudly.
         const BufferRecord& record = model_.at(*idx);
-        if (const auto layout = natural_pixel_layout(record)) {
-            buffer->set_pixel_layout(*layout);
+        const std::string_view current_layout = buffer->get_pixel_layout();
+        if (const auto decision = natural_pixel_layout(record, current_layout);
+            decision.layout) {
+            if (decision.cleared_isolation) {
+                std::cerr << "[OID] set_channel(all) for '" << name
+                          << "': invalid pixel_layout '" << record.pixel_layout
+                          << "' on record; clearing the isolated '"
+                          << current_layout << "' layout, defaulting to '"
+                          << *decision.layout << "'\n";
+            }
+            buffer->set_pixel_layout(*decision.layout);
         } else {
             std::cerr << "[OID] set_channel(all) for '" << name
                       << "': invalid pixel_layout '" << record.pixel_layout
