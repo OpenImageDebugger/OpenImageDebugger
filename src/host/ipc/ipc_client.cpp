@@ -429,6 +429,13 @@ std::string IpcClient::resolve_pixel_layout(const std::string_view context,
         if (model_.variable_name_of(i) != variable_name) {
             continue;
         }
+        // The kept layout was declared for the record's shape: a replot
+        // that changes the channel count invalidates that premise (the
+        // preserved swizzle would address components the new texture does
+        // not have), so a reshaping replot falls through to the default.
+        if (model_.at(i).channels != channels) {
+            break;
+        }
         if (const std::string& kept = model_.at(i).pixel_layout;
             is_valid_pixel_layout(kept)) {
             std::cerr << "[OID] " << context << " for '"

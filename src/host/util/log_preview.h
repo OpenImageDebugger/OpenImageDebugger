@@ -55,7 +55,8 @@ inline constexpr std::size_t NAME_PREVIEW_CHARS = 64;
         truncated ? value.substr(0, max_chars) : value;
     std::string out;
     out.reserve(shown.size() + 16);
-    for (const char c : shown) {
+    for (std::size_t i = 0; i < shown.size(); ++i) {
+        const char c = shown[i];
         switch (c) {
         case '\n':
             out += "\\n";
@@ -67,8 +68,23 @@ inline constexpr std::size_t NAME_PREVIEW_CHARS = 64;
             out += "\\t";
             break;
         default:
-            if (const auto byte = static_cast<unsigned char>(c);
-                byte < 0x20 || byte == 0x7f) {
+            const auto byte = static_cast<unsigned char>(c);
+            // U+0080..U+009F (the C1 controls, CSI among them) arrive as
+            // the UTF-8 pairs 0xc2 0x80..0x9f: decoded, they steer a
+            // Unicode-aware consumer the way a C0 byte steers a plain one,
+            // and no scan of single bytes below 0x20 ever sees them. Only
+            // the exact pairs are rewritten: lone 0x80..0x9f bytes are the
+            // continuation bytes ordinary non-ASCII text is made of, and
+            // escaping those would mangle every such name.
+            if (byte == 0xc2 && i + 1 < shown.size()) {
+                if (const auto next = static_cast<unsigned char>(shown[i + 1]);
+                    next >= 0x80 && next <= 0x9f) {
+                    out += std::format("\\u{:04x}", next);
+                    ++i;
+                    continue;
+                }
+            }
+            if (byte < 0x20 || byte == 0x7f) {
                 out += std::format("\\x{:02x}", byte);
             } else {
                 out += c;
