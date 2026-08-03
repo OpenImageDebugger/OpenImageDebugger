@@ -25,7 +25,7 @@ if(OpenCV_FOUND AND Eigen3_FOUND)
     add_executable(testbench_realtypes realtypes.cpp)
     target_include_directories(testbench_realtypes PRIVATE ${OpenCV_INCLUDE_DIRS})
     target_link_libraries(testbench_realtypes
-        PRIVATE ${OpenCV_LIBS} Eigen3::Eigen)
+        PRIVATE ${OpenCV_LIBS} Eigen3::Eigen Threads::Threads)
     # Debug-friendly, and drop -Werror like the simulator target above.
     target_compile_options(testbench_realtypes PRIVATE
         "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wno-error;-g;-O0>")
