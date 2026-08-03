@@ -425,27 +425,25 @@ std::string IpcClient::resolve_pixel_layout(const std::string_view context,
     // one already on record: replacing it would be exactly the silent
     // corruption this guards against (the render survives only by accident,
     // until anything re-derives from the record).
+    const BufferRecord* existing = nullptr;
     for (std::size_t i = 0; i < model_.size(); ++i) {
-        if (model_.variable_name_of(i) != variable_name) {
-            continue;
-        }
-        // The kept layout was declared for the record's shape: a replot
-        // that changes the channel count invalidates that premise (the
-        // preserved swizzle would address components the new texture does
-        // not have), so a reshaping replot falls through to the default.
-        if (model_.at(i).channels != channels) {
+        if (model_.variable_name_of(i) == variable_name) {
+            existing = &model_.at(i);
             break;
         }
-        if (const std::string& kept = model_.at(i).pixel_layout;
-            is_valid_pixel_layout(kept)) {
-            std::cerr << "[OID] " << context << " for '"
-                      << log_preview(variable_name, NAME_PREVIEW_CHARS)
-                      << "': invalid pixel_layout '"
-                      << log_preview(declared_layout)
-                      << "'; keeping the existing '" << kept << "' layout\n";
-            return kept;
-        }
-        break;
+    }
+    // The kept layout was declared for the record's shape: a replot that
+    // changes the channel count invalidates that premise (the preserved
+    // swizzle would address components the new texture does not have), so
+    // a reshaping replot falls through to the default.
+    if (existing != nullptr && existing->channels == channels &&
+        is_valid_pixel_layout(existing->pixel_layout)) {
+        const std::string& kept = existing->pixel_layout;
+        std::cerr << "[OID] " << context << " for '"
+                  << log_preview(variable_name, NAME_PREVIEW_CHARS)
+                  << "': invalid pixel_layout '" << log_preview(declared_layout)
+                  << "'; keeping the existing '" << kept << "' layout\n";
+        return kept;
     }
     // Nothing valid to keep either (first plot ever, or an equally invalid
     // existing record): fall back to the documented default, loudly.
