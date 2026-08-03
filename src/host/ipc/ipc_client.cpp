@@ -200,6 +200,10 @@ void IpcClient::handle_plot_buffer_contents() const {
                   << variable_name << "': payload too small for geometry\n";
         return;
     }
+    pixel_layout = resolve_pixel_layout("PLOT_BUFFER_CONTENTS",
+                                        variable_name,
+                                        std::move(pixel_layout),
+                                        channels);
     model_.upsert(make_buffer_record({.variable_name = std::move(variable_name),
                                       .display_name = std::move(display_name),
                                       .pixel_layout = std::move(pixel_layout),
@@ -308,6 +312,11 @@ void IpcClient::handle_plot_buffer_end() {
     // with nothing in flight is a stray, not a genuine incomplete transfer.
     const bool was_in_progress = assembler_.has_in_progress(name);
     if (auto assembled = assembler_.end(name)) {
+        assembled->pixel_layout =
+            resolve_pixel_layout("PLOT_BUFFER_END",
+                                 assembled->variable_name,
+                                 std::move(assembled->pixel_layout),
+                                 assembled->channels);
         model_.upsert(make_buffer_record(
             {.variable_name = std::move(assembled->variable_name),
              .display_name = std::move(assembled->display_name),
@@ -394,6 +403,47 @@ const std::vector<std::string>& IpcClient::available_symbols() const {
 
 void IpcClient::set_restore_buffers(std::vector<PreviousBuffer> buffers) {
     restore_buffers_ = std::move(buffers);
+}
+
+std::string IpcClient::resolve_pixel_layout(const std::string_view context,
+                                            const std::string& variable_name,
+                                            std::string declared_layout,
+                                            const int channels) const {
+    // Channel order is meaningless for one channel (shader_pixel_layout.h
+    // always renders a single-channel buffer from red regardless): a
+    // single-channel record's declared layout, empty or not, is the
+    // documented convention, not a corruption, and is used exactly as it
+    // arrives.
+    if (channels == 1) {
+        return declared_layout;
+    }
+    if (is_valid_pixel_layout(declared_layout)) {
+        return declared_layout;
+    }
+    // An invalid layout for a multi-channel buffer never overwrites a valid
+    // one already on record: replacing it would be exactly the silent
+    // corruption this guards against (the render survives only by accident,
+    // until anything re-derives from the record).
+    for (std::size_t i = 0; i < model_.size(); ++i) {
+        if (model_.variable_name_of(i) != variable_name) {
+            continue;
+        }
+        if (const std::string& kept = model_.at(i).pixel_layout;
+            is_valid_pixel_layout(kept)) {
+            std::cerr << "[OID] " << context << " for '" << variable_name
+                      << "': invalid pixel_layout '" << declared_layout
+                      << "'; keeping the existing '" << kept << "' layout\n";
+            return kept;
+        }
+        break;
+    }
+    // Nothing valid to keep either (first plot ever, or an equally invalid
+    // existing record): fall back to the documented default, loudly.
+    std::cerr << "[OID] " << context << " for '" << variable_name
+              << "': invalid pixel_layout '" << declared_layout << "' for a "
+              << channels << "-channel buffer; defaulting to \""
+              << DEFAULT_PIXEL_LAYOUT << "\"\n";
+    return std::string(DEFAULT_PIXEL_LAYOUT);
 }
 
 bool IpcClient::model_has(const std::string_view variable_name) const {

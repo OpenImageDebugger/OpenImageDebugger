@@ -27,8 +27,10 @@
 
 #include <array>
 #include <cmath>
+#include <iostream>
 #include <numbers>
 
+#include "host/agent/natural_pixel_layout.h"
 #include "host/agent/wire_buffer_type.h"
 #include "host/ui/panels/panel_accessors.h"
 #include "visualization/components/buffer.h"
@@ -66,20 +68,6 @@ double normalize_degrees(const double radians) {
 const char* isolated_layout(const int index) {
     static constexpr std::array LAYOUTS{"rrra", "ggga", "bbba"};
     return LAYOUTS[static_cast<std::size_t>(index)];
-}
-
-// Layout restored by set_channel(-1, _) ("all"): the buffer's own declared
-// pixel_layout when it's a valid 4-char string, else Buffer's own default
-// ("rgba").
-std::string natural_layout(const BufferRecord& record) {
-    // Mirror Buffer::set_pixel_layout()'s validation so the restore call can
-    // never no-op and leave a stale isolated layout installed when a buffer
-    // declares a 4-char-but-invalid pixel_layout (reachable via a custom
-    // Python type bridge, an unvalidated external input).
-    const bool valid =
-        record.pixel_layout.size() == 4 &&
-        record.pixel_layout.find_first_not_of("rgba") == std::string::npos;
-    return valid ? record.pixel_layout : "rgba";
 }
 
 } // namespace
@@ -244,7 +232,19 @@ bool NativeViewModel::set_channel(const std::string_view name,
     }
 
     if (mode == -1) {
-        buffer->set_pixel_layout(natural_layout(model_.at(*idx)));
+        // A guess is never stamped onto a buffer that already carries a
+        // valid layout of its own: when the record cannot name a valid one
+        // (see natural_pixel_layout.h), the buffer's current layout stays,
+        // loudly, rather than being overwritten with a default that may be
+        // wrong.
+        const BufferRecord& record = model_.at(*idx);
+        if (const auto layout = natural_pixel_layout(record)) {
+            buffer->set_pixel_layout(*layout);
+        } else {
+            std::cerr << "[OID] set_channel(all) for '" << name
+                      << "': invalid pixel_layout '" << record.pixel_layout
+                      << "' on record; keeping the buffer's current layout\n";
+        }
         buffer->set_display_channel_mode(-1);
         return true;
     }

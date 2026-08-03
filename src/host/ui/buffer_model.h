@@ -32,6 +32,7 @@
 #include <format>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -66,6 +67,30 @@ struct BufferRecord {
     std::vector<std::byte> bytes;
     BufferKind kind{BufferKind::DEBUGGER_SYMBOL};
 };
+
+// A pixel_layout naming an actual channel order: exactly four characters,
+// each one of 'r', 'g', 'b' or 'a'. This is the mechanical floor
+// Buffer::set_pixel_layout() enforces before copying the string (it writes
+// exactly four bytes) and the alphabet buffer_fs.cpp's fragment shader
+// swizzles by, so a layout failing this check cannot be handed to either one.
+// It is deliberately not what pixel_layout's empty-for-single-channel
+// convention above satisfies: an empty layout is a legitimate "no channel
+// order" for a single-channel buffer, not a layout to validate, so callers
+// that must tell the two apart check channel count themselves alongside
+// this predicate rather than folding it in here.
+[[nodiscard]] constexpr bool
+is_valid_pixel_layout(const std::string_view layout) {
+    return layout.size() == 4 &&
+           layout.find_first_not_of("rgba") == std::string_view::npos;
+}
+
+// The layout a buffer renders with when nothing valid is available to keep:
+// a fresh single-channel buffer (channel order is meaningless for one
+// channel, so this is the documented default, not a guess), or a
+// multi-channel buffer's very first plot arriving with an invalid layout
+// (nothing legitimate has ever been recorded for it to fall back on
+// instead). Every caller that applies this default says so on stderr.
+constexpr std::string_view DEFAULT_PIXEL_LAYOUT = "rgba";
 
 // Read-only view over the set of buffers the chrome should list.
 // IpcBufferModel is backed by live IPC state; MockBufferModel below is the
