@@ -20,7 +20,6 @@ CMakeLists.txt.user
 
 # Local tool caches and build/output dirs
 .cache/
-.serena/
 build-imgui/
 out/
 imgui.ini
