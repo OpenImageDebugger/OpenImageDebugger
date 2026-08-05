@@ -3,6 +3,15 @@
 All notable changes to `oid-mcp` are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.3] — 2026-08-05
+
+### Fixed
+- Corrected the MCP registry namespace in `server.json` to
+  `io.github.OpenImageDebugger/oid-mcp`. The lowercased spelling did not match
+  the GitHub organisation, so the registry rejected the 0.3.2 listing and the
+  server never appeared there. The published package is otherwise identical to
+  0.3.2.
+
 ## [0.3.2] — 2026-08-05
 
 ### Changed
