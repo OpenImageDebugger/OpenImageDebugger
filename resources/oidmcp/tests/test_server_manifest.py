@@ -53,6 +53,21 @@ def test_readme_reaches_pypi_as_the_long_description():
     assert 'readme = "README.md"' in pyproject
 
 
+def test_manifest_links_back_to_the_repository():
+    # Without this block the registry listing has no route to the source, which
+    # is how it read for the first four releases. The numeric id is what lets a
+    # registry tell this repository from one that reused its name, so it has to
+    # be the id GitHub reports (`gh api repos/<owner>/<repo> --jq .id`), and the
+    # subfolder points at the server rather than the repository root.
+    repository = _manifest()['repository']
+    assert repository['url'] == (
+        'https://github.com/OpenImageDebugger/OpenImageDebugger'
+    )
+    assert repository['source'] == 'github'
+    assert repository['id'] == '205714671'
+    assert repository['subfolder'] == 'resources/oidmcp'
+
+
 def test_manifest_version_matches_pyproject():
     assert _manifest()['version'] == _pyproject_version()
 

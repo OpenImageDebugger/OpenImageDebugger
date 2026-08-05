@@ -3,6 +3,15 @@
 All notable changes to `oid-mcp` are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.5] — 2026-08-05
+
+### Added
+- The MCP registry listing now links back to the source. `server.json` carries
+  the repository URL, GitHub's numeric repository id and the path to the server
+  inside the repo, so anyone reading the listing can inspect the code the
+  package was built from. The published package is otherwise identical to
+  0.3.4.
+
 ## [0.3.4] — 2026-08-05
 
 ### Added

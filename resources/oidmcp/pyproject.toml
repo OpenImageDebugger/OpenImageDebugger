@@ -1,6 +1,6 @@
 [project]
 name = "oid-mcp"
-version = "0.3.4"
+version = "0.3.5"
 description = "MCP server giving AI agents eyes on OpenImageDebugger buffers in live gdb/lldb sessions"
 # Ships the README as the PyPI long description. The MCP registry reads that
 # description to verify package ownership, so without this the registry cannot
