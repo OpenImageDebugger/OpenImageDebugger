@@ -3,6 +3,18 @@
 All notable changes to `oid-mcp` are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.4] — 2026-08-05
+
+### Added
+- The README is now the package's PyPI description. The project page was blank
+  before this, since `pyproject.toml` never declared a `readme`.
+
+### Fixed
+- Corrected the MCP registry ownership marker in the README, which still
+  carried the lowercased namespace. Together with the description above this
+  lets the registry verify the package and list the server, which it refused to
+  do for 0.3.2 and 0.3.3.
+
 ## [0.3.3] — 2026-08-05
 
 ### Fixed

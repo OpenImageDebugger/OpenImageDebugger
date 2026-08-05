@@ -1,7 +1,11 @@
 [project]
 name = "oid-mcp"
-version = "0.3.3"
+version = "0.3.4"
 description = "MCP server giving AI agents eyes on OpenImageDebugger buffers in live gdb/lldb sessions"
+# Ships the README as the PyPI long description. The MCP registry reads that
+# description to verify package ownership, so without this the registry cannot
+# see the mcp-name marker and refuses to list the server.
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.2",
