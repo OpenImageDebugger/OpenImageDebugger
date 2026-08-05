@@ -3,6 +3,20 @@
 All notable changes to `oid-mcp` are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.2] — 2026-08-05
+
+### Changed
+- Refreshed the `oidscripts` copy bundled in the wheel (declarative custom
+  buffer types, JSON resolver entry points). The server's own code is
+  unchanged, as is `oidscripts.wireframe`, the one bundled module it imports
+  at runtime, so behaviour against a live session is the same as 0.3.1.
+
+### Packaging
+- First release carrying `server.json`, so this version also lists the server
+  on the MCP registry.
+- Refreshed the dev lockfile (`cryptography`). The published runtime
+  dependencies (`mcp`, `numpy`, `pillow`) are unchanged.
+
 ## [0.2.0] — 2026-07-17
 
 ### Added
