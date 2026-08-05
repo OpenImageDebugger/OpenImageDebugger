@@ -3,12 +3,18 @@
   "name": "io.github.OpenImageDebugger/oid-mcp",
   "title": "OpenImageDebugger MCP",
   "description": "MCP server giving AI agents eyes on OpenImageDebugger buffers in live gdb/lldb sessions",
-  "version": "0.3.4",
+  "repository": {
+    "url": "https://github.com/OpenImageDebugger/OpenImageDebugger",
+    "source": "github",
+    "id": "205714671",
+    "subfolder": "resources/oidmcp"
+  },
+  "version": "0.3.5",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "oid-mcp",
-      "version": "0.3.4",
+      "version": "0.3.5",
       "transport": {
         "type": "stdio"
       }
