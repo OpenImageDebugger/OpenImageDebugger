@@ -1,6 +1,6 @@
 # oid-mcp
 
-<!-- mcp-name: io.github.openimagedebugger/oid-mcp -->
+<!-- mcp-name: io.github.OpenImageDebugger/oid-mcp -->
 
 MCP server that gives AI agents eyes on OpenImageDebugger buffers in a
 live gdb/lldb session: list observable symbols at a breakpoint, view
@@ -34,7 +34,7 @@ the same directory** (see [Troubleshooting](#troubleshooting)).
 
 - **A built and installed OpenImageDebugger** with a deployed `oid.py`.
   See the top-level README's [Building the Open Image
-  Debugger](../../README.md#building-the-open-image-debugger).
+  Debugger](https://github.com/OpenImageDebugger/OpenImageDebugger#building-the-open-image-debugger).
 - **A debugger with embedded Python**: gdb, or (on macOS) Homebrew
   `lldb` — the same debugger you already use with OID.
 - **[uv](https://docs.astral.sh/uv/)** — runs the server in a managed
