@@ -7,8 +7,9 @@ never uploaded.
 """
 
 import json
-import tomllib
 from pathlib import Path
+
+import pytest
 
 OIDMCP = Path(__file__).resolve().parents[1]
 
@@ -23,6 +24,11 @@ def _manifest():
 
 
 def _pyproject_version():
+    # tomllib is 3.11+ and the package supports 3.10, so the version
+    # comparisons sit out on the older interpreter rather than failing
+    # collection for the whole suite. The namespace check needs no parser and
+    # runs everywhere, which is the half that has actually broken a release.
+    tomllib = pytest.importorskip('tomllib')
     with open(OIDMCP / 'pyproject.toml', 'rb') as handle:
         return tomllib.load(handle)['project']['version']
 
