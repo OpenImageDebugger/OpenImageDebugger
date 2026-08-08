@@ -16,6 +16,8 @@
  *     per-message budget: one just over it, to exercise the chunked transfer
  *     path every other fixture here is too small to reach, and one exactly on
  *     it, which must still cross as a single message.
+ *   - A third, much larger one crosses in seven messages rather than two, so
+ *     the middle of a chunked run is exercised and not only its edges.
  *   - Four structs no built-in entry matches, described only by
  *     testbench/.oid/types.json -- the user-supplied side of the format.
  *   - A parked worker thread holds worker_mat, so every stop shows two
@@ -120,6 +122,9 @@ constexpr int kH = 120;
 constexpr int kBigW = 1024;
 constexpr int kBigH = 1025;
 
+// Side of the many-chunk fixture; see make_mat_many_chunks_8uc3().
+constexpr int kHugeSide = 4096;
+
 // CvMat.type packs the depth (which doubles as the OID dtype code) in the low
 // 3 bits and (channels - 1) in the CV_CN_SHIFT (=3) field. CV_8U is OpenCV's
 // own macro (== 0) from <opencv2/core.hpp>.
@@ -187,6 +192,35 @@ cv::Mat make_mat_budget_edge_64f() {
     return m;
 }
 
+// The only fixture here that needs more than two messages to cross. The two
+// above sit either side of the per-message budget and so exercise at most one
+// split; this one is 4096 x 4096 x 3 = 50,331,648 bytes, six full messages and
+// a remainder, which is where a transfer that mishandles the MIDDLE of a run
+// rather than its first or last message has somewhere to show itself. It is
+// also large enough to be worth watching as a memory cost in its own right: a
+// path that keeps several copies of a buffer alive is visible here and
+// invisible at 8 MiB.
+//
+// Channel 2 ramps over the full height and channel 1 over the full width, each
+// spanning 0..255 exactly once, so a strip that arrives out of order or not at
+// all breaks a smooth gradient into a step rather than into plausible data.
+// Channel 0 is left flat, so a channel written at the wrong stride shows up as
+// colour where there should be none.
+cv::Mat make_mat_many_chunks_8uc3() {
+    cv::Mat m(kHugeSide, kHugeSide, CV_8UC3);
+    for (int y = 0; y < m.rows; ++y) {
+        auto* row = m.ptr<unsigned char>(y);
+        const auto down = static_cast<unsigned char>(y * 255 / (kHugeSide - 1));
+        for (int x = 0; x < m.cols; ++x) {
+            row[x * 3 + 0] = 0;
+            row[x * 3 + 1] =
+                static_cast<unsigned char>(x * 255 / (kHugeSide - 1));
+            row[x * 3 + 2] = down;
+        }
+    }
+    return m;
+}
+
 // --- Second thread ---------------------------------------------------------
 
 std::atomic<bool> worker_ready{false};
@@ -241,6 +275,7 @@ int main() {
     cv::Mat mat_32fc1 = make_mat_32fc1();
     cv::Mat mat_chunked_64f = make_mat_chunked_64f();
     cv::Mat mat_budget_edge_64f = make_mat_budget_edge_64f();
+    cv::Mat mat_many_chunks_8uc3 = make_mat_many_chunks_8uc3();
 
     // --- CvMat (legacy struct), single-channel 8-bit ---
     std::vector<unsigned char> cvmat_backing(static_cast<std::size_t>(kW) * kH);
