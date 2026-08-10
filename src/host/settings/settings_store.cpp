@@ -117,33 +117,74 @@ void apply_previous_buffers_section(const nlohmann::json& buffers,
     }
 }
 
+// Reports a host-owned key an embedding-host build declined to apply, via
+// `on_ignored` if one was given. A sink that throws is swallowed here,
+// deliberately: it has nothing further to report, and letting the exception
+// escape would be caught by settings_from_json()'s own try/catch and
+// mistaken for a parse failure -- discarding fields (e.g. "ui") that had
+// already parsed cleanly because a diagnostic callback misbehaved.
+void report_ignored(const std::function<void(std::string_view key)>& on_ignored,
+                    const std::string_view key) {
+    if (!on_ignored) {
+        return;
+    }
+    try {
+        on_ignored(key);
+    } catch (...) { // NOSONAR(cpp:S2738,cpp:S2486) -- catch-all is
+        // deliberate here, not careless: narrowing to `const std::exception&`
+        // would let a non-std throw escape into settings_from_json()'s outer
+        // handler and reintroduce the exact defect this function exists to
+        // prevent, a logging fault discarding a "ui" section that had
+        // already parsed cleanly and reporting a parse failure that never
+        // happened. See the comment above.
+    }
+}
+
 } // namespace
 
-std::string settings_to_json(const AppSettings& s) {
+std::string settings_to_json(const AppSettings& s, const SettingsScope scope) {
+    const bool emit_host_owned = scope == SettingsScope::FULL;
+
     nlohmann::json j;
     j["version"] = 1;
-    j["window"] = {{"w", s.window_w}, {"h", s.window_h}};
-    if (s.window_x.has_value()) {
-        j["window"]["x"] = *s.window_x;
+
+    if (emit_host_owned) {
+        j["window"] = {{"w", s.window_w}, {"h", s.window_h}};
+        if (s.window_x.has_value()) {
+            j["window"]["x"] = *s.window_x;
+        }
+        if (s.window_y.has_value()) {
+            j["window"]["y"] = *s.window_y;
+        }
     }
-    if (s.window_y.has_value()) {
-        j["window"]["y"] = *s.window_y;
-    }
+
     j["ui"] = {{"leftPaneWidth", s.left_pane_w},
                {"contrastEnabled", s.contrast_enabled},
                {"linkViews", s.link_views},
                {"lastExportDir", s.last_export_dir}};
 
-    auto arr = nlohmann::json::array();
-    for (const auto& [variable_name, expiry_epoch_s] : s.previous_buffers) {
-        arr.push_back({{"name", variable_name}, {"expiry", expiry_epoch_s}});
+    if (emit_host_owned) {
+        auto arr = nlohmann::json::array();
+        for (const auto& [variable_name, expiry_epoch_s] : s.previous_buffers) {
+            arr.push_back(
+                {{"name", variable_name}, {"expiry", expiry_epoch_s}});
+        }
+        j["previousBuffers"] = std::move(arr);
     }
-    j["previousBuffers"] = std::move(arr);
 
-    return j.dump(2);
+    // error_handler_t::replace keeps the "never throws" contract above true:
+    // dump() otherwise throws type_error.316 on invalid UTF-8, and
+    // last_export_dir is a filesystem path, which on Linux need not be
+    // UTF-8. Substituting U+FFFD only changes output for input that would
+    // otherwise have thrown, so this can't affect the byte-identical lock
+    // in settings_store_test.cpp.
+    return j.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
 }
 
-AppSettings settings_from_json(std::string_view json) {
+AppSettings settings_from_json(
+    std::string_view json,
+    const SettingsScope scope,
+    const std::function<void(std::string_view key)>& on_ignored) {
     const AppSettings defaults{};
 
     try {
@@ -156,17 +197,27 @@ AppSettings settings_from_json(std::string_view json) {
 
         AppSettings out{};
 
-        if (j.contains("window") && j.at("window").is_object()) {
-            apply_window_section(j.at("window"), defaults, out);
+        const bool apply_host_owned = scope == SettingsScope::FULL;
+
+        if (apply_host_owned) {
+            if (j.contains("window") && j.at("window").is_object()) {
+                apply_window_section(j.at("window"), defaults, out);
+            }
+        } else if (j.contains("window")) {
+            report_ignored(on_ignored, "window");
         }
 
         if (j.contains("ui") && j.at("ui").is_object()) {
             apply_ui_section(j.at("ui"), defaults, out);
         }
 
-        if (j.contains("previousBuffers") &&
-            j.at("previousBuffers").is_array()) {
-            apply_previous_buffers_section(j.at("previousBuffers"), out);
+        if (apply_host_owned) {
+            if (j.contains("previousBuffers") &&
+                j.at("previousBuffers").is_array()) {
+                apply_previous_buffers_section(j.at("previousBuffers"), out);
+            }
+        } else if (j.contains("previousBuffers")) {
+            report_ignored(on_ignored, "previousBuffers");
         }
 
         return out;
@@ -189,7 +240,7 @@ AppSettings SettingsStore::load() const {
         }
         const std::string content{std::istreambuf_iterator(is),
                                   std::istreambuf_iterator<char>()};
-        return settings_from_json(content);
+        return settings_from_json(content, SettingsScope::FULL);
     } catch (const std::exception& e) {
         std::cerr << "[OID] settings load failed: " << e.what() << '\n';
         return AppSettings{};
@@ -200,7 +251,8 @@ AppSettings SettingsStore::load() const {
 
 void SettingsStore::save(const AppSettings& settings) const {
     try {
-        const std::string json = settings_to_json(settings);
+        const std::string json =
+            settings_to_json(settings, SettingsScope::FULL);
 
         if (const auto parent = file_.parent_path(); !parent.empty()) {
             std::error_code ec;

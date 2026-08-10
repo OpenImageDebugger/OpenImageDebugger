@@ -55,6 +55,42 @@ struct AppSettings {
     friend bool operator==(const AppSettings&, const AppSettings&) = default;
 };
 
+// Which parts of AppSettings this build is entitled to persist.
+//
+// Natively the viewer owns its window and its session, so it persists all of
+// it to its own settings file. Embedded in a host, the window belongs to that
+// host and the buffer list belongs to whatever restore the host runs, so a
+// build that sends either one is telling somebody else about their own state
+// -- and, in the case of the buffer list, being told it back as an
+// instruction to plot those buffers again.
+enum class SettingsScope { FULL, VIEWER_OWNED };
+
+// `live` as this scope is entitled to persist it. Identity under FULL.
+//
+// Under VIEWER_OWNED the host-owned fields come back at their defaults, which
+// is what keeps them out of SettingsSaver's comparison: the window size does
+// not converge behind an embedded canvas, so a snapshot that still carried it
+// would differ from its predecessor on nearly every frame and the saver would
+// emit for the life of the session whether or not anyone touched a setting.
+//
+// Takes `live` by value so a caller with a temporary or a moved-from local
+// can hand it over without a copy; both branches below return the parameter
+// itself, which moves rather than copies.
+[[nodiscard]] inline AppSettings settings_for_scope(AppSettings live,
+                                                    const SettingsScope scope) {
+    if (scope == SettingsScope::FULL) {
+        return live;
+    }
+
+    const AppSettings defaults{};
+    live.window_w = defaults.window_w;
+    live.window_h = defaults.window_h;
+    live.window_x = defaults.window_x;
+    live.window_y = defaults.window_y;
+    live.previous_buffers = defaults.previous_buffers;
+    return live;
+}
+
 } // namespace oid::host
 
 #endif // HOST_SETTINGS_APP_SETTINGS_H_
