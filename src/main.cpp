@@ -346,13 +346,32 @@ bool create_canvas(GLFWwindow* window,
     return true;
 }
 
+// Groups the FrameContext members that exist solely to feed
+// persist_settings_if_dirty below: the per-session dedup set, the merged
+// previous-buffers list, the debounced saver, and the scope saying which
+// slice of settings this build owns. None of the four is read anywhere
+// else in the frame loop -- unlike, say, left_pane_w or last_export_dir,
+// which persist_settings_if_dirty also reads but which stay directly on
+// FrameContext because the pane-splitter layout and the export path read
+// them too.
+struct SettingsPersistence {
+    std::set<std::string, std::less<>>& seen_this_session;
+    std::vector<oid::host::PreviousBuffer>& prev_buffers;
+    oid::host::SettingsSaver& saver;
+    oid::host::SettingsScope settings_scope;
+};
+
 // Aggregates references to the frame loop's per-main() state so the frame
 // lambda's body (originally ~180 lines, all under one capture list) can be
 // split into named helpers below without re-threading each one's own
 // parameter list. Every member is a reference to a main()-local that
 // outlives the frame loop (the loop runs to completion inside main()), so
 // holding references here is safe; nothing here is copied out of the
-// locals the lambda used to mutate through its capture list.
+// locals the lambda used to mutate through its capture list -- except
+// `settings_persistence.settings_scope`, which is a plain value (an enum,
+// cheap to copy) rather than a reference to anything. settings_persistence
+// itself groups the settings-persistence-only state; see its comment
+// above.
 struct FrameContext {
     oid::host::IpcClient& ipc;
     oid::host::UiState& ui;
@@ -368,10 +387,8 @@ struct FrameContext {
     std::shared_ptr<oid::host::GlfwCanvas>& canvas;
     oid::host::StageView& view;
     PaneRenderSize& pane_size;
-    std::set<std::string, std::less<>>& seen_this_session;
-    std::vector<oid::host::PreviousBuffer>& prev_buffers;
     oid::platform::SessionBridge& session_bridge;
-    oid::host::SettingsSaver& saver;
+    SettingsPersistence settings_persistence;
     oid::host::FileOpenQueue& file_open_queue;
 #if !defined(__EMSCRIPTEN__)
     // Non-null only when OID_AGENT=1; see the construction site in main()
@@ -731,7 +748,8 @@ void persist_settings_if_dirty(const FrameContext& ctx) {
         if (ctx.model.at(i).kind == oid::host::BufferKind::LOCAL_FILE) {
             continue;
         }
-        ctx.seen_this_session.insert(ctx.model.variable_name_of(i));
+        ctx.settings_persistence.seen_this_session.insert(
+            ctx.model.variable_name_of(i));
     }
     std::vector<std::string> loaded_names;
     loaded_names.reserve(ctx.model.size());
@@ -744,8 +762,11 @@ void persist_settings_if_dirty(const FrameContext& ctx) {
     const auto now_s = std::chrono::duration_cast<std::chrono::seconds>(
                            std::chrono::system_clock::now().time_since_epoch())
                            .count();
-    ctx.prev_buffers = oid::host::merge_previous_buffers(
-        ctx.prev_buffers, loaded_names, ctx.seen_this_session, now_s);
+    ctx.settings_persistence.prev_buffers = oid::host::merge_previous_buffers(
+        ctx.settings_persistence.prev_buffers,
+        loaded_names,
+        ctx.settings_persistence.seen_this_session,
+        now_s);
 
     oid::host::AppSettings live;
     const auto [ww, wh] = ctx.backend.window_size();
@@ -757,7 +778,7 @@ void persist_settings_if_dirty(const FrameContext& ctx) {
     live.left_pane_w = ctx.left_pane_w;
     live.contrast_enabled = ctx.ui.contrast_enabled();
     live.link_views = ctx.ui.link_views();
-    live.previous_buffers = ctx.prev_buffers;
+    live.previous_buffers = ctx.settings_persistence.prev_buffers;
     live.last_export_dir = ctx.last_export_dir;
     // Hold off saving until the platform says persisting is safe
     // (see SessionBridge::can_persist -- non-native builds gate on the
@@ -765,7 +786,14 @@ void persist_settings_if_dirty(const FrameContext& ctx) {
     // default/empty snapshot doesn't get echoed back and overwrite the
     // persisted buffer list; native is always safe).
     if (ctx.session_bridge.can_persist()) {
-        ctx.saver.update(live, glfwGetTime());
+        // Scoped before the saver, not after: the saver's whole job is
+        // deciding whether anything changed, and on a build that does not own
+        // the window the geometry never settles, so an unscoped snapshot
+        // differs on nearly every frame and it would emit for ever.
+        ctx.settings_persistence.saver.update(
+            oid::host::settings_for_scope(
+                std::move(live), ctx.settings_persistence.settings_scope),
+            glfwGetTime());
     }
 }
 
@@ -853,18 +881,31 @@ int main(int argc, char** argv) {
     // ipc.set_session_state_callback below) -- sharing this lambda means
     // the two call sites can't drift apart.
     auto apply_settings =
-        [&ui, &left_pane_w, &last_export_dir, &prev_buffers, &ipc](
-            const oid::host::AppSettings& s) {
+        [&ui,
+         &left_pane_w,
+         &last_export_dir,
+         &prev_buffers,
+         &ipc,
+         scope = settings_backend.scope()](const oid::host::AppSettings& s) {
             ui.set_contrast_enabled(s.contrast_enabled);
             ui.set_link_views(s.link_views);
             left_pane_w = s.left_pane_w;
             last_export_dir = s.last_export_dir;
-            prev_buffers = s.previous_buffers;
-            // Seed the previous-session buffer list; IpcClient auto-re-requests
-            // each one (if still available and not expired) the next time the
-            // bridge sends SET_AVAILABLE_SYMBOLS, so previously-plotted buffers
-            // reappear once the debugger reconnects.
-            ipc.set_restore_buffers(s.previous_buffers);
+            // Not redundant with the parser's own scope guard: the parser
+            // already declines host-owned keys under VIEWER_OWNED, but it
+            // returns *defaults* for them, and without this check those
+            // defaults would overwrite the viewer's own in-session tracking
+            // on every inbound message, emptying prev_buffers and clearing
+            // the restore list.
+            if (scope == oid::host::SettingsScope::FULL) {
+                prev_buffers = s.previous_buffers;
+                // Seed the previous-session buffer list; IpcClient
+                // auto-re-requests each one (if still available and not
+                // expired) the next time the bridge sends
+                // SET_AVAILABLE_SYMBOLS, so previously-plotted buffers
+                // reappear once the debugger reconnects.
+                ipc.set_restore_buffers(s.previous_buffers);
+            }
         };
     apply_settings(loaded);
 
@@ -998,8 +1039,14 @@ int main(int argc, char** argv) {
     // wiring), which persists it and can push it back as a session-state
     // update (see apply_settings above). No exit flush is needed there -- the
     // frame loop never returns on non-native builds.
-    oid::host::SettingsSaver saver{loaded,
-                                   settings_backend.make_save_sink(ipc)};
+    // Seeded scoped, not with `loaded` as-is: the invariant "the saver never
+    // holds host-owned state under VIEWER_OWNED" should hold by
+    // construction rather than by relying on settings_backend.load() to
+    // have returned defaults for that scope. Identity under FULL, so native
+    // behaviour is unchanged.
+    oid::host::SettingsSaver saver{
+        oid::host::settings_for_scope(loaded, settings_backend.scope()),
+        settings_backend.make_save_sink(ipc)};
     std::set<std::string, std::less<>> seen_this_session;
 
     // Seeded once from the -o/--open CLI flags; File > Open / Ctrl+O also
@@ -1014,25 +1061,25 @@ int main(int argc, char** argv) {
     // parameter list; see the FrameContext comment above. Every referenced
     // object is a main() local declared above, so all of them outlive the
     // frame loop below.
-    FrameContext ctx{ipc,
-                     ui,
-                     thumbnails,
-                     model,
-                     backend,
-                     goto_open,
-                     stages,
-                     svg_icons,
-                     left_pane_w,
-                     export_dialog,
-                     last_export_dir,
-                     canvas,
-                     view,
-                     pane_size,
-                     seen_this_session,
-                     prev_buffers,
-                     session_bridge,
-                     saver,
-                     file_open_queue};
+    FrameContext ctx{
+        ipc,
+        ui,
+        thumbnails,
+        model,
+        backend,
+        goto_open,
+        stages,
+        svg_icons,
+        left_pane_w,
+        export_dialog,
+        last_export_dir,
+        canvas,
+        view,
+        pane_size,
+        session_bridge,
+        SettingsPersistence{
+            seen_this_session, prev_buffers, saver, settings_backend.scope()},
+        file_open_queue};
 #if !defined(__EMSCRIPTEN__)
     ctx.agent = agent_server ? &*agent_server : nullptr;
 #endif

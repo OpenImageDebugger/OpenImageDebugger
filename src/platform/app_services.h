@@ -94,6 +94,12 @@ class SettingsBackend {
 
     [[nodiscard]] host::AppSettings load() const;
 
+    // Which parts of AppSettings this build is entitled to persist. Shared
+    // code asks rather than assuming, because the answer differs by platform
+    // and the wrong answer is silent: it sends an embedding host state that
+    // the host already owns, and reads it back as an instruction.
+    [[nodiscard]] host::SettingsScope scope() const;
+
     [[nodiscard]] std::function<void(const host::AppSettings&)>
     make_save_sink(host::IpcClient& ipc) const;
 
