@@ -69,6 +69,12 @@ host::AppSettings SettingsBackend::load() const {
     return impl_->store.load();
 }
 
+host::SettingsScope SettingsBackend::scope() const {
+    // This build owns its window and its session, and writes both to its own
+    // settings file.
+    return host::SettingsScope::FULL;
+}
+
 std::function<void(const host::AppSettings&)>
 SettingsBackend::make_save_sink(host::IpcClient& /*ipc*/) const {
     return [this](const host::AppSettings& a) { impl_->store.save(a); };
