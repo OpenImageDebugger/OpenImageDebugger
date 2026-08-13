@@ -209,21 +209,32 @@ division collapses into a single term instead of the if/elif ladder:
   "pointer": "{sym}.data",
   "width": "{sym}.cols",
   "height": "{sym}.rows",
-  "channels": { "if":   "((({sym}.flags & 4088) >> 3) + 1) <= 4",
+  "channels": { "if":   "sizeof({sym}.step.p) == sizeof({sym}.step.p[0])",
                 "then": "(({sym}.flags & 4088) >> 3) + 1",
                 "else": "(({sym}.flags & 4064) >> 5) + 1" },
-  "dtype": "{sym}.flags & 7",
+  "dtype": { "if":   "sizeof({sym}.step.p) == sizeof({sym}.step.p[0])",
+             "then": "{sym}.flags & 7",
+             "else": "{sym}.flags & 31" },
   "row_stride": "{sym}.step.p[0] / {channels} / {elemsize}",
   "pixel_layout": { "if": "{channels} >= 3", "then": "bgra", "else": "rgba" }
 }
 ```
 
-Because `flags & 7` already yields an OID type code (`0, 2, 3, 4, 5, 6`),
-`dtype` is a plain expression and needs no `map`; the `pixel_layout` if/else
-picks BGRA for color Mats and RGBA otherwise.
+Because the masked depth already IS an OID type code (`0, 2, 3, 4, 5, 6`),
+`dtype` needs no `map`; a depth with no OID code (OpenCV's 8S and 16F, and
+every depth OpenCV 5 added) fails dtype validation with a typed error naming
+the entry, the field and the code. The `pixel_layout` if/else picks BGRA for
+color Mats and RGBA otherwise.
 
-The `channels` if/else is there because OpenCV widened `CV_CN_MASK` across
-versions: the entry tries the old mask and falls back to the wider one.
+Both `if` conditions are the same version probe. OpenCV 5 moved the split
+between the depth and channel bit-fields (bit 3, masks 7/4088, became bit 5,
+masks 31/4064), and the low bits collide across versions (the word 8 means
+8UC2 on OpenCV 4 and 16BFC1 on OpenCV 5), so no single mask can decode both.
+Rather than asking for a version number the debuggee does not expose, the
+probe reads the layout structurally: OpenCV 4's `step.p` is a `size_t*` where
+OpenCV 5's is an inline `size_t[10]`, so comparing `sizeof` of the member and
+its first element is true exactly on OpenCV 4. `sizeof` is evaluated
+statically by the debugger, so the probe costs no debuggee memory read.
 
 ### IplImage — the thorough case
 

@@ -176,14 +176,27 @@ def _wrap_eval(value):
     return value
 
 
+def _fake_sizeof(value):
+    """The debugger's static sizeof, over the fixture tree: a list models an
+    inline array (size_t[N] reads as N words), anything scalar models a
+    size_t or a pointer (one word). 8 matches the LP64 targets the goldens
+    assume; the cv::Mat entry only ever compares two sizeof results, so the
+    word size cancels out anyway."""
+    if isinstance(value, list):
+        return 8 * len(value)
+    return 8
+
+
 class EvalFakeBridge:
     """Test-only bridge. evaluate_expression() runs the substituted text
     through Python eval over the fixture tree (a valid built-in expression is
     member access plus integer arithmetic — a shared C/Python subset, with
-    CInt supplying C division). get_casted_pointer() ints the pointer node."""
+    CInt supplying C division and _fake_sizeof standing in for the debugger's
+    static sizeof). get_casted_pointer() ints the pointer node."""
 
     def __init__(self, symbol, obj_name):
-        self._namespace = {obj_name: symbol.eval_view()}
+        self._namespace = {obj_name: symbol.eval_view(),
+                           'sizeof': _fake_sizeof}
         self.casts = []
 
     def evaluate_expression(self, expression):
@@ -204,6 +217,20 @@ def _mat(flags, data, cols, rows, step0):
         'flags': CInt(flags), 'data': CInt(data),
         'cols': CInt(cols), 'rows': CInt(rows),
         'step': Struct(fields={'p': [CInt(step0)]}),
+    })
+
+
+def _mat5(flags, data, cols, rows, step0):
+    """cv::Mat as OpenCV 5 lays it out. Its MatStep holds an inline
+    size_t[MatShape::MAX_DIMS] (10 entries) where OpenCV 4's MStep held a
+    size_t pointer; the entry's version probe reads exactly that difference,
+    so the one-element p above models the pointer and the ten-element p here
+    models the array. `flags` must be packed the OpenCV 5 way too:
+    depth | ((channels - 1) << 5), not << 3."""
+    return Struct(ctype='cv::Mat', fields={
+        'flags': CInt(flags), 'data': CInt(data),
+        'cols': CInt(cols), 'rows': CInt(rows),
+        'step': Struct(fields={'p': [CInt(step0)] + [CInt(0)] * 9}),
     })
 
 
@@ -265,6 +292,33 @@ CLEAN_CASES = [
           'pixel_layout': 'bgra', 'transpose_buffer': False}),
     Case('mat_32fc1',
          _mat(_MAT_MAGIC | 5, 4096, 320, 200, 1280), 'mat', 'cv::Mat',
+         {'display_name': 'mat (cv::Mat)', 'pointer': 4096,
+          'width': 320, 'height': 200, 'channels': 1,
+          'type': T.OID_TYPES_FLOAT32, 'row_stride': 320,
+          'pixel_layout': 'rgba', 'transpose_buffer': False}),
+    # OpenCV 4 and 5 pack `flags` differently (channel count starts at bit 3
+    # vs bit 5), and the low bits collide: 8 means 8UC2 on 4 and 16BFC1 on 5.
+    # The next case pins the v4 side of that colliding word; its v5 twin is
+    # test_opencv5_bf16_rejected_where_v4_sibling_decodes below. The two v5
+    # cases after it pin classic depths under the v5 packing. Those decoded
+    # correctly even before the version probe, by numeric accident (depths
+    # up to 7 fit inside the v4 mask, and multi-channel v5 words overflow
+    # the heuristic's channel gate into the right branch); these cases keep
+    # that from regressing now that the branch is chosen deliberately.
+    Case('mat_8uc2_v4_side_of_collision',
+         _mat(_MAT_MAGIC | 8, 4096, 640, 480, 1280), 'mat', 'cv::Mat',
+         {'display_name': 'mat (cv::Mat)', 'pointer': 4096,
+          'width': 640, 'height': 480, 'channels': 2,
+          'type': T.OID_TYPES_UINT8, 'row_stride': 640,
+          'pixel_layout': 'rgba', 'transpose_buffer': False}),
+    Case('mat5_8uc3',
+         _mat5(_MAT_MAGIC | 64, 4096, 640, 480, 1920), 'mat', 'cv::Mat',
+         {'display_name': 'mat (cv::Mat)', 'pointer': 4096,
+          'width': 640, 'height': 480, 'channels': 3,
+          'type': T.OID_TYPES_UINT8, 'row_stride': 640,
+          'pixel_layout': 'bgra', 'transpose_buffer': False}),
+    Case('mat5_32fc1',
+         _mat5(_MAT_MAGIC | 5, 4096, 320, 200, 1280), 'mat', 'cv::Mat',
          {'display_name': 'mat (cv::Mat)', 'pointer': 4096,
           'width': 320, 'height': 200, 'channels': 1,
           'type': T.OID_TYPES_FLOAT32, 'row_stride': 320,
@@ -367,6 +421,31 @@ def test_diff4_cv_8s_rejected_by_new_entry():
 def test_diff4_legacy_mat_returns_invalid_code_one():
     symbol = _mat(_MAT_MAGIC | 1, 4096, 640, 480, 640)
     assert _legacy_metadata('cv::Mat', symbol, 'mat')['type'] == 1
+
+
+def test_opencv5_bf16_rejected_where_v4_sibling_decodes():
+    # Low flag bits 8 mean 8UC2 on OpenCV 4 and 16BFC1 on OpenCV 5: the SAME
+    # word, told apart only by the step-layout probe. The v4 reading decodes
+    # (the mat_8uc2_v4_side_of_collision clean case); this v5 reading must be
+    # rejected, because bf16 has no OID pixel type. Under the old
+    # single-mask decode it aliased to uint8 and the channel heuristic read
+    # TWO channels, so a bf16 tensor rendered as interleaved garbage with no
+    # error anywhere.
+    symbol = _mat5(_MAT_MAGIC | 8, 4096, 640, 480, 1280)
+    with pytest.raises(EntryEvaluationError) as excinfo:
+        _new_metadata(symbol, 'mat')
+    assert excinfo.value.field == 'dtype'
+
+
+def test_opencv5_int64_rejected_not_misread_as_int16():
+    # CV_64SC3 under the v5 packing: depth 11, three channels, low bits
+    # 11 | (2 << 5) = 75. The old decode masked 75 & 7 = 3 and rendered the
+    # 8-byte samples as int16. 64-bit integers have no OID pixel type, so
+    # the right answer is a typed dtype rejection, same as CV_8S above.
+    symbol = _mat5(_MAT_MAGIC | 75, 4096, 640, 480, 15360)
+    with pytest.raises(EntryEvaluationError) as excinfo:
+        _new_metadata(symbol, 'mat')
+    assert excinfo.value.field == 'dtype'
 
 
 # IPL_DEPTH_16S = 0x80000010; as an unsigned 32-bit word that is 2147483664.
