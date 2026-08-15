@@ -114,20 +114,33 @@ jobs:
         # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
         # queries: security-extended,security-and-quality
 
-    # Autobuild attempts to build any compiled languages (C/C++, C#, Go, Java, or Swift).
-    # If this step fails, then you should remove it and run the build manually (see below)
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@5595ccaf912efad79be6eef63a5619ff05969be3 # 3.29.5
-
-    # ℹ️ Command-line programs to run using the OS shell.
-    # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
-
-    #   If the Autobuild fails above, remove it and uncomment the following three lines.
-    #   modify them (or add more) to build your code if your project, please refer to the EXAMPLE below for guidance.
-
-    # - run: |
-    #     echo "Run, Build Application using script"
-    #     ./location_of_script_within_repo/buildscript.sh
+    # The template's Autobuild step is gone, which is what the template
+    # itself tells you to do when it does not work: "If this step fails, then
+    # you should remove it and run the build manually".
+    #
+    # It did not fail, it hung. Autobuild would end up cancelled and
+    # `Post Initialize CodeQL` would then never return, so the job held a
+    # runner until its timeout. That happened on every run from 2026-08-13
+    # onwards, including with no other analysis running, so it was not
+    # contention between piled-up runs.
+    #
+    # The commands below are the ones build.yml already uses to build this
+    # project in this same container on this same runner image, so they are
+    # known to work here rather than guessed. Two deliberate differences:
+    #
+    #   BUILD_TESTS=OFF, because tests are not what this scan is for and
+    #   building them costs time for no analysed code.
+    #
+    #   No ccache, unlike build.yml. CodeQL's C++ extractor works by observing
+    #   real compiler invocations, so a cache hit is a translation unit that
+    #   never reaches the database. Adding a compiler launcher here would
+    #   quietly shrink what is analysed while everything still looked green.
+    - if: matrix.language == 'c-cpp'
+      name: Build for analysis
+      shell: bash
+      run: |
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
+        cmake --build build
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # 3.29.5
