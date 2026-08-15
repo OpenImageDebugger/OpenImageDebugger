@@ -145,13 +145,25 @@ jobs:
     #   No ccache, unlike build.yml, and this is the one that would do damage
     #   silently. CodeQL's C++ extractor works by observing real compiler
     #   invocations, so a cache hit is a translation unit that never reaches
-    #   the database. Adding a compiler launcher here would shrink what is
-    #   analysed while every run stayed green.
+    #   the database, shrinking what is analysed while every run stays green.
+    #
+    #   The launchers are cleared explicitly rather than merely left out.
+    #   CMake initialises CMAKE_<LANG>_COMPILER_LAUNCHER from the environment
+    #   variable of the same name, so this build would inherit a launcher the
+    #   container happens to export without anything here mentioning ccache.
+    #   Verified rather than assumed: configuring with
+    #   CMAKE_CXX_COMPILER_LAUNCHER=ccache in the environment sets the cache
+    #   variable to `ccache`, and passing -DCMAKE_CXX_COMPILER_LAUNCHER=
+    #   leaves it empty.
     - if: matrix.language == 'c-cpp'
       name: Build for analysis
       shell: bash
       run: |
-        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
+        cmake -S . -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_TESTS=OFF \
+          -DCMAKE_C_COMPILER_LAUNCHER= \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=
         cmake --build build
 
     - name: Perform CodeQL Analysis
