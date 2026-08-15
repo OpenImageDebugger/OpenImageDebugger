@@ -118,6 +118,13 @@ void open_export_dialog(ExportDialogState& st,
             last_export_dir, std::getenv("HOME"), buffer_name, st.format));
 }
 
+std::string_view export_selected_refusal(const std::size_t buffer_count) {
+    if (buffer_count == 0) {
+        return "Nothing to export: no buffer is loaded";
+    }
+    return {};
+}
+
 BufferExporter::OutputType classify_export_format(const std::string_view path) {
     for (const auto& fmt : EXPORT_FORMATS) {
         if (ends_with_ci(path, fmt.extension)) {
