@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -73,6 +74,77 @@ TEST(ExportCore, NormalizeFloatScalesTo255) {
         {1, 1, 1, 1, 0, 0, 0, 0});
     EXPECT_EQ(img.pixels[0], 0);   // 0.0 * 255
     EXPECT_EQ(img.pixels[4], 255); // 1.0 * 255
+}
+
+TEST(ExportCore, NormalizeRoundsToNearestLikeTheScreen) {
+    // The display path renders through the GPU with round-to-nearest, so an
+    // export that truncated showed one image and wrote a slightly darker
+    // one. Truncation also biases every sample downward by half a level on
+    // average, where rounding biases nothing, and both extension hosts
+    // already round (Math.round in the VS Code exporter, Math.round in the
+    // plugin's), so this is what makes all three agree.
+    //
+    // Gain 0.5 on these inputs lands exactly on .5 boundaries, all three
+    // exactly representable in float32, so nothing here depends on
+    // floating-point luck: 127*0.5 = 63.5, 129*0.5 = 64.5, 255*0.5 = 127.5.
+    // 180*0.5 = 90.0 is included because it is NOT on a boundary: rounding
+    // must not shift values that were already exact.
+    constexpr std::array<std::uint8_t, 4> px = {127, 129, 255, 180};
+    const auto [width, height, pixels] =
+        oid::BufferExporter::normalize_to_rgba8_raw(
+            px.data(),
+            {.type = oid::BufferType::UNSIGNED_BYTE,
+             .width = 4,
+             .height = 1,
+             .channels = 1,
+             .step = 4,
+             .pixel_layout = "rgba"},
+            {0.5f, 0.5f, 0.5f, 0.5f, 0, 0, 0, 0});
+    ASSERT_EQ(width, 4);
+    ASSERT_EQ(height, 1);
+    // Truncation would give 63, 64, 127, 90.
+    EXPECT_EQ(pixels[0], 64);
+    EXPECT_EQ(pixels[4], 65);
+    EXPECT_EQ(pixels[8], 128);
+    EXPECT_EQ(pixels[12], 90);
+}
+
+TEST(ExportCore, NormalizeRoundsFloatSamplesToo) {
+    // The float path scales by 255 instead of 1, so it reaches the .5
+    // boundary from a different direction; 0.5f * 255 = 127.5 exactly.
+    // The exporter takes the raw bytes the IPC layer delivers, so the
+    // fixture IS those bytes: bit_cast spells that at compile time and
+    // needs no reinterpret_cast to feed the API.
+    constexpr auto px =
+        std::bit_cast<std::array<std::uint8_t, 8>>(std::array{0.5f, 1.0f});
+    const auto img = oid::BufferExporter::normalize_to_rgba8_raw(
+        px.data(),
+        {.type = oid::BufferType::FLOAT32,
+         .width = 2,
+         .height = 1,
+         .channels = 1,
+         .step = 2,
+         .pixel_layout = "rgba"},
+        {1, 1, 1, 1, 0, 0, 0, 0});
+    EXPECT_EQ(img.pixels[0], 128); // 127.5 rounds up, truncation gave 127
+    EXPECT_EQ(img.pixels[4], 255); // unchanged: 255.0 needs no rounding
+}
+
+TEST(ExportCore, NormalizeStillClampsAboveTheRange) {
+    // Rounding happens after the clamp, so an over-bright sample cannot
+    // round past 255 and wrap the cast to uint8.
+    constexpr std::array<std::uint8_t, 2> px = {255, 0};
+    const auto img = oid::BufferExporter::normalize_to_rgba8_raw(
+        px.data(),
+        {.type = oid::BufferType::UNSIGNED_BYTE,
+         .width = 2,
+         .height = 1,
+         .channels = 1,
+         .step = 2,
+         .pixel_layout = "rgba"},
+        {4, 4, 4, 4, 0, 0, 0, 0});
+    EXPECT_EQ(img.pixels[0], 255); // 1020 clamped, not wrapped
+    EXPECT_EQ(img.pixels[4], 0);
 }
 
 TEST(ExportCore, OctaveGoldenBytes) {

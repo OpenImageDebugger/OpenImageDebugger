@@ -29,6 +29,7 @@
 #include <array>
 #include <bit>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <format>
@@ -118,13 +119,25 @@ RgbaImage normalize_to_rgba8_impl(const std::uint8_t* data,
             for (; c < channels; ++c) {
                 const auto in_val = static_cast<float>(in_ptr[col_offset + c]);
 
-                unformatted_pixel[c] = static_cast<std::uint8_t>(
+                // Rounded, not truncated. The display path renders through
+                // the GPU with round-to-nearest, so a truncating export
+                // wrote an image up to one level darker than the one the
+                // user was looking at when they asked for it. Truncation
+                // also biases every sample downward by half a level on
+                // average, where rounding biases nothing, and both
+                // extension hosts already round, so this is what makes the
+                // three implementations agree.
+                //
+                // Rounding after the clamp, not before: the clamp bounds
+                // the value to [0, 255] first, so nothing can round to 256
+                // and wrap the cast.
+                unformatted_pixel[c] = static_cast<std::uint8_t>(std::lround(
                     std::clamp((in_val * bc_comp[c] +
                                 bc_comp[4 + c] *
                                     static_cast<std::uint8_t>(max_intensity)) *
                                    color_scale,
                                0.f,
-                               255.f));
+                               255.f)));
             }
 
             // Grayscale: Repeat first channel into G and B
