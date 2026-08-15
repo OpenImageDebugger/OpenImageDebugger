@@ -124,17 +124,29 @@ jobs:
     # onwards, including with no other analysis running, so it was not
     # contention between piled-up runs.
     #
-    # The commands below are the ones build.yml already uses to build this
-    # project in this same container on this same runner image, so they are
-    # known to work here rather than guessed. Two deliberate differences:
+    # What is shared with build.yml is the ground this stands on: the same
+    # container, the same runner image, the same CMake project, and a build
+    # that is known to succeed there. The commands themselves are NOT the same
+    # and are not meant to be kept in sync. build.yml produces installable
+    # release artifacts; this produces a CodeQL database and nothing else, and
+    # every difference below follows from that.
+    #
+    #   Plain Ninja, not "Ninja Multi-Config", with CMAKE_BUILD_TYPE=Release
+    #   instead of --config Release. Multi-Config exists so build.yml can hold
+    #   several configurations in one tree; the analysis compiles one.
+    #
+    #   No CMAKE_INSTALL_PREFIX and no --target install. The database is built
+    #   from compiler invocations, so installing the result copies files for
+    #   a reader that does not exist.
     #
     #   BUILD_TESTS=OFF, because tests are not what this scan is for and
     #   building them costs time for no analysed code.
     #
-    #   No ccache, unlike build.yml. CodeQL's C++ extractor works by observing
-    #   real compiler invocations, so a cache hit is a translation unit that
-    #   never reaches the database. Adding a compiler launcher here would
-    #   quietly shrink what is analysed while everything still looked green.
+    #   No ccache, unlike build.yml, and this is the one that would do damage
+    #   silently. CodeQL's C++ extractor works by observing real compiler
+    #   invocations, so a cache hit is a translation unit that never reaches
+    #   the database. Adding a compiler launcher here would shrink what is
+    #   analysed while every run stayed green.
     - if: matrix.language == 'c-cpp'
       name: Build for analysis
       shell: bash
