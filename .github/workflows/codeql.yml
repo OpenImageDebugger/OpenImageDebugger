@@ -43,6 +43,20 @@ on:
   schedule:
     - cron: '45 12 * * 6'
 
+# One analysis per ref at a time. Without this nothing supersedes anything, so
+# every push and every PR synchronize adds a run and none of them ever stand
+# down: on 2026-08-15 twenty were live at once, including ones for branches
+# that had already merged and been deleted days earlier.
+#
+# Pushes to main are deliberately NOT cancelled. Their results are what the
+# code-scanning alerts on the default branch are built from, so dropping one
+# because a later commit arrived would leave main analysed by whichever run
+# happened to finish. A pull request has no such standing: only its latest
+# head matters.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   analyze:
     name: Analyze
@@ -54,7 +68,15 @@ jobs:
 
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-26.04' }}
     container: ghcr.io/openimagedebugger/oid:26.04
-    timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
+    # 45, down from the template's 360. The three most recent successful
+    # c-cpp analyses took 10m32s, 11m33s and 14m12s, so this is three times
+    # the slowest of them and still bounds a wedged job to under an hour
+    # rather than six. The failure this guards is real and not hypothetical:
+    # Autobuild ends up cancelled and `Post Initialize CodeQL` then never
+    # returns, so the job holds a runner until the timeout expires. Raise it
+    # if an honest analysis ever approaches it; do not raise it to
+    # accommodate a hang.
+    timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 45 }}
     permissions:
       # required for all workflows
       security-events: write
