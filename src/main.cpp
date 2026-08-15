@@ -1016,13 +1016,9 @@ int main(int argc, char** argv) {
             apply_settings(s);
         },
         [&ui, &model, &export_dialog, &last_export_dir] {
-            // Refused in words rather than by falling out of a bounds check.
-            // The host that sent this hears nothing back and keeps no copy of
-            // the selection, so a command arriving at an empty viewer used to
-            // end here with no dialog, no message and no log line anywhere,
-            // which from the user's side is indistinguishable from a broken
-            // menu entry. The viewer is the only place that can answer, and
-            // answering here covers both hosts at once.
+            // See export_selected_refusal()'s doc comment for why this check
+            // exists; answering here, in the one callback both hosts share,
+            // covers both of them at once.
             if (const std::string_view refusal =
                     oid::host::export_selected_refusal(model.size());
                 !refusal.empty()) {
