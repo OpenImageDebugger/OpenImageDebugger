@@ -65,6 +65,17 @@ void open_export_dialog(ExportDialogState& st,
                         const std::string& buffer_name,
                         const std::string& last_export_dir);
 
+// Why an embedding host's "export selected buffer" command cannot be served,
+// or empty when it can. `buffer_count` is the buffer model's size.
+//
+// The viewer has to answer this because nothing else can: a host sends the
+// command and hears nothing back, and it keeps no copy of which buffer is
+// selected, so a request arriving at an empty viewer used to stop at the
+// callback's bounds check with no dialog, no message and no log line. Worded
+// as a situation rather than a failure -- nothing went wrong, there is simply
+// nothing loaded to export.
+std::string_view export_selected_refusal(std::size_t buffer_count);
+
 // One row per supported export format. `extension` includes the leading dot
 // (".png"); `label` is the name shown in the OS save dialog's format filter.
 // Stored as const char* so the nfd filter list (which needs null-terminated C
