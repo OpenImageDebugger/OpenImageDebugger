@@ -1,8 +1,8 @@
 # Declarative buffer types
 
 Open Image Debugger can be taught new buffer-bearing C/C++ types **without
-writing Python**, by describing them in a JSON file that both the native tool
-(gdb/lldb) and the VS Code extension read. You describe a type once; it works in
+writing Python**, by describing them in a JSON file that the native tool
+(gdb/lldb) and the VS Code and JetBrains extensions read. You describe a type once; it works in
 every surface. The built-in OpenCV and Eigen types are themselves defined this
 way, in `resources/oidscripts/oidtypes/builtin_types.json` — read it as a
 worked-example gallery.
