@@ -2,6 +2,7 @@
 
 [![VS Code Marketplace Downloads](https://vsmarketplacebadges.dev/downloads-short/OpenImageDebugger.openimagedebugger-vscode.svg?label=VS%20Code%20Marketplace%20Downloads&color=007ACC)](https://marketplace.visualstudio.com/items?itemName=OpenImageDebugger.openimagedebugger-vscode)
 [![Open VSX Downloads](https://img.shields.io/open-vsx/dt/openimagedebugger/openimagedebugger-vscode?label=Open%20VSX%20Downloads&color=a60ee5)](https://open-vsx.org/extension/openimagedebugger/openimagedebugger-vscode)
+[![JetBrains Marketplace Downloads](https://img.shields.io/jetbrains/plugin/d/33640?label=JetBrains%20Marketplace%20Downloads&color=fe2857)](https://plugins.jetbrains.com/plugin/33640-open-image-debugger)
 
 Open Image Debugger is a tool for visualizing in-memory buffers during debug
 sessions, compatible with both GDB and LLDB. It works out of the box with
@@ -16,9 +17,15 @@ customized to work with any arbitrary data structure.
 > or [Open VSX](https://open-vsx.org/extension/openimagedebugger/openimagedebugger-vscode).
 > See [Installation](#vs-code-and-forks) below.
 
+> **New — using CLion or Android Studio?** The Open Image Debugger plugin is
+> now on the
+> [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/33640-open-image-debugger):
+> plot buffers straight from the native C/C++ debugger, inside the IDE. See
+> [Installation](#clion-and-android-studio) below.
+
 > **New — declarative custom types.** You can now describe your own buffer types
 > in a `.oid/types.json` file instead of writing Python; the same file works in
-> gdb, lldb, and the VS Code extension. See
+> gdb, lldb, and the VS Code and JetBrains extensions. See
 > [doc/declarative-types.md](doc/declarative-types.md).
 
 # Download (experimental) [![OID Eternal Download Count](https://img.shields.io/github/downloads/openimagedebugger/openimagedebugger/total.svg)](https://tooomm.github.io/github-release-stats/?username=OpenImageDebugger&repository=OpenImageDebugger&search=0)
@@ -92,6 +99,13 @@ VS Code and compatible forks (Cursor, VSCodium, Windsurf, and others):
 
 * [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=OpenImageDebugger.openimagedebugger-vscode)
 * [Open VSX](https://open-vsx.org/extension/openimagedebugger/openimagedebugger-vscode)
+
+### CLion and Android Studio
+
+The Open Image Debugger plugin brings the same viewer to JetBrains IDEs with a
+native C/C++ debugger — CLion, and Android Studio with the NDK:
+
+* [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/33640-open-image-debugger)
 
 If you'd rather build and integrate the desktop version manually, follow the steps below.
 
@@ -311,7 +325,8 @@ your workspace root — no Python required. The common case is five fields:
 }
 ```
 
-The same file is read by gdb, lldb, and the VS Code extension. You can also
+The same file is read by gdb, lldb, and the VS Code and JetBrains
+extensions. You can also
 point OID at files outside the workspace with the `OID_TYPES_PATH` environment
 variable. The full format — every field, the expression grammar, dtype names,
 discovery and precedence, and a walkthrough migrating an existing Python
