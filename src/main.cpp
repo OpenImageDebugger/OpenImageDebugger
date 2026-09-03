@@ -188,10 +188,18 @@ void draw_canvas_pane(oid::host::GlfwCanvas& canvas,
     sel.resize_callback(lw, lh);
     const GLuint tex = view.render(sel);
 
+    // The backend samples every texture through its own linear sampler;
+    // the stage texture is drawn 1:1 in framebuffer pixels and must stay
+    // nearest so a fractional DPI scale doesn't blur it.
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    draw_list->AddCallback(
+        ImGui::GetPlatformIO().DrawCallback_SetSamplerNearest, nullptr);
     ImGui::Image(tex,
                  canvas_size,
                  ImVec2(0, 1),
                  ImVec2(1, 0)); // flip V (FBO origin is bottom-left)
+    draw_list->AddCallback(ImGui::GetPlatformIO().DrawCallback_SetSamplerLinear,
+                           nullptr);
 
     // ImGui mouse coordinates are already in screen (logical) points -- the
     // same pane-logical frame the camera operates in (see PaneRenderSize),

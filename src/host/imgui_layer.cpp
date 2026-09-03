@@ -74,20 +74,18 @@ bool ImGuiLayer::initialize(GLFWwindow* window, const float content_scale) {
 
 void ImGuiLayer::begin_frame() {
     // Size the canvas/GLFW window BEFORE ImGui_ImplGlfw_NewFrame: the
-    // backend derives DisplaySize (logical points) and
-    // DisplayFramebufferScale from fresh state. Font-atlas work (display
-    // scale changes) also happens before ImGui_ImplOpenGL3_NewFrame so the
-    // destroyed font texture is recreated in the same frame. Both are
-    // platform no-ops on native.
+    // backend reads DisplaySize and DisplayFramebufferScale from it. On a
+    // display scale change just re-add the fonts; ImGui rebuilds the atlas
+    // and the backend recreates its texture on render. FontSizeBase is
+    // seeded from the font only while zero, so reset it or the old size
+    // sticks. Both are no-ops on native.
     platform::sync_canvas_size(window_);
     if (const auto scale = platform::refresh_display_scale(content_scale_);
         scale.has_value()) {
         content_scale_ = *scale;
-        const ImGuiIO& io = ImGui::GetIO();
-        io.Fonts->Clear();
+        ImGui::GetIO().Fonts->Clear();
         setup_ui_fonts(content_scale_);
-        io.Fonts->Build();
-        ImGui_ImplOpenGL3_DestroyFontsTexture();
+        ImGui::GetStyle().FontSizeBase = 0.0f;
     }
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
