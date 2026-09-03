@@ -152,10 +152,6 @@ void draw_buffer_list_row(const BufferListRowContext& ctx,
 
     draw_buffer_row_context_menu(ctx.export_dialog, name, ctx.last_export_dir);
 
-    // Where the Selectable's layout put the next row — restored after
-    // the overlays so consecutive rows stack without extra gaps.
-    const ImVec2 after_row = ImGui::GetCursorScreenPos();
-
     if (tex != 0) {
         ImGui::SetCursorScreenPos(
             ImVec2(row_start.x,
@@ -172,7 +168,11 @@ void draw_buffer_list_row(const BufferListRowContext& ctx,
         row_start.y + (row_h - text_size.y) * 0.5f));
     ImGui::TextUnformatted(label.c_str());
 
-    ImGui::SetCursorScreenPos(after_row);
+    // Put the cursor back where the Selectable's layout left it. Done with
+    // an item rather than a bare cursor move: imgui asserts when the cursor
+    // ends past the content extent.
+    ImGui::SetCursorScreenPos(row_start);
+    ImGui::Dummy(ImVec2(0.0f, row_h));
 
     ImGui::PopID();
 }
