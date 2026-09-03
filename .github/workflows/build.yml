@@ -110,8 +110,16 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
           CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.ccache-variant }}
         # see https://stackoverflow.com/a/24470998/5843895 and https://cliutils.gitlab.io/modern-cmake/chapters/intro/running.html
+        #
+        # CMAKE_MSVC_DEBUG_INFORMATION_FORMAT keeps MSVC debug info inside the
+        # object file (/Z7) instead of a separate PDB (/Zi + /Fd). sccache
+        # 0.15+ rewrites the directory-form /Fd that CMake emits for
+        # executables into a "<dir>.pdb" that cl.exe never writes and then
+        # fails the compile; the Debug-config try_compile CMake runs at
+        # configure time is what hits it. This is the setup sccache's README
+        # recommends for CMake >= 3.25. Non-MSVC compilers ignore the value.
         run: |
-          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+          cmake -S . -B build -G "Ninja Multi-Config" -DCMAKE_INSTALL_PREFIX=out -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>"
           cmake --build build --config Release --target install
 
       - name: Run Tests
