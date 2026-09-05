@@ -114,3 +114,18 @@ def test_recv_frame_rejects_non_object_frame():
             a.sendall(ep._HEADER.pack(len(data)) + data)
             with pytest.raises(ValueError):
                 ep.recv_frame(b)
+
+
+def test_recv_frame_rejects_non_integer_payload():
+    import json
+    # Shut down + timeout: a truncating reader blocks on a trailer that never
+    # arrives, so without them this hangs instead of failing.
+    for bad in (4.5, 4.0, True, '4', None, [4]):
+        a, b = socket.socketpair()
+        with a, b:
+            b.settimeout(5)
+            data = json.dumps({'ok': True, 'payload': bad}).encode('utf-8')
+            a.sendall(ep._HEADER.pack(len(data)) + data)
+            a.shutdown(socket.SHUT_WR)
+            with pytest.raises(ValueError):
+                ep.recv_frame(b)

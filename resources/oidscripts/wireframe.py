@@ -84,7 +84,12 @@ def recv_frame(sock, max_payload=None):
         raise ValueError('frame is not a JSON object')
     payload = b''
     if 'payload' in obj:
-        nbytes = int(obj['payload'])
+        declared = obj['payload']
+        # Matches wire_frame.cpp's is_number_integer() and the Kotlin codec.
+        # bool is an int subclass, so {"payload": true} is rejected too.
+        if not isinstance(declared, int) or isinstance(declared, bool):
+            raise ValueError('payload field is not an integer')
+        nbytes = declared
         if nbytes < 0:
             raise ValueError('negative payload size: %d' % nbytes)
         if max_payload is not None and nbytes > max_payload:
