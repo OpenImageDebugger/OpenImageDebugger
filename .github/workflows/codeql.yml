@@ -102,7 +102,7 @@ jobs:
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # 3.29.5
+      uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
       with:
         languages: ${{ matrix.language }}
         # Excludes vendored dependencies under src/thirdparty from analysis.
@@ -167,6 +167,6 @@ jobs:
         cmake --build build
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # 3.29.5
+      uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
       with:
         category: "/language:${{matrix.language}}"
