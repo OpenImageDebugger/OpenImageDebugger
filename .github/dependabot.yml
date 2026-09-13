@@ -37,6 +37,12 @@ updates:
 
   - package-ecosystem: "github-actions" # See documentation for possible values
     directory: "/" # Location of package manifests
+    groups:
+      # codeql-action refuses to run when init and analyze are on different
+      # versions, so a PR bumping only one of them always fails CI.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
     ignore:
       # see softprops/action-gh-release#556
       - dependency-name: "softprops/action-gh-release"
