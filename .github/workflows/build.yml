@@ -37,6 +37,7 @@ jobs:
           [
             macos-26,
             macos-26-intel,
+            macos-27,
           ]
         ccache-variant: [ccache]
         include:
@@ -55,17 +56,14 @@ jobs:
               image: ghcr.io/openimagedebugger/oid:26.04
               options: --cap-add=SYS_PTRACE
             ccache-variant: "ccache"
-          # runner-images ships the macOS 27 image under the `xcode-27`
-          # label, not `macos-27`; `name` restores the OS-shaped identity the
-          # artifacts, caches and macOS step gates key off.
-          - os: xcode-27
-            name: macos-27
-            ccache-variant: "ccache"
+          # runner-images publishes the macOS 27 image under the `xcode-27` label.
+          - os: macos-27
+            runner: xcode-27
           - os: windows-2025
             ccache-variant: "sccache"
           - os: windows-2025-vs2026
             ccache-variant: "sccache"
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner || matrix.os }}
     container: ${{ matrix.container }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # 7.0.1
@@ -76,7 +74,7 @@ jobs:
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
 
-      - if: contains(matrix.name || matrix.os, 'macos')
+      - if: contains(matrix.os, 'macos')
         name: Select latest stable Xcode
         run: |
           # Exclude beta bundles for determinism and log the resolved version
@@ -84,7 +82,11 @@ jobs:
           # Xcode is found (only betas, or the glob matched nothing), keep the
           # runner's default selection instead of calling xcode-select with an
           # empty path, which would fail the job.
-          LATEST_XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | grep -iv beta | sort -V | tail -1)
+          LATEST_XCODE=$(for app in /Applications/Xcode*.app; do
+            [ -d "$app" ] || continue
+            case "$(readlink -f "$app")" in *[Bb]eta*) continue ;; esac
+            echo "$app"
+          done | sort -V | tail -1)
           if [ -n "$LATEST_XCODE" ]; then
             sudo xcode-select -s "$LATEST_XCODE"
             echo "Selected Xcode: $LATEST_XCODE"
@@ -187,7 +189,7 @@ jobs:
 
       # Allow lldb to launch/debug the freshly built fixture without an
       # interactive authorization prompt.
-      - if: contains(matrix.name || matrix.os, 'macos') && !contains(matrix.os, 'intel')
+      - if: contains(matrix.os, 'macos') && !contains(matrix.os, 'intel')
         name: Enable developer-mode debugging (macOS e2e)
         run: sudo /usr/sbin/DevToolsSecurity -enable
 
