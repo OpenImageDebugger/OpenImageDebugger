@@ -84,8 +84,7 @@ jobs:
           # empty path, which would fail the job.
           LATEST_XCODE=$(for app in /Applications/Xcode*.app; do
             [ -d "$app" ] || continue
-            case "$(readlink -f "$app")" in *[Bb]eta*) continue ;; esac
-            echo "$app"
+            if ! readlink -f "$app" | grep -qi beta; then echo "$app"; fi
           done | sort -V | tail -1)
           if [ -n "$LATEST_XCODE" ]; then
             sudo xcode-select -s "$LATEST_XCODE"
