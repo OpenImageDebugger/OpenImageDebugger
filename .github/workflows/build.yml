@@ -35,7 +35,6 @@ jobs:
       matrix:
         os:
           [
-            macos-15,
             macos-26,
             macos-26-intel,
           ]
@@ -56,6 +55,12 @@ jobs:
               image: ghcr.io/openimagedebugger/oid:26.04
               options: --cap-add=SYS_PTRACE
             ccache-variant: "ccache"
+          # runner-images ships the macOS 27 image under the `xcode-27`
+          # label, not `macos-27`; `name` restores the OS-shaped identity the
+          # artifacts, caches and macOS step gates key off.
+          - os: xcode-27
+            name: macos-27
+            ccache-variant: "ccache"
           - os: windows-2025
             ccache-variant: "sccache"
           - os: windows-2025-vs2026
@@ -71,7 +76,7 @@ jobs:
           # see https://github.com/orgs/community/discussions/25702#discussioncomment-6313966
           persist-credentials: false
 
-      - if: contains(matrix.os, 'macos')
+      - if: contains(matrix.name || matrix.os, 'macos')
         name: Select latest stable Xcode
         run: |
           # Exclude beta bundles for determinism and log the resolved version
@@ -182,7 +187,7 @@ jobs:
 
       # Allow lldb to launch/debug the freshly built fixture without an
       # interactive authorization prompt.
-      - if: contains(matrix.os, 'macos') && !contains(matrix.os, 'intel')
+      - if: contains(matrix.name || matrix.os, 'macos') && !contains(matrix.os, 'intel')
         name: Enable developer-mode debugging (macOS e2e)
         run: sudo /usr/sbin/DevToolsSecurity -enable
 
