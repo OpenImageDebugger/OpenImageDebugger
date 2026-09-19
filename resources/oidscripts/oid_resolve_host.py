@@ -144,11 +144,8 @@ def _walk_gdb_members(gdb, bridge, node, parent_name, emit):
 def _gdb_scope_names(block):
     """Every named local/argument across the block chain -- the names an
     unqualified C++ expression would resolve BEFORE an implicit
-    this-member.
-
-    The walk stops where gdb's lookup_local_symbol stops: the static and
-    global blocks above the function are searched AFTER the field-of-this
-    check, so a file static or a global never shadows a member."""
+    this-member. Stops where lookup_local_symbol stops: static and global
+    blocks are searched AFTER the field-of-this check."""
     names = set()
     while block is not None and not (getattr(block, 'is_static', False)
                                      or getattr(block, 'is_global', False)):

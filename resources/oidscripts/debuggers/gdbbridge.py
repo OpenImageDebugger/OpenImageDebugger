@@ -119,9 +119,8 @@ class GdbBridge(BridgeInterface):
 
     def _scope_names(self):
         """Names an unqualified expression resolves BEFORE a this-member."""
-        # Stop where gdb's lookup_local_symbol stops: the static and global
-        # blocks above the function are searched AFTER the field-of-this
-        # check, so a file static or a global never shadows a member.
+        # Stop where lookup_local_symbol stops: the static and global
+        # blocks are searched AFTER the field-of-this check.
         names = set()
         block = gdb.selected_frame().block()
         while block is not None and not (getattr(block, 'is_static', False)
@@ -135,8 +134,7 @@ class GdbBridge(BridgeInterface):
         return names
 
     def _peeled(self, type_obj):
-        # gdb reports a typedef's and a reference's own code, not the type
-        # behind it. A `Wrapper&` is field-navigated exactly like a Wrapper.
+        # gdb reports a typedef's and a reference's own code.
         strip = getattr(type_obj, 'strip_typedefs', None)
         peeled = strip() if strip is not None else type_obj
         if peeled.code == getattr(gdb, 'TYPE_CODE_REF', None):
@@ -164,8 +162,7 @@ class GdbBridge(BridgeInterface):
                     inherited = set()
                     self._get_observable_children_members(field, inherited,
                                                           parent_name)
-                    # C++ resolves a flattened name to the derived
-                    # declaration, buffer or not.
+                    # C++ resolves a flattened name to the derived one.
                     output_set.update(
                         name for name in inherited
                         if name.split('.')[-1] not in declared)
@@ -188,8 +185,7 @@ class GdbBridge(BridgeInterface):
 
         # Special case to handle 'this'
         elif name == 'this':
-            # `this` can be optimised out or unavailable in a prologue; one
-            # bad frame variable must not cost the whole listing.
+            # `this` can be optimised out; do not lose the whole listing.
             try:
                 this_value = gdb.parse_and_eval(name).dereference()
             except Exception:

@@ -543,8 +543,7 @@ def test_current_host_with_inert_gdb_names_no_debugger(monkeypatch):
 def test_gdb_host_lets_a_member_beat_a_global_of_the_same_name(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
-    # gdb searches the static and global blocks AFTER the field-of-this
-    # check, so neither shadows a member.
+    # Static and global blocks are searched AFTER field-of-this.
     this_type = _FakeGdbType('Holder', code=_STRUCT_CODE, fields=[
         _FakeGdbField('img', _FakeGdbType('cv::Mat')),
     ])

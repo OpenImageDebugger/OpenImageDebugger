@@ -296,8 +296,7 @@ def test_an_unshadowed_this_member_is_still_listed(bridge_module):
 
 
 def test_a_global_of_the_same_name_does_not_shadow_a_this_member(bridge_module):
-    # gdb's lookup_symbol_aux checks field-of-this BEFORE the static and
-    # global blocks, so only the function's own blocks shadow a member.
+    # lookup_symbol_aux checks field-of-this BEFORE static/global blocks.
     image = FakeGdbField('image', FakeGdbType('Buffer'))
     this_type = FakeGdbType('Holder', code=STRUCT_CODE, fields=[image])
     bridge_module.gdb.parse_and_eval = lambda _expr: types.SimpleNamespace(
@@ -321,8 +320,7 @@ def test_a_global_of_the_same_name_does_not_shadow_a_this_member(bridge_module):
 
 
 def test_a_reference_typed_member_is_descended_into(bridge_module):
-    # gdb reports a reference's own code; the host walk peels it, so this
-    # one must too or the viewer lists fewer buffers than the IDE clients.
+    # gdb reports a reference's own code; the host walk peels it.
     inner = FakeGdbType('Inner', code=STRUCT_CODE, fields=[
         FakeGdbField('image', FakeGdbType('Buffer')),
     ])
@@ -336,8 +334,7 @@ def test_a_reference_typed_member_is_descended_into(bridge_module):
 
 
 def test_a_derived_member_hides_the_inherited_one(bridge_module):
-    # C++ resolves the flattened name to the derived declaration, buffer
-    # or not, so the inherited member must not be emitted under it.
+    # C++ resolves the flattened name to the derived declaration.
     base = FakeGdbType('Base', code=STRUCT_CODE, fields=[
         FakeGdbField('image', FakeGdbType('Buffer')),
     ])
@@ -353,8 +350,7 @@ def test_a_derived_member_hides_the_inherited_one(bridge_module):
 
 
 def test_an_unevaluable_this_does_not_kill_the_listing(bridge_module):
-    # `this` can be optimised out or unavailable in a prologue. One bad
-    # frame variable must not cost the whole symbol list.
+    # `this` can be optimised out; one bad variable is not the whole list.
     def boom(_expr):
         raise RuntimeError('No symbol "this" in current context.')
 
