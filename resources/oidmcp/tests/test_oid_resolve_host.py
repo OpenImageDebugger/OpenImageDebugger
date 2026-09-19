@@ -224,9 +224,12 @@ class _FakeGdbSymbol:
 
 
 class _FakeGdbBlock:
-    def __init__(self, symbols, superblock=None):
+    def __init__(self, symbols, superblock=None, is_static=False,
+                 is_global=False):
         self._symbols = symbols
         self.superblock = superblock
+        self.is_static = is_static
+        self.is_global = is_global
 
     def __iter__(self):
         return iter(self._symbols)
@@ -535,3 +538,23 @@ def test_current_host_with_inert_gdb_names_no_debugger(monkeypatch):
     with pytest.raises(RuntimeError) as excinfo:
         oid_resolve_host.current_host()
     assert 'no supported debugger' in str(excinfo.value).lower()
+
+
+def test_gdb_host_lets_a_member_beat_a_global_of_the_same_name(monkeypatch):
+    monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
+    monkeypatch.setenv('OID_TYPES_PATH', '')
+    # gdb searches the static and global blocks AFTER the field-of-this
+    # check, so neither shadows a member.
+    this_type = _FakeGdbType('Holder', code=_STRUCT_CODE, fields=[
+        _FakeGdbField('img', _FakeGdbType('cv::Mat')),
+    ])
+    this_value = _FakeGdbValue('Holder *', dereferenced=_FakeGdbValue('Holder'))
+    this_value._dereferenced.type = this_type
+    global_block = _FakeGdbBlock([_FakeGdbSymbol('img', 'int')],
+                                 is_global=True)
+    frame_block = _FakeGdbBlock([_FakeGdbSymbol('this', 'Holder *')],
+                                superblock=global_block)
+    _install_fake_gdb(monkeypatch, _FakeGdbFrame(frame_block),
+                      {'this': this_value})
+    host = oid_resolve_host.GdbHost()
+    assert host.observable_symbols() == [{'name': 'img', 'type': 'cv::Mat'}]

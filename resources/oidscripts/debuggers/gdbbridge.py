@@ -119,9 +119,13 @@ class GdbBridge(BridgeInterface):
 
     def _scope_names(self):
         """Names an unqualified expression resolves BEFORE a this-member."""
+        # Stop where gdb's lookup_local_symbol stops: the static and global
+        # blocks above the function are searched AFTER the field-of-this
+        # check, so a file static or a global never shadows a member.
         names = set()
         block = gdb.selected_frame().block()
-        while block is not None:
+        while block is not None and not (getattr(block, 'is_static', False)
+                                         or getattr(block, 'is_global', False)):
             for symbol in block:
                 if (getattr(symbol, 'is_argument', False)
                         or getattr(symbol, 'is_variable', False)):
@@ -131,9 +135,15 @@ class GdbBridge(BridgeInterface):
         return names
 
     def _peeled(self, type_obj):
-        # gdb reports a typedef's own code, not the aliased type's.
+        # gdb reports a typedef's and a reference's own code, not the type
+        # behind it. A `Wrapper&` is field-navigated exactly like a Wrapper.
         strip = getattr(type_obj, 'strip_typedefs', None)
-        return strip() if strip is not None else type_obj
+        peeled = strip() if strip is not None else type_obj
+        if peeled.code == getattr(gdb, 'TYPE_CODE_REF', None):
+            peeled = peeled.target()
+            strip = getattr(peeled, 'strip_typedefs', None)
+            peeled = strip() if strip is not None else peeled
+        return peeled
 
     def _member_bearing(self, type_obj):
         return self._peeled(type_obj).code in (gdb.TYPE_CODE_STRUCT,
@@ -144,11 +154,21 @@ class GdbBridge(BridgeInterface):
             parent_name = symbol.name
 
         if self._member_bearing(symbol.type):
-            for field in self._peeled(symbol.type).fields():
+            fields = self._peeled(symbol.type).fields()
+            declared = {field.name for field in fields
+                        if field.name
+                        and not getattr(field, 'is_base_class', False)}
+            for field in fields:
                 # 'holder.Base.image' and 'holder.None.image' evaluate nowhere.
                 if not field.name or getattr(field, 'is_base_class', False):
-                    self._get_observable_children_members(field, output_set,
+                    inherited = set()
+                    self._get_observable_children_members(field, inherited,
                                                           parent_name)
+                    # C++ resolves a flattened name to the derived
+                    # declaration, buffer or not.
+                    output_set.update(
+                        name for name in inherited
+                        if name.split('.')[-1] not in declared)
                     continue
 
                 # An empty parent means `this`, whose members evaluate bare.
@@ -168,10 +188,15 @@ class GdbBridge(BridgeInterface):
 
         # Special case to handle 'this'
         elif name == 'this':
+            # `this` can be optimised out or unavailable in a prologue; one
+            # bad frame variable must not cost the whole listing.
+            try:
+                this_value = gdb.parse_and_eval(name).dereference()
+            except Exception:
+                return
             # The pointee, not each field: a field would become its own parent.
             members = set()
-            self._get_observable_children_members(
-                gdb.parse_and_eval(name).dereference(), members, '')
+            self._get_observable_children_members(this_value, members, '')
             # A local of the same name captures the bare name.
             shadowed = self._scope_names()
             observable_symbols.update(m for m in members

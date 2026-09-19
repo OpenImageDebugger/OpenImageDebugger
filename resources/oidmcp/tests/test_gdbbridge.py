@@ -23,6 +23,7 @@ import pytest
 
 STRUCT_CODE = object()
 TYPEDEF_CODE = object()
+REF_CODE = object()
 UNION_CODE = object()
 SCALAR_CODE = object()
 
@@ -41,7 +42,13 @@ class FakeGdbType:
         return list(self._fields)
 
     def strip_typedefs(self):
-        return self._target if self._target is not None else self
+        # Only a typedef aliases; a reference keeps its own code.
+        if self.code is TYPEDEF_CODE and self._target is not None:
+            return self._target.strip_typedefs()
+        return self
+
+    def target(self):
+        return self._target
 
 
 class FakeGdbField:
@@ -60,9 +67,12 @@ class FakeGdbSymbol:
 
 
 class FakeGdbBlock:
-    def __init__(self, symbols, superblock=None):
+    def __init__(self, symbols, superblock=None, is_static=False,
+                 is_global=False):
         self._symbols = symbols
         self.superblock = superblock
+        self.is_static = is_static
+        self.is_global = is_global
 
     def __iter__(self):
         return iter(self._symbols)
@@ -91,6 +101,7 @@ def bridge_module(monkeypatch):
     fake = types.ModuleType('gdb')
     fake.TYPE_CODE_STRUCT = STRUCT_CODE
     fake.TYPE_CODE_UNION = UNION_CODE
+    fake.TYPE_CODE_REF = REF_CODE
     fake.Command = object
     fake.COMMAND_DATA = object()
     fake.COMPLETE_SYMBOL = object()
@@ -196,6 +207,33 @@ def test_a_typedef_wrapped_union_is_descended_into(bridge_module):
     assert found == {'holder.payload.image'}
 
 
+def test_a_named_union_is_descended_into(bridge_module):
+    # A union's members are spelled exactly like a struct's.
+    union = FakeGdbType('Payload', code=UNION_CODE, fields=[
+        FakeGdbField('image', FakeGdbType('Buffer')),
+    ])
+    holder = FakeGdbSymbol('holder', FakeGdbType(
+        'Holder', code=STRUCT_CODE, fields=[FakeGdbField('payload', union)]))
+
+    found = _observable_names(bridge_module, holder, {'Buffer'})
+
+    assert found == {'holder.payload.image'}
+
+
+def test_a_typedef_wrapped_union_is_descended_into(bridge_module):
+    # A `typedef union {...} Alias;` local looks scalar until stripped.
+    union = FakeGdbType('Payload', code=UNION_CODE, fields=[
+        FakeGdbField('image', FakeGdbType('Buffer')),
+    ])
+    alias = FakeGdbType('PayloadAlias', code=TYPEDEF_CODE, target=union)
+    holder = FakeGdbSymbol('holder', FakeGdbType(
+        'Holder', code=STRUCT_CODE, fields=[FakeGdbField('payload', alias)]))
+
+    found = _observable_names(bridge_module, holder, {'Buffer'})
+
+    assert found == {'holder.payload.image'}
+
+
 def test_members_of_this_surface_bare(bridge_module):
     # gdb accepts `this.image`; three walks disagreeing is the defect.
     image = FakeGdbField('image', FakeGdbType('Buffer'))
@@ -255,3 +293,79 @@ def test_an_unshadowed_this_member_is_still_listed(bridge_module):
         'Holder *')), 'this', found)
 
     assert found == {'image'}
+
+
+def test_a_global_of_the_same_name_does_not_shadow_a_this_member(bridge_module):
+    # gdb's lookup_symbol_aux checks field-of-this BEFORE the static and
+    # global blocks, so only the function's own blocks shadow a member.
+    image = FakeGdbField('image', FakeGdbType('Buffer'))
+    this_type = FakeGdbType('Holder', code=STRUCT_CODE, fields=[image])
+    bridge_module.gdb.parse_and_eval = lambda _expr: types.SimpleNamespace(
+        dereference=lambda: FakeGdbSymbol('*this', this_type))
+    global_block = FakeGdbBlock([FakeGdbSymbol('image', FakeGdbType('int'))],
+                                is_global=True)
+    static_block = FakeGdbBlock([FakeGdbSymbol('tag', FakeGdbType('int'))],
+                                superblock=global_block, is_static=True)
+    frame_block = FakeGdbBlock(
+        [FakeGdbSymbol('this', FakeGdbType('Holder *'))],
+        superblock=static_block)
+    bridge_module.gdb.selected_frame = lambda: FakeGdbFrame(frame_block)
+
+    bridge = bridge_module.GdbBridge.__new__(bridge_module.GdbBridge)
+    bridge._type_bridge = FakeTypeBridge({'Buffer'})
+    found = set()
+    bridge._add_observable_symbol(FakeGdbSymbol('this', FakeGdbType(
+        'Holder *')), 'this', found)
+
+    assert found == {'image'}
+
+
+def test_a_reference_typed_member_is_descended_into(bridge_module):
+    # gdb reports a reference's own code; the host walk peels it, so this
+    # one must too or the viewer lists fewer buffers than the IDE clients.
+    inner = FakeGdbType('Inner', code=STRUCT_CODE, fields=[
+        FakeGdbField('image', FakeGdbType('Buffer')),
+    ])
+    reference = FakeGdbType('Inner &', code=REF_CODE, target=inner)
+    holder = FakeGdbSymbol('holder', FakeGdbType(
+        'Holder', code=STRUCT_CODE, fields=[FakeGdbField('ref', reference)]))
+
+    found = _observable_names(bridge_module, holder, {'Buffer'})
+
+    assert found == {'holder.ref.image'}
+
+
+def test_a_derived_member_hides_the_inherited_one(bridge_module):
+    # C++ resolves the flattened name to the derived declaration, buffer
+    # or not, so the inherited member must not be emitted under it.
+    base = FakeGdbType('Base', code=STRUCT_CODE, fields=[
+        FakeGdbField('image', FakeGdbType('Buffer')),
+    ])
+    holder = FakeGdbSymbol('holder', FakeGdbType(
+        'Derived', code=STRUCT_CODE, fields=[
+            FakeGdbField('Base', base, is_base_class=True),
+            FakeGdbField('image', FakeGdbType('int')),
+        ]))
+
+    found = _observable_names(bridge_module, holder, {'Buffer'})
+
+    assert found == set()
+
+
+def test_an_unevaluable_this_does_not_kill_the_listing(bridge_module):
+    # `this` can be optimised out or unavailable in a prologue. One bad
+    # frame variable must not cost the whole symbol list.
+    def boom(_expr):
+        raise RuntimeError('No symbol "this" in current context.')
+
+    bridge_module.gdb.parse_and_eval = boom
+    bridge_module.gdb.selected_frame = lambda: FakeGdbFrame(
+        FakeGdbBlock([FakeGdbSymbol('this', FakeGdbType('Holder *'))]))
+
+    bridge = bridge_module.GdbBridge.__new__(bridge_module.GdbBridge)
+    bridge._type_bridge = FakeTypeBridge({'Buffer'})
+    found = set()
+    bridge._add_observable_symbol(FakeGdbSymbol('this', FakeGdbType(
+        'Holder *')), 'this', found)
+
+    assert found == set()
