@@ -59,9 +59,7 @@ from oidscripts.debuggers.interfaces import raise_if_too_large
 
 
 class FakeSBTypeMember:
-    """lldb.SBTypeMember as GetDirectBaseClassAtIndex serves it: the base
-    type's name, which is also the name lldb gives the corresponding
-    leading child value."""
+    """A base type's name, as GetDirectBaseClassAtIndex serves it."""
 
     def __init__(self, name):
         self._name = name
@@ -71,11 +69,8 @@ class FakeSBTypeMember:
 
 
 class FakeSBType:
-    """Just enough of lldb.SBType for SymbolWrapper's constructor, for
-    lldbbridge's descent guard -- a type class, plus the pointer/reference
-    peeling the guard performs before testing it -- and for its base-class
-    lookup. The default type class is a struct, so a node built without
-    one is descended into."""
+    """Just enough of lldb.SBType: type class, pointer/reference peeling,
+    base-class lookup. Defaults to a struct, so a bare node is descended."""
 
     def __init__(self, name, type_class=None, pointee=None,
                  base_typenames=()):

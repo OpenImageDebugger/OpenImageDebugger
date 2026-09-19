@@ -106,12 +106,7 @@ def evaluate_in_frame(frame, expression):
 
 def _peeled_type(symbol):
     # type: (lldb.SBValue) -> lldb.SBType
-    """`symbol`'s canonical type with pointers and references peeled off,
-    or None when it has no valid type.
-
-    Peeling is what lets a member of `this` surface at all: `this` is a
-    pointer, and lldb serves a pointer-to-class's children as the
-    pointee's members."""
+    """Canonical type of `symbol`, pointers and references peeled, or None."""
     symbol_type = symbol.GetType()
     if not symbol_type.IsValid():
         return None
@@ -138,23 +133,11 @@ def _children_are_declared_members(symbol):
 
 def _base_class_names(symbol):
     # type: (lldb.SBValue) -> list
-    """`symbol`'s direct base classes, in the order lldb serves them as
-    that value's leading children.
+    """Direct bases, in the order lldb serves them as leading children.
 
-    lldb serves a base-class subobject as a child named after the base
-    type, but C++ addresses an inherited member directly on the derived
-    object, so a chain built through one ('this.Base.image') is an
-    expression no frame can evaluate.
-
-    Position matters, because a name alone will not do: `struct D : Base
-    { Buffer Base; }` is legal and lldb then serves TWO children called
-    'Base', the subobject first. Comparing a child's name to its own type
-    name fails too -- `struct Frame : Img { Img Img; }` defeats it.
-
-    Only the direct list is read: a virtual base is served as a child of
-    the class that inherits it virtually, which reports it as a direct
-    base as well, while a class further down reports it through
-    GetVirtualBaseClassAtIndex and is served no such child."""
+    A name alone cannot identify a subobject: `struct D : Base { Buffer
+    Base; }` gives two children called 'Base'. Virtual bases are absent by
+    design -- the class that inherits one virtually reports it as direct."""
     symbol_type = _peeled_type(symbol)
     if symbol_type is None:
         return []
@@ -191,16 +174,14 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     for member_idx in range(declared.GetNumChildren()):
         symbol_member = declared.GetChildAtIndex(member_idx)
         member_name = symbol_member.name
-        # An anonymous union or struct, which lldb names with the empty
-        # string, is addressed through its container like a base is.
+        # An anonymous aggregate is named '' and addressed through its container.
         if not member_name or (member_idx < len(base_names)
                                and member_name == base_names[member_idx]):
             subobjects.append(symbol_member)
         else:
             members.append((member_name, symbol_member))
 
-    # Declared members first: a derived member hiding a base's flattens
-    # to the same name, which C++ resolves to the derived one.
+    # Declared members first: C++ resolves a hidden name to the derived one.
     for member_name, symbol_member in members:
         chain = member_name_chain + [str(member_name)]
         wrapped = SymbolWrapper(symbol_member)
@@ -229,11 +210,7 @@ def observable_symbols(frame, type_bridge):
             seen.add(qualified_name)
             found.append((qualified_name, wrapped))
 
-    # Members of `this` are emitted bare, and C++ resolves an unqualified
-    # name to a local or argument before an implicit this-member, so a
-    # member whose bare name one of them carries would resolve to the
-    # wrong object. Statics are excluded from the set: a member hides a
-    # file static, it does not lose to one.
+    # A local captures the bare name of a this-member; a static does not.
     shadowed = {variable.name
                 for variable in frame.GetVariables(True, True, False, True)
                 if variable.name and variable.name != 'this'}

@@ -208,10 +208,8 @@ def test_evaluate_in_frame_raises_runtime_error_for_a_falsy_result():
 # observable-member traversal, and its cycle guard.
 
 class _VariablesFrame:
-    """Minimal SBFrame stand-in. GetVariables() serves one list, or the
-    locals-and-arguments subset lldb returns when statics are excluded --
-    the call observable_symbols() makes to learn which bare names a local
-    would capture."""
+    """Minimal SBFrame: GetVariables() serves all, or locals+args when
+    statics are excluded."""
 
     def __init__(self, variables, locals_and_args=None):
         self._variables = variables
@@ -365,10 +363,7 @@ def test_a_member_of_this_still_surfaces_bare():
 
 
 def test_a_base_class_subobject_contributes_no_path_segment():
-    # lldb serves a base-class subobject as a child named after the base
-    # type, but C++ addresses an inherited member directly on the derived
-    # object: 'Base.baseMember' is not an expression any frame can
-    # evaluate, so the segment must not be built (issue #1102).
+    # 'Base.baseMember' is not an expression any frame can evaluate.
     image = FakeSBValue('baseMember', 'Buffer')
     base = FakeSBValue('Base', 'Base', children=[image])
     member = FakeSBValue('member', 'Buffer')
@@ -383,11 +378,7 @@ def test_a_base_class_subobject_contributes_no_path_segment():
 
 
 def test_a_virtually_inherited_base_contributes_no_path_segment():
-    # lldb serves a virtual base as a child of the class that inherits it
-    # virtually, and reports it in that class's DIRECT base list (verified
-    # on lldb 23.1.1: `struct L : virtual VB` gives L children [VB, ...]
-    # and direct bases ['VB']). A class further down that reports VB only
-    # through GetVirtualBaseClassAtIndex is served no VB child at all.
+    # lldb 23.1.1: `struct L : virtual VB` lists VB among L's DIRECT bases.
     image = FakeSBValue('vbMember', 'Buffer')
     vbase = FakeSBValue('VB', 'VB', children=[image])
     holder = FakeSBValue('holder', 'Holder', children=[vbase],
@@ -399,12 +390,7 @@ def test_a_virtually_inherited_base_contributes_no_path_segment():
 
 
 def test_an_indirectly_inherited_virtual_base_contributes_no_path_segment():
-    # `struct Intermediate : virtual VB {}; struct Derived : Intermediate {}`.
-    # Measured on lldb 23.1.1: Derived reports VB as virtual only and is
-    # served no VB child (kids=[Intermediate, d]); the VB child hangs off
-    # Intermediate, which reports VB as a DIRECT base. The direct list is
-    # therefore enough however deep the chain runs, and 'der.VB.vbMember'
-    # is never built.
+    # lldb 23.1.1: the VB child hangs off Intermediate, which calls it direct.
     image = FakeSBValue('vbMember', 'Buffer')
     vbase = FakeSBValue('VB', 'VB', children=[image])
     intermediate = FakeSBValue('Intermediate', 'Intermediate',
@@ -418,12 +404,7 @@ def test_an_indirectly_inherited_virtual_base_contributes_no_path_segment():
 
 
 def test_a_member_named_after_a_base_class_is_still_listed():
-    # `struct Derived : Base { Buffer Base; }` is legal C++, and lldb
-    # serves both children under the name 'Base' (verified on lldb 23.1.1:
-    # kids=[('Plain','Plain'), ('Plain','int')]). Identifying the
-    # subobject by name alone eats the data member: it loses its path
-    # segment AND never reaches the observability test, so a plottable
-    # member disappears from the listing.
+    # `struct Derived : Base { Buffer Base; }`: two children named 'Base'.
     inherited = FakeSBValue('baseMember', 'Buffer')
     base = FakeSBValue('Base', 'Base', children=[inherited])
     member = FakeSBValue('Base', 'Buffer')
@@ -436,11 +417,7 @@ def test_a_member_named_after_a_base_class_is_still_listed():
 
 
 def test_a_member_whose_name_equals_its_type_is_still_listed():
-    # The cheap discriminator -- "a child is a subobject when its name
-    # equals its own type name" -- is wrong twice over: a member can be
-    # spelled that way (`struct Frame : Img { Img Img; }` gives
-    # kids=[('Img','Img'), ('Img','Img')]), and it pins nothing about
-    # where lldb reports base classes.
+    # `struct Frame : Img { Img Img; }` defeats a name-equals-type test.
     member = FakeSBValue('Buffer', 'Buffer')
     holder = FakeSBValue('holder', 'Holder', children=[member])
 
@@ -450,11 +427,7 @@ def test_a_member_whose_name_equals_its_type_is_still_listed():
 
 
 def test_a_derived_member_hides_the_inherited_one_of_the_same_name():
-    # Both flatten to the same name, and C++ resolves it to the derived
-    # member. lldb serves the base subobject FIRST, so a walk that takes
-    # the first of each name records the inherited member's value under a
-    # name that evaluates to the derived one -- the listing would advertise
-    # the wrong buffer's type.
+    # lldb serves the base subobject first; C++ resolves the name to the derived.
     inherited = FakeSBValue('image', 'InheritedBuffer')
     base = FakeSBValue('Base', 'Base', children=[inherited])
     member = FakeSBValue('image', 'Buffer')
@@ -470,10 +443,7 @@ def test_a_derived_member_hides_the_inherited_one_of_the_same_name():
 
 
 def test_an_anonymous_aggregate_contributes_no_path_segment():
-    # lldb names the child of an anonymous union/struct with the empty
-    # string. Its members are addressed directly on the containing object
-    # too, so an empty segment ('holder..anonU') is as unevaluable as a
-    # base-class one.
+    # An empty segment ('holder..anonU') is as unevaluable as a base one.
     image = FakeSBValue('anonU', 'Buffer')
     anonymous = FakeSBValue('', 'Holder::(anonymous union)', children=[image])
     holder = FakeSBValue('holder', 'Holder', children=[anonymous])
@@ -484,10 +454,7 @@ def test_an_anonymous_aggregate_contributes_no_path_segment():
 
 
 def test_a_this_member_shadowed_by_a_local_is_not_listed():
-    # Members of `this` surface bare, so a local of the same name captures
-    # the name: C++ resolves an unqualified `image` to the local, and
-    # resolve() would hand back that object instead of the member the
-    # listing meant. The gdb walk filters these; this walk must too.
+    # C++ resolves the bare `image` to the local, not to the this-member.
     local = FakeSBValue('image', 'Local')
     member = FakeSBValue('image', 'Buffer')
     this = FakeSBValue('this', 'Holder *', children=[member],

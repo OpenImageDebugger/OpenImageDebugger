@@ -123,16 +123,9 @@ struct IplImage {
 namespace {
 
 // --- Inherited buffers -----------------------------------------------------
-// A debugger serves a base-class subobject as a child named after the base
-// TYPE, and C++ has no such path segment: an inherited member is addressed
-// directly on the derived object. Three shapes decide whether a walker gets
-// that right, and all three are legal C++:
-//   - InheritedOnly: the plain case, a buffer reachable only through a base.
-//   - NamesABase: a member spelled exactly like the base, so the debugger
-//     serves TWO children called 'BufferBase'. Telling them apart by name
-//     alone loses the member.
-//   - HidesInherited: a member that hides an inherited one of the same name.
-//     Both flatten to 'buffer' and C++ resolves that to the derived one.
+// A debugger names a base-class subobject after the base TYPE; C++ has no such
+// path segment. NamesABase and HidesInherited are the shapes that defeat a
+// name-only or first-wins walker. 48x32 because a 3x3 matrix is a speck.
 constexpr int kInheritW = 48;
 constexpr int kInheritH = 32;
 
@@ -152,9 +145,7 @@ struct HidesInherited : BufferBase {
     Eigen::MatrixXd inherited;
 };
 
-// A ramp with one diagonal band, shifted per fixture. A flat fill renders as
-// one uniform patch, so a buffer reached by the wrong path would look exactly
-// like the right one; the band makes the difference visible at a glance.
+// Shifted per fixture: a flat fill would make every wrong path look right.
 Eigen::MatrixXd banded(int shift)
 {
     Eigen::MatrixXd m(kInheritH, kInheritW);
@@ -168,8 +159,7 @@ Eigen::MatrixXd banded(int shift)
     return m;
 }
 
-// The members of `this` surface BARE (`inherited`, not `probe.inherited`),
-// so an inherited buffer has to be listed the way the frame evaluates it.
+// Members of `this` surface BARE (`inherited`, not `probe.inherited`).
 struct InheritingProbe : BufferBase {
     Eigen::MatrixXd own;
 
