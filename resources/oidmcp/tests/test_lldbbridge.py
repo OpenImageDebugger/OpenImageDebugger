@@ -392,6 +392,25 @@ def test_a_virtually_inherited_base_contributes_no_path_segment():
     assert found == {'holder.vbMember'}
 
 
+def test_an_indirectly_inherited_virtual_base_contributes_no_path_segment():
+    # `struct Intermediate : virtual VB {}; struct Derived : Intermediate {}`.
+    # Measured on lldb 23.1.1: Derived reports VB as virtual only and is
+    # served no VB child (kids=[Intermediate, d]); the VB child hangs off
+    # Intermediate, which reports VB as a DIRECT base. The direct list is
+    # therefore enough however deep the chain runs, and 'der.VB.vbMember'
+    # is never built.
+    image = FakeSBValue('vbMember', 'Buffer')
+    vbase = FakeSBValue('VB', 'VB', children=[image])
+    intermediate = FakeSBValue('Intermediate', 'Intermediate',
+                               children=[vbase], base_typenames=('VB',))
+    derived = FakeSBValue('der', 'Derived', children=[intermediate],
+                          base_typenames=('Intermediate',))
+
+    found = _observable_names(derived, observable_typenames={'Buffer'})
+
+    assert found == {'der.vbMember'}
+
+
 def test_a_member_named_after_a_base_class_is_still_listed():
     # `struct Derived : Base { Buffer Base; }` is legal C++, and lldb
     # serves both children under the name 'Base' (verified on lldb 23.1.1:
