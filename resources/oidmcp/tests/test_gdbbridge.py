@@ -24,6 +24,7 @@ import pytest
 STRUCT_CODE = object()
 TYPEDEF_CODE = object()
 REF_CODE = object()
+RVALUE_REF_CODE = object()
 UNION_CODE = object()
 SCALAR_CODE = object()
 
@@ -102,6 +103,7 @@ def bridge_module(monkeypatch):
     fake.TYPE_CODE_STRUCT = STRUCT_CODE
     fake.TYPE_CODE_UNION = UNION_CODE
     fake.TYPE_CODE_REF = REF_CODE
+    fake.TYPE_CODE_RVALUE_REF = RVALUE_REF_CODE
     fake.Command = object
     fake.COMMAND_DATA = object()
     fake.COMPLETE_SYMBOL = object()
@@ -178,33 +180,6 @@ def test_a_buffer_held_directly_by_this_is_listed(bridge_module):
         'Holder *')), 'this', found)
 
     assert found == {'image', 'baseMember'}
-
-
-def test_a_named_union_is_descended_into(bridge_module):
-    # A union's members are spelled exactly like a struct's.
-    union = FakeGdbType('Payload', code=UNION_CODE, fields=[
-        FakeGdbField('image', FakeGdbType('Buffer')),
-    ])
-    holder = FakeGdbSymbol('holder', FakeGdbType(
-        'Holder', code=STRUCT_CODE, fields=[FakeGdbField('payload', union)]))
-
-    found = _observable_names(bridge_module, holder, {'Buffer'})
-
-    assert found == {'holder.payload.image'}
-
-
-def test_a_typedef_wrapped_union_is_descended_into(bridge_module):
-    # A `typedef union {...} Alias;` local looks scalar until stripped.
-    union = FakeGdbType('Payload', code=UNION_CODE, fields=[
-        FakeGdbField('image', FakeGdbType('Buffer')),
-    ])
-    alias = FakeGdbType('PayloadAlias', code=TYPEDEF_CODE, target=union)
-    holder = FakeGdbSymbol('holder', FakeGdbType(
-        'Holder', code=STRUCT_CODE, fields=[FakeGdbField('payload', alias)]))
-
-    found = _observable_names(bridge_module, holder, {'Buffer'})
-
-    assert found == {'holder.payload.image'}
 
 
 def test_a_named_union_is_descended_into(bridge_module):
@@ -365,3 +340,53 @@ def test_an_unevaluable_this_does_not_kill_the_listing(bridge_module):
         'Holder *')), 'this', found)
 
     assert found == set()
+
+
+def test_an_rvalue_reference_member_is_descended_into(bridge_module):
+    # gdb gives T&& its own code; the host walk peels both forms.
+    inner = FakeGdbType('Inner', code=STRUCT_CODE, fields=[
+        FakeGdbField('image', FakeGdbType('Buffer')),
+    ])
+    holder = FakeGdbSymbol('holder', FakeGdbType(
+        'Holder', code=STRUCT_CODE, fields=[
+            FakeGdbField('ref', FakeGdbType('Inner &&', code=RVALUE_REF_CODE,
+                                            target=inner)),
+        ]))
+
+    found = _observable_names(bridge_module, holder, {'Buffer'})
+
+    assert found == {'holder.ref.image'}
+
+
+def test_a_self_referential_type_terminates(bridge_module):
+    # `struct Node { Node& next; Buffer image; }`: peeling references makes
+    # the cycle reachable, and the sibling buffer must survive it.
+    node = FakeGdbType('Node', code=STRUCT_CODE)
+    node._fields = [FakeGdbField('next', FakeGdbType('Node &', code=REF_CODE,
+                                                     target=node)),
+                    FakeGdbField('image', FakeGdbType('Buffer'))]
+    holder = FakeGdbSymbol('node', node)
+
+    found = _observable_names(bridge_module, holder, {'Buffer'})
+
+    assert found == {'node.image'}
+
+
+def test_a_derived_name_hides_only_the_path_it_heads(bridge_module):
+    # A base's `payload.image` is suppressed by a derived `payload`, not by
+    # an unrelated derived `image`: the first segment decides, not the last.
+    payload = FakeGdbType('Payload', code=STRUCT_CODE, fields=[
+        FakeGdbField('image', FakeGdbType('Buffer')),
+    ])
+    base = FakeGdbType('Base', code=STRUCT_CODE, fields=[
+        FakeGdbField('payload', payload),
+    ])
+    holder = FakeGdbSymbol('holder', FakeGdbType(
+        'Derived', code=STRUCT_CODE, fields=[
+            FakeGdbField('Base', base, is_base_class=True),
+            FakeGdbField('image', FakeGdbType('int')),
+        ]))
+
+    found = _observable_names(bridge_module, holder, {'Buffer'})
+
+    assert found == {'holder.payload.image'}

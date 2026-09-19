@@ -137,7 +137,9 @@ class GdbBridge(BridgeInterface):
         # gdb reports a typedef's and a reference's own code.
         strip = getattr(type_obj, 'strip_typedefs', None)
         peeled = strip() if strip is not None else type_obj
-        if peeled.code == getattr(gdb, 'TYPE_CODE_REF', None):
+        references = (getattr(gdb, 'TYPE_CODE_REF', None),
+                      getattr(gdb, 'TYPE_CODE_RVALUE_REF', None))
+        if peeled.code in references:
             peeled = peeled.target()
             strip = getattr(peeled, 'strip_typedefs', None)
             peeled = strip() if strip is not None else peeled
@@ -147,36 +149,66 @@ class GdbBridge(BridgeInterface):
         return self._peeled(type_obj).code in (gdb.TYPE_CODE_STRUCT,
                                                gdb.TYPE_CODE_UNION)
 
-    def _get_observable_children_members(self, symbol, output_set, parent_name=None):
+    def _declared_names(self, fields):
+        """Names this level introduces, anonymous aggregates promoting
+        theirs into it."""
+        names = set()
+        for field in fields:
+            if getattr(field, 'is_base_class', False):
+                continue
+            if field.name:
+                names.add(field.name)
+            elif self._member_bearing(field.type):
+                names |= self._declared_names(self._peeled(field.type).fields())
+        return names
+
+    def _get_observable_children_members(self, symbol, output_set,
+                                         parent_name=None, visited=()):
         if parent_name is None:
             parent_name = symbol.name
+        if not self._member_bearing(symbol.type):
+            return
+        # References make cycles reachable: `struct Node { Node& next; }`.
+        peeled = self._peeled(symbol.type)
+        typename = str(peeled)
+        if typename in visited:
+            return
+        visited = visited + (typename,)
 
-        if self._member_bearing(symbol.type):
-            fields = self._peeled(symbol.type).fields()
-            declared = {field.name for field in fields
-                        if field.name
-                        and not getattr(field, 'is_base_class', False)}
-            for field in fields:
-                # 'holder.Base.image' and 'holder.None.image' evaluate nowhere.
-                if not field.name or getattr(field, 'is_base_class', False):
-                    inherited = set()
-                    self._get_observable_children_members(field, inherited,
-                                                          parent_name)
-                    # C++ resolves a flattened name to the derived one.
-                    output_set.update(
-                        name for name in inherited
-                        if name.split('.')[-1] not in declared)
-                    continue
+        fields = peeled.fields()
+        declared = self._declared_names(fields)
+        for field in fields:
+            # 'holder.Base.image' and 'holder.None.image' evaluate nowhere.
+            # An anonymous aggregate promotes its members into this level,
+            # so they hide inherited names rather than being hidden.
+            if not field.name:
+                self._get_observable_children_members(field, output_set,
+                                                      parent_name, visited)
+                continue
+            if getattr(field, 'is_base_class', False):
+                self._add_unhidden(field, output_set, parent_name, visited,
+                                   declared)
+                continue
 
-                # An empty parent means `this`, whose members evaluate bare.
-                complete_symbol_name = (f"{parent_name}.{field.name}"
-                                        if parent_name else field.name)
-                if self._type_bridge.is_symbol_observable(field, complete_symbol_name):
-                    output_set.add(complete_symbol_name)
+            # An empty parent means `this`, whose members evaluate bare.
+            complete_symbol_name = (f"{parent_name}.{field.name}"
+                                    if parent_name else field.name)
+            if self._type_bridge.is_symbol_observable(field, complete_symbol_name):
+                output_set.add(complete_symbol_name)
+            elif self._member_bearing(field.type):
+                self._get_observable_children_members(field, output_set,
+                                                      complete_symbol_name,
+                                                      visited)
 
-                # Check if there's a possible observable child
-                elif self._member_bearing(field.type):
-                    self._get_observable_children_members(field, output_set, complete_symbol_name)
+    def _add_unhidden(self, field, output_set, parent_name, visited, declared):
+        """Flatten a base or anonymous aggregate, dropping names this level
+        re-declares: C++ resolves those to the declaration."""
+        flattened = set()
+        self._get_observable_children_members(field, flattened, parent_name,
+                                              visited)
+        prefix = len(parent_name) + 1 if parent_name else 0
+        output_set.update(name for name in flattened
+                          if name[prefix:].split('.')[0] not in declared)
 
     def _add_observable_symbol(self, symbol, name, observable_symbols):
         # Check if the symbol is already observable
