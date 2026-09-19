@@ -159,6 +159,40 @@ def _declared_names(symbol):
     return declared
 
 
+def _classify_children(declared):
+    # type: (lldb.SBValue) -> tuple
+    """`declared`'s children split into named members, anonymous
+    aggregates and base subobjects, which lldb serves as the leading
+    children in GetDirectBaseClassAtIndex order."""
+    base_names = _base_class_names(declared)
+    members, anonymous, bases = [], [], []
+    for index in range(declared.GetNumChildren()):
+        child = declared.GetChildAtIndex(index)
+        name = child.name
+        if index < len(base_names) and name == base_names[index]:
+            bases.append(child)
+        elif not name:
+            anonymous.append(child)
+        else:
+            members.append((name, child))
+    return members, anonymous, bases
+
+
+def _hiding_filter(members, anonymous, prefix_length, record_hit):
+    # type: (list, list, int, callable) -> callable
+    """A record_hit that drops an inherited name this class declares
+    itself, buffer or not: C++ resolves that name to the declaration."""
+    declared = {name for name, _member in members}
+    for symbol_member in anonymous:
+        declared |= _declared_names(symbol_member)
+
+    def record_unhidden(qualified_name, wrapped):
+        if qualified_name.split('.')[prefix_length] not in declared:
+            record_hit(qualified_name, wrapped)
+
+    return record_unhidden
+
+
 def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
                    record_hit):
     # type: (lldb.SBValue, list, frozenset, TypeInspectorInterface, callable) -> None
@@ -182,21 +216,7 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     # same vector has three children however many bytes it holds.
     declared = symbol.GetNonSyntheticValue()
 
-    base_names = _base_class_names(declared)
-    bases = []
-    anonymous = []
-    members = []
-    for member_idx in range(declared.GetNumChildren()):
-        symbol_member = declared.GetChildAtIndex(member_idx)
-        member_name = symbol_member.name
-        if member_idx < len(base_names) and member_name == base_names[member_idx]:
-            bases.append(symbol_member)
-        elif not member_name:
-            # An anonymous aggregate is named '', and its members belong to
-            # THIS class, so they hide an inherited name.
-            anonymous.append(symbol_member)
-        else:
-            members.append((member_name, symbol_member))
+    members, anonymous, bases = _classify_children(declared)
 
     # Everything this class declares before anything it inherits: C++
     # resolves a hidden name to the derived one.
@@ -216,19 +236,8 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     if not bases:
         return
 
-    # A name this class declares is the one C++ resolves, whether or not
-    # that declaration is a buffer, so an inherited member of the same
-    # name must not be emitted under it.
-    declared = {name for name, _member in members}
-    for symbol_member in anonymous:
-        declared |= _declared_names(symbol_member)
-    prefix = len(member_name_chain)
-
-    def record_unhidden(qualified_name, wrapped):
-        segments = qualified_name.split('.')
-        if segments[prefix] not in declared:
-            record_hit(qualified_name, wrapped)
-
+    record_unhidden = _hiding_filter(members, anonymous,
+                                     len(member_name_chain), record_hit)
     for symbol_member in bases:
         _walk_members(symbol_member, member_name_chain, visited_typenames,
                       type_bridge, record_unhidden)
