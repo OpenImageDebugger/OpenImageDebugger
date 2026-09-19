@@ -117,19 +117,48 @@ class GdbBridge(BridgeInterface):
             raise RuntimeError(
                 f'Expression "{expression}" failed: {error}') from error
 
-    def _get_observable_children_members(self, symbol, output_set, parent_name=''):
-        if not parent_name:
+    def _scope_names(self):
+        """Names an unqualified expression resolves BEFORE a this-member."""
+        names = set()
+        block = gdb.selected_frame().block()
+        while block is not None:
+            for symbol in block:
+                if (getattr(symbol, 'is_argument', False)
+                        or getattr(symbol, 'is_variable', False)):
+                    if symbol.name and symbol.name != 'this':
+                        names.add(symbol.name)
+            block = getattr(block, 'superblock', None)
+        return names
+
+    def _peeled(self, type_obj):
+        # gdb reports a typedef's own code, not the aliased type's.
+        strip = getattr(type_obj, 'strip_typedefs', None)
+        return strip() if strip is not None else type_obj
+
+    def _member_bearing(self, type_obj):
+        return self._peeled(type_obj).code in (gdb.TYPE_CODE_STRUCT,
+                                               gdb.TYPE_CODE_UNION)
+
+    def _get_observable_children_members(self, symbol, output_set, parent_name=None):
+        if parent_name is None:
             parent_name = symbol.name
 
-        if gdb.TYPE_CODE_STRUCT == symbol.type.code:
-            for field in symbol.type.fields():
-                # Check if already observable
-                complete_symbol_name = f"{parent_name}.{field.name}"
+        if self._member_bearing(symbol.type):
+            for field in self._peeled(symbol.type).fields():
+                # 'holder.Base.image' and 'holder.None.image' evaluate nowhere.
+                if not field.name or getattr(field, 'is_base_class', False):
+                    self._get_observable_children_members(field, output_set,
+                                                          parent_name)
+                    continue
+
+                # An empty parent means `this`, whose members evaluate bare.
+                complete_symbol_name = (f"{parent_name}.{field.name}"
+                                        if parent_name else field.name)
                 if self._type_bridge.is_symbol_observable(field, complete_symbol_name):
                     output_set.add(complete_symbol_name)
 
                 # Check if there's a possible observable child
-                elif gdb.TYPE_CODE_STRUCT == field.type.code:
+                elif self._member_bearing(field.type):
                     self._get_observable_children_members(field, output_set, complete_symbol_name)
 
     def _add_observable_symbol(self, symbol, name, observable_symbols):
@@ -139,9 +168,14 @@ class GdbBridge(BridgeInterface):
 
         # Special case to handle 'this'
         elif name == 'this':
-            this_field = gdb.parse_and_eval(name).dereference().type.fields()
-            for field in this_field:
-                self._get_observable_children_members(field, observable_symbols, name)
+            # The pointee, not each field: a field would become its own parent.
+            members = set()
+            self._get_observable_children_members(
+                gdb.parse_and_eval(name).dereference(), members, '')
+            # A local of the same name captures the bare name.
+            shadowed = self._scope_names()
+            observable_symbols.update(m for m in members
+                                      if m.split('.', 1)[0] not in shadowed)
 
         # Check if we have a struct or a class
         else:
