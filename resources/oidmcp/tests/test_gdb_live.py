@@ -40,6 +40,9 @@ TYPES_JSON = REPO_ROOT / 'testbench' / '.oid' / 'types.json'
 # Holder exists for the two member paths: a struct-typed local expands to
 # qualified members (`holder.member_gray`), and inside a method the members
 # of `this` surface BARE (`member_gray`), matching lldbbridge's naming.
+# It also inherits one buffer and holds one in an anonymous union: neither
+# a base class nor an anonymous aggregate is a path segment C++ can spell,
+# so both must be named as if the member were Holder's own.
 FIXTURE_CPP = """\
 struct PackedGray8 {
     unsigned char* data;
@@ -47,9 +50,16 @@ struct PackedGray8 {
     int h;
 };
 
-struct Holder {
+struct GrayBase {
+    PackedGray8 base_gray;
+};
+
+struct Holder : GrayBase {
     PackedGray8 member_gray;
     int tag;
+    union {
+        PackedGray8 union_gray;
+    };
 
     void probe() {
         volatile int oid_method_breakpoint = 0;
@@ -60,7 +70,11 @@ struct Holder {
 int main() {
     unsigned char backing[6] = {10, 20, 30, 40, 50, 60};
     PackedGray8 custom_gray{backing, 3, 2};
-    Holder holder{{backing, 3, 2}, 7};
+    Holder holder{};
+    holder.base_gray = PackedGray8{backing, 3, 2};
+    holder.member_gray = PackedGray8{backing, 3, 2};
+    holder.union_gray = PackedGray8{backing, 3, 2};
+    holder.tag = 7;
     volatile int oid_breakpoint = 0;
     (void)oid_breakpoint;
     (void)custom_gray;
@@ -92,6 +106,8 @@ page = payload(oid_resolve.list_observable(0))
 print('OIDPROBE list ' + json.dumps(page))
 meta = payload(oid_resolve.resolve('custom_gray'))
 print('OIDPROBE resolve ' + json.dumps(meta))
+inherited = payload(oid_resolve.resolve('holder.base_gray'))
+print('OIDPROBE resolve_inherited ' + json.dumps(inherited))
 """
 
 # Runs at the Holder::probe() stop: list_observable must surface the
@@ -155,6 +171,7 @@ def test_resolver_answers_under_gdb(tmp_path):
     probes = _probe_lines(proc.stdout)
     assert 'list' in probes, transcript
     assert 'resolve' in probes, transcript
+    assert 'resolve_inherited' in probes, transcript
     assert 'list2' in probes, transcript
     assert 'resolve2' in probes, transcript
 
@@ -166,10 +183,22 @@ def test_resolver_answers_under_gdb(tmp_path):
     # observable members under qualified names.
     assert 'holder.member_gray' in names, transcript
     assert 'holder' not in names, transcript
+    # An inherited buffer and one held in an anonymous union are named as
+    # if they were Holder's own members: the segments gdb would invent
+    # ('holder.GrayBase.base_gray', 'holder.None.union_gray') are not
+    # expressions any frame can evaluate.
+    assert 'holder.base_gray' in names, transcript
+    assert 'holder.union_gray' in names, transcript
+    assert not [n for n in names if 'GrayBase' in n or 'None' in n], transcript
     # The observable filter must hold under gdb too: a raw byte array
     # and a scalar local match no type entry and stay out of the page.
     assert 'backing' not in names, transcript
     assert 'oid_breakpoint' not in names, transcript
+
+    inherited = probes['resolve_inherited']
+    assert 'error' not in inherited, transcript
+    assert inherited['byte_count'] == 6, transcript
+    assert inherited['pointer'] > 0, transcript
 
     meta = probes['resolve']
     assert 'error' not in meta, transcript
@@ -185,6 +214,8 @@ def test_resolver_answers_under_gdb(tmp_path):
     assert 'error' not in page2, transcript
     names2 = [item['name'] for item in page2['items']]
     assert 'member_gray' in names2, transcript
+    assert 'base_gray' in names2, transcript
+    assert 'union_gray' in names2, transcript
     assert 'this.member_gray' not in names2, transcript
     assert 'this' not in names2, transcript
 

@@ -117,19 +117,35 @@ class GdbBridge(BridgeInterface):
             raise RuntimeError(
                 f'Expression "{expression}" failed: {error}') from error
 
+    def _member_bearing(self, type_obj):
+        """Whether `type_obj`'s fields are members to walk. A union's are,
+        and are spelled exactly like a struct's."""
+        return type_obj.code in (gdb.TYPE_CODE_STRUCT, gdb.TYPE_CODE_UNION)
+
     def _get_observable_children_members(self, symbol, output_set, parent_name=''):
         if not parent_name:
             parent_name = symbol.name
 
-        if gdb.TYPE_CODE_STRUCT == symbol.type.code:
+        if self._member_bearing(symbol.type):
             for field in symbol.type.fields():
+                # A base-class subobject and an anonymous aggregate carry no
+                # path segment: C++ reaches their members through the
+                # containing object, so 'holder.Base.image' (or the
+                # 'holder.None.image' an unnamed field interpolates to) is an
+                # expression no frame can evaluate. Walk them as if their
+                # members were the container's own.
+                if not field.name or getattr(field, 'is_base_class', False):
+                    self._get_observable_children_members(field, output_set,
+                                                          parent_name)
+                    continue
+
                 # Check if already observable
                 complete_symbol_name = f"{parent_name}.{field.name}"
                 if self._type_bridge.is_symbol_observable(field, complete_symbol_name):
                     output_set.add(complete_symbol_name)
 
                 # Check if there's a possible observable child
-                elif gdb.TYPE_CODE_STRUCT == field.type.code:
+                elif self._member_bearing(field.type):
                     self._get_observable_children_members(field, output_set, complete_symbol_name)
 
     def _add_observable_symbol(self, symbol, name, observable_symbols):
@@ -139,9 +155,13 @@ class GdbBridge(BridgeInterface):
 
         # Special case to handle 'this'
         elif name == 'this':
-            this_field = gdb.parse_and_eval(name).dereference().type.fields()
-            for field in this_field:
-                self._get_observable_children_members(field, observable_symbols, name)
+            # The pointee itself, not each of its fields: handing the walk a
+            # field makes that field's own name the parent's, so a buffer
+            # held directly by `this` is skipped and its sub-fields are
+            # reported in its place.
+            this_value = gdb.parse_and_eval(name).dereference()
+            self._get_observable_children_members(this_value,
+                                                  observable_symbols, name)
 
         # Check if we have a struct or a class
         else:

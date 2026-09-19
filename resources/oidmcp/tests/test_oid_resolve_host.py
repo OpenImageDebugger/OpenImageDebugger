@@ -173,6 +173,9 @@ _NON_STRUCT_CODE = object()
 # Reference types (Wrapper &) peel to their target before the struct
 # check; the fake module exposes it as gdb.TYPE_CODE_REF.
 _REF_CODE = object()
+# Unions bear members exactly as structs do; the fake module exposes this
+# as gdb.TYPE_CODE_UNION.
+_UNION_CODE = object()
 
 
 class _FakeGdbType:
@@ -247,6 +250,7 @@ def _install_fake_gdb(monkeypatch, frame, values):
     fake.lookup_type = _FakeGdbType
     fake.selected_frame = lambda: frame
     fake.TYPE_CODE_STRUCT = _STRUCT_CODE
+    fake.TYPE_CODE_UNION = _UNION_CODE
     fake.TYPE_CODE_REF = _REF_CODE
     monkeypatch.setitem(sys.modules, 'gdb', fake)
     # current_host() must not mistake an importable-but-inert lldb for the
@@ -420,6 +424,33 @@ def test_gdb_host_walks_through_unnamed_and_base_fields(monkeypatch):
     assert host.observable_symbols() == [
         {'name': 'outer.img', 'type': 'cv::Mat'},
         {'name': 'outer.base_img', 'type': 'cv::Mat'},
+    ]
+
+
+def test_gdb_host_descends_into_a_union(monkeypatch):
+    monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
+    monkeypatch.setenv('OID_TYPES_PATH', '')
+    # A union's members are spelled exactly like a struct's. Descending
+    # into structs alone hides every buffer a union holds, and hides the
+    # members of an ANONYMOUS union outright -- the lldb walk lists both.
+    named = _FakeGdbType('Payload', code=_UNION_CODE, fields=[
+        _FakeGdbField('img', _FakeGdbType('cv::Mat')),
+    ])
+    anonymous = _FakeGdbType('', code=_UNION_CODE, fields=[
+        _FakeGdbField('anon_img', _FakeGdbType('cv::Mat')),
+    ])
+    outer_type = _FakeGdbType('Outer', code=_STRUCT_CODE, fields=[
+        _FakeGdbField('payload', named),
+        _FakeGdbField(None, anonymous),
+    ])
+    outer_symbol = _FakeGdbSymbol('outer', 'Outer')
+    outer_symbol.type = outer_type
+    block = _FakeGdbBlock([outer_symbol])
+    _install_fake_gdb(monkeypatch, _FakeGdbFrame(block), {})
+    host = oid_resolve_host.GdbHost()
+    assert host.observable_symbols() == [
+        {'name': 'outer.payload.img', 'type': 'cv::Mat'},
+        {'name': 'outer.anon_img', 'type': 'cv::Mat'},
     ]
 
 

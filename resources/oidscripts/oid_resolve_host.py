@@ -112,7 +112,7 @@ def _peel_gdb_type(gdb, node_type):
 
 
 def _walk_gdb_members(gdb, bridge, node, parent_name, emit):
-    """Emit `node`'s observable struct/class members, recursively.
+    """Emit `node`'s observable struct/union/class members, recursively.
 
     An empty `parent_name` makes members surface BARE -- used for `this`,
     whose members are directly evaluable in the frame through the implicit
@@ -120,7 +120,10 @@ def _walk_gdb_members(gdb, bridge, node, parent_name, emit):
     list_observable() item straight back into resolve() under either
     debugger."""
     node_type = _peel_gdb_type(gdb, node.type)
-    if gdb.TYPE_CODE_STRUCT != node_type.code:
+    # A union bears members exactly as a struct does, and an anonymous one
+    # spells them on the containing object, so refusing it hides buffers
+    # the lldb walk lists.
+    if node_type.code not in (gdb.TYPE_CODE_STRUCT, gdb.TYPE_CODE_UNION):
         return
     for field in node_type.fields():
         field_name = getattr(field, 'name', None)
@@ -268,7 +271,7 @@ def _frame_from_lldb_debugger(lldb):
 # or a partial module passes selection and crashes mid-walk instead
 # (TYPE_CODE_RVALUE_REF stays out: _peel_gdb_type reads it via getattr).
 _GDB_HOST_API = ('selected_frame', 'parse_and_eval', 'lookup_type',
-                 'TYPE_CODE_STRUCT', 'TYPE_CODE_REF')
+                 'TYPE_CODE_STRUCT', 'TYPE_CODE_UNION', 'TYPE_CODE_REF')
 
 
 def _gdb_serves_host(gdb):
