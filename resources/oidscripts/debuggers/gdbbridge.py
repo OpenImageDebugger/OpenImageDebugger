@@ -117,6 +117,20 @@ class GdbBridge(BridgeInterface):
             raise RuntimeError(
                 f'Expression "{expression}" failed: {error}') from error
 
+    def _scope_names(self):
+        """Every named local and argument across the block chain -- the
+        names an unqualified expression resolves BEFORE a this-member."""
+        names = set()
+        block = gdb.selected_frame().block()
+        while block is not None:
+            for symbol in block:
+                if (getattr(symbol, 'is_argument', False)
+                        or getattr(symbol, 'is_variable', False)):
+                    if symbol.name and symbol.name != 'this':
+                        names.add(symbol.name)
+            block = getattr(block, 'superblock', None)
+        return names
+
     def _member_bearing(self, type_obj):
         """Whether `type_obj`'s fields are members to walk. Typedefs strip
         first: gdb reports the alias's own code, not the union's."""
@@ -158,10 +172,16 @@ class GdbBridge(BridgeInterface):
 
         # Special case to handle 'this'
         elif name == 'this':
+            # A local or argument of the same name captures the bare name,
+            # so the member would plot that variable instead.
+            shadowed = self._scope_names()
             # The pointee, not each field: a field would become its own parent.
             this_value = gdb.parse_and_eval(name).dereference()
-            self._get_observable_children_members(this_value,
-                                                  observable_symbols, '')
+            members = set()
+            self._get_observable_children_members(this_value, members, '')
+            observable_symbols.update(
+                member for member in members
+                if member.split('.', 1)[0] not in shadowed)
 
         # Check if we have a struct or a class
         else:

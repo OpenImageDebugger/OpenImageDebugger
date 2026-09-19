@@ -52,9 +52,28 @@ class FakeGdbField:
 
 
 class FakeGdbSymbol:
-    def __init__(self, name, type_obj):
+    def __init__(self, name, type_obj, is_variable=True, is_argument=False):
         self.name = name
         self.type = type_obj
+        self.is_variable = is_variable
+        self.is_argument = is_argument
+
+
+class FakeGdbBlock:
+    def __init__(self, symbols, superblock=None):
+        self._symbols = symbols
+        self.superblock = superblock
+
+    def __iter__(self):
+        return iter(self._symbols)
+
+
+class FakeGdbFrame:
+    def __init__(self, block):
+        self._block = block
+
+    def block(self):
+        return self._block
 
 
 class FakeTypeBridge:
@@ -139,6 +158,8 @@ def test_a_buffer_held_directly_by_this_is_listed(bridge_module):
     ])
     bridge_module.gdb.parse_and_eval = lambda _expr: types.SimpleNamespace(
         dereference=lambda: FakeGdbSymbol('*this', this_type))
+    bridge_module.gdb.selected_frame = lambda: FakeGdbFrame(
+        FakeGdbBlock([FakeGdbSymbol('this', FakeGdbType('Holder *'))]))
 
     bridge = bridge_module.GdbBridge.__new__(bridge_module.GdbBridge)
     bridge._type_bridge = FakeTypeBridge({'Buffer'})
@@ -192,6 +213,8 @@ def test_members_of_this_surface_bare(bridge_module):
     ])
     bridge_module.gdb.parse_and_eval = lambda _expr: types.SimpleNamespace(
         dereference=lambda: FakeGdbSymbol('*this', this_type))
+    bridge_module.gdb.selected_frame = lambda: FakeGdbFrame(
+        FakeGdbBlock([FakeGdbSymbol('this', FakeGdbType('Holder *'))]))
 
     bridge = bridge_module.GdbBridge.__new__(bridge_module.GdbBridge)
     bridge._type_bridge = FakeTypeBridge({'Buffer'})
@@ -200,3 +223,42 @@ def test_members_of_this_surface_bare(bridge_module):
         'Holder *')), 'this', found)
 
     assert found == {'image', 'baseMember'}
+
+
+def test_a_this_member_shadowed_by_a_local_is_not_listed(bridge_module):
+    # A bare member name that a local or argument carries evaluates to
+    # that variable, so the entry would plot the wrong object. The gdb
+    # host walk filters these; this one must too.
+    image = FakeGdbField('image', FakeGdbType('Buffer'))
+    this_type = FakeGdbType('Holder', code=STRUCT_CODE, fields=[image])
+    bridge_module.gdb.parse_and_eval = lambda _expr: types.SimpleNamespace(
+        dereference=lambda: FakeGdbSymbol('*this', this_type))
+    local = FakeGdbSymbol('image', FakeGdbType('int'))
+    bridge_module.gdb.selected_frame = lambda: FakeGdbFrame(
+        FakeGdbBlock([local, FakeGdbSymbol('this', FakeGdbType('Holder *'))]))
+
+    bridge = bridge_module.GdbBridge.__new__(bridge_module.GdbBridge)
+    bridge._type_bridge = FakeTypeBridge({'Buffer'})
+    found = set()
+    bridge._add_observable_symbol(FakeGdbSymbol('this', FakeGdbType(
+        'Holder *')), 'this', found)
+
+    assert found == set()
+
+
+def test_an_unshadowed_this_member_is_still_listed(bridge_module):
+    image = FakeGdbField('image', FakeGdbType('Buffer'))
+    this_type = FakeGdbType('Holder', code=STRUCT_CODE, fields=[image])
+    bridge_module.gdb.parse_and_eval = lambda _expr: types.SimpleNamespace(
+        dereference=lambda: FakeGdbSymbol('*this', this_type))
+    local = FakeGdbSymbol('width', FakeGdbType('int'))
+    bridge_module.gdb.selected_frame = lambda: FakeGdbFrame(
+        FakeGdbBlock([local, FakeGdbSymbol('this', FakeGdbType('Holder *'))]))
+
+    bridge = bridge_module.GdbBridge.__new__(bridge_module.GdbBridge)
+    bridge._type_bridge = FakeTypeBridge({'Buffer'})
+    found = set()
+    bridge._add_observable_symbol(FakeGdbSymbol('this', FakeGdbType(
+        'Holder *')), 'this', found)
+
+    assert found == {'image'}
