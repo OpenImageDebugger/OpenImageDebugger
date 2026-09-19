@@ -58,9 +58,8 @@ from oidscripts import wireframe as wf
 from oidscripts.debuggers.interfaces import raise_if_too_large
 
 
-class _InvalidTypeMember:
-    """What GetStaticFieldWithName returns for a name the type lacks."""
-
+class InvalidSBHandle:
+    # What lldb returns for a handle it cannot fill.
     def IsValid(self):
         return False
 
@@ -99,11 +98,11 @@ class FakeSBType:
 
     def FindDirectNestedType(self, name):
         return (FakeSBType(name) if name in self._nested_types
-                else _InvalidTypeMember())
+                else InvalidSBHandle())
 
     def GetStaticFieldWithName(self, name):
         return (FakeSBTypeMember(name) if name in self._static_fields
-                else _InvalidTypeMember())
+                else InvalidSBHandle())
 
     def GetNumberOfMemberFunctions(self):
         return len(self._member_functions)

@@ -106,7 +106,7 @@ def evaluate_in_frame(frame, expression):
 
 def _peeled_type(symbol):
     # type: (lldb.SBValue) -> lldb.SBType
-    """Canonical type of `symbol`, pointers and references peeled, or None."""
+    # Canonical type, pointers and references peeled, or None.
     symbol_type = symbol.GetType()
     if not symbol_type.IsValid():
         return None
@@ -123,37 +123,26 @@ def _peeled_type(symbol):
 
 def _children_are_declared_members(symbol):
     # type: (lldb.SBValue) -> bool
-    """Whether `symbol`'s children are its type's declared members rather
-    than the elements of a sequence."""
+    # Declared members, or the elements of a sequence?
     symbol_type = _peeled_type(symbol)
     if symbol_type is None:
         return False
     return bool(symbol_type.GetTypeClass() & _member_bearing_type_classes())
 
 
-def _base_class_names(symbol):
-    # type: (lldb.SBValue) -> list
-    """Direct bases, in the order lldb serves them as leading children.
-
-    A name alone cannot identify a subobject: `struct D : Base { Buffer
-    Base; }` gives two children called 'Base'. Virtual bases are absent by
-    design -- the class that inherits one virtually reports it as direct."""
-    symbol_type = _peeled_type(symbol)
-    if symbol_type is None:
-        return []
-    return [symbol_type.GetDirectBaseClassAtIndex(index).GetName()
-            for index in range(symbol_type.GetNumberOfDirectBaseClasses())]
-
-
 def _classify_children(declared):
     # type: (lldb.SBValue) -> tuple
-    # Bases come first, in GetDirectBaseClassAtIndex order.
-    base_names = _base_class_names(declared)
+    # Bases come first, named after the base type; a name alone cannot
+    # identify one (`struct D : Base { Buffer Base; }` gives two 'Base').
+    declared_type = _peeled_type(declared)
+    base_count = (declared_type.GetNumberOfDirectBaseClasses()
+                  if declared_type is not None else 0)
     members, anonymous, bases = [], [], []
     for index in range(declared.GetNumChildren()):
         child = declared.GetChildAtIndex(index)
         name = child.name
-        if index < len(base_names) and name == base_names[index]:
+        if (index < base_count
+                and name == declared_type.GetDirectBaseClassAtIndex(index).GetName()):
             bases.append(child)
         elif not name:
             anonymous.append(child)
@@ -192,26 +181,12 @@ def _class_binds(value, name, inherited=True):
                for subobject in reachable)
 
 
-def _binds_to(frame, this_value, name):
-    # type: (lldb.SBFrame, lldb.SBValue, str) -> str
-    # C++ lookup order: frame scope (locals, arguments, function-local
-    # statics -- all owned by FindVariable), then class scope, then rest.
+def _class_resolves(frame, this_value, name):
+    # type: (lldb.SBFrame, lldb.SBValue, str) -> bool
+    # Frame scope first (FindVariable owns it), then class scope.
     if frame.FindVariable(name).IsValid():
-        return 'local'
-    if this_value is not None and _class_binds(this_value, name):
-        return 'class'
-    return 'global'
-
-
-def _hiding_filter(declared_value, prefix_length, record_hit):
-    # type: (lldb.SBValue, int, callable) -> callable
-    # Drops an inherited name the derived class binds itself.
-    def record_unhidden(qualified_name, wrapped):
-        segment = qualified_name.split('.')[prefix_length]
-        if not _class_binds(declared_value, segment, inherited=False):
-            record_hit(qualified_name, wrapped)
-
-    return record_unhidden
+        return False
+    return this_value is not None and _class_binds(this_value, name)
 
 
 def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
@@ -257,8 +232,14 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     if not bases:
         return
 
-    record_unhidden = _hiding_filter(declared, len(member_name_chain),
-                                     record_hit)
+    prefix = len(member_name_chain)
+
+    def record_unhidden(qualified_name, wrapped):
+        # An inherited name the derived class binds itself is unreachable.
+        if not _class_binds(declared, qualified_name.split('.')[prefix],
+                            inherited=False):
+            record_hit(qualified_name, wrapped)
+
     for symbol_member in bases:
         _walk_members(symbol_member, member_name_chain, visited_typenames,
                       type_bridge, record_unhidden)
@@ -280,7 +261,7 @@ def observable_symbols(frame, type_bridge):
 
     def emit_unshadowed(qualified_name, wrapped):
         bare = qualified_name.split('.', 1)[0]
-        if _binds_to(frame, this_value, bare) == 'class':
+        if _class_resolves(frame, this_value, bare):
             emit(qualified_name, wrapped)
 
     # `this` first: class scope outranks a file static of the same name,
@@ -297,7 +278,7 @@ def observable_symbols(frame, type_bridge):
             continue
         # Only what the frame actually resolves this name to: a variable
         # the class shadows is unreachable under its bare name.
-        if name != 'this' and _binds_to(frame, this_value, name) == 'class':
+        if name != 'this' and _class_resolves(frame, this_value, name):
             continue
         wrapped = SymbolWrapper(symbol)
         if type_bridge.is_symbol_observable(wrapped, name):

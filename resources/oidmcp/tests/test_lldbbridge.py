@@ -13,6 +13,7 @@ import sys
 import pytest
 from conftest import (
     LLDB,
+    InvalidSBHandle,
     FakeDebugger,
     FakeFrame,
     FakeSBType,
@@ -207,13 +208,6 @@ def test_evaluate_in_frame_raises_runtime_error_for_a_falsy_result():
 # --- observable_symbols(): top-level frame variables plus the recursive
 # observable-member traversal, and its cycle guard.
 
-class _InvalidSBValue:
-    """What lldb hands back for a name its frame does not own."""
-
-    def IsValid(self):
-        return False
-
-
 class _VariablesFrame:
     """Minimal SBFrame. FindVariable() answers for the frame's own lexical
     scope -- locals, arguments and function-local statics -- which is how
@@ -228,7 +222,7 @@ class _VariablesFrame:
         return self._variables
 
     def FindVariable(self, name):
-        return self._in_lexical_scope.get(name, _InvalidSBValue())
+        return self._in_lexical_scope.get(name, InvalidSBHandle())
 
 
 def _observable_names(root, observable_typenames):
