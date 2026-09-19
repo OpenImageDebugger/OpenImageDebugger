@@ -41,8 +41,7 @@ TYPES_JSON = REPO_ROOT / 'testbench' / '.oid' / 'types.json'
 # qualified members (`holder.member_gray`), and inside a method the members
 # of `this` surface BARE (`member_gray`), matching lldbbridge's naming.
 # It also inherits one buffer and holds one in an anonymous union: neither
-# a base class nor an anonymous aggregate is a path segment C++ can spell,
-# so both must be named as if the member were Holder's own.
+# is a path segment C++ can spell.
 FIXTURE_CPP = """\
 struct PackedGray8 {
     unsigned char* data;
@@ -183,10 +182,7 @@ def test_resolver_answers_under_gdb(tmp_path):
     # observable members under qualified names.
     assert 'holder.member_gray' in names, transcript
     assert 'holder' not in names, transcript
-    # An inherited buffer and one held in an anonymous union are named as
-    # if they were Holder's own members: the segments gdb would invent
-    # ('holder.GrayBase.base_gray', 'holder.None.union_gray') are not
-    # expressions any frame can evaluate.
+    # 'holder.GrayBase.base_gray' and 'holder.None.union_gray' evaluate nowhere.
     assert 'holder.base_gray' in names, transcript
     assert 'holder.union_gray' in names, transcript
     assert not [n for n in names if 'GrayBase' in n or 'None' in n], transcript

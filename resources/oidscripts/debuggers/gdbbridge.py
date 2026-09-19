@@ -118,8 +118,7 @@ class GdbBridge(BridgeInterface):
                 f'Expression "{expression}" failed: {error}') from error
 
     def _member_bearing(self, type_obj):
-        """Whether `type_obj`'s fields are members to walk. A union's are,
-        and are spelled exactly like a struct's."""
+        """Whether `type_obj`'s fields are members to walk."""
         return type_obj.code in (gdb.TYPE_CODE_STRUCT, gdb.TYPE_CODE_UNION)
 
     def _get_observable_children_members(self, symbol, output_set, parent_name=''):
@@ -128,12 +127,7 @@ class GdbBridge(BridgeInterface):
 
         if self._member_bearing(symbol.type):
             for field in symbol.type.fields():
-                # A base-class subobject and an anonymous aggregate carry no
-                # path segment: C++ reaches their members through the
-                # containing object, so 'holder.Base.image' (or the
-                # 'holder.None.image' an unnamed field interpolates to) is an
-                # expression no frame can evaluate. Walk them as if their
-                # members were the container's own.
+                # 'holder.Base.image' and 'holder.None.image' evaluate nowhere.
                 if not field.name or getattr(field, 'is_base_class', False):
                     self._get_observable_children_members(field, output_set,
                                                           parent_name)
@@ -155,10 +149,7 @@ class GdbBridge(BridgeInterface):
 
         # Special case to handle 'this'
         elif name == 'this':
-            # The pointee itself, not each of its fields: handing the walk a
-            # field makes that field's own name the parent's, so a buffer
-            # held directly by `this` is skipped and its sub-fields are
-            # reported in its place.
+            # The pointee, not each field: a field would become its own parent.
             this_value = gdb.parse_and_eval(name).dereference()
             self._get_observable_children_members(this_value,
                                                   observable_symbols, name)

@@ -93,10 +93,7 @@ def _observable_names(module, symbol, observable_typenames):
 
 
 def test_a_base_class_subobject_contributes_no_path_segment(bridge_module):
-    # gdb reports a base-class subobject as a field whose name is the base
-    # type's, but C++ addresses an inherited member directly on the derived
-    # object, so 'holder.Base.baseMember' is an expression no frame can
-    # evaluate (issue #1102, the gdb half).
+    # 'holder.Base.baseMember' evaluates nowhere (issue #1102, gdb half).
     base = FakeGdbType('Base', code=STRUCT_CODE, fields=[
         FakeGdbField('baseMember', FakeGdbType('Buffer')),
     ])
@@ -112,8 +109,7 @@ def test_a_base_class_subobject_contributes_no_path_segment(bridge_module):
 
 
 def test_an_anonymous_aggregate_contributes_no_path_segment(bridge_module):
-    # gdb gives an anonymous union or struct a field with name None, which
-    # f-string interpolation turns into the literal segment 'None'.
+    # An unnamed field interpolates into the literal segment 'None'.
     anonymous = FakeGdbType('', code=UNION_CODE, fields=[
         FakeGdbField('anonU', FakeGdbType('Buffer')),
     ])
@@ -126,11 +122,7 @@ def test_an_anonymous_aggregate_contributes_no_path_segment(bridge_module):
 
 
 def test_a_buffer_held_directly_by_this_is_listed(bridge_module):
-    # The `this` branch fed each FIELD of the pointee to the member walk
-    # with 'this' as the parent, so a field's own name never entered the
-    # name: a buffer held directly by `this` was skipped and the walk
-    # reported its sub-fields instead. Hand the walk the dereferenced
-    # value, so every member is named under 'this'.
+    # A field passed as its own parent loses its name from the path.
     image = FakeGdbField('image', FakeGdbType('Buffer'))
     base = FakeGdbType('Base', code=STRUCT_CODE, fields=[
         FakeGdbField('baseMember', FakeGdbType('Buffer')),
@@ -152,8 +144,7 @@ def test_a_buffer_held_directly_by_this_is_listed(bridge_module):
 
 
 def test_a_named_union_is_descended_into(bridge_module):
-    # A union's members are spelled exactly like a struct's, so refusing to
-    # descend into one hides every buffer a union holds.
+    # A union's members are spelled exactly like a struct's.
     union = FakeGdbType('Payload', code=UNION_CODE, fields=[
         FakeGdbField('image', FakeGdbType('Buffer')),
     ])

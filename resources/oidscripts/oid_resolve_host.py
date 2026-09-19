@@ -120,9 +120,7 @@ def _walk_gdb_members(gdb, bridge, node, parent_name, emit):
     list_observable() item straight back into resolve() under either
     debugger."""
     node_type = _peel_gdb_type(gdb, node.type)
-    # A union bears members exactly as a struct does, and an anonymous one
-    # spells them on the containing object, so refusing it hides buffers
-    # the lldb walk lists.
+    # A union bears members as a struct does; refusing it hides buffers.
     if node_type.code not in (gdb.TYPE_CODE_STRUCT, gdb.TYPE_CODE_UNION):
         return
     for field in node_type.fields():

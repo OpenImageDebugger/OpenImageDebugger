@@ -173,8 +173,7 @@ _NON_STRUCT_CODE = object()
 # Reference types (Wrapper &) peel to their target before the struct
 # check; the fake module exposes it as gdb.TYPE_CODE_REF.
 _REF_CODE = object()
-# Unions bear members exactly as structs do; the fake module exposes this
-# as gdb.TYPE_CODE_UNION.
+# Exposed by the fake module as gdb.TYPE_CODE_UNION.
 _UNION_CODE = object()
 
 
@@ -430,9 +429,7 @@ def test_gdb_host_walks_through_unnamed_and_base_fields(monkeypatch):
 def test_gdb_host_descends_into_a_union(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
-    # A union's members are spelled exactly like a struct's. Descending
-    # into structs alone hides every buffer a union holds, and hides the
-    # members of an ANONYMOUS union outright -- the lldb walk lists both.
+    # Structs-only descent hides union members outright; lldb lists them.
     named = _FakeGdbType('Payload', code=_UNION_CODE, fields=[
         _FakeGdbField('img', _FakeGdbType('cv::Mat')),
     ])
