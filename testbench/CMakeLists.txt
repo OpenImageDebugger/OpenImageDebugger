@@ -41,7 +41,11 @@ endif()
 if(Eigen3_FOUND)
     add_executable(testbench_inherited_eigen inherited_eigen.cpp)
     target_link_libraries(testbench_inherited_eigen PRIVATE Eigen3::Eigen)
+    # The sample declares a local it never reads -- that IS the buffer the
+    # reporter plots -- so /W4 C4101 plus the repo-wide /WX would fail the
+    # Windows build on the one line the fixture exists for.
     target_compile_options(testbench_inherited_eigen PRIVATE
-        "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wno-error;-g;-O0>")
+        "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wno-error;-g;-O0>"
+        "$<$<CXX_COMPILER_ID:MSVC>:/WX-;/Zi;/Od>")
     message(STATUS "testbench: inherited_eigen fixture enabled (Eigen found)")
 endif()

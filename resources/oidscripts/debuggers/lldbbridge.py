@@ -145,6 +145,20 @@ def _base_class_names(symbol):
             for index in range(symbol_type.GetNumberOfDirectBaseClasses())]
 
 
+def _declared_names(symbol):
+    # type: (lldb.SBValue) -> set
+    """Names an anonymous aggregate contributes to its container's scope."""
+    declared = set()
+    value = symbol.GetNonSyntheticValue()
+    for index in range(value.GetNumChildren()):
+        child = value.GetChildAtIndex(index)
+        if child.name:
+            declared.add(child.name)
+        else:
+            declared |= _declared_names(child)
+    return declared
+
+
 def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
                    record_hit):
     # type: (lldb.SBValue, list, frozenset, TypeInspectorInterface, callable) -> None
@@ -195,9 +209,29 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
             _walk_members(symbol_member, chain, visited_typenames,
                           type_bridge, record_hit)
 
-    for symbol_member in anonymous + bases:
+    for symbol_member in anonymous:
         _walk_members(symbol_member, member_name_chain, visited_typenames,
                       type_bridge, record_hit)
+
+    if not bases:
+        return
+
+    # A name this class declares is the one C++ resolves, whether or not
+    # that declaration is a buffer, so an inherited member of the same
+    # name must not be emitted under it.
+    declared = {name for name, _member in members}
+    for symbol_member in anonymous:
+        declared |= _declared_names(symbol_member)
+    prefix = len(member_name_chain)
+
+    def record_unhidden(qualified_name, wrapped):
+        segments = qualified_name.split('.')
+        if segments[prefix] not in declared:
+            record_hit(qualified_name, wrapped)
+
+    for symbol_member in bases:
+        _walk_members(symbol_member, member_name_chain, visited_typenames,
+                      type_bridge, record_unhidden)
 
 
 def observable_symbols(frame, type_bridge):

@@ -549,6 +549,36 @@ def test_an_anonymous_member_hides_the_inherited_one_of_the_same_name():
     assert found == {'holder.image': 'Buffer'}
 
 
+def test_a_non_observable_derived_member_still_hides_an_inherited_one():
+    # The derived member reserves the name whether or not it is itself a
+    # buffer: C++ resolves the flattened name to it, so emitting the
+    # inherited buffer under that name would hand back the wrong object.
+    inherited = FakeSBValue('image', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    own = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
+    holder = FakeSBValue('holder', 'Derived', children=[base, own],
+                         base_typenames=('Base',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == set()
+
+
+def test_a_non_observable_anonymous_member_still_hides_an_inherited_one():
+    # Same rule through an anonymous union: its members belong to the
+    # derived class, so they reserve the name too.
+    inherited = FakeSBValue('image', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    own = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
+    anonymous = FakeSBValue('', 'Derived::(anonymous union)', children=[own])
+    holder = FakeSBValue('holder', 'Derived', children=[base, anonymous],
+                         base_typenames=('Base',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == set()
+
+
 def test_a_scalar_local_is_not_descended_into():
     # Nothing to find behind a builtin, and lldb reports one child for a
     # pointer-to-scalar. Refusing both keeps the walk off the data.
