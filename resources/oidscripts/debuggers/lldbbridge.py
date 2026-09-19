@@ -279,6 +279,23 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
                       type_bridge, record_unhidden)
 
 
+def _this_owns_name(symbol, name, member_names):
+    # type: (lldb.SBValue, str, set) -> bool
+    """Whether `this` binds the bare `name`. Static fields and nested
+    types cannot be enumerated -- lldb answers them by name only -- so
+    every candidate is asked about, here and through the bases."""
+    if name in member_names:
+        return True
+    if _hides_inherited(symbol, name, set()):
+        return True
+    if not _children_are_declared_members(symbol):
+        return False
+    declared = symbol.GetNonSyntheticValue()
+    _members, anonymous, bases = _classify_children(declared)
+    return any(_this_owns_name(subobject, name, set())
+               for subobject in anonymous + bases)
+
+
 def _bare_member_names(symbol):
     # type: (lldb.SBValue) -> set
     """Bare names `this` puts in scope: its own members, inherited ones,
@@ -321,9 +338,11 @@ def observable_symbols(frame, type_bridge):
     variables = list(frame.GetVariables(True, True, True, True))
     variables.sort(key=lambda variable: variable.name != 'this')
 
+    this_value = None
     this_names = set()
     for variable in variables:
         if variable.name == 'this':
+            this_value = variable
             this_names = _bare_member_names(variable)
             break
 
@@ -334,7 +353,8 @@ def observable_symbols(frame, type_bridge):
         # A member owns its bare name whether or not it is a buffer, so a
         # file static of that name is unreachable. A local is not: it is
         # in the frame's own scope, and wins.
-        if (name != 'this' and name in this_names
+        if (name != 'this' and this_value is not None
+                and _this_owns_name(this_value, name, this_names)
                 and not frame.FindVariable(name).IsValid()):
             continue
         wrapped = SymbolWrapper(symbol)

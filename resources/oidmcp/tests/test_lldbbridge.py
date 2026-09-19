@@ -656,6 +656,25 @@ def test_a_local_still_outranks_a_member_of_the_same_name():
     assert found == {'image'}
 
 
+def test_a_file_static_hidden_by_a_class_scope_declaration_is_not_listed():
+    # A static data member or a nested type owns the bare name as firmly
+    # as a data member does, and neither can be enumerated -- lldb only
+    # answers them by name -- so each candidate has to be asked about.
+    this = FakeSBValue('this', 'Holder *', type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass,
+                       static_field_names=('image',),
+                       nested_type_names=('shot',))
+    image_static = FakeSBValue('image', 'Buffer')
+    shot_static = FakeSBValue('shot', 'Buffer')
+    visible = FakeSBValue('visible', 'Buffer')
+    frame = _VariablesFrame([image_static, shot_static, visible, this])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == {'visible'}
+
+
 def test_a_scalar_local_is_not_descended_into():
     # Nothing to find behind a builtin, and lldb reports one child for a
     # pointer-to-scalar. Refusing both keeps the walk off the data.
