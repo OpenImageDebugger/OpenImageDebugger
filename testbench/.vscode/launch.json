@@ -20,6 +20,11 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/testbench_inherited_eigen",
+            // Multi-config generators (Visual Studio) write into a
+            // per-config subdirectory and add the suffix.
+            "windows": {
+                "program": "${workspaceFolder}/build/Debug/testbench_inherited_eigen.exe"
+            },
             "args": [],
             "cwd": "${workspaceFolder}",
             "initCommands": [
@@ -38,6 +43,11 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/testbench",
+            // Multi-config generators (Visual Studio) write into a
+            // per-config subdirectory and add the suffix.
+            "windows": {
+                "program": "${workspaceFolder}/build/Debug/testbench.exe"
+            },
             "args": [],
             "cwd": "${workspaceFolder}",
             "initCommands": [
@@ -58,6 +68,11 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/testbench_realtypes",
+            // Multi-config generators (Visual Studio) write into a
+            // per-config subdirectory and add the suffix.
+            "windows": {
+                "program": "${workspaceFolder}/build/Debug/testbench_realtypes.exe"
+            },
             "args": [],
             "cwd": "${workspaceFolder}",
             "initCommands": [

@@ -8,7 +8,7 @@
         {
             "label": "build inherited_eigen fixture",
             "type": "shell",
-            "command": "cmake -S . -B build && cmake --build build --target testbench_inherited_eigen",
+            "command": "cmake -S . -B build && cmake --build build --target testbench_inherited_eigen --config Debug",
             "options": {
                 "cwd": "${workspaceFolder}"
             },
@@ -19,7 +19,7 @@
         {
             "label": "build realtypes fixture",
             "type": "shell",
-            "command": "cmake -S . -B build && cmake --build build --target testbench_realtypes",
+            "command": "cmake -S . -B build && cmake --build build --target testbench_realtypes --config Debug",
             "options": {
                 "cwd": "${workspaceFolder}"
             },
@@ -30,7 +30,7 @@
         {
             "label": "build testbench",
             "type": "shell",
-            "command": "cmake -S . -B build && cmake --build build --target testbench",
+            "command": "cmake -S . -B build && cmake --build build --target testbench --config Debug",
             "options": {
                 "cwd": "${workspaceFolder}"
             },
