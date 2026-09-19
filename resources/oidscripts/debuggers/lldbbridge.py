@@ -147,8 +147,7 @@ def _base_class_names(symbol):
 
 def _classify_children(declared):
     # type: (lldb.SBValue) -> tuple
-    """Children split into members, anonymous aggregates and bases, which
-    lldb serves first in GetDirectBaseClassAtIndex order."""
+    # Bases come first, in GetDirectBaseClassAtIndex order.
     base_names = _base_class_names(declared)
     members, anonymous, bases = [], [], []
     for index in range(declared.GetNumChildren()):
@@ -163,25 +162,26 @@ def _classify_children(declared):
     return members, anonymous, bases
 
 
-def _class_binds(value, name, inherited=True):
-    # type: (lldb.SBValue, str, bool) -> bool
-    """Whether the class behind `value` binds the bare `name` -- as a
-    member, static field, member function, nested type or alias, or an
-    anonymous aggregate's member. `inherited=False` asks what the class
-    declares for ITSELF, which is what hides an inherited member. Names
-    are asked about, not enumerated: lldb answers statics and nested
-    types by name only."""
-    value_type = _peeled_type(value)
+def _declared_by_name(value_type, name):
+    # type: (lldb.SBType, str) -> bool
+    # lldb answers statics and nested types by name only, never by listing.
     for accessor in ('GetStaticFieldWithName', 'FindDirectNestedType'):
         lookup = getattr(value_type, accessor, None)
         declaration = lookup(name) if lookup is not None else None
         if declaration and declaration.IsValid():
             return True
-    for index in range(getattr(value_type, 'GetNumberOfMemberFunctions',
-                               lambda: 0)()):
-        function = value_type.GetMemberFunctionAtIndex(index)
-        if function and function.GetName() == name:
-            return True
+    count = getattr(value_type, 'GetNumberOfMemberFunctions', lambda: 0)()
+    return any(value_type.GetMemberFunctionAtIndex(index).GetName() == name
+               for index in range(count))
+
+
+def _class_binds(value, name, inherited=True):
+    # type: (lldb.SBValue, str, bool) -> bool
+    # Any class-scope declaration binds the name, not only a data member.
+    # inherited=False asks what the class declares for ITSELF, which is
+    # what hides an inherited member.
+    if _declared_by_name(_peeled_type(value), name):
+        return True
     if not _children_are_declared_members(value):
         return False
     members, anonymous, bases = _classify_children(value.GetNonSyntheticValue())
@@ -194,9 +194,8 @@ def _class_binds(value, name, inherited=True):
 
 def _binds_to(frame, this_value, name):
     # type: (lldb.SBFrame, lldb.SBValue, str) -> str
-    """C++ lookup order for an unqualified `name`: the frame's own scope
-    (locals, arguments, function-local statics -- all of which
-    FindVariable owns), then class scope, then everything else."""
+    # C++ lookup order: frame scope (locals, arguments, function-local
+    # statics -- all owned by FindVariable), then class scope, then rest.
     if frame.FindVariable(name).IsValid():
         return 'local'
     if this_value is not None and _class_binds(this_value, name):
@@ -206,8 +205,7 @@ def _binds_to(frame, this_value, name):
 
 def _hiding_filter(declared_value, prefix_length, record_hit):
     # type: (lldb.SBValue, int, callable) -> callable
-    """Drops an inherited name the derived class binds itself: C++
-    resolves that name to the declaration."""
+    # Drops an inherited name the derived class binds itself.
     def record_unhidden(qualified_name, wrapped):
         segment = qualified_name.split('.')[prefix_length]
         if not _class_binds(declared_value, segment, inherited=False):
