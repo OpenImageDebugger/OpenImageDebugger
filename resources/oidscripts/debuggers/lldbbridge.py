@@ -229,6 +229,19 @@ def observable_symbols(frame, type_bridge):
             seen.add(qualified_name)
             found.append((qualified_name, wrapped))
 
+    # Members of `this` are emitted bare, and C++ resolves an unqualified
+    # name to a local or argument before an implicit this-member, so a
+    # member whose bare name one of them carries would resolve to the
+    # wrong object. Statics are excluded from the set: a member hides a
+    # file static, it does not lose to one.
+    shadowed = {variable.name
+                for variable in frame.GetVariables(True, True, False, True)
+                if variable.name and variable.name != 'this'}
+
+    def emit_unshadowed(qualified_name, wrapped):
+        if qualified_name.split('.', 1)[0] not in shadowed:
+            emit(qualified_name, wrapped)
+
     for symbol in frame.GetVariables(True, True, True, True):
         name = symbol.name
         if not name:
@@ -236,9 +249,11 @@ def observable_symbols(frame, type_bridge):
         wrapped = SymbolWrapper(symbol)
         if type_bridge.is_symbol_observable(wrapped, name):
             emit(name, wrapped)
-        member_name_chain = [name] if name != 'this' else []
-        _walk_members(symbol, member_name_chain, frozenset(), type_bridge,
-                      emit)
+        if name == 'this':
+            _walk_members(symbol, [], frozenset(), type_bridge,
+                          emit_unshadowed)
+        else:
+            _walk_members(symbol, [name], frozenset(), type_bridge, emit)
 
     return found
 

@@ -208,13 +208,19 @@ def test_evaluate_in_frame_raises_runtime_error_for_a_falsy_result():
 # observable-member traversal, and its cycle guard.
 
 class _VariablesFrame:
-    """Minimal SBFrame stand-in: GetVariables() returns a fixed list."""
+    """Minimal SBFrame stand-in. GetVariables() serves one list, or the
+    locals-and-arguments subset lldb returns when statics are excluded --
+    the call observable_symbols() makes to learn which bare names a local
+    would capture."""
 
-    def __init__(self, variables):
+    def __init__(self, variables, locals_and_args=None):
         self._variables = variables
+        self._locals_and_args = (variables if locals_and_args is None
+                                 else locals_and_args)
 
-    def GetVariables(self, *args):
-        return self._variables
+    def GetVariables(self, _args=True, _locals=True, statics=True,
+                     _in_scope_only=True):
+        return self._variables if statics else self._locals_and_args
 
 
 def _observable_names(root, observable_typenames):
@@ -475,6 +481,39 @@ def test_an_anonymous_aggregate_contributes_no_path_segment():
     found = _observable_names(holder, observable_typenames={'Buffer'})
 
     assert found == {'holder.anonU'}
+
+
+def test_a_this_member_shadowed_by_a_local_is_not_listed():
+    # Members of `this` surface bare, so a local of the same name captures
+    # the name: C++ resolves an unqualified `image` to the local, and
+    # resolve() would hand back that object instead of the member the
+    # listing meant. The gdb walk filters these; this walk must too.
+    local = FakeSBValue('image', 'Local')
+    member = FakeSBValue('image', 'Buffer')
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    frame = _VariablesFrame([local, this], locals_and_args=[local])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == set()
+
+
+def test_a_this_member_survives_an_unrelated_local():
+    # The filter keys on the name, not on the presence of locals.
+    local = FakeSBValue('width', 'int', type_class=LLDB.eTypeClassBuiltin)
+    member = FakeSBValue('image', 'Buffer')
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    frame = _VariablesFrame([local, this], locals_and_args=[local])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == {'image'}
 
 
 def test_a_scalar_local_is_not_descended_into():
