@@ -623,6 +623,39 @@ def test_a_nested_type_hides_an_inherited_field():
     assert found == set()
 
 
+def test_a_file_static_hidden_by_a_non_observable_member_is_not_listed():
+    # The member is not a buffer, so it never reserves its bare name, but
+    # C++ still resolves that name to it. Offering the static under it
+    # would plot an object the frame never reaches.
+    member = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    file_static = FakeSBValue('image', 'Buffer')
+    frame = _VariablesFrame([file_static, this])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == set()
+
+
+def test_a_local_still_outranks_a_member_of_the_same_name():
+    # A local IS in the frame's lexical scope, so it keeps the name and
+    # stays listed -- the member is the one suppressed.
+    member = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    local = FakeSBValue('image', 'Buffer')
+    frame = _VariablesFrame([local, this], in_lexical_scope=[local])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == {'image'}
+
+
 def test_a_scalar_local_is_not_descended_into():
     # Nothing to find behind a builtin, and lldb reports one child for a
     # pointer-to-scalar. Refusing both keeps the walk off the data.

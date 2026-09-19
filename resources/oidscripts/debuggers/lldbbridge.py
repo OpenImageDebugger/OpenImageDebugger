@@ -279,6 +279,23 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
                       type_bridge, record_unhidden)
 
 
+def _bare_member_names(symbol):
+    # type: (lldb.SBValue) -> set
+    """Bare names `this` puts in scope: its own members, inherited ones,
+    and anything an anonymous aggregate contributes. C++ resolves each to
+    the member, so a file static of that name is unreachable."""
+    names = set()
+    if not _children_are_declared_members(symbol):
+        return names
+    declared = symbol.GetNonSyntheticValue()
+    members, anonymous, bases = _classify_children(declared)
+    names |= {name for name, _member in members}
+    names |= _class_scope_names(declared)
+    for subobject in anonymous + bases:
+        names |= _bare_member_names(subobject)
+    return names
+
+
 def observable_symbols(frame, type_bridge):
     # type: (lldb.SBFrame, TypeInspectorInterface) -> list
     """Every observable symbol in `frame`: top-level plus struct/class
@@ -304,9 +321,21 @@ def observable_symbols(frame, type_bridge):
     variables = list(frame.GetVariables(True, True, True, True))
     variables.sort(key=lambda variable: variable.name != 'this')
 
+    this_names = set()
+    for variable in variables:
+        if variable.name == 'this':
+            this_names = _bare_member_names(variable)
+            break
+
     for symbol in variables:
         name = symbol.name
         if not name:
+            continue
+        # A member owns its bare name whether or not it is a buffer, so a
+        # file static of that name is unreachable. A local is not: it is
+        # in the frame's own scope, and wins.
+        if (name != 'this' and name in this_names
+                and not frame.FindVariable(name).IsValid()):
             continue
         wrapped = SymbolWrapper(symbol)
         if type_bridge.is_symbol_observable(wrapped, name):
