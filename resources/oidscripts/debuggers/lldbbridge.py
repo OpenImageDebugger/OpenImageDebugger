@@ -177,53 +177,54 @@ def _classify_children(declared):
     return members, anonymous, bases
 
 
-def _class_scope_names(symbol):
-    # type: (lldb.SBValue) -> set
-    """Static data members and member functions: class scope, so both hide
-    an inherited field."""
-    symbol_type = _peeled_type(symbol)
-    if symbol_type is None:
-        return set()
-    names = set()
-    for index in range(getattr(symbol_type, 'GetNumberOfMemberFunctions',
-                               lambda: 0)()):
-        function = symbol_type.GetMemberFunctionAtIndex(index)
-        if function and function.GetName():
-            names.add(function.GetName())
-    return names
-
-
-def _hides_inherited(symbol, name, declared):
-    # type: (lldb.SBValue, str, set) -> bool
-    """Whether this class declares `name` itself -- as a member, a static
-    field, or a nested type or alias, which hide a field just as loudly
-    and leave the flattened name unevaluable."""
-    if name in declared:
-        return True
-    symbol_type = _peeled_type(symbol)
+def _class_binds(value, name, inherited=True):
+    # type: (lldb.SBValue, str, bool) -> bool
+    """Whether the class behind `value` binds the bare `name` -- as a
+    member, static field, member function, nested type or alias, or an
+    anonymous aggregate's member. `inherited=False` asks what the class
+    declares for ITSELF, which is what hides an inherited member. Names
+    are asked about, not enumerated: lldb answers statics and nested
+    types by name only."""
+    value_type = _peeled_type(value)
     for accessor in ('GetStaticFieldWithName', 'FindDirectNestedType'):
-        lookup = getattr(symbol_type, accessor, None)
-        if lookup is None:
-            continue
-        declaration = lookup(name)
+        lookup = getattr(value_type, accessor, None)
+        declaration = lookup(name) if lookup is not None else None
         if declaration and declaration.IsValid():
             return True
-    return False
+    for index in range(getattr(value_type, 'GetNumberOfMemberFunctions',
+                               lambda: 0)()):
+        function = value_type.GetMemberFunctionAtIndex(index)
+        if function and function.GetName() == name:
+            return True
+    if not _children_are_declared_members(value):
+        return False
+    members, anonymous, bases = _classify_children(value.GetNonSyntheticValue())
+    if any(member_name == name for member_name, _member in members):
+        return True
+    reachable = anonymous + bases if inherited else anonymous
+    return any(_class_binds(subobject, name, inherited)
+               for subobject in reachable)
 
 
-def _hiding_filter(declared_value, members, anonymous, prefix_length,
-                   record_hit):
-    # type: (lldb.SBValue, list, list, int, callable) -> callable
-    """A record_hit that drops an inherited name this class declares
-    itself, buffer or not: C++ resolves that name to the declaration."""
-    declared = {name for name, _member in members}
-    for symbol_member in anonymous:
-        declared |= _declared_names(symbol_member)
-    declared |= _class_scope_names(declared_value)
+def _binds_to(frame, this_value, name):
+    # type: (lldb.SBFrame, lldb.SBValue, str) -> str
+    """C++ lookup order for an unqualified `name`: the frame's own scope
+    (locals, arguments, function-local statics -- all of which
+    FindVariable owns), then class scope, then everything else."""
+    if frame.FindVariable(name).IsValid():
+        return 'local'
+    if this_value is not None and _class_binds(this_value, name):
+        return 'class'
+    return 'global'
 
+
+def _hiding_filter(declared_value, prefix_length, record_hit):
+    # type: (lldb.SBValue, int, callable) -> callable
+    """Drops an inherited name the derived class binds itself: C++
+    resolves that name to the declaration."""
     def record_unhidden(qualified_name, wrapped):
         segment = qualified_name.split('.')[prefix_length]
-        if not _hides_inherited(declared_value, segment, declared):
+        if not _class_binds(declared_value, segment, inherited=False):
             record_hit(qualified_name, wrapped)
 
     return record_unhidden
@@ -272,8 +273,8 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     if not bases:
         return
 
-    record_unhidden = _hiding_filter(declared, members, anonymous,
-                                     len(member_name_chain), record_hit)
+    record_unhidden = _hiding_filter(declared, len(member_name_chain),
+                                     record_hit)
     for symbol_member in bases:
         _walk_members(symbol_member, member_name_chain, visited_typenames,
                       type_bridge, record_unhidden)
@@ -328,9 +329,8 @@ def observable_symbols(frame, type_bridge):
             found.append((qualified_name, wrapped))
 
     def emit_unshadowed(qualified_name, wrapped):
-        # FindVariable draws the scope line; the value type does not.
         bare = qualified_name.split('.', 1)[0]
-        if not frame.FindVariable(bare).IsValid():
+        if _binds_to(frame, this_value, bare) == 'class':
             emit(qualified_name, wrapped)
 
     # `this` first: class scope outranks a file static of the same name,
@@ -338,24 +338,16 @@ def observable_symbols(frame, type_bridge):
     variables = list(frame.GetVariables(True, True, True, True))
     variables.sort(key=lambda variable: variable.name != 'this')
 
-    this_value = None
-    this_names = set()
-    for variable in variables:
-        if variable.name == 'this':
-            this_value = variable
-            this_names = _bare_member_names(variable)
-            break
+    this_value = next((variable for variable in variables
+                       if variable.name == 'this'), None)
 
     for symbol in variables:
         name = symbol.name
         if not name:
             continue
-        # A member owns its bare name whether or not it is a buffer, so a
-        # file static of that name is unreachable. A local is not: it is
-        # in the frame's own scope, and wins.
-        if (name != 'this' and this_value is not None
-                and _this_owns_name(this_value, name, this_names)
-                and not frame.FindVariable(name).IsValid()):
+        # Only what the frame actually resolves this name to: a variable
+        # the class shadows is unreachable under its bare name.
+        if name != 'this' and _binds_to(frame, this_value, name) == 'class':
             continue
         wrapped = SymbolWrapper(symbol)
         if type_bridge.is_symbol_observable(wrapped, name):
