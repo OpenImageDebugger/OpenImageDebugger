@@ -40,8 +40,7 @@ TYPES_JSON = REPO_ROOT / 'testbench' / '.oid' / 'types.json'
 # Holder exists for the two member paths: a struct-typed local expands to
 # qualified members (`holder.member_gray`), and inside a method the members
 # of `this` surface BARE (`member_gray`), matching lldbbridge's naming.
-# It also inherits one buffer and holds one in an anonymous union: neither
-# is a path segment C++ can spell.
+# It also inherits one buffer and holds one in an anonymous union.
 FIXTURE_CPP = """\
 struct PackedGray8 {
     unsigned char* data;

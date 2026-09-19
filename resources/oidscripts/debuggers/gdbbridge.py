@@ -152,8 +152,7 @@ class GdbBridge(BridgeInterface):
                                                           parent_name)
                     continue
 
-                # An empty parent means the members of `this`, which the
-                # frame evaluates bare.
+                # An empty parent means `this`, whose members evaluate bare.
                 complete_symbol_name = (f"{parent_name}.{field.name}"
                                         if parent_name else field.name)
                 if self._type_bridge.is_symbol_observable(field, complete_symbol_name):

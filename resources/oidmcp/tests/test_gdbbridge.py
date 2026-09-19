@@ -146,8 +146,7 @@ def test_an_anonymous_aggregate_contributes_no_path_segment(bridge_module):
 
 
 def test_a_buffer_held_directly_by_this_is_listed(bridge_module):
-    # A field passed as its own parent loses its name from the path, and
-    # the members of `this` are named bare.
+    # A field passed as its own parent loses its name; `this` names bare.
     image = FakeGdbField('image', FakeGdbType('Buffer'))
     base = FakeGdbType('Base', code=STRUCT_CODE, fields=[
         FakeGdbField('baseMember', FakeGdbType('Buffer')),
