@@ -20,7 +20,10 @@
  *     the middle of a chunked run is exercised and not only its edges.
  *   - Four structs no built-in entry matches, described only by
  *     testbench/.oid/types.json -- the user-supplied side of the format.
- *   - Four classes holding an Eigen matrix through a base class, covering the
+ *   - Four classes holding a 48x32 Eigen matrix through a base class, each
+ *     carrying a differently shifted band so a buffer reached by the wrong
+ *     path renders as the wrong picture rather than as a plausible one,
+ *     covering the
  *     shapes an inherited buffer can take: reachable only through the base, a
  *     member named after the base, a member hiding an inherited one, and one
  *     reached from inside a method where members surface bare.
@@ -130,8 +133,11 @@ namespace {
 //     alone loses the member.
 //   - HidesInherited: a member that hides an inherited one of the same name.
 //     Both flatten to 'buffer' and C++ resolves that to the derived one.
+constexpr int kInheritW = 48;
+constexpr int kInheritH = 32;
+
 struct BufferBase {
-    Eigen::Matrix3d inherited;
+    Eigen::MatrixXd inherited;
 };
 
 struct InheritedOnly : BufferBase {
@@ -139,17 +145,33 @@ struct InheritedOnly : BufferBase {
 };
 
 struct NamesABase : BufferBase {
-    Eigen::Matrix3d BufferBase;
+    Eigen::MatrixXd BufferBase;
 };
 
 struct HidesInherited : BufferBase {
-    Eigen::Matrix3d inherited;
+    Eigen::MatrixXd inherited;
 };
+
+// A ramp with one diagonal band, shifted per fixture. A flat fill renders as
+// one uniform patch, so a buffer reached by the wrong path would look exactly
+// like the right one; the band makes the difference visible at a glance.
+Eigen::MatrixXd banded(int shift)
+{
+    Eigen::MatrixXd m(kInheritH, kInheritW);
+    for (int r = 0; r < kInheritH; ++r) {
+        for (int c = 0; c < kInheritW; ++c) {
+            const double ramp = static_cast<double>(c) / kInheritW;
+            const bool band = (r + c + shift * 5) % kInheritH < 4;
+            m(r, c) = band ? ramp + 1.0 : ramp;
+        }
+    }
+    return m;
+}
 
 // The members of `this` surface BARE (`inherited`, not `probe.inherited`),
 // so an inherited buffer has to be listed the way the frame evaluates it.
 struct InheritingProbe : BufferBase {
-    Eigen::Matrix3d own;
+    Eigen::MatrixXd own;
 
     void probe() const {
         // >>> SET A BREAKPOINT ON THE NEXT LINE FOR THE INHERITED CASE <<<
@@ -460,20 +482,20 @@ int main() {
     // Each matrix gets a distinct constant so a wrong path shows as the wrong
     // picture rather than as no picture.
     InheritedOnly inherited_only;
-    inherited_only.inherited = Eigen::Matrix3d::Constant(1.0);
+    inherited_only.inherited = banded(0);
     inherited_only.tag = 1;
 
     NamesABase names_a_base;
-    names_a_base.inherited = Eigen::Matrix3d::Constant(2.0);
-    names_a_base.BufferBase = Eigen::Matrix3d::Constant(3.0);
+    names_a_base.inherited = banded(1);
+    names_a_base.BufferBase = banded(2);
 
     HidesInherited hides_inherited;
-    hides_inherited.inherited = Eigen::Matrix3d::Constant(4.0);
-    hides_inherited.BufferBase::inherited = Eigen::Matrix3d::Constant(5.0);
+    hides_inherited.inherited = banded(3);
+    hides_inherited.BufferBase::inherited = banded(4);
 
     InheritingProbe inheriting_probe;
-    inheriting_probe.inherited = Eigen::Matrix3d::Constant(6.0);
-    inheriting_probe.own = Eigen::Matrix3d::Constant(7.0);
+    inheriting_probe.inherited = banded(5);
+    inheriting_probe.own = banded(6);
 
     // --- Custom types (testbench/.oid/types.json) ---
     // If these plot, the user-supplied types file was found and evaluated.
