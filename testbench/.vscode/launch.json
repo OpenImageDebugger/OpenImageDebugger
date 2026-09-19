@@ -11,6 +11,18 @@
     // fail to resolve. A fresh standalone .dSYM sidesteps that entirely.
     "version": "0.2.0",
     "configurations": [
+    {
+      // Issue #1102: break where the reporter's sample breaks, then plot
+      // baseMember -- the buffer reached only through the base class.
+      "name": "(CodeLLDB) Launch inherited_eigen fixture",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/cmake-build-debug/testbench_inherited_eigen",
+      "cwd": "${workspaceFolder}",
+      "initCommands": [
+        "breakpoint set --file inherited_eigen.cpp --line 15"
+      ]
+    },
         {
             "name": "(CodeLLDB) Launch testbench",
             "preLaunchTask": "build testbench",
