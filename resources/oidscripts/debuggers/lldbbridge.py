@@ -136,27 +136,30 @@ def _children_are_declared_members(symbol):
     return bool(symbol_type.GetTypeClass() & _member_bearing_type_classes())
 
 
-def _unspellable_child_names(symbol):
-    # type: (lldb.SBValue) -> set
-    """Names of `symbol`'s children that are subobjects rather than named
-    members: every base class, direct or virtual.
+def _base_class_names(symbol):
+    # type: (lldb.SBValue) -> list
+    """`symbol`'s direct base classes, in the order lldb serves them as
+    that value's leading children.
 
     lldb serves a base-class subobject as a child named after the base
     type, but C++ addresses an inherited member directly on the derived
     object, so a chain built through one ('this.Base.image') is an
-    expression no frame can evaluate. A virtual base is reported by the
-    virtual accessor, and by both for the class that inherits it
-    virtually, so both lists are read. The gdb walk in oid_resolve_host
-    makes the same judgement with field.is_base_class."""
+    expression no frame can evaluate.
+
+    Position matters, because a name alone will not do: `struct D : Base
+    { Buffer Base; }` is legal and lldb then serves TWO children called
+    'Base', the subobject first. Comparing a child's name to its own type
+    name fails too -- `struct Frame : Img { Img Img; }` defeats it.
+
+    Only the direct list is read: a virtual base is served as a child of
+    the class that inherits it virtually, which reports it as a direct
+    base as well, while a class further down reports it through
+    GetVirtualBaseClassAtIndex and is served no such child."""
     symbol_type = _peeled_type(symbol)
     if symbol_type is None:
-        return set()
-    names = set()
-    for index in range(symbol_type.GetNumberOfDirectBaseClasses()):
-        names.add(symbol_type.GetDirectBaseClassAtIndex(index).GetName())
-    for index in range(symbol_type.GetNumberOfVirtualBaseClasses()):
-        names.add(symbol_type.GetVirtualBaseClassAtIndex(index).GetName())
-    return names
+        return []
+    return [symbol_type.GetDirectBaseClassAtIndex(index).GetName()
+            for index in range(symbol_type.GetNumberOfDirectBaseClasses())]
 
 
 def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
@@ -182,19 +185,23 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     # same vector has three children however many bytes it holds.
     declared = symbol.GetNonSyntheticValue()
 
-    unspellable = _unspellable_child_names(symbol)
-
+    base_names = _base_class_names(declared)
+    subobjects = []
+    members = []
     for member_idx in range(declared.GetNumChildren()):
         symbol_member = declared.GetChildAtIndex(member_idx)
         member_name = symbol_member.name
-        # A base-class subobject and an anonymous union/struct (which lldb
-        # names with the empty string) are reached through the containing
-        # object, not through a segment of their own: descend with the
-        # chain unchanged so their members keep the names C++ spells.
-        if not member_name or member_name in unspellable:
-            _walk_members(symbol_member, member_name_chain, visited_typenames,
-                          type_bridge, record_hit)
-            continue
+        # An anonymous union or struct, which lldb names with the empty
+        # string, is addressed through its container like a base is.
+        if not member_name or (member_idx < len(base_names)
+                               and member_name == base_names[member_idx]):
+            subobjects.append(symbol_member)
+        else:
+            members.append((member_name, symbol_member))
+
+    # Declared members first: a derived member hiding a base's flattens
+    # to the same name, which C++ resolves to the derived one.
+    for member_name, symbol_member in members:
         chain = member_name_chain + [str(member_name)]
         wrapped = SymbolWrapper(symbol_member)
         if type_bridge.is_symbol_observable(wrapped, member_name):
@@ -202,6 +209,10 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
         else:
             _walk_members(symbol_member, chain, visited_typenames,
                           type_bridge, record_hit)
+
+    for symbol_member in subobjects:
+        _walk_members(symbol_member, member_name_chain, visited_typenames,
+                      type_bridge, record_hit)
 
 
 def observable_symbols(frame, type_bridge):

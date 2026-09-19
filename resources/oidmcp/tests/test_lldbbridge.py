@@ -376,19 +376,72 @@ def test_a_base_class_subobject_contributes_no_path_segment():
     assert found == {'baseMember', 'member'}
 
 
-def test_a_virtual_base_subobject_contributes_no_path_segment():
-    # A virtual base is reported by GetVirtualBaseClassAtIndex, and for the
-    # class that inherits it virtually by BOTH accessors. Reading only the
-    # direct list leaves 'holder.VB.vbMember' for whichever type reports it
-    # as virtual alone.
+def test_a_virtually_inherited_base_contributes_no_path_segment():
+    # lldb serves a virtual base as a child of the class that inherits it
+    # virtually, and reports it in that class's DIRECT base list (verified
+    # on lldb 23.1.1: `struct L : virtual VB` gives L children [VB, ...]
+    # and direct bases ['VB']). A class further down that reports VB only
+    # through GetVirtualBaseClassAtIndex is served no VB child at all.
     image = FakeSBValue('vbMember', 'Buffer')
     vbase = FakeSBValue('VB', 'VB', children=[image])
     holder = FakeSBValue('holder', 'Holder', children=[vbase],
-                         virtual_base_typenames=('VB',))
+                         base_typenames=('VB',))
 
     found = _observable_names(holder, observable_typenames={'Buffer'})
 
     assert found == {'holder.vbMember'}
+
+
+def test_a_member_named_after_a_base_class_is_still_listed():
+    # `struct Derived : Base { Buffer Base; }` is legal C++, and lldb
+    # serves both children under the name 'Base' (verified on lldb 23.1.1:
+    # kids=[('Plain','Plain'), ('Plain','int')]). Identifying the
+    # subobject by name alone eats the data member: it loses its path
+    # segment AND never reaches the observability test, so a plottable
+    # member disappears from the listing.
+    inherited = FakeSBValue('baseMember', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    member = FakeSBValue('Base', 'Buffer')
+    holder = FakeSBValue('holder', 'Derived', children=[base, member],
+                         base_typenames=('Base',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == {'holder.baseMember', 'holder.Base'}
+
+
+def test_a_member_whose_name_equals_its_type_is_still_listed():
+    # The cheap discriminator -- "a child is a subobject when its name
+    # equals its own type name" -- is wrong twice over: a member can be
+    # spelled that way (`struct Frame : Img { Img Img; }` gives
+    # kids=[('Img','Img'), ('Img','Img')]), and it pins nothing about
+    # where lldb reports base classes.
+    member = FakeSBValue('Buffer', 'Buffer')
+    holder = FakeSBValue('holder', 'Holder', children=[member])
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == {'holder.Buffer'}
+
+
+def test_a_derived_member_hides_the_inherited_one_of_the_same_name():
+    # Both flatten to the same name, and C++ resolves it to the derived
+    # member. lldb serves the base subobject FIRST, so a walk that takes
+    # the first of each name records the inherited member's value under a
+    # name that evaluates to the derived one -- the listing would advertise
+    # the wrong buffer's type.
+    inherited = FakeSBValue('image', 'InheritedBuffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    member = FakeSBValue('image', 'Buffer')
+    holder = FakeSBValue('holder', 'Derived', children=[base, member],
+                         base_typenames=('Base',))
+
+    frame = _VariablesFrame([holder])
+    bridge = FakeTypeBridge({'Buffer', 'InheritedBuffer'})
+    found = dict((name, str(wrapped.type))
+                 for name, wrapped in observable_symbols(frame, bridge))
+
+    assert found == {'holder.image': 'Buffer'}
 
 
 def test_an_anonymous_aggregate_contributes_no_path_segment():

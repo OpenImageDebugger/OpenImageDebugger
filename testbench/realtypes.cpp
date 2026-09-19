@@ -20,6 +20,10 @@
  *     the middle of a chunked run is exercised and not only its edges.
  *   - Four structs no built-in entry matches, described only by
  *     testbench/.oid/types.json -- the user-supplied side of the format.
+ *   - Four classes holding an Eigen matrix through a base class, covering the
+ *     shapes an inherited buffer can take: reachable only through the base, a
+ *     member named after the base, a member hiding an inherited one, and one
+ *     reached from inside a method where members surface bare.
  *   - A parked worker thread holds worker_mat, so every stop shows two
  *     threads whose top frames share an index, and what gets listed and
  *     plotted can be checked to follow the selected thread rather than
@@ -114,6 +118,45 @@ struct IplImage {
 };
 
 namespace {
+
+// --- Inherited buffers -----------------------------------------------------
+// A debugger serves a base-class subobject as a child named after the base
+// TYPE, and C++ has no such path segment: an inherited member is addressed
+// directly on the derived object. Three shapes decide whether a walker gets
+// that right, and all three are legal C++:
+//   - InheritedOnly: the plain case, a buffer reachable only through a base.
+//   - NamesABase: a member spelled exactly like the base, so the debugger
+//     serves TWO children called 'BufferBase'. Telling them apart by name
+//     alone loses the member.
+//   - HidesInherited: a member that hides an inherited one of the same name.
+//     Both flatten to 'buffer' and C++ resolves that to the derived one.
+struct BufferBase {
+    Eigen::Matrix3d inherited;
+};
+
+struct InheritedOnly : BufferBase {
+    int tag;
+};
+
+struct NamesABase : BufferBase {
+    Eigen::Matrix3d BufferBase;
+};
+
+struct HidesInherited : BufferBase {
+    Eigen::Matrix3d inherited;
+};
+
+// The members of `this` surface BARE (`inherited`, not `probe.inherited`),
+// so an inherited buffer has to be listed the way the frame evaluates it.
+struct InheritingProbe : BufferBase {
+    Eigen::Matrix3d own;
+
+    void probe() const {
+        // >>> SET A BREAKPOINT ON THE NEXT LINE FOR THE INHERITED CASE <<<
+        volatile int oid_breakpoint_inherited = 0;
+        (void)oid_breakpoint_inherited;
+    }
+};
 
 constexpr int kW = 160;
 constexpr int kH = 120;
@@ -413,6 +456,25 @@ int main() {
                Eigen::OuterStride<>>
         eig_map_strided(stride_backing.data(), 6, 8, Eigen::OuterStride<>(12));
 
+    // --- Inherited buffers (see the structs above) ---
+    // Each matrix gets a distinct constant so a wrong path shows as the wrong
+    // picture rather than as no picture.
+    InheritedOnly inherited_only;
+    inherited_only.inherited = Eigen::Matrix3d::Constant(1.0);
+    inherited_only.tag = 1;
+
+    NamesABase names_a_base;
+    names_a_base.inherited = Eigen::Matrix3d::Constant(2.0);
+    names_a_base.BufferBase = Eigen::Matrix3d::Constant(3.0);
+
+    HidesInherited hides_inherited;
+    hides_inherited.inherited = Eigen::Matrix3d::Constant(4.0);
+    hides_inherited.BufferBase::inherited = Eigen::Matrix3d::Constant(5.0);
+
+    InheritingProbe inheriting_probe;
+    inheriting_probe.inherited = Eigen::Matrix3d::Constant(6.0);
+    inheriting_probe.own = Eigen::Matrix3d::Constant(7.0);
+
     // --- Custom types (testbench/.oid/types.json) ---
     // If these plot, the user-supplied types file was found and evaluated.
     // If not, the Debug Console names the file or the offending key.
@@ -491,6 +553,7 @@ int main() {
     // Every fixture above is in scope here; plot each by name, then continue.
     volatile int oid_breakpoint = 0;
     (void)oid_breakpoint;
+    inheriting_probe.probe();
     (void)cvmat;
     (void)cvmat_8uc3;
     (void)ipl_8u;
