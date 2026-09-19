@@ -29,15 +29,19 @@ if(OpenCV_FOUND AND Eigen3_FOUND)
     # Debug-friendly, and drop -Werror like the simulator target above.
     target_compile_options(testbench_realtypes PRIVATE
         "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wno-error;-g;-O0>")
-    # The issue #1102 sample, verbatim; Eigen only, no OpenCV.
-    add_executable(testbench_inherited_eigen inherited_eigen.cpp)
-    target_link_libraries(testbench_inherited_eigen PRIVATE Eigen3::Eigen)
-    target_compile_options(testbench_inherited_eigen PRIVATE
-        "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wno-error;-g;-O0>")
-
     message(STATUS "testbench: realtypes fixture enabled (OpenCV + Eigen found)")
 else()
     message(STATUS
         "testbench: realtypes fixture skipped -- need OpenCV and Eigen3 "
         "(OpenCV_FOUND=${OpenCV_FOUND} Eigen3_FOUND=${Eigen3_FOUND})")
+endif()
+
+# The issue #1102 sample. Eigen only: it must build wherever Eigen does,
+# with or without OpenCV.
+if(Eigen3_FOUND)
+    add_executable(testbench_inherited_eigen inherited_eigen.cpp)
+    target_link_libraries(testbench_inherited_eigen PRIVATE Eigen3::Eigen)
+    target_compile_options(testbench_inherited_eigen PRIVATE
+        "$<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wno-error;-g;-O0>")
+    message(STATUS "testbench: inherited_eigen fixture enabled (Eigen found)")
 endif()

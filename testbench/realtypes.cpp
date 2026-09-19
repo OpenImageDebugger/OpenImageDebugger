@@ -146,8 +146,7 @@ struct HidesInherited : BufferBase {
 };
 
 // Shifted per fixture: a flat fill would make every wrong path look right.
-Eigen::MatrixXd banded(int shift)
-{
+Eigen::MatrixXd banded(int shift) {
     Eigen::MatrixXd m(kInheritH, kInheritW);
     for (int r = 0; r < kInheritH; ++r) {
         for (int c = 0; c < kInheritW; ++c) {
