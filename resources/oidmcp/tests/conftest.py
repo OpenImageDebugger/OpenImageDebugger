@@ -58,11 +58,24 @@ from oidscripts import wireframe as wf
 from oidscripts.debuggers.interfaces import raise_if_too_large
 
 
+class _InvalidTypeMember:
+    """What GetStaticFieldWithName returns for a name the type lacks."""
+
+    def IsValid(self):
+        return False
+
+    def GetName(self):
+        return None
+
+
 class FakeSBTypeMember:
     """A base type's name, as GetDirectBaseClassAtIndex serves it."""
 
     def __init__(self, name):
         self._name = name
+
+    def IsValid(self):
+        return True
 
     def GetName(self):
         return self._name
@@ -73,12 +86,25 @@ class FakeSBType:
     base-class lookup. Defaults to a struct, so a bare node is descended."""
 
     def __init__(self, name, type_class=None, pointee=None,
-                 base_typenames=()):
+                 base_typenames=(), static_field_names=(),
+                 member_function_names=()):
         self._name = name
         self._type_class = (LLDB.eTypeClassStruct if type_class is None
                             else type_class)
         self._pointee = pointee
         self._bases = list(base_typenames)
+        self._static_fields = list(static_field_names)
+        self._member_functions = list(member_function_names)
+
+    def GetStaticFieldWithName(self, name):
+        return (FakeSBTypeMember(name) if name in self._static_fields
+                else _InvalidTypeMember())
+
+    def GetNumberOfMemberFunctions(self):
+        return len(self._member_functions)
+
+    def GetMemberFunctionAtIndex(self, index):
+        return FakeSBTypeMember(self._member_functions[index])
 
     def GetNumberOfDirectBaseClasses(self):
         return len(self._bases)
@@ -131,9 +157,12 @@ class FakeSBValue:
 
     def __init__(self, name, typename, children=(), type_class=None,
                  pointee_type_class=None, synthetic_child_count=None,
-                 element_typename='Element', base_typenames=()):
+                 element_typename='Element', base_typenames=(),
+                 static_field_names=(), member_function_names=()):
         self.name = name
         self._base_typenames = tuple(base_typenames)
+        self._static_field_names = tuple(static_field_names)
+        self._member_function_names = tuple(member_function_names)
         self._typename = typename
         self._children = list(children)
         self._type_class = type_class
@@ -151,12 +180,14 @@ class FakeSBValue:
         return self._typename
 
     def GetType(self):
+        kwargs = dict(base_typenames=self._base_typenames,
+                      static_field_names=self._static_field_names,
+                      member_function_names=self._member_function_names)
         if self._pointee_type_class is not None:
             pointee = FakeSBType(self._typename, self._pointee_type_class,
-                                 base_typenames=self._base_typenames)
+                                 **kwargs)
             return FakeSBType(self._typename, self._type_class, pointee)
-        return FakeSBType(self._typename, self._type_class, None,
-                          base_typenames=self._base_typenames)
+        return FakeSBType(self._typename, self._type_class, None, **kwargs)
 
     def GetNonSyntheticValue(self):
         """lldb hands back the same value with formatters switched off,
@@ -168,7 +199,9 @@ class FakeSBValue:
             view = FakeSBValue(self.name, self._typename, self._children,
                                type_class=self._type_class,
                                pointee_type_class=self._pointee_type_class,
-                               base_typenames=self._base_typenames)
+                               base_typenames=self._base_typenames,
+                               static_field_names=self._static_field_names,
+                               member_function_names=self._member_function_names)
             view._fetch_owner = self
             self._declared_view = view
         return self._declared_view

@@ -579,6 +579,54 @@ def test_a_non_observable_anonymous_member_still_hides_an_inherited_one():
     assert found == set()
 
 
+def test_a_static_data_member_hides_an_inherited_one():
+    # A static data member is class scope too, so it hides the base's
+    # field: `image` resolves to the static, which is not the object the
+    # listing would be advertising. Verified on lldb 23.1.1, where
+    # GetStaticFieldWithName('image') is valid for exactly this shape.
+    inherited = FakeSBValue('image', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    holder = FakeSBValue('holder', 'Derived', children=[base],
+                         base_typenames=('Base',),
+                         static_field_names=('image',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == set()
+
+
+def test_a_member_function_hides_an_inherited_field():
+    # Same rule, and worse: `shot` resolves to the member function, which
+    # lldb cannot evaluate as a value at all ("eval shot FAIL").
+    inherited = FakeSBValue('shot', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    holder = FakeSBValue('holder', 'Derived', children=[base],
+                         base_typenames=('Base',),
+                         member_function_names=('shot',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == set()
+
+
+def test_a_this_member_outranks_a_file_static_of_the_same_name():
+    # Class scope beats namespace scope, so the bare name resolves to the
+    # member. Asserting the name alone would pass either way -- the
+    # wrapper has to be the member's.
+    file_static = FakeSBValue('image', 'StaticBuffer')
+    member = FakeSBValue('image', 'Buffer')
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    frame = _VariablesFrame([file_static, this])
+    bridge = FakeTypeBridge({'Buffer', 'StaticBuffer'})
+
+    found = dict((name, str(wrapped.type))
+                 for name, wrapped in observable_symbols(frame, bridge))
+
+    assert found == {'image': 'Buffer'}
+
+
 def test_a_scalar_local_is_not_descended_into():
     # Nothing to find behind a builtin, and lldb reports one child for a
     # pointer-to-scalar. Refusing both keeps the walk off the data.

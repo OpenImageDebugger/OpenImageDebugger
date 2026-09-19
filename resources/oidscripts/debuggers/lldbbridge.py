@@ -178,16 +178,50 @@ def _classify_children(declared):
     return members, anonymous, bases
 
 
-def _hiding_filter(members, anonymous, prefix_length, record_hit):
-    # type: (list, list, int, callable) -> callable
+def _class_scope_names(symbol):
+    # type: (lldb.SBValue) -> set
+    """Names a class declares outside its object layout: static data
+    members and member functions. Both are class scope, so both hide an
+    inherited field -- and a member function cannot even be evaluated as
+    a value."""
+    symbol_type = _peeled_type(symbol)
+    if symbol_type is None:
+        return set()
+    names = set()
+    for index in range(getattr(symbol_type, 'GetNumberOfMemberFunctions',
+                               lambda: 0)()):
+        function = symbol_type.GetMemberFunctionAtIndex(index)
+        if function and function.GetName():
+            names.add(function.GetName())
+    return names
+
+
+def _hides_inherited(symbol, name, declared):
+    # type: (lldb.SBValue, str, set) -> bool
+    """Whether this class declares `name` itself."""
+    if name in declared:
+        return True
+    symbol_type = _peeled_type(symbol)
+    lookup = getattr(symbol_type, 'GetStaticFieldWithName', None)
+    if lookup is None:
+        return False
+    static_field = lookup(name)
+    return bool(static_field) and static_field.IsValid()
+
+
+def _hiding_filter(declared_value, members, anonymous, prefix_length,
+                   record_hit):
+    # type: (lldb.SBValue, list, list, int, callable) -> callable
     """A record_hit that drops an inherited name this class declares
     itself, buffer or not: C++ resolves that name to the declaration."""
     declared = {name for name, _member in members}
     for symbol_member in anonymous:
         declared |= _declared_names(symbol_member)
+    declared |= _class_scope_names(declared_value)
 
     def record_unhidden(qualified_name, wrapped):
-        if qualified_name.split('.')[prefix_length] not in declared:
+        segment = qualified_name.split('.')[prefix_length]
+        if not _hides_inherited(declared_value, segment, declared):
             record_hit(qualified_name, wrapped)
 
     return record_unhidden
@@ -236,7 +270,7 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     if not bases:
         return
 
-    record_unhidden = _hiding_filter(members, anonymous,
+    record_unhidden = _hiding_filter(declared, members, anonymous,
                                      len(member_name_chain), record_hit)
     for symbol_member in bases:
         _walk_members(symbol_member, member_name_chain, visited_typenames,
@@ -267,7 +301,13 @@ def observable_symbols(frame, type_bridge):
         if not frame.FindVariable(bare).IsValid():
             emit(qualified_name, wrapped)
 
-    for symbol in frame.GetVariables(True, True, True, True):
+    # `this` first: its members are class scope, which outranks any file
+    # static or namespace global of the same bare name, and whichever
+    # reaches emit() first keeps the name.
+    variables = list(frame.GetVariables(True, True, True, True))
+    variables.sort(key=lambda variable: variable.name != 'this')
+
+    for symbol in variables:
         name = symbol.name
         if not name:
             continue
