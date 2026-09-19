@@ -117,20 +117,98 @@ class GdbBridge(BridgeInterface):
             raise RuntimeError(
                 f'Expression "{expression}" failed: {error}') from error
 
-    def _get_observable_children_members(self, symbol, output_set, parent_name=''):
-        if not parent_name:
+    def _scope_names(self):
+        """Names an unqualified expression resolves BEFORE a this-member."""
+        # Stop where lookup_local_symbol stops: the static and global
+        # blocks are searched AFTER the field-of-this check.
+        names = set()
+        block = gdb.selected_frame().block()
+        while block is not None and not (getattr(block, 'is_static', False)
+                                         or getattr(block, 'is_global', False)):
+            for symbol in block:
+                if (getattr(symbol, 'is_argument', False)
+                        or getattr(symbol, 'is_variable', False)):
+                    if symbol.name and symbol.name != 'this':
+                        names.add(symbol.name)
+            block = getattr(block, 'superblock', None)
+        return names
+
+    def _peeled(self, type_obj):
+        # gdb reports a typedef's and a reference's own code.
+        strip = getattr(type_obj, 'strip_typedefs', None)
+        peeled = strip() if strip is not None else type_obj
+        references = (getattr(gdb, 'TYPE_CODE_REF', None),
+                      getattr(gdb, 'TYPE_CODE_RVALUE_REF', None))
+        if peeled.code in references:
+            peeled = peeled.target()
+            strip = getattr(peeled, 'strip_typedefs', None)
+            peeled = strip() if strip is not None else peeled
+        return peeled
+
+    def _member_bearing(self, type_obj):
+        return self._peeled(type_obj).code in (gdb.TYPE_CODE_STRUCT,
+                                               gdb.TYPE_CODE_UNION)
+
+    def _declared_names(self, fields):
+        """Names this level introduces, anonymous aggregates promoting
+        theirs into it."""
+        names = set()
+        for field in fields:
+            if getattr(field, 'is_base_class', False):
+                continue
+            if field.name:
+                names.add(field.name)
+            elif self._member_bearing(field.type):
+                names |= self._declared_names(self._peeled(field.type).fields())
+        return names
+
+    def _get_observable_children_members(self, symbol, output_set,
+                                         parent_name=None, visited=()):
+        if parent_name is None:
             parent_name = symbol.name
+        if not self._member_bearing(symbol.type):
+            return
+        # References make cycles reachable: `struct Node { Node& next; }`.
+        peeled = self._peeled(symbol.type)
+        if str(peeled) in visited:
+            return
+        visited = visited + (str(peeled),)
 
-        if gdb.TYPE_CODE_STRUCT == symbol.type.code:
-            for field in symbol.type.fields():
-                # Check if already observable
-                complete_symbol_name = f"{parent_name}.{field.name}"
-                if self._type_bridge.is_symbol_observable(field, complete_symbol_name):
-                    output_set.add(complete_symbol_name)
+        fields = peeled.fields()
+        declared = self._declared_names(fields)
+        for field in fields:
+            self._add_field(field, output_set, parent_name, visited, declared)
 
-                # Check if there's a possible observable child
-                elif gdb.TYPE_CODE_STRUCT == field.type.code:
-                    self._get_observable_children_members(field, output_set, complete_symbol_name)
+    def _add_field(self, field, output_set, parent_name, visited, declared):
+        # 'holder.Base.image' and 'holder.None.image' evaluate nowhere. An
+        # anonymous aggregate promotes its members into this level, so they
+        # hide inherited names rather than being hidden.
+        if not field.name:
+            self._get_observable_children_members(field, output_set,
+                                                  parent_name, visited)
+            return
+        if getattr(field, 'is_base_class', False):
+            self._add_unhidden(field, output_set, parent_name, visited,
+                               declared)
+            return
+
+        # An empty parent means `this`, whose members evaluate bare.
+        name = f"{parent_name}.{field.name}" if parent_name else field.name
+        if self._type_bridge.is_symbol_observable(field, name):
+            output_set.add(name)
+        else:
+            self._get_observable_children_members(field, output_set, name,
+                                                  visited)
+
+    def _add_unhidden(self, field, output_set, parent_name, visited, declared):
+        """Flatten a base or anonymous aggregate, dropping names this level
+        re-declares: C++ resolves those to the declaration."""
+        flattened = set()
+        self._get_observable_children_members(field, flattened, parent_name,
+                                              visited)
+        prefix = len(parent_name) + 1 if parent_name else 0
+        output_set.update(name for name in flattened
+                          if name[prefix:].split('.')[0] not in declared)
 
     def _add_observable_symbol(self, symbol, name, observable_symbols):
         # Check if the symbol is already observable
@@ -139,9 +217,18 @@ class GdbBridge(BridgeInterface):
 
         # Special case to handle 'this'
         elif name == 'this':
-            this_field = gdb.parse_and_eval(name).dereference().type.fields()
-            for field in this_field:
-                self._get_observable_children_members(field, observable_symbols, name)
+            # `this` can be optimised out; do not lose the whole listing.
+            try:
+                this_value = gdb.parse_and_eval(name).dereference()
+            except Exception:
+                return
+            # The pointee, not each field: a field would become its own parent.
+            members = set()
+            self._get_observable_children_members(this_value, members, '')
+            # A local of the same name captures the bare name.
+            shadowed = self._scope_names()
+            observable_symbols.update(m for m in members
+                                      if m.split('.', 1)[0] not in shadowed)
 
         # Check if we have a struct or a class
         else:

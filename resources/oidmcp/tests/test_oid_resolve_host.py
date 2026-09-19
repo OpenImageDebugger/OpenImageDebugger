@@ -173,6 +173,8 @@ _NON_STRUCT_CODE = object()
 # Reference types (Wrapper &) peel to their target before the struct
 # check; the fake module exposes it as gdb.TYPE_CODE_REF.
 _REF_CODE = object()
+# Exposed by the fake module as gdb.TYPE_CODE_UNION.
+_UNION_CODE = object()
 
 
 class _FakeGdbType:
@@ -222,9 +224,12 @@ class _FakeGdbSymbol:
 
 
 class _FakeGdbBlock:
-    def __init__(self, symbols, superblock=None):
+    def __init__(self, symbols, superblock=None, is_static=False,
+                 is_global=False):
         self._symbols = symbols
         self.superblock = superblock
+        self.is_static = is_static
+        self.is_global = is_global
 
     def __iter__(self):
         return iter(self._symbols)
@@ -247,6 +252,7 @@ def _install_fake_gdb(monkeypatch, frame, values):
     fake.lookup_type = _FakeGdbType
     fake.selected_frame = lambda: frame
     fake.TYPE_CODE_STRUCT = _STRUCT_CODE
+    fake.TYPE_CODE_UNION = _UNION_CODE
     fake.TYPE_CODE_REF = _REF_CODE
     monkeypatch.setitem(sys.modules, 'gdb', fake)
     # current_host() must not mistake an importable-but-inert lldb for the
@@ -423,6 +429,31 @@ def test_gdb_host_walks_through_unnamed_and_base_fields(monkeypatch):
     ]
 
 
+def test_gdb_host_descends_into_a_union(monkeypatch):
+    monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
+    monkeypatch.setenv('OID_TYPES_PATH', '')
+    # Structs-only descent hides union members outright; lldb lists them.
+    named = _FakeGdbType('Payload', code=_UNION_CODE, fields=[
+        _FakeGdbField('img', _FakeGdbType('cv::Mat')),
+    ])
+    anonymous = _FakeGdbType('', code=_UNION_CODE, fields=[
+        _FakeGdbField('anon_img', _FakeGdbType('cv::Mat')),
+    ])
+    outer_type = _FakeGdbType('Outer', code=_STRUCT_CODE, fields=[
+        _FakeGdbField('payload', named),
+        _FakeGdbField(None, anonymous),
+    ])
+    outer_symbol = _FakeGdbSymbol('outer', 'Outer')
+    outer_symbol.type = outer_type
+    block = _FakeGdbBlock([outer_symbol])
+    _install_fake_gdb(monkeypatch, _FakeGdbFrame(block), {})
+    host = oid_resolve_host.GdbHost()
+    assert host.observable_symbols() == [
+        {'name': 'outer.payload.img', 'type': 'cv::Mat'},
+        {'name': 'outer.anon_img', 'type': 'cv::Mat'},
+    ]
+
+
 def test_gdb_host_omits_this_members_shadowed_by_locals(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
@@ -507,3 +538,22 @@ def test_current_host_with_inert_gdb_names_no_debugger(monkeypatch):
     with pytest.raises(RuntimeError) as excinfo:
         oid_resolve_host.current_host()
     assert 'no supported debugger' in str(excinfo.value).lower()
+
+
+def test_gdb_host_lets_a_member_beat_a_global_of_the_same_name(monkeypatch):
+    monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
+    monkeypatch.setenv('OID_TYPES_PATH', '')
+    # Static and global blocks are searched AFTER field-of-this.
+    this_type = _FakeGdbType('Holder', code=_STRUCT_CODE, fields=[
+        _FakeGdbField('img', _FakeGdbType('cv::Mat')),
+    ])
+    this_value = _FakeGdbValue('Holder *', dereferenced=_FakeGdbValue('Holder'))
+    this_value._dereferenced.type = this_type
+    global_block = _FakeGdbBlock([_FakeGdbSymbol('img', 'int')],
+                                 is_global=True)
+    frame_block = _FakeGdbBlock([_FakeGdbSymbol('this', 'Holder *')],
+                                superblock=global_block)
+    _install_fake_gdb(monkeypatch, _FakeGdbFrame(frame_block),
+                      {'this': this_value})
+    host = oid_resolve_host.GdbHost()
+    assert host.observable_symbols() == [{'name': 'img', 'type': 'cv::Mat'}]
