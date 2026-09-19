@@ -6,7 +6,15 @@ include(../common.cmake)
 
 set(SOURCES main.cpp)
 
+# Every fixture lands directly in the build directory, whatever the
+# generator. The $<1:...> wrapper is what stops a multi-config generator
+# (Visual Studio) from appending its own per-config subdirectory, so the
+# launch configs in .vscode/ can name one path.
+set(TESTBENCH_OUTPUT_DIR "$<1:${CMAKE_BINARY_DIR}>")
+
 add_executable(${PROJECT_NAME} ${SOURCES})
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TESTBENCH_OUTPUT_DIR}")
 
 # Remove -Werror for testbench (test code doesn't need strict error handling)
 # We need to override the -Werror from common.cmake
@@ -23,6 +31,8 @@ find_package(OpenCV QUIET)
 find_package(Eigen3 QUIET)
 if(OpenCV_FOUND AND Eigen3_FOUND)
     add_executable(testbench_realtypes realtypes.cpp)
+    set_target_properties(testbench_realtypes PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${TESTBENCH_OUTPUT_DIR}")
     target_include_directories(testbench_realtypes PRIVATE ${OpenCV_INCLUDE_DIRS})
     target_link_libraries(testbench_realtypes
         PRIVATE ${OpenCV_LIBS} Eigen3::Eigen Threads::Threads)
@@ -40,6 +50,8 @@ endif()
 # with or without OpenCV.
 if(Eigen3_FOUND)
     add_executable(testbench_inherited_eigen inherited_eigen.cpp)
+    set_target_properties(testbench_inherited_eigen PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${TESTBENCH_OUTPUT_DIR}")
     target_link_libraries(testbench_inherited_eigen PRIVATE Eigen3::Eigen)
     # The sample declares a local it never reads -- that IS the buffer the
     # reporter plots -- so /W4 C4101 plus the repo-wide /WX would fail the

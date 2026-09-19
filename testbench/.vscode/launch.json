@@ -12,11 +12,38 @@
     "version": "0.2.0",
     "configurations": [
         {
+            // Issue #1102's reported sample, verbatim: break on its marker
+            // and plot baseMember, the buffer reachable only through the
+            // base class. Eigen only, so it builds wherever Eigen is found.
+            "name": "(CodeLLDB) Launch inherited_eigen fixture",
+            "preLaunchTask": "build inherited_eigen fixture",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/testbench_inherited_eigen",
+            "windows": {
+                "program": "${workspaceFolder}/build/testbench_inherited_eigen.exe"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "initCommands": [
+                "platform shell dsymutil ${workspaceFolder}/build/testbench_inherited_eigen"
+            ],
+            "preRunCommands": [
+                // Matched by source pattern, not line number: the sample is
+                // the reporter's and its lines move whenever the header above
+                // it is edited.
+                "breakpoint set --file inherited_eigen.cpp --source-pattern-regexp \"Break here\""
+            ]
+        },
+        {
             "name": "(CodeLLDB) Launch testbench",
             "preLaunchTask": "build testbench",
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/testbench",
+            "windows": {
+                "program": "${workspaceFolder}/build/testbench.exe"
+            },
             "args": [],
             "cwd": "${workspaceFolder}",
             "initCommands": [
@@ -37,6 +64,9 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/testbench_realtypes",
+            "windows": {
+                "program": "${workspaceFolder}/build/testbench_realtypes.exe"
+            },
             "args": [],
             "cwd": "${workspaceFolder}",
             "initCommands": [
