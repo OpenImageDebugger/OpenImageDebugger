@@ -170,35 +170,35 @@ class GdbBridge(BridgeInterface):
             return
         # References make cycles reachable: `struct Node { Node& next; }`.
         peeled = self._peeled(symbol.type)
-        typename = str(peeled)
-        if typename in visited:
+        if str(peeled) in visited:
             return
-        visited = visited + (typename,)
+        visited = visited + (str(peeled),)
 
         fields = peeled.fields()
         declared = self._declared_names(fields)
         for field in fields:
-            # 'holder.Base.image' and 'holder.None.image' evaluate nowhere.
-            # An anonymous aggregate promotes its members into this level,
-            # so they hide inherited names rather than being hidden.
-            if not field.name:
-                self._get_observable_children_members(field, output_set,
-                                                      parent_name, visited)
-                continue
-            if getattr(field, 'is_base_class', False):
-                self._add_unhidden(field, output_set, parent_name, visited,
-                                   declared)
-                continue
+            self._add_field(field, output_set, parent_name, visited, declared)
 
-            # An empty parent means `this`, whose members evaluate bare.
-            complete_symbol_name = (f"{parent_name}.{field.name}"
-                                    if parent_name else field.name)
-            if self._type_bridge.is_symbol_observable(field, complete_symbol_name):
-                output_set.add(complete_symbol_name)
-            elif self._member_bearing(field.type):
-                self._get_observable_children_members(field, output_set,
-                                                      complete_symbol_name,
-                                                      visited)
+    def _add_field(self, field, output_set, parent_name, visited, declared):
+        # 'holder.Base.image' and 'holder.None.image' evaluate nowhere. An
+        # anonymous aggregate promotes its members into this level, so they
+        # hide inherited names rather than being hidden.
+        if not field.name:
+            self._get_observable_children_members(field, output_set,
+                                                  parent_name, visited)
+            return
+        if getattr(field, 'is_base_class', False):
+            self._add_unhidden(field, output_set, parent_name, visited,
+                               declared)
+            return
+
+        # An empty parent means `this`, whose members evaluate bare.
+        name = f"{parent_name}.{field.name}" if parent_name else field.name
+        if self._type_bridge.is_symbol_observable(field, name):
+            output_set.add(name)
+        else:
+            self._get_observable_children_members(field, output_set, name,
+                                                  visited)
 
     def _add_unhidden(self, field, output_set, parent_name, visited, declared):
         """Flatten a base or anonymous aggregate, dropping names this level
