@@ -87,7 +87,7 @@ class FakeSBType:
 
     def __init__(self, name, type_class=None, pointee=None,
                  base_typenames=(), static_field_names=(),
-                 member_function_names=()):
+                 member_function_names=(), nested_type_names=()):
         self._name = name
         self._type_class = (LLDB.eTypeClassStruct if type_class is None
                             else type_class)
@@ -95,6 +95,11 @@ class FakeSBType:
         self._bases = list(base_typenames)
         self._static_fields = list(static_field_names)
         self._member_functions = list(member_function_names)
+        self._nested_types = list(nested_type_names)
+
+    def FindDirectNestedType(self, name):
+        return (FakeSBType(name) if name in self._nested_types
+                else _InvalidTypeMember())
 
     def GetStaticFieldWithName(self, name):
         return (FakeSBTypeMember(name) if name in self._static_fields
@@ -158,11 +163,13 @@ class FakeSBValue:
     def __init__(self, name, typename, children=(), type_class=None,
                  pointee_type_class=None, synthetic_child_count=None,
                  element_typename='Element', base_typenames=(),
-                 static_field_names=(), member_function_names=()):
+                 static_field_names=(), member_function_names=(),
+                 nested_type_names=()):
         self.name = name
         self._base_typenames = tuple(base_typenames)
         self._static_field_names = tuple(static_field_names)
         self._member_function_names = tuple(member_function_names)
+        self._nested_type_names = tuple(nested_type_names)
         self._typename = typename
         self._children = list(children)
         self._type_class = type_class
@@ -182,7 +189,8 @@ class FakeSBValue:
     def GetType(self):
         kwargs = dict(base_typenames=self._base_typenames,
                       static_field_names=self._static_field_names,
-                      member_function_names=self._member_function_names)
+                      member_function_names=self._member_function_names,
+                      nested_type_names=self._nested_type_names)
         if self._pointee_type_class is not None:
             pointee = FakeSBType(self._typename, self._pointee_type_class,
                                  **kwargs)
@@ -201,7 +209,8 @@ class FakeSBValue:
                                pointee_type_class=self._pointee_type_class,
                                base_typenames=self._base_typenames,
                                static_field_names=self._static_field_names,
-                               member_function_names=self._member_function_names)
+                               member_function_names=self._member_function_names,
+                               nested_type_names=self._nested_type_names)
             view._fetch_owner = self
             self._declared_view = view
         return self._declared_view

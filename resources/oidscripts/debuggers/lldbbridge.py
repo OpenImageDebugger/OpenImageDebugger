@@ -195,15 +195,20 @@ def _class_scope_names(symbol):
 
 def _hides_inherited(symbol, name, declared):
     # type: (lldb.SBValue, str, set) -> bool
-    """Whether this class declares `name` itself."""
+    """Whether this class declares `name` itself -- as a member, a static
+    field, or a nested type or alias, which hide a field just as loudly
+    and leave the flattened name unevaluable."""
     if name in declared:
         return True
     symbol_type = _peeled_type(symbol)
-    lookup = getattr(symbol_type, 'GetStaticFieldWithName', None)
-    if lookup is None:
-        return False
-    static_field = lookup(name)
-    return bool(static_field) and static_field.IsValid()
+    for accessor in ('GetStaticFieldWithName', 'FindDirectNestedType'):
+        lookup = getattr(symbol_type, accessor, None)
+        if lookup is None:
+            continue
+        declaration = lookup(name)
+        if declaration and declaration.IsValid():
+            return True
+    return False
 
 
 def _hiding_filter(declared_value, members, anonymous, prefix_length,

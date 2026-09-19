@@ -609,6 +609,20 @@ def test_a_this_member_outranks_a_file_static_of_the_same_name():
     assert found == {'image': 'Buffer'}
 
 
+def test_a_nested_type_hides_an_inherited_field():
+    # lldb 23.1.1: with the nested type in debug info, `image` evaluates
+    # to an error, so the inherited buffer must not be offered under it.
+    inherited = FakeSBValue('image', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    holder = FakeSBValue('holder', 'Derived', children=[base],
+                         base_typenames=('Base',),
+                         nested_type_names=('image',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == set()
+
+
 def test_a_scalar_local_is_not_descended_into():
     # Nothing to find behind a builtin, and lldb reports one child for a
     # pointer-to-scalar. Refusing both keeps the walk off the data.
