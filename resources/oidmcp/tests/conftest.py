@@ -144,6 +144,9 @@ class FakeSBValue:
         self._fetch_owner = self
         self.child_fetches = 0
 
+    def IsValid(self):
+        return True
+
     def GetTypeName(self):
         return self._typename
 

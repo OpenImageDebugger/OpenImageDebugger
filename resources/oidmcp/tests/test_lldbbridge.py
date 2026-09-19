@@ -207,18 +207,28 @@ def test_evaluate_in_frame_raises_runtime_error_for_a_falsy_result():
 # --- observable_symbols(): top-level frame variables plus the recursive
 # observable-member traversal, and its cycle guard.
 
+class _InvalidSBValue:
+    """What lldb hands back for a name its frame does not own."""
+
+    def IsValid(self):
+        return False
+
+
 class _VariablesFrame:
-    """Minimal SBFrame: GetVariables() serves all, or locals+args when
-    statics are excluded."""
+    """Minimal SBFrame. FindVariable() answers for the frame's own lexical
+    scope -- locals, arguments and function-local statics -- which is how
+    lldb distinguishes a name that captures a bare this-member from a file
+    static or a namespace global, which do not."""
 
-    def __init__(self, variables, locals_and_args=None):
+    def __init__(self, variables, in_lexical_scope=()):
         self._variables = variables
-        self._locals_and_args = (variables if locals_and_args is None
-                                 else locals_and_args)
+        self._in_lexical_scope = {v.name: v for v in in_lexical_scope}
 
-    def GetVariables(self, _args=True, _locals=True, statics=True,
-                     _in_scope_only=True):
-        return self._variables if statics else self._locals_and_args
+    def GetVariables(self, *_args):
+        return self._variables
+
+    def FindVariable(self, name):
+        return self._in_lexical_scope.get(name, _InvalidSBValue())
 
 
 def _observable_names(root, observable_typenames):
@@ -460,12 +470,48 @@ def test_a_this_member_shadowed_by_a_local_is_not_listed():
     this = FakeSBValue('this', 'Holder *', children=[member],
                        type_class=LLDB.eTypeClassPointer,
                        pointee_type_class=LLDB.eTypeClassClass)
-    frame = _VariablesFrame([local, this], locals_and_args=[local])
+    frame = _VariablesFrame([local, this], in_lexical_scope=[local])
     bridge = FakeTypeBridge({'Buffer'})
 
     found = {name for name, _wrapped in observable_symbols(frame, bridge)}
 
     assert found == set()
+
+
+def test_a_this_member_shadowed_by_a_function_local_static_is_not_listed():
+    # lldb labels a function-local static eValueTypeVariableGlobal and a
+    # FILE static eValueTypeVariableStatic, so the value type cannot carry
+    # this rule. FindVariable() can: it answers for the frame's lexical
+    # scope, where the function-local static lives and the file static
+    # does not.
+    static_local = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
+    member = FakeSBValue('image', 'Buffer')
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    frame = _VariablesFrame([this], in_lexical_scope=[static_local])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == set()
+
+
+def test_a_this_member_survives_a_file_static_of_the_same_name():
+    # A file static loses to a member inside a method, so it must not
+    # suppress one. It is in GetVariables() but not in the frame's
+    # lexical scope.
+    file_static = FakeSBValue('image', 'Buffer')
+    member = FakeSBValue('image', 'Buffer')
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    frame = _VariablesFrame([file_static, this])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == {'image'}
 
 
 def test_a_this_member_survives_an_unrelated_local():
@@ -475,12 +521,32 @@ def test_a_this_member_survives_an_unrelated_local():
     this = FakeSBValue('this', 'Holder *', children=[member],
                        type_class=LLDB.eTypeClassPointer,
                        pointee_type_class=LLDB.eTypeClassClass)
-    frame = _VariablesFrame([local, this], locals_and_args=[local])
+    frame = _VariablesFrame([local, this], in_lexical_scope=[local])
     bridge = FakeTypeBridge({'Buffer'})
 
     found = {name for name, _wrapped in observable_symbols(frame, bridge)}
 
     assert found == {'image'}
+
+
+def test_an_anonymous_member_hides_the_inherited_one_of_the_same_name():
+    # An anonymous union's members are the DERIVED class's own, so C++
+    # resolves the flattened name to them, not to the base's. lldb serves
+    # the base subobject first, so walking both in child order records the
+    # inherited value under a name that evaluates to the derived member.
+    inherited = FakeSBValue('image', 'InheritedBuffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    own = FakeSBValue('image', 'Buffer')
+    anonymous = FakeSBValue('', 'Derived::(anonymous union)', children=[own])
+    holder = FakeSBValue('holder', 'Derived', children=[base, anonymous],
+                         base_typenames=('Base',))
+
+    frame = _VariablesFrame([holder])
+    bridge = FakeTypeBridge({'Buffer', 'InheritedBuffer'})
+    found = dict((name, str(wrapped.type))
+                 for name, wrapped in observable_symbols(frame, bridge))
+
+    assert found == {'holder.image': 'Buffer'}
 
 
 def test_a_scalar_local_is_not_descended_into():

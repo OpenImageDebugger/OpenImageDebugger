@@ -169,19 +169,23 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     declared = symbol.GetNonSyntheticValue()
 
     base_names = _base_class_names(declared)
-    subobjects = []
+    bases = []
+    anonymous = []
     members = []
     for member_idx in range(declared.GetNumChildren()):
         symbol_member = declared.GetChildAtIndex(member_idx)
         member_name = symbol_member.name
-        # An anonymous aggregate is named '' and addressed through its container.
-        if not member_name or (member_idx < len(base_names)
-                               and member_name == base_names[member_idx]):
-            subobjects.append(symbol_member)
+        if member_idx < len(base_names) and member_name == base_names[member_idx]:
+            bases.append(symbol_member)
+        elif not member_name:
+            # An anonymous aggregate is named '', and its members belong to
+            # THIS class, so they hide an inherited name.
+            anonymous.append(symbol_member)
         else:
             members.append((member_name, symbol_member))
 
-    # Declared members first: C++ resolves a hidden name to the derived one.
+    # Everything this class declares before anything it inherits: C++
+    # resolves a hidden name to the derived one.
     for member_name, symbol_member in members:
         chain = member_name_chain + [str(member_name)]
         wrapped = SymbolWrapper(symbol_member)
@@ -191,7 +195,7 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
             _walk_members(symbol_member, chain, visited_typenames,
                           type_bridge, record_hit)
 
-    for symbol_member in subobjects:
+    for symbol_member in anonymous + bases:
         _walk_members(symbol_member, member_name_chain, visited_typenames,
                       type_bridge, record_hit)
 
@@ -210,13 +214,14 @@ def observable_symbols(frame, type_bridge):
             seen.add(qualified_name)
             found.append((qualified_name, wrapped))
 
-    # A local captures the bare name of a this-member; a static does not.
-    shadowed = {variable.name
-                for variable in frame.GetVariables(True, True, False, True)
-                if variable.name and variable.name != 'this'}
-
     def emit_unshadowed(qualified_name, wrapped):
-        if qualified_name.split('.', 1)[0] not in shadowed:
+        # A name the frame's own scope owns -- a local, an argument, a
+        # function-local static -- captures the bare name of a this-member,
+        # while a file static or a namespace global does not. FindVariable
+        # draws exactly that line; the value type does not (lldb reports a
+        # function-local static as eValueTypeVariableGlobal).
+        bare = qualified_name.split('.', 1)[0]
+        if not frame.FindVariable(bare).IsValid():
             emit(qualified_name, wrapped)
 
     for symbol in frame.GetVariables(True, True, True, True):
