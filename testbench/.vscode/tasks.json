@@ -6,6 +6,17 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "build inherited_eigen fixture",
+            "type": "shell",
+            "command": "cmake -S . -B build && cmake --build build --target testbench_inherited_eigen",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": "$gcc",
+            "group": "build",
+            "detail": "Configure if needed, then build testbench_inherited_eigen. CMake offers this target whenever Eigen is found."
+        },
+        {
             "label": "build realtypes fixture",
             "type": "shell",
             "command": "cmake -S . -B build && cmake --build build --target testbench_realtypes",
