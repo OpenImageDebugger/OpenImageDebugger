@@ -184,9 +184,7 @@ def test_a_named_union_is_descended_into(bridge_module):
 
 
 def test_a_typedef_wrapped_union_is_descended_into(bridge_module):
-    # gdb reports a typedef's own code, so a `typedef union {...} Alias;`
-    # local looks like a scalar until the typedefs are stripped. The gdb
-    # host walk already strips them.
+    # A `typedef union {...} Alias;` local looks scalar until stripped.
     union = FakeGdbType('Payload', code=UNION_CODE, fields=[
         FakeGdbField('image', FakeGdbType('Buffer')),
     ])
@@ -200,9 +198,7 @@ def test_a_typedef_wrapped_union_is_descended_into(bridge_module):
 
 
 def test_members_of_this_surface_bare(bridge_module):
-    # The other two walks name members of `this` bare, which is what the
-    # frame evaluates and what a user types. gdb accepts `this.image` too,
-    # but three walks disagreeing on one buffer's name is the defect.
+    # gdb accepts `this.image`; three walks disagreeing is the defect.
     image = FakeGdbField('image', FakeGdbType('Buffer'))
     base = FakeGdbType('Base', code=STRUCT_CODE, fields=[
         FakeGdbField('baseMember', FakeGdbType('Buffer')),
@@ -226,9 +222,7 @@ def test_members_of_this_surface_bare(bridge_module):
 
 
 def test_a_this_member_shadowed_by_a_local_is_not_listed(bridge_module):
-    # A bare member name that a local or argument carries evaluates to
-    # that variable, so the entry would plot the wrong object. The gdb
-    # host walk filters these; this one must too.
+    # A bare name a local carries evaluates to that variable.
     image = FakeGdbField('image', FakeGdbType('Buffer'))
     this_type = FakeGdbType('Holder', code=STRUCT_CODE, fields=[image])
     bridge_module.gdb.parse_and_eval = lambda _expr: types.SimpleNamespace(

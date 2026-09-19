@@ -118,8 +118,7 @@ class GdbBridge(BridgeInterface):
                 f'Expression "{expression}" failed: {error}') from error
 
     def _scope_names(self):
-        """Every named local and argument across the block chain -- the
-        names an unqualified expression resolves BEFORE a this-member."""
+        """Names an unqualified expression resolves BEFORE a this-member."""
         names = set()
         block = gdb.selected_frame().block()
         while block is not None:
@@ -132,8 +131,7 @@ class GdbBridge(BridgeInterface):
         return names
 
     def _member_bearing(self, type_obj):
-        """Whether `type_obj`'s fields are members to walk. Typedefs strip
-        first: gdb reports the alias's own code, not the union's."""
+        """Fields to walk? Typedefs strip first: gdb reports the alias's code."""
         strip = getattr(type_obj, 'strip_typedefs', None)
         peeled = strip() if strip is not None else type_obj
         return peeled.code in (gdb.TYPE_CODE_STRUCT, gdb.TYPE_CODE_UNION)
@@ -172,8 +170,7 @@ class GdbBridge(BridgeInterface):
 
         # Special case to handle 'this'
         elif name == 'this':
-            # A local or argument of the same name captures the bare name,
-            # so the member would plot that variable instead.
+            # A local of the same name captures the bare name.
             shadowed = self._scope_names()
             # The pointee, not each field: a field would become its own parent.
             this_value = gdb.parse_and_eval(name).dereference()
