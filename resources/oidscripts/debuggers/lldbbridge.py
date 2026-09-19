@@ -145,20 +145,6 @@ def _base_class_names(symbol):
             for index in range(symbol_type.GetNumberOfDirectBaseClasses())]
 
 
-def _declared_names(symbol):
-    # type: (lldb.SBValue) -> set
-    """Names an anonymous aggregate contributes to its container's scope."""
-    declared = set()
-    value = symbol.GetNonSyntheticValue()
-    for index in range(value.GetNumChildren()):
-        child = value.GetChildAtIndex(index)
-        if child.name:
-            declared.add(child.name)
-        else:
-            declared |= _declared_names(child)
-    return declared
-
-
 def _classify_children(declared):
     # type: (lldb.SBValue) -> tuple
     """Children split into members, anonymous aggregates and bases, which
@@ -278,40 +264,6 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     for symbol_member in bases:
         _walk_members(symbol_member, member_name_chain, visited_typenames,
                       type_bridge, record_unhidden)
-
-
-def _this_owns_name(symbol, name, member_names):
-    # type: (lldb.SBValue, str, set) -> bool
-    """Whether `this` binds the bare `name`. Static fields and nested
-    types cannot be enumerated -- lldb answers them by name only -- so
-    every candidate is asked about, here and through the bases."""
-    if name in member_names:
-        return True
-    if _hides_inherited(symbol, name, set()):
-        return True
-    if not _children_are_declared_members(symbol):
-        return False
-    declared = symbol.GetNonSyntheticValue()
-    _members, anonymous, bases = _classify_children(declared)
-    return any(_this_owns_name(subobject, name, set())
-               for subobject in anonymous + bases)
-
-
-def _bare_member_names(symbol):
-    # type: (lldb.SBValue) -> set
-    """Bare names `this` puts in scope: its own members, inherited ones,
-    and anything an anonymous aggregate contributes. C++ resolves each to
-    the member, so a file static of that name is unreachable."""
-    names = set()
-    if not _children_are_declared_members(symbol):
-        return names
-    declared = symbol.GetNonSyntheticValue()
-    members, anonymous, bases = _classify_children(declared)
-    names |= {name for name, _member in members}
-    names |= _class_scope_names(declared)
-    for subobject in anonymous + bases:
-        names |= _bare_member_names(subobject)
-    return names
 
 
 def observable_symbols(frame, type_bridge):
