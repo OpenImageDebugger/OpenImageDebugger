@@ -104,26 +104,59 @@ def evaluate_in_frame(frame, expression):
     return SymbolWrapper(result)
 
 
-def _children_are_declared_members(symbol):
-    # type: (lldb.SBValue) -> bool
-    """Whether `symbol`'s children are its type's declared members rather
-    than the elements of a sequence.
+def _peeled_type(symbol):
+    # type: (lldb.SBValue) -> lldb.SBType
+    """`symbol`'s canonical type with pointers and references peeled off,
+    or None when it has no valid type.
 
-    Pointers and references peel first: `this` is a pointer, and lldb
-    serves a pointer-to-class's children as the pointee's members, which
-    is the only reason a member of `this` surfaces at all."""
+    Peeling is what lets a member of `this` surface at all: `this` is a
+    pointer, and lldb serves a pointer-to-class's children as the
+    pointee's members."""
     symbol_type = symbol.GetType()
     if not symbol_type.IsValid():
-        return False
+        return None
     symbol_type = symbol_type.GetCanonicalType()
     while symbol_type.IsPointerType() or symbol_type.IsReferenceType():
         symbol_type = symbol_type.GetPointeeType() \
             if symbol_type.IsPointerType() \
             else symbol_type.GetDereferencedType()
         if not symbol_type.IsValid():
-            return False
+            return None
         symbol_type = symbol_type.GetCanonicalType()
+    return symbol_type
+
+
+def _children_are_declared_members(symbol):
+    # type: (lldb.SBValue) -> bool
+    """Whether `symbol`'s children are its type's declared members rather
+    than the elements of a sequence."""
+    symbol_type = _peeled_type(symbol)
+    if symbol_type is None:
+        return False
     return bool(symbol_type.GetTypeClass() & _member_bearing_type_classes())
+
+
+def _unspellable_child_names(symbol):
+    # type: (lldb.SBValue) -> set
+    """Names of `symbol`'s children that are subobjects rather than named
+    members: every base class, direct or virtual.
+
+    lldb serves a base-class subobject as a child named after the base
+    type, but C++ addresses an inherited member directly on the derived
+    object, so a chain built through one ('this.Base.image') is an
+    expression no frame can evaluate. A virtual base is reported by the
+    virtual accessor, and by both for the class that inherits it
+    virtually, so both lists are read. The gdb walk in oid_resolve_host
+    makes the same judgement with field.is_base_class."""
+    symbol_type = _peeled_type(symbol)
+    if symbol_type is None:
+        return set()
+    names = set()
+    for index in range(symbol_type.GetNumberOfDirectBaseClasses()):
+        names.add(symbol_type.GetDirectBaseClassAtIndex(index).GetName())
+    for index in range(symbol_type.GetNumberOfVirtualBaseClasses()):
+        names.add(symbol_type.GetVirtualBaseClassAtIndex(index).GetName())
+    return names
 
 
 def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
@@ -149,11 +182,22 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     # same vector has three children however many bytes it holds.
     declared = symbol.GetNonSyntheticValue()
 
+    unspellable = _unspellable_child_names(symbol)
+
     for member_idx in range(declared.GetNumChildren()):
         symbol_member = declared.GetChildAtIndex(member_idx)
-        chain = member_name_chain + [str(symbol_member.name)]
+        member_name = symbol_member.name
+        # A base-class subobject and an anonymous union/struct (which lldb
+        # names with the empty string) are reached through the containing
+        # object, not through a segment of their own: descend with the
+        # chain unchanged so their members keep the names C++ spells.
+        if not member_name or member_name in unspellable:
+            _walk_members(symbol_member, member_name_chain, visited_typenames,
+                          type_bridge, record_hit)
+            continue
+        chain = member_name_chain + [str(member_name)]
         wrapped = SymbolWrapper(symbol_member)
-        if type_bridge.is_symbol_observable(wrapped, symbol_member.name):
+        if type_bridge.is_symbol_observable(wrapped, member_name):
             record_hit('.'.join(chain), wrapped)
         else:
             _walk_members(symbol_member, chain, visited_typenames,

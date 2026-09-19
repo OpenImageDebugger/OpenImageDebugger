@@ -358,6 +358,53 @@ def test_a_member_of_this_still_surfaces_bare():
     assert found == {'image'}
 
 
+def test_a_base_class_subobject_contributes_no_path_segment():
+    # lldb serves a base-class subobject as a child named after the base
+    # type, but C++ addresses an inherited member directly on the derived
+    # object: 'Base.baseMember' is not an expression any frame can
+    # evaluate, so the segment must not be built (issue #1102).
+    image = FakeSBValue('baseMember', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[image])
+    member = FakeSBValue('member', 'Buffer')
+    this = FakeSBValue('this', 'Test *', children=[base, member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass,
+                       base_typenames=('Base',))
+
+    found = _observable_names(this, observable_typenames={'Buffer'})
+
+    assert found == {'baseMember', 'member'}
+
+
+def test_a_virtual_base_subobject_contributes_no_path_segment():
+    # A virtual base is reported by GetVirtualBaseClassAtIndex, and for the
+    # class that inherits it virtually by BOTH accessors. Reading only the
+    # direct list leaves 'holder.VB.vbMember' for whichever type reports it
+    # as virtual alone.
+    image = FakeSBValue('vbMember', 'Buffer')
+    vbase = FakeSBValue('VB', 'VB', children=[image])
+    holder = FakeSBValue('holder', 'Holder', children=[vbase],
+                         virtual_base_typenames=('VB',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == {'holder.vbMember'}
+
+
+def test_an_anonymous_aggregate_contributes_no_path_segment():
+    # lldb names the child of an anonymous union/struct with the empty
+    # string. Its members are addressed directly on the containing object
+    # too, so an empty segment ('holder..anonU') is as unevaluable as a
+    # base-class one.
+    image = FakeSBValue('anonU', 'Buffer')
+    anonymous = FakeSBValue('', 'Holder::(anonymous union)', children=[image])
+    holder = FakeSBValue('holder', 'Holder', children=[anonymous])
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == {'holder.anonU'}
+
+
 def test_a_scalar_local_is_not_descended_into():
     # Nothing to find behind a builtin, and lldb reports one child for a
     # pointer-to-scalar. Refusing both keeps the walk off the data.

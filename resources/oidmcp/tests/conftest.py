@@ -58,17 +58,44 @@ from oidscripts import wireframe as wf
 from oidscripts.debuggers.interfaces import raise_if_too_large
 
 
+class FakeSBTypeMember:
+    """lldb.SBTypeMember as the base-class accessors serve it: a base
+    subobject carries the base type's name, which is also the name lldb
+    gives the corresponding child value."""
+
+    def __init__(self, name):
+        self._name = name
+
+    def GetName(self):
+        return self._name
+
+
 class FakeSBType:
     """Just enough of lldb.SBType for SymbolWrapper's constructor and for
     lldbbridge's descent guard: a type class, plus the pointer/reference
     peeling the guard performs before testing it. The default type class
     is a struct, so a node built without one is descended into."""
 
-    def __init__(self, name, type_class=None, pointee=None):
+    def __init__(self, name, type_class=None, pointee=None,
+                 base_typenames=(), virtual_base_typenames=()):
         self._name = name
         self._type_class = (LLDB.eTypeClassStruct if type_class is None
                             else type_class)
         self._pointee = pointee
+        self._bases = list(base_typenames)
+        self._virtual_bases = list(virtual_base_typenames)
+
+    def GetNumberOfDirectBaseClasses(self):
+        return len(self._bases)
+
+    def GetDirectBaseClassAtIndex(self, index):
+        return FakeSBTypeMember(self._bases[index])
+
+    def GetNumberOfVirtualBaseClasses(self):
+        return len(self._virtual_bases)
+
+    def GetVirtualBaseClassAtIndex(self, index):
+        return FakeSBTypeMember(self._virtual_bases[index])
 
     def IsValid(self):
         return True
@@ -115,8 +142,11 @@ class FakeSBValue:
 
     def __init__(self, name, typename, children=(), type_class=None,
                  pointee_type_class=None, synthetic_child_count=None,
-                 element_typename='Element'):
+                 element_typename='Element', base_typenames=(),
+                 virtual_base_typenames=()):
         self.name = name
+        self._base_typenames = tuple(base_typenames)
+        self._virtual_base_typenames = tuple(virtual_base_typenames)
         self._typename = typename
         self._children = list(children)
         self._type_class = type_class
@@ -131,10 +161,16 @@ class FakeSBValue:
         return self._typename
 
     def GetType(self):
-        pointee = None
         if self._pointee_type_class is not None:
-            pointee = FakeSBType(self._typename, self._pointee_type_class)
-        return FakeSBType(self._typename, self._type_class, pointee)
+            pointee = FakeSBType(
+                self._typename, self._pointee_type_class,
+                base_typenames=self._base_typenames,
+                virtual_base_typenames=self._virtual_base_typenames)
+            return FakeSBType(self._typename, self._type_class, pointee)
+        return FakeSBType(
+            self._typename, self._type_class, None,
+            base_typenames=self._base_typenames,
+            virtual_base_typenames=self._virtual_base_typenames)
 
     def GetNonSyntheticValue(self):
         """lldb hands back the same value with formatters switched off,
