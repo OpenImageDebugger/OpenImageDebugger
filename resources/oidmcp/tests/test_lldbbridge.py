@@ -479,11 +479,7 @@ def test_a_this_member_shadowed_by_a_local_is_not_listed():
 
 
 def test_a_this_member_shadowed_by_a_function_local_static_is_not_listed():
-    # lldb labels a function-local static eValueTypeVariableGlobal and a
-    # FILE static eValueTypeVariableStatic, so the value type cannot carry
-    # this rule. FindVariable() can: it answers for the frame's lexical
-    # scope, where the function-local static lives and the file static
-    # does not.
+    # lldb labels a function-local static Global and a FILE static Static.
     static_local = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
     member = FakeSBValue('image', 'Buffer')
     this = FakeSBValue('this', 'Holder *', children=[member],
@@ -498,9 +494,7 @@ def test_a_this_member_shadowed_by_a_function_local_static_is_not_listed():
 
 
 def test_a_this_member_survives_a_file_static_of_the_same_name():
-    # A file static loses to a member inside a method, so it must not
-    # suppress one. It is in GetVariables() but not in the frame's
-    # lexical scope.
+    # A file static loses to a member, so it must not suppress one.
     file_static = FakeSBValue('image', 'Buffer')
     member = FakeSBValue('image', 'Buffer')
     this = FakeSBValue('this', 'Holder *', children=[member],
@@ -530,10 +524,7 @@ def test_a_this_member_survives_an_unrelated_local():
 
 
 def test_an_anonymous_member_hides_the_inherited_one_of_the_same_name():
-    # An anonymous union's members are the DERIVED class's own, so C++
-    # resolves the flattened name to them, not to the base's. lldb serves
-    # the base subobject first, so walking both in child order records the
-    # inherited value under a name that evaluates to the derived member.
+    # An anonymous union's members are the DERIVED class's own.
     inherited = FakeSBValue('image', 'InheritedBuffer')
     base = FakeSBValue('Base', 'Base', children=[inherited])
     own = FakeSBValue('image', 'Buffer')
@@ -550,9 +541,7 @@ def test_an_anonymous_member_hides_the_inherited_one_of_the_same_name():
 
 
 def test_a_non_observable_derived_member_still_hides_an_inherited_one():
-    # The derived member reserves the name whether or not it is itself a
-    # buffer: C++ resolves the flattened name to it, so emitting the
-    # inherited buffer under that name would hand back the wrong object.
+    # A declaration reserves the name whether or not it is a buffer.
     inherited = FakeSBValue('image', 'Buffer')
     base = FakeSBValue('Base', 'Base', children=[inherited])
     own = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
@@ -565,8 +554,7 @@ def test_a_non_observable_derived_member_still_hides_an_inherited_one():
 
 
 def test_a_non_observable_anonymous_member_still_hides_an_inherited_one():
-    # Same rule through an anonymous union: its members belong to the
-    # derived class, so they reserve the name too.
+    # Same rule through an anonymous union.
     inherited = FakeSBValue('image', 'Buffer')
     base = FakeSBValue('Base', 'Base', children=[inherited])
     own = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
@@ -580,10 +568,7 @@ def test_a_non_observable_anonymous_member_still_hides_an_inherited_one():
 
 
 def test_a_static_data_member_hides_an_inherited_one():
-    # A static data member is class scope too, so it hides the base's
-    # field: `image` resolves to the static, which is not the object the
-    # listing would be advertising. Verified on lldb 23.1.1, where
-    # GetStaticFieldWithName('image') is valid for exactly this shape.
+    # lldb 23.1.1: GetStaticFieldWithName('image') is valid for this shape.
     inherited = FakeSBValue('image', 'Buffer')
     base = FakeSBValue('Base', 'Base', children=[inherited])
     holder = FakeSBValue('holder', 'Derived', children=[base],
@@ -596,8 +581,7 @@ def test_a_static_data_member_hides_an_inherited_one():
 
 
 def test_a_member_function_hides_an_inherited_field():
-    # Same rule, and worse: `shot` resolves to the member function, which
-    # lldb cannot evaluate as a value at all ("eval shot FAIL").
+    # Worse: lldb cannot evaluate a member function as a value at all.
     inherited = FakeSBValue('shot', 'Buffer')
     base = FakeSBValue('Base', 'Base', children=[inherited])
     holder = FakeSBValue('holder', 'Derived', children=[base],
@@ -610,9 +594,7 @@ def test_a_member_function_hides_an_inherited_field():
 
 
 def test_a_this_member_outranks_a_file_static_of_the_same_name():
-    # Class scope beats namespace scope, so the bare name resolves to the
-    # member. Asserting the name alone would pass either way -- the
-    # wrapper has to be the member's.
+    # Class scope beats namespace scope; the wrapper has to be the member's.
     file_static = FakeSBValue('image', 'StaticBuffer')
     member = FakeSBValue('image', 'Buffer')
     this = FakeSBValue('this', 'Holder *', children=[member],

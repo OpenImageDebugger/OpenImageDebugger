@@ -161,9 +161,8 @@ def _declared_names(symbol):
 
 def _classify_children(declared):
     # type: (lldb.SBValue) -> tuple
-    """`declared`'s children split into named members, anonymous
-    aggregates and base subobjects, which lldb serves as the leading
-    children in GetDirectBaseClassAtIndex order."""
+    """Children split into members, anonymous aggregates and bases, which
+    lldb serves first in GetDirectBaseClassAtIndex order."""
     base_names = _base_class_names(declared)
     members, anonymous, bases = [], [], []
     for index in range(declared.GetNumChildren()):
@@ -180,10 +179,8 @@ def _classify_children(declared):
 
 def _class_scope_names(symbol):
     # type: (lldb.SBValue) -> set
-    """Names a class declares outside its object layout: static data
-    members and member functions. Both are class scope, so both hide an
-    inherited field -- and a member function cannot even be evaluated as
-    a value."""
+    """Static data members and member functions: class scope, so both hide
+    an inherited field."""
     symbol_type = _peeled_type(symbol)
     if symbol_type is None:
         return set()
@@ -292,18 +289,13 @@ def observable_symbols(frame, type_bridge):
             found.append((qualified_name, wrapped))
 
     def emit_unshadowed(qualified_name, wrapped):
-        # A name the frame's own scope owns -- a local, an argument, a
-        # function-local static -- captures the bare name of a this-member,
-        # while a file static or a namespace global does not. FindVariable
-        # draws exactly that line; the value type does not (lldb reports a
-        # function-local static as eValueTypeVariableGlobal).
+        # FindVariable draws the scope line; the value type does not.
         bare = qualified_name.split('.', 1)[0]
         if not frame.FindVariable(bare).IsValid():
             emit(qualified_name, wrapped)
 
-    # `this` first: its members are class scope, which outranks any file
-    # static or namespace global of the same bare name, and whichever
-    # reaches emit() first keeps the name.
+    # `this` first: class scope outranks a file static of the same name,
+    # and whichever reaches emit() first keeps it.
     variables = list(frame.GetVariables(True, True, True, True))
     variables.sort(key=lambda variable: variable.name != 'this')
 
