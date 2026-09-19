@@ -22,21 +22,26 @@ import types
 import pytest
 
 STRUCT_CODE = object()
+TYPEDEF_CODE = object()
 UNION_CODE = object()
 SCALAR_CODE = object()
 
 
 class FakeGdbType:
-    def __init__(self, name, code=SCALAR_CODE, fields=None):
+    def __init__(self, name, code=SCALAR_CODE, fields=None, target=None):
         self._name = name
         self.code = code
         self._fields = list(fields) if fields is not None else []
+        self._target = target
 
     def __str__(self):
         return self._name
 
     def fields(self):
         return list(self._fields)
+
+    def strip_typedefs(self):
+        return self._target if self._target is not None else self
 
 
 class FakeGdbField:
@@ -122,7 +127,8 @@ def test_an_anonymous_aggregate_contributes_no_path_segment(bridge_module):
 
 
 def test_a_buffer_held_directly_by_this_is_listed(bridge_module):
-    # A field passed as its own parent loses its name from the path.
+    # A field passed as its own parent loses its name from the path, and
+    # the members of `this` are named bare.
     image = FakeGdbField('image', FakeGdbType('Buffer'))
     base = FakeGdbType('Base', code=STRUCT_CODE, fields=[
         FakeGdbField('baseMember', FakeGdbType('Buffer')),
@@ -140,7 +146,7 @@ def test_a_buffer_held_directly_by_this_is_listed(bridge_module):
     bridge._add_observable_symbol(FakeGdbSymbol('this', FakeGdbType(
         'Holder *')), 'this', found)
 
-    assert found == {'this.image', 'this.baseMember'}
+    assert found == {'image', 'baseMember'}
 
 
 def test_a_named_union_is_descended_into(bridge_module):
@@ -154,3 +160,43 @@ def test_a_named_union_is_descended_into(bridge_module):
     found = _observable_names(bridge_module, holder, {'Buffer'})
 
     assert found == {'holder.payload.image'}
+
+
+def test_a_typedef_wrapped_union_is_descended_into(bridge_module):
+    # gdb reports a typedef's own code, so a `typedef union {...} Alias;`
+    # local looks like a scalar until the typedefs are stripped. The gdb
+    # host walk already strips them.
+    union = FakeGdbType('Payload', code=UNION_CODE, fields=[
+        FakeGdbField('image', FakeGdbType('Buffer')),
+    ])
+    alias = FakeGdbType('PayloadAlias', code=TYPEDEF_CODE, target=union)
+    holder = FakeGdbSymbol('holder', FakeGdbType(
+        'Holder', code=STRUCT_CODE, fields=[FakeGdbField('payload', alias)]))
+
+    found = _observable_names(bridge_module, holder, {'Buffer'})
+
+    assert found == {'holder.payload.image'}
+
+
+def test_members_of_this_surface_bare(bridge_module):
+    # The other two walks name members of `this` bare, which is what the
+    # frame evaluates and what a user types. gdb accepts `this.image` too,
+    # but three walks disagreeing on one buffer's name is the defect.
+    image = FakeGdbField('image', FakeGdbType('Buffer'))
+    base = FakeGdbType('Base', code=STRUCT_CODE, fields=[
+        FakeGdbField('baseMember', FakeGdbType('Buffer')),
+    ])
+    this_type = FakeGdbType('Holder', code=STRUCT_CODE, fields=[
+        FakeGdbField('Base', base, is_base_class=True),
+        image,
+    ])
+    bridge_module.gdb.parse_and_eval = lambda _expr: types.SimpleNamespace(
+        dereference=lambda: FakeGdbSymbol('*this', this_type))
+
+    bridge = bridge_module.GdbBridge.__new__(bridge_module.GdbBridge)
+    bridge._type_bridge = FakeTypeBridge({'Buffer'})
+    found = set()
+    bridge._add_observable_symbol(FakeGdbSymbol('this', FakeGdbType(
+        'Holder *')), 'this', found)
+
+    assert found == {'image', 'baseMember'}

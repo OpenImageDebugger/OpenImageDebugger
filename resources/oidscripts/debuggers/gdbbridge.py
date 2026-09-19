@@ -118,23 +118,32 @@ class GdbBridge(BridgeInterface):
                 f'Expression "{expression}" failed: {error}') from error
 
     def _member_bearing(self, type_obj):
-        """Whether `type_obj`'s fields are members to walk."""
-        return type_obj.code in (gdb.TYPE_CODE_STRUCT, gdb.TYPE_CODE_UNION)
+        """Whether `type_obj`'s fields are members to walk. Typedefs strip
+        first: gdb reports the alias's own code, not the union's."""
+        strip = getattr(type_obj, 'strip_typedefs', None)
+        peeled = strip() if strip is not None else type_obj
+        return peeled.code in (gdb.TYPE_CODE_STRUCT, gdb.TYPE_CODE_UNION)
 
-    def _get_observable_children_members(self, symbol, output_set, parent_name=''):
-        if not parent_name:
+    def _fields_of(self, type_obj):
+        strip = getattr(type_obj, 'strip_typedefs', None)
+        return (strip() if strip is not None else type_obj).fields()
+
+    def _get_observable_children_members(self, symbol, output_set, parent_name=None):
+        if parent_name is None:
             parent_name = symbol.name
 
         if self._member_bearing(symbol.type):
-            for field in symbol.type.fields():
+            for field in self._fields_of(symbol.type):
                 # 'holder.Base.image' and 'holder.None.image' evaluate nowhere.
                 if not field.name or getattr(field, 'is_base_class', False):
                     self._get_observable_children_members(field, output_set,
                                                           parent_name)
                     continue
 
-                # Check if already observable
-                complete_symbol_name = f"{parent_name}.{field.name}"
+                # An empty parent means the members of `this`, which the
+                # frame evaluates bare.
+                complete_symbol_name = (f"{parent_name}.{field.name}"
+                                        if parent_name else field.name)
                 if self._type_bridge.is_symbol_observable(field, complete_symbol_name):
                     output_set.add(complete_symbol_name)
 
@@ -152,7 +161,7 @@ class GdbBridge(BridgeInterface):
             # The pointee, not each field: a field would become its own parent.
             this_value = gdb.parse_and_eval(name).dereference()
             self._get_observable_children_members(this_value,
-                                                  observable_symbols, name)
+                                                  observable_symbols, '')
 
         # Check if we have a struct or a class
         else:
