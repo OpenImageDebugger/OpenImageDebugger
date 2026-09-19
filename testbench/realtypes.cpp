@@ -20,6 +20,13 @@
  *     the middle of a chunked run is exercised and not only its edges.
  *   - Four structs no built-in entry matches, described only by
  *     testbench/.oid/types.json -- the user-supplied side of the format.
+ *   - Four classes holding a 48x32 Eigen matrix through a base class, each
+ *     carrying a differently shifted band so a buffer reached by the wrong
+ *     path renders as the wrong picture rather than as a plausible one,
+ *     covering the
+ *     shapes an inherited buffer can take: reachable only through the base, a
+ *     member named after the base, a member hiding an inherited one, and one
+ *     reached from inside a method where members surface bare.
  *   - A parked worker thread holds worker_mat, so every stop shows two
  *     threads whose top frames share an index, and what gets listed and
  *     plotted can be checked to follow the selected thread rather than
@@ -114,6 +121,53 @@ struct IplImage {
 };
 
 namespace {
+
+// --- Inherited buffers -----------------------------------------------------
+// A debugger names a base-class subobject after the base TYPE; C++ has no such
+// path segment. NamesABase and HidesInherited are the shapes that defeat a
+// name-only or first-wins walker. 48x32 because a 3x3 matrix is a speck.
+constexpr int kInheritW = 48;
+constexpr int kInheritH = 32;
+
+struct BufferBase {
+    Eigen::MatrixXd inherited;
+};
+
+struct InheritedOnly : BufferBase {
+    int tag;
+};
+
+struct NamesABase : BufferBase {
+    Eigen::MatrixXd BufferBase;
+};
+
+struct HidesInherited : BufferBase {
+    Eigen::MatrixXd inherited;
+};
+
+// Shifted per fixture: a flat fill would make every wrong path look right.
+Eigen::MatrixXd banded(int shift) {
+    Eigen::MatrixXd m(kInheritH, kInheritW);
+    for (int r = 0; r < kInheritH; ++r) {
+        for (int c = 0; c < kInheritW; ++c) {
+            const double ramp = static_cast<double>(c) / kInheritW;
+            const bool band = (r + c + shift * 5) % kInheritH < 4;
+            m(r, c) = band ? ramp + 1.0 : ramp;
+        }
+    }
+    return m;
+}
+
+// Members of `this` surface BARE (`inherited`, not `probe.inherited`).
+struct InheritingProbe : BufferBase {
+    Eigen::MatrixXd own;
+
+    void probe() const {
+        // >>> SET A BREAKPOINT ON THE NEXT LINE FOR THE INHERITED CASE <<<
+        volatile int oid_breakpoint_inherited = 0;
+        (void)oid_breakpoint_inherited;
+    }
+};
 
 constexpr int kW = 160;
 constexpr int kH = 120;
@@ -413,6 +467,25 @@ int main() {
                Eigen::OuterStride<>>
         eig_map_strided(stride_backing.data(), 6, 8, Eigen::OuterStride<>(12));
 
+    // --- Inherited buffers (see the structs above) ---
+    // Each matrix gets a distinct constant so a wrong path shows as the wrong
+    // picture rather than as no picture.
+    InheritedOnly inherited_only;
+    inherited_only.inherited = banded(0);
+    inherited_only.tag = 1;
+
+    NamesABase names_a_base;
+    names_a_base.inherited = banded(1);
+    names_a_base.BufferBase = banded(2);
+
+    HidesInherited hides_inherited;
+    hides_inherited.inherited = banded(3);
+    hides_inherited.BufferBase::inherited = banded(4);
+
+    InheritingProbe inheriting_probe;
+    inheriting_probe.inherited = banded(5);
+    inheriting_probe.own = banded(6);
+
     // --- Custom types (testbench/.oid/types.json) ---
     // If these plot, the user-supplied types file was found and evaluated.
     // If not, the Debug Console names the file or the offending key.
@@ -491,6 +564,7 @@ int main() {
     // Every fixture above is in scope here; plot each by name, then continue.
     volatile int oid_breakpoint = 0;
     (void)oid_breakpoint;
+    inheriting_probe.probe();
     (void)cvmat;
     (void)cvmat_8uc3;
     (void)ipl_8u;

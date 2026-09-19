@@ -104,26 +104,89 @@ def evaluate_in_frame(frame, expression):
     return SymbolWrapper(result)
 
 
-def _children_are_declared_members(symbol):
-    # type: (lldb.SBValue) -> bool
-    """Whether `symbol`'s children are its type's declared members rather
-    than the elements of a sequence.
-
-    Pointers and references peel first: `this` is a pointer, and lldb
-    serves a pointer-to-class's children as the pointee's members, which
-    is the only reason a member of `this` surfaces at all."""
+def _peeled_type(symbol):
+    # type: (lldb.SBValue) -> lldb.SBType
+    # Canonical type, pointers and references peeled, or None.
     symbol_type = symbol.GetType()
     if not symbol_type.IsValid():
-        return False
+        return None
     symbol_type = symbol_type.GetCanonicalType()
     while symbol_type.IsPointerType() or symbol_type.IsReferenceType():
         symbol_type = symbol_type.GetPointeeType() \
             if symbol_type.IsPointerType() \
             else symbol_type.GetDereferencedType()
         if not symbol_type.IsValid():
-            return False
+            return None
         symbol_type = symbol_type.GetCanonicalType()
+    return symbol_type
+
+
+def _children_are_declared_members(symbol):
+    # type: (lldb.SBValue) -> bool
+    # Declared members, or the elements of a sequence?
+    symbol_type = _peeled_type(symbol)
+    if symbol_type is None:
+        return False
     return bool(symbol_type.GetTypeClass() & _member_bearing_type_classes())
+
+
+def _classify_children(declared):
+    # type: (lldb.SBValue) -> tuple
+    # Bases come first, named after the base type; a name alone cannot
+    # identify one (`struct D : Base { Buffer Base; }` gives two 'Base').
+    declared_type = _peeled_type(declared)
+    base_count = (declared_type.GetNumberOfDirectBaseClasses()
+                  if declared_type is not None else 0)
+    members, anonymous, bases = [], [], []
+    for index in range(declared.GetNumChildren()):
+        child = declared.GetChildAtIndex(index)
+        name = child.name
+        if (index < base_count
+                and name == declared_type.GetDirectBaseClassAtIndex(index).GetName()):
+            bases.append(child)
+        elif not name:
+            anonymous.append(child)
+        else:
+            members.append((name, child))
+    return members, anonymous, bases
+
+
+def _declared_by_name(value_type, name):
+    # type: (lldb.SBType, str) -> bool
+    # lldb answers statics and nested types by name only, never by listing.
+    for accessor in ('GetStaticFieldWithName', 'FindDirectNestedType'):
+        lookup = getattr(value_type, accessor, None)
+        declaration = lookup(name) if lookup is not None else None
+        if declaration and declaration.IsValid():
+            return True
+    count = getattr(value_type, 'GetNumberOfMemberFunctions', lambda: 0)()
+    return any(value_type.GetMemberFunctionAtIndex(index).GetName() == name
+               for index in range(count))
+
+
+def _class_binds(value, name, inherited=True):
+    # type: (lldb.SBValue, str, bool) -> bool
+    # Any class-scope declaration binds the name, not only a data member.
+    # inherited=False asks what the class declares for ITSELF, which is
+    # what hides an inherited member.
+    if _declared_by_name(_peeled_type(value), name):
+        return True
+    if not _children_are_declared_members(value):
+        return False
+    members, anonymous, bases = _classify_children(value.GetNonSyntheticValue())
+    if any(member_name == name for member_name, _member in members):
+        return True
+    reachable = anonymous + bases if inherited else anonymous
+    return any(_class_binds(subobject, name, inherited)
+               for subobject in reachable)
+
+
+def _class_resolves(frame, this_value, name):
+    # type: (lldb.SBFrame, lldb.SBValue, str) -> bool
+    # Frame scope first (FindVariable owns it), then class scope.
+    if frame.FindVariable(name).IsValid():
+        return False
+    return this_value is not None and _class_binds(this_value, name)
 
 
 def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
@@ -149,15 +212,37 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
     # same vector has three children however many bytes it holds.
     declared = symbol.GetNonSyntheticValue()
 
-    for member_idx in range(declared.GetNumChildren()):
-        symbol_member = declared.GetChildAtIndex(member_idx)
-        chain = member_name_chain + [str(symbol_member.name)]
+    members, anonymous, bases = _classify_children(declared)
+
+    # Everything this class declares before anything it inherits: C++
+    # resolves a hidden name to the derived one.
+    for member_name, symbol_member in members:
+        chain = member_name_chain + [str(member_name)]
         wrapped = SymbolWrapper(symbol_member)
-        if type_bridge.is_symbol_observable(wrapped, symbol_member.name):
+        if type_bridge.is_symbol_observable(wrapped, member_name):
             record_hit('.'.join(chain), wrapped)
         else:
             _walk_members(symbol_member, chain, visited_typenames,
                           type_bridge, record_hit)
+
+    for symbol_member in anonymous:
+        _walk_members(symbol_member, member_name_chain, visited_typenames,
+                      type_bridge, record_hit)
+
+    if not bases:
+        return
+
+    prefix = len(member_name_chain)
+
+    def record_unhidden(qualified_name, wrapped):
+        # An inherited name the derived class binds itself is unreachable.
+        if not _class_binds(declared, qualified_name.split('.')[prefix],
+                            inherited=False):
+            record_hit(qualified_name, wrapped)
+
+    for symbol_member in bases:
+        _walk_members(symbol_member, member_name_chain, visited_typenames,
+                      type_bridge, record_unhidden)
 
 
 def observable_symbols(frame, type_bridge):
@@ -174,16 +259,35 @@ def observable_symbols(frame, type_bridge):
             seen.add(qualified_name)
             found.append((qualified_name, wrapped))
 
-    for symbol in frame.GetVariables(True, True, True, True):
+    def emit_unshadowed(qualified_name, wrapped):
+        bare = qualified_name.split('.', 1)[0]
+        if _class_resolves(frame, this_value, bare):
+            emit(qualified_name, wrapped)
+
+    # `this` first: class scope outranks a file static of the same name,
+    # and whichever reaches emit() first keeps it.
+    variables = list(frame.GetVariables(True, True, True, True))
+    variables.sort(key=lambda variable: variable.name != 'this')
+
+    this_value = next((variable for variable in variables
+                       if variable.name == 'this'), None)
+
+    for symbol in variables:
         name = symbol.name
         if not name:
+            continue
+        # Only what the frame actually resolves this name to: a variable
+        # the class shadows is unreachable under its bare name.
+        if name != 'this' and _class_resolves(frame, this_value, name):
             continue
         wrapped = SymbolWrapper(symbol)
         if type_bridge.is_symbol_observable(wrapped, name):
             emit(name, wrapped)
-        member_name_chain = [name] if name != 'this' else []
-        _walk_members(symbol, member_name_chain, frozenset(), type_bridge,
-                      emit)
+        if name == 'this':
+            _walk_members(symbol, [], frozenset(), type_bridge,
+                          emit_unshadowed)
+        else:
+            _walk_members(symbol, [name], frozenset(), type_bridge, emit)
 
     return found
 

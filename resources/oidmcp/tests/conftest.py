@@ -58,17 +58,63 @@ from oidscripts import wireframe as wf
 from oidscripts.debuggers.interfaces import raise_if_too_large
 
 
-class FakeSBType:
-    """Just enough of lldb.SBType for SymbolWrapper's constructor and for
-    lldbbridge's descent guard: a type class, plus the pointer/reference
-    peeling the guard performs before testing it. The default type class
-    is a struct, so a node built without one is descended into."""
+class InvalidSBHandle:
+    # What lldb returns for a handle it cannot fill.
+    def IsValid(self):
+        return False
 
-    def __init__(self, name, type_class=None, pointee=None):
+    def GetName(self):
+        return None
+
+
+class FakeSBTypeMember:
+    """A base type's name, as GetDirectBaseClassAtIndex serves it."""
+
+    def __init__(self, name):
+        self._name = name
+
+    def IsValid(self):
+        return True
+
+    def GetName(self):
+        return self._name
+
+
+class FakeSBType:
+    """Just enough of lldb.SBType: type class, pointer/reference peeling,
+    base-class lookup. Defaults to a struct, so a bare node is descended."""
+
+    def __init__(self, name, type_class=None, pointee=None,
+                 base_typenames=(), static_field_names=(),
+                 member_function_names=(), nested_type_names=()):
         self._name = name
         self._type_class = (LLDB.eTypeClassStruct if type_class is None
                             else type_class)
         self._pointee = pointee
+        self._bases = list(base_typenames)
+        self._static_fields = list(static_field_names)
+        self._member_functions = list(member_function_names)
+        self._nested_types = list(nested_type_names)
+
+    def FindDirectNestedType(self, name):
+        return (FakeSBType(name) if name in self._nested_types
+                else InvalidSBHandle())
+
+    def GetStaticFieldWithName(self, name):
+        return (FakeSBTypeMember(name) if name in self._static_fields
+                else InvalidSBHandle())
+
+    def GetNumberOfMemberFunctions(self):
+        return len(self._member_functions)
+
+    def GetMemberFunctionAtIndex(self, index):
+        return FakeSBTypeMember(self._member_functions[index])
+
+    def GetNumberOfDirectBaseClasses(self):
+        return len(self._bases)
+
+    def GetDirectBaseClassAtIndex(self, index):
+        return FakeSBTypeMember(self._bases[index])
 
     def IsValid(self):
         return True
@@ -115,8 +161,14 @@ class FakeSBValue:
 
     def __init__(self, name, typename, children=(), type_class=None,
                  pointee_type_class=None, synthetic_child_count=None,
-                 element_typename='Element'):
+                 element_typename='Element', base_typenames=(),
+                 static_field_names=(), member_function_names=(),
+                 nested_type_names=()):
         self.name = name
+        self._base_typenames = tuple(base_typenames)
+        self._static_field_names = tuple(static_field_names)
+        self._member_function_names = tuple(member_function_names)
+        self._nested_type_names = tuple(nested_type_names)
         self._typename = typename
         self._children = list(children)
         self._type_class = type_class
@@ -127,14 +179,22 @@ class FakeSBValue:
         self._fetch_owner = self
         self.child_fetches = 0
 
+    def IsValid(self):
+        return True
+
     def GetTypeName(self):
         return self._typename
 
     def GetType(self):
-        pointee = None
+        kwargs = dict(base_typenames=self._base_typenames,
+                      static_field_names=self._static_field_names,
+                      member_function_names=self._member_function_names,
+                      nested_type_names=self._nested_type_names)
         if self._pointee_type_class is not None:
-            pointee = FakeSBType(self._typename, self._pointee_type_class)
-        return FakeSBType(self._typename, self._type_class, pointee)
+            pointee = FakeSBType(self._typename, self._pointee_type_class,
+                                 **kwargs)
+            return FakeSBType(self._typename, self._type_class, pointee)
+        return FakeSBType(self._typename, self._type_class, None, **kwargs)
 
     def GetNonSyntheticValue(self):
         """lldb hands back the same value with formatters switched off,
@@ -145,7 +205,11 @@ class FakeSBValue:
         if self._declared_view is None:
             view = FakeSBValue(self.name, self._typename, self._children,
                                type_class=self._type_class,
-                               pointee_type_class=self._pointee_type_class)
+                               pointee_type_class=self._pointee_type_class,
+                               base_typenames=self._base_typenames,
+                               static_field_names=self._static_field_names,
+                               member_function_names=self._member_function_names,
+                               nested_type_names=self._nested_type_names)
             view._fetch_owner = self
             self._declared_view = view
         return self._declared_view

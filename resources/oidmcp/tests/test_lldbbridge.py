@@ -13,6 +13,7 @@ import sys
 import pytest
 from conftest import (
     LLDB,
+    InvalidSBHandle,
     FakeDebugger,
     FakeFrame,
     FakeSBType,
@@ -208,13 +209,20 @@ def test_evaluate_in_frame_raises_runtime_error_for_a_falsy_result():
 # observable-member traversal, and its cycle guard.
 
 class _VariablesFrame:
-    """Minimal SBFrame stand-in: GetVariables() returns a fixed list."""
+    """Minimal SBFrame. FindVariable() answers for the frame's own lexical
+    scope -- locals, arguments and function-local statics -- which is how
+    lldb distinguishes a name that captures a bare this-member from a file
+    static or a namespace global, which do not."""
 
-    def __init__(self, variables):
+    def __init__(self, variables, in_lexical_scope=()):
         self._variables = variables
+        self._in_lexical_scope = {v.name: v for v in in_lexical_scope}
 
-    def GetVariables(self, *args):
+    def GetVariables(self, *_args):
         return self._variables
+
+    def FindVariable(self, name):
+        return self._in_lexical_scope.get(name, InvalidSBHandle())
 
 
 def _observable_names(root, observable_typenames):
@@ -356,6 +364,309 @@ def test_a_member_of_this_still_surfaces_bare():
     found = _observable_names(this, observable_typenames={'Buffer'})
 
     assert found == {'image'}
+
+
+def test_a_base_class_subobject_contributes_no_path_segment():
+    # 'Base.baseMember' is not an expression any frame can evaluate.
+    image = FakeSBValue('baseMember', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[image])
+    member = FakeSBValue('member', 'Buffer')
+    this = FakeSBValue('this', 'Test *', children=[base, member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass,
+                       base_typenames=('Base',))
+
+    found = _observable_names(this, observable_typenames={'Buffer'})
+
+    assert found == {'baseMember', 'member'}
+
+
+def test_a_virtually_inherited_base_contributes_no_path_segment():
+    # lldb 23.1.1: `struct L : virtual VB` lists VB among L's DIRECT bases.
+    image = FakeSBValue('vbMember', 'Buffer')
+    vbase = FakeSBValue('VB', 'VB', children=[image])
+    holder = FakeSBValue('holder', 'Holder', children=[vbase],
+                         base_typenames=('VB',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == {'holder.vbMember'}
+
+
+def test_an_indirectly_inherited_virtual_base_contributes_no_path_segment():
+    # lldb 23.1.1: the VB child hangs off Intermediate, which calls it direct.
+    image = FakeSBValue('vbMember', 'Buffer')
+    vbase = FakeSBValue('VB', 'VB', children=[image])
+    intermediate = FakeSBValue('Intermediate', 'Intermediate',
+                               children=[vbase], base_typenames=('VB',))
+    derived = FakeSBValue('der', 'Derived', children=[intermediate],
+                          base_typenames=('Intermediate',))
+
+    found = _observable_names(derived, observable_typenames={'Buffer'})
+
+    assert found == {'der.vbMember'}
+
+
+def test_a_member_named_after_a_base_class_is_still_listed():
+    # `struct Derived : Base { Buffer Base; }`: two children named 'Base'.
+    inherited = FakeSBValue('baseMember', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    member = FakeSBValue('Base', 'Buffer')
+    holder = FakeSBValue('holder', 'Derived', children=[base, member],
+                         base_typenames=('Base',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == {'holder.baseMember', 'holder.Base'}
+
+
+def test_a_member_whose_name_equals_its_type_is_still_listed():
+    # `struct Frame : Img { Img Img; }` defeats a name-equals-type test.
+    member = FakeSBValue('Buffer', 'Buffer')
+    holder = FakeSBValue('holder', 'Holder', children=[member])
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == {'holder.Buffer'}
+
+
+def test_a_derived_member_hides_the_inherited_one_of_the_same_name():
+    # lldb serves the base subobject first; C++ resolves the name to the derived.
+    inherited = FakeSBValue('image', 'InheritedBuffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    member = FakeSBValue('image', 'Buffer')
+    holder = FakeSBValue('holder', 'Derived', children=[base, member],
+                         base_typenames=('Base',))
+
+    frame = _VariablesFrame([holder])
+    bridge = FakeTypeBridge({'Buffer', 'InheritedBuffer'})
+    found = dict((name, str(wrapped.type))
+                 for name, wrapped in observable_symbols(frame, bridge))
+
+    assert found == {'holder.image': 'Buffer'}
+
+
+def test_an_anonymous_aggregate_contributes_no_path_segment():
+    # An empty segment ('holder..anonU') is as unevaluable as a base one.
+    image = FakeSBValue('anonU', 'Buffer')
+    anonymous = FakeSBValue('', 'Holder::(anonymous union)', children=[image])
+    holder = FakeSBValue('holder', 'Holder', children=[anonymous])
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == {'holder.anonU'}
+
+
+def test_a_this_member_shadowed_by_a_local_is_not_listed():
+    # C++ resolves the bare `image` to the local, not to the this-member.
+    local = FakeSBValue('image', 'Local')
+    member = FakeSBValue('image', 'Buffer')
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    frame = _VariablesFrame([local, this], in_lexical_scope=[local])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == set()
+
+
+def test_a_this_member_shadowed_by_a_function_local_static_is_not_listed():
+    # lldb labels a function-local static Global and a FILE static Static.
+    static_local = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
+    member = FakeSBValue('image', 'Buffer')
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    frame = _VariablesFrame([this], in_lexical_scope=[static_local])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == set()
+
+
+def test_a_this_member_survives_a_file_static_of_the_same_name():
+    # A file static loses to a member, so it must not suppress one.
+    file_static = FakeSBValue('image', 'Buffer')
+    member = FakeSBValue('image', 'Buffer')
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    frame = _VariablesFrame([file_static, this])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == {'image'}
+
+
+def test_a_this_member_survives_an_unrelated_local():
+    # The filter keys on the name, not on the presence of locals.
+    local = FakeSBValue('width', 'int', type_class=LLDB.eTypeClassBuiltin)
+    member = FakeSBValue('image', 'Buffer')
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    frame = _VariablesFrame([local, this], in_lexical_scope=[local])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == {'image'}
+
+
+def test_an_anonymous_member_hides_the_inherited_one_of_the_same_name():
+    # An anonymous union's members are the DERIVED class's own.
+    inherited = FakeSBValue('image', 'InheritedBuffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    own = FakeSBValue('image', 'Buffer')
+    anonymous = FakeSBValue('', 'Derived::(anonymous union)', children=[own])
+    holder = FakeSBValue('holder', 'Derived', children=[base, anonymous],
+                         base_typenames=('Base',))
+
+    frame = _VariablesFrame([holder])
+    bridge = FakeTypeBridge({'Buffer', 'InheritedBuffer'})
+    found = dict((name, str(wrapped.type))
+                 for name, wrapped in observable_symbols(frame, bridge))
+
+    assert found == {'holder.image': 'Buffer'}
+
+
+def test_a_non_observable_derived_member_still_hides_an_inherited_one():
+    # A declaration reserves the name whether or not it is a buffer.
+    inherited = FakeSBValue('image', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    own = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
+    holder = FakeSBValue('holder', 'Derived', children=[base, own],
+                         base_typenames=('Base',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == set()
+
+
+def test_a_non_observable_anonymous_member_still_hides_an_inherited_one():
+    # Same rule through an anonymous union.
+    inherited = FakeSBValue('image', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    own = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
+    anonymous = FakeSBValue('', 'Derived::(anonymous union)', children=[own])
+    holder = FakeSBValue('holder', 'Derived', children=[base, anonymous],
+                         base_typenames=('Base',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == set()
+
+
+def test_a_static_data_member_hides_an_inherited_one():
+    # lldb 23.1.1: GetStaticFieldWithName('image') is valid for this shape.
+    inherited = FakeSBValue('image', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    holder = FakeSBValue('holder', 'Derived', children=[base],
+                         base_typenames=('Base',),
+                         static_field_names=('image',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == set()
+
+
+def test_a_member_function_hides_an_inherited_field():
+    # Worse: lldb cannot evaluate a member function as a value at all.
+    inherited = FakeSBValue('shot', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    holder = FakeSBValue('holder', 'Derived', children=[base],
+                         base_typenames=('Base',),
+                         member_function_names=('shot',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == set()
+
+
+def test_a_this_member_outranks_a_file_static_of_the_same_name():
+    # Class scope beats namespace scope; the wrapper has to be the member's.
+    file_static = FakeSBValue('image', 'StaticBuffer')
+    member = FakeSBValue('image', 'Buffer')
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    frame = _VariablesFrame([file_static, this])
+    bridge = FakeTypeBridge({'Buffer', 'StaticBuffer'})
+
+    found = dict((name, str(wrapped.type))
+                 for name, wrapped in observable_symbols(frame, bridge))
+
+    assert found == {'image': 'Buffer'}
+
+
+def test_a_nested_type_hides_an_inherited_field():
+    # lldb 23.1.1: with the nested type in debug info, `image` evaluates
+    # to an error, so the inherited buffer must not be offered under it.
+    inherited = FakeSBValue('image', 'Buffer')
+    base = FakeSBValue('Base', 'Base', children=[inherited])
+    holder = FakeSBValue('holder', 'Derived', children=[base],
+                         base_typenames=('Base',),
+                         nested_type_names=('image',))
+
+    found = _observable_names(holder, observable_typenames={'Buffer'})
+
+    assert found == set()
+
+
+def test_a_file_static_hidden_by_a_non_observable_member_is_not_listed():
+    # The member is not a buffer, so it never reserves its bare name, but
+    # C++ still resolves that name to it. Offering the static under it
+    # would plot an object the frame never reaches.
+    member = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    file_static = FakeSBValue('image', 'Buffer')
+    frame = _VariablesFrame([file_static, this])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == set()
+
+
+def test_a_local_still_outranks_a_member_of_the_same_name():
+    # A local IS in the frame's lexical scope, so it keeps the name and
+    # stays listed -- the member is the one suppressed.
+    member = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
+    this = FakeSBValue('this', 'Holder *', children=[member],
+                       type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass)
+    local = FakeSBValue('image', 'Buffer')
+    frame = _VariablesFrame([local, this], in_lexical_scope=[local])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == {'image'}
+
+
+def test_a_file_static_hidden_by_a_class_scope_declaration_is_not_listed():
+    # A static data member or a nested type owns the bare name as firmly
+    # as a data member does, and neither can be enumerated -- lldb only
+    # answers them by name -- so each candidate has to be asked about.
+    this = FakeSBValue('this', 'Holder *', type_class=LLDB.eTypeClassPointer,
+                       pointee_type_class=LLDB.eTypeClassClass,
+                       static_field_names=('image',),
+                       nested_type_names=('shot',))
+    image_static = FakeSBValue('image', 'Buffer')
+    shot_static = FakeSBValue('shot', 'Buffer')
+    visible = FakeSBValue('visible', 'Buffer')
+    frame = _VariablesFrame([image_static, shot_static, visible, this])
+    bridge = FakeTypeBridge({'Buffer'})
+
+    found = {name for name, _wrapped in observable_symbols(frame, bridge)}
+
+    assert found == {'visible'}
 
 
 def test_a_scalar_local_is_not_descended_into():
