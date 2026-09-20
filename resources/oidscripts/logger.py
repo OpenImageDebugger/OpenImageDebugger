@@ -5,11 +5,10 @@ Handle the configuration and creation of a global logger.
 """
 
 import logging
-import sys
 
 # create a logging format
 formatter = logging.Formatter("[OpenImageDebugger] %(levelname)s: %(message)s")
-handler = logging.StreamHandler(sys.stdout)
+handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 
 # Setup logger
