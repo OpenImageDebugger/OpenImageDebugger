@@ -15,14 +15,10 @@ def test_logger_never_holds_a_reference_to_stdout():
     assert all(h.stream is not sys.stdout for h in handlers)
 
 
-def test_logger_writes_to_whichever_stdout_is_current():
+def test_logger_writes_to_whichever_stdout_is_current(monkeypatch):
     from oidscripts import logger
 
     replacement = io.StringIO()
-    original = sys.stdout
-    sys.stdout = replacement
-    try:
-        logger.log.warning('probe line')
-    finally:
-        sys.stdout = original
+    monkeypatch.setattr(sys, 'stdout', replacement)
+    logger.log.warning('probe line')
     assert '[OpenImageDebugger] WARNING: probe line' in replacement.getvalue()
