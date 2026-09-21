@@ -83,6 +83,25 @@
                 // one cannot bind and silently slides to the closing return.
                 "breakpoint set --file realtypes.cpp --source-pattern-regexp \"oid_breakpoint = 0\""
             ]
+        },
+        {
+            // The same fixture under the LLDB DAP adapter instead of
+            // CodeLLDB. Both plot the same buffers; this one also echoes
+            // every expression the extension evaluates into the Debug
+            // Console, which is the adapter's own behaviour, not a fault.
+            "name": "(lldb-dap) Launch inherited_eigen fixture",
+            "preLaunchTask": "build inherited_eigen fixture",
+            "type": "lldb-dap",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/testbench_inherited_eigen",
+            "windows": {
+                "program": "${workspaceFolder}/build/testbench_inherited_eigen.exe"
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "preRunCommands": [
+                "breakpoint set --file inherited_eigen.cpp --source-pattern-regexp \"Break here\""
+            ]
         }
     ]
 }
