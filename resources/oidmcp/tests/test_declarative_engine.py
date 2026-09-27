@@ -99,9 +99,8 @@ def test_symbol_expression_derefs_typedefd_pointer():
 
 
 def test_symbol_expression_derefs_qualified_pointer_spellings():
-    # const pointers, references-to-pointer, and no-space spellings are all
-    # pointers for '.' member access and must dereference. A pointer-to-
-    # const still ends in the star, so it counts too.
+    # const pointers, references-to-pointer and no-space spellings all need
+    # the deref; a pointer-to-const still ends in the star, so it counts too.
     for spelling in ('cv::Mat*', 'cv::Mat *const', 'cv::Mat * const',
                      'cv::Mat *&', 'cv::Mat *&&', 'cv::Mat* const &',
                      'const cv::Mat *'):
@@ -111,9 +110,8 @@ def test_symbol_expression_derefs_qualified_pointer_spellings():
 
 
 def test_symbol_expression_does_not_deref_references_or_values():
-    # A plain reference, a cv-qualified value, and a template whose inner
-    # type is a pointer are values (or collapse to one) for '.' access and
-    # must NOT dereference.
+    # References, cv-qualified values and a template whose INNER type is a
+    # pointer are all values for '.' access and must NOT dereference.
     for spelling in ('cv::Mat', 'cv::Mat&', 'cv::Mat &&', 'const cv::Mat&',
                      'cv::Mat const', 'std::vector<int*>',
                      'std::vector<int*> const&'):
@@ -123,9 +121,8 @@ def test_symbol_expression_does_not_deref_references_or_values():
 
 
 def test_is_pointer_type_handles_long_whitespace_run():
-    # Regression: the trailing-qualifier peel is linear (a plain rstrip
-    # loop, not one backtracking regex), so a long run of whitespace after
-    # a type resolves quickly and correctly instead of hanging.
+    # The trailing-qualifier peel is a linear rstrip loop, not a backtracking
+    # regex, so a long whitespace run resolves instead of hanging.
     assert declarative._is_pointer_type('cv::Mat' + ' ' * 5000) is False
     assert declarative._is_pointer_type('cv::Mat*' + ' ' * 5000) is True
     assert declarative._is_pointer_type(
@@ -204,10 +201,8 @@ def test_evaluate_wraps_bridge_error_with_entry_and_field():
 
 
 def test_evaluate_wraps_non_runtime_bridge_error():
-    # The bridge contract is RuntimeError on failure, but a backend may
-    # leak another exception type; the engine must still wrap it in
-    # EntryEvaluationError (with entry/field context, chaining the cause)
-    # rather than let it escape the declarative error layer.
+    # The bridge contract is RuntimeError on failure, but a backend may leak
+    # another type; it must still be wrapped, not escape the error layer.
     bridge = RecordingBridge({'(img).cols': ValueError('backend boom')})
     resolution = make_resolution(bridge)
     with pytest.raises(declarative.EntryEvaluationError) as excinfo:
@@ -330,9 +325,8 @@ def test_if_condition_can_use_debugger():
 
 
 def test_if_condition_non_boolean_result_raises_entry_error():
-    # A condition result _to_bool cannot interpret must not escape as a
-    # bare ValueError; it needs the same entry/field context every other
-    # field error carries.
+    # A condition _to_bool cannot interpret must not escape as a bare
+    # ValueError; it needs the entry/field context every field error carries.
     bridge = RecordingBridge({'(img).flag': 'sideways'})
     resolution = make_resolution(bridge, field='channels')
     node = {'if': '{sym}.flag', 'then': 3, 'else': 1}
@@ -541,9 +535,8 @@ def test_validate_rejects_literal_pointer():
 
 
 def test_validate_rejects_numeric_pointer_leaf_in_first_valid():
-    # A literal number is never a valid pointer expression -- not only at
-    # the top level but also as a leaf nested inside first_valid/map/if,
-    # where it would otherwise reach get_casted_pointer as a bare int.
+    # A literal number nested inside first_valid/map/if would otherwise reach
+    # get_casted_pointer as a bare int, not just one at the top level.
     entry = dict(FLOOR_ENTRY,
                  pointer={'first_valid': ['{sym}.data', 0]})
     errors = declarative._validate_entry(entry)
@@ -558,10 +551,8 @@ def test_validate_allows_string_pointer_leaf_in_first_valid():
 
 
 def test_validate_rejects_min_wrapper_pointer_candidate():
-    # The {expr, min} wrapper reads its candidate as a Python int to gate on,
-    # but a pointer must stay a debugger value for the bridge to cast. A
-    # min-wrapped pointer candidate would fail at plot time (int reaching the
-    # pointer leaf), so it must be rejected at load time instead.
+    # The {expr, min} wrapper reads its candidate as a Python int, but a
+    # pointer must stay a debugger value for the bridge to cast it.
     entry = dict(FLOOR_ENTRY,
                  pointer={'first_valid': [{'expr': '{sym}.data', 'min': 1},
                                           '{sym}.data']})
@@ -570,9 +561,8 @@ def test_validate_rejects_min_wrapper_pointer_candidate():
 
 
 def test_validate_rejects_bool_and_float_int_field_literals():
-    # A bool/float literal for an integer field loads "cleanly" but is
-    # rejected at runtime by _leaf_int (int() would coerce True->1,
-    # 640.9->640); reject it at load time so feedback is immediate.
+    # int() would silently coerce True->1 and 640.9->640, so a bool/float
+    # literal must be rejected at load time, not accepted as "clean".
     for bad_width in (640.0, True):
         entry = dict(FLOOR_ENTRY, width=bad_width)
         errors = declarative._validate_entry(entry)
@@ -615,10 +605,8 @@ def test_validate_accepts_bool_transpose_literal():
 
 
 def test_pointer_decimal_literal_resolves_via_debugger_not_int():
-    # A pointer expression that substitutes to a bare decimal must still be
-    # evaluated by the debugger so the result is a value object the bridge
-    # can cast; the int() fast path used by numeric fields would hand
-    # get_casted_pointer a Python int and break the cast.
+    # A pointer that substitutes to a bare decimal must still go through the
+    # debugger; the numeric int() fast path would break get_casted_pointer.
     sentinel = object()
     bridge = RecordingBridge({'12345': sentinel})
     resolution = make_resolution(bridge, field='pointer')
@@ -648,9 +636,8 @@ def test_validate_map_node_shapes():
 
 
 def test_validate_rejects_unexpected_node_keys():
-    # Node shape is dispatched by key presence, so a typo'd key (e.g.
-    # 'defualt' for 'default') would otherwise be silently ignored while
-    # the node still validates. Each recognized shape must reject extras.
+    # Node shape is dispatched by key presence, so a typo'd key ('defualt')
+    # would otherwise validate silently; each shape must reject extras.
     bad_nodes = (
         {'first_valid': ['{sym}.rows'], 'defualt': '{sym}.cols'},
         {'if': '{channels} >= 3', 'then': '{sym}.rows',
@@ -809,10 +796,8 @@ def test_resolve_pixel_layout_if_condition_non_boolean_raises_entry_error():
 
 
 def test_first_valid_min_runs_leaf_and_falls_through_on_invalid_dtype():
-    # A {expr, min} candidate must still run the leaf. An integer that clears
-    # `min` but is not a valid pixel type code is rejected by _leaf_dtype, so
-    # first_valid falls through to the next candidate instead of returning the
-    # bad code unvalidated.
+    # An integer that clears `min` can still be an invalid pixel type code, so
+    # the leaf must run and first_valid fall through rather than return it.
     bridge = RecordingBridge({
         '(img).bogus_code': 999,
         '(img).depth': symbols.OID_TYPES_UINT8,
@@ -826,9 +811,8 @@ def test_first_valid_min_runs_leaf_and_falls_through_on_invalid_dtype():
 
 
 def test_first_valid_min_runs_leaf_and_rejects_negative_with_negative_min():
-    # A negative `min` floor would let a negative dimension through if the leaf
-    # were skipped; _leaf_int's non-negative check must still apply, so the
-    # candidate is rejected and first_valid falls through to the next one.
+    # A negative `min` floor would let a negative dimension through if the
+    # leaf were skipped; _leaf_int's non-negative check must still apply.
     bridge = RecordingBridge({'(img).signed_dim': -3, '(img).rows': 6})
     resolution = make_resolution(bridge, field='height')
     candidates = [{'expr': '{sym}.signed_dim', 'min': -10}, '{sym}.rows']
@@ -849,9 +833,8 @@ def test_first_valid_min_returns_leaf_result_for_valid_value():
 
 
 def test_match_tolerates_both_template_comma_spellings():
-    # Debug-info readers disagree on template-argument spacing: some spell
-    # Tile<unsigned char, 3>, others Tile<unsigned char,3>. An entry written
-    # with ',\s*' must match both.
+    # Debug-info readers disagree on template-argument spacing: Tile<unsigned
+    # char, 3> vs Tile<unsigned char,3>, so ',\s*' must match both.
     entry = {
         'name': 'TileU8x3',
         'match': r'^(?:const\s+)?Tile<unsigned char,\s*3>(?:\s*[*&])?$',

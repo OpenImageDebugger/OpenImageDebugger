@@ -41,12 +41,9 @@ def test_wireframe_still_imports_from_repo_layout():
 
 
 def test_wireframe_imports_from_purelib_layout(tmp_path):
-    # oidmcp lives at pkgs/oidmcp (so parents[1]=pkgs, parents[2]=tmp_path);
-    # oidscripts lives ONLY under a separate purelib dir. Neither the repo
-    # candidate (parents[2]/oidscripts) nor the site candidate
-    # (parents[1]/oidscripts) exists, so the import can only succeed via the
-    # third _PURELIB_DIR candidate. sysconfig.get_path('purelib') is patched
-    # to that dir before oidmcp._wireframe computes _PURELIB_DIR at import.
+    # oidmcp lives at pkgs/oidmcp, so neither the repo candidate
+    # (parents[2]=tmp_path) nor the site one (parents[1]=pkgs) holds
+    # oidscripts; only _PURELIB_DIR, patched before the import, can serve it.
     pkgs = tmp_path / 'pkgs'
     purelib = tmp_path / 'purelib'
     shutil.copytree(RESOURCES / 'oidmcp' / 'oidmcp', pkgs / 'oidmcp')

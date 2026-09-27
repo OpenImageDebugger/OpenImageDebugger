@@ -128,9 +128,8 @@ def check_viewer() -> int:
         print('FAIL: no viewer session appeared within 30s')
         return 1
 
-    # No debugger pairing to resolve against here (a standalone `oidwindow`
-    # has no debugger_pid); mirror AgentCore's own "no selector" default and
-    # take the most recently started window.
+    # A standalone `oidwindow` has no debugger_pid to pair against;
+    # mirror AgentCore's no-selector default: the newest window wins.
     viewer = max(viewers, key=lambda v: v.start_time)
     client = ControlClient('127.0.0.1', viewer.port, viewer.token)
     print(f'hello: {client.hello}')
@@ -148,10 +147,8 @@ def check_viewer() -> int:
     client.set_view(zoom=2.0, rotation_deg=90, channel=1)
     readback = client.get_view()
     print(f'view after set_view: {readback}')
-    # zoom/rotation_deg round-trip through float math (e.g. a zoom-power
-    # cast), so compare with a tolerance. channel comes back as the
-    # "0".."2"/"all" string the model tracks (see ViewState::channel), not
-    # the integer index the request sent.
+    # zoom/rotation_deg round-trip through float math, so compare with a
+    # tolerance. channel reads back as a "0".."2"/"all" string, not an int.
     if (not math.isclose(readback['zoom'], 2.0, rel_tol=1e-3)
             or not math.isclose(readback['rotation_deg'], 90.0, abs_tol=1e-3)
             or readback['channel'] != '1'):

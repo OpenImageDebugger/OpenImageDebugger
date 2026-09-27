@@ -7,13 +7,10 @@ from oidscripts.debuggers.interfaces import (
 
 
 def test_within_limit_is_silent():
-    # At the limit: allowed, returns the documented None (no raise).
     assert raise_if_too_large(100, 100) is None
 
 
 def test_none_disables_check():
-    # No limit configured: any size allowed, yet the guard is still
-    # live when a real limit is supplied.
     assert raise_if_too_large(10 ** 12, None) is None
     with pytest.raises(BufferTooLargeError):
         raise_if_too_large(10 ** 12, 100)

@@ -75,9 +75,8 @@ def test_non_dict_first_frame_drops_connection(endpoint_session):
     path, _ = endpoint_session
     sock, _ = _connect(path)
     with sock:
-        # A non-object frame is a malformed-wire error: recv_frame rejects
-        # it and the server drops the connection without a reply, the same
-        # as any other unparseable frame (no error frame is sent).
+        # A non-object frame is a malformed-wire error: the connection is
+        # dropped with no reply, as with any other unparseable frame.
         ep.send_frame(sock, [1])
         with pytest.raises(ConnectionError):
             ep.recv_frame(sock)
@@ -110,9 +109,8 @@ def test_unauthenticated_idle_connection_is_dropped(endpoint_session,
 
 
 def test_deadline_socket_raises_after_budget():
-    # An exhausted absolute budget makes the next recv raise socket.timeout
-    # (an OSError subclass the serve loop already handles), no matter how many
-    # prior recvs a per-recv timer would have reset.
+    # An exhausted absolute budget raises socket.timeout (an OSError the serve
+    # loop handles), however many prior recvs a per-recv timer would reset.
     class _FakeSock(object):
         def settimeout(self, _timeout):
             """No-op: this fake ignores the per-recv socket timeout."""
@@ -145,10 +143,8 @@ def test_deadline_socket_passes_through_within_budget():
 
 
 def test_pre_auth_trickle_cannot_hold_slot(endpoint_session, monkeypatch):
-    # A client that trickles frame bytes -- each arriving within the per-recv
-    # window but together exceeding HANDSHAKE_TIMEOUT -- must still be dropped:
-    # the deadline is absolute across the whole pre-auth frame, not reset per
-    # recv. Without the fix the server would keep reading forever.
+    # Bytes trickled inside the per-recv window but past HANDSHAKE_TIMEOUT in
+    # total must still drop: the pre-auth deadline is absolute, not per-recv.
     monkeypatch.setattr(ep, 'HANDSHAKE_TIMEOUT', 0.2)
     path, _ = endpoint_session
     sock, _ = _connect(path)

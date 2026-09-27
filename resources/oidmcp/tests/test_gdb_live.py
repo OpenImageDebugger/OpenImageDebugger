@@ -25,8 +25,7 @@ GDB = shutil.which('gdb')
 GXX = shutil.which('g++')
 
 # darwin is excluded even when a gdb binary exists (homebrew ships one):
-# without the codesigning ritual macOS gdb cannot control an inferior, so
-# the run fails on the environment, not the code. The CI lane is Linux.
+# unsigned, macOS gdb cannot control an inferior, so the run fails on the env.
 pytestmark = pytest.mark.skipif(
     sys.platform == 'darwin' or GDB is None or GXX is None,
     reason='needs a Linux host with gdb and g++ (see the gdb-live CI lane)')
@@ -35,12 +34,9 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 RESOURCES = REPO_ROOT / 'resources'
 TYPES_JSON = REPO_ROOT / 'testbench' / '.oid' / 'types.json'
 
-# Mirrors testbench/realtypes.cpp's PackedGray8 (data/w/h), which the
-# checked-in types.json matches; kept minimal so the lane needs only g++.
-# Holder exists for the two member paths: a struct-typed local expands to
-# qualified members (`holder.member_gray`), and inside a method the members
-# of `this` surface BARE (`member_gray`), matching lldbbridge's naming.
-# It also inherits one buffer and holds one in an anonymous union.
+# Mirrors testbench/realtypes.cpp's PackedGray8, which the checked-in
+# types.json matches; kept minimal so the lane needs only g++. Holder
+# covers qualified vs BARE `this` member naming.
 FIXTURE_CPP = """\
 struct PackedGray8 {
     unsigned char* data;
@@ -150,8 +146,7 @@ def test_resolver_answers_under_gdb(tmp_path):
     env = dict(os.environ)
     env['OID_TYPES_PATH'] = str(TYPES_JSON)
     proc = subprocess.run(
-        # The probes ride as -x argv elements (executed in order with -ex),
-        # never spliced into a 'source ...' command line: gdb takes source's
+        # Never splice a probe into a 'source ...' line: gdb takes source's
         # rest-of-line verbatim, so a tmp path with spaces would mis-parse.
         [GDB, '-batch', '-nx',
          '-ex', 'set confirm off',

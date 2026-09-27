@@ -58,10 +58,6 @@ def test_frame_from_debugger_guards_falsy_debugger_target_and_process(monkeypatc
     assert not frame_from_debugger(FakeDebugger(FakeTarget(None)))
 
 
-# --- evaluate_in_frame(): the FindVariable fast path for a plain
-# identifier, EvaluateExpression() otherwise, and the error guards around
-# both.
-
 class _FakeSBError:
     def __init__(self, fail=False, message=None):
         self._fail = fail
@@ -234,12 +230,8 @@ def _observable_names(root, observable_typenames):
 
 
 def test_observable_symbols_finds_a_buffer_three_levels_deep():
-    # this.wrapper.inner.image -- must be found by its full dotted name.
-    # The old guard marked the *child's* type just before recursing into
-    # it, so the recursive call's very first check tripped on that same
-    # mark and returned at once -- a member's name (e.g. "image") almost
-    # never equals its own type name (e.g. "cv::Mat"), so the mark nearly
-    # always landed and the walk nearly always stopped after one hop.
+    # A member's name almost never equals its own type name, so a guard that
+    # marks the child's type before recursing stops the walk after one hop.
     image = FakeSBValue('image', 'Buffer')
     inner = FakeSBValue('inner', 'Inner', children=[image])
     wrapper = FakeSBValue('wrapper', 'Wrapper', children=[inner])
@@ -251,9 +243,8 @@ def test_observable_symbols_finds_a_buffer_three_levels_deep():
 
 
 def test_observable_symbols_terminates_on_a_genuine_cycle():
-    # node_b points back to node_a: an actual cycle, not just a deep
-    # chain. The guard must still stop the walk (no RecursionError, no
-    # hang) now that it no longer stops after a single hop regardless.
+    # node_b points back to node_a: an actual cycle, not just a deep chain.
+    # The guard must still stop the walk now it no longer halts after one hop.
     node_a = FakeSBValue('a', 'NodeA')
     node_b = FakeSBValue('b', 'NodeB', children=[node_a])
     node_a.set_children([node_b])
@@ -264,12 +255,8 @@ def test_observable_symbols_terminates_on_a_genuine_cycle():
 
 
 def test_observable_symbols_visits_both_siblings_through_the_same_type():
-    # Two sibling branches ('a' and 'b') share the same intermediate type
-    # ('Wrapper'). A visited-set *shared* across siblings would let the
-    # first branch's mark silently block the second from being descended
-    # into at all; a set *copied* per branch -- so the guard means
-    # "already on this path", not "visited anywhere" -- must still find
-    # both. This is the shared-vs-copied-set decision the fix makes.
+    # Siblings sharing an intermediate type need the visited set COPIED per
+    # branch: "already on this path", not "visited anywhere", or 'b' is lost.
     image_a = FakeSBValue('image', 'Buffer')
     branch_a = FakeSBValue('a', 'Wrapper', children=[image_a])
     image_b = FakeSBValue('image', 'Buffer')
@@ -281,11 +268,8 @@ def test_observable_symbols_visits_both_siblings_through_the_same_type():
     assert found == {'root.a.image', 'root.b.image'}
 
 
-# --- the descent's cost must scale with how many symbols a frame has, not
-# with how much data they hold. A value with a data formatter serves its
-# ELEMENTS as children, so enumerating them costs one wrap and one type
-# test per element (three seconds, on a frame holding one small image),
-# and no element can be a hit the containing value would not already be.
+# A value with a data formatter serves its ELEMENTS as children: enumerating
+# them cost three seconds on one small image, and no element can be a new hit.
 
 def _container_local(element_count):
     """A container-shaped local: `element_count` formatter-provided
@@ -353,9 +337,8 @@ def test_a_buffer_held_as_a_struct_member_is_still_found_beside_a_container():
 
 
 def test_a_member_of_this_still_surfaces_bare():
-    # `this` is a pointer, and lldb serves a pointer-to-class's children
-    # as the pointee's members; observable_symbols() drops the leading
-    # segment so the emitted name is one the frame can evaluate.
+    # lldb serves a pointer-to-class's children as the pointee's members, so
+    # the leading segment is dropped to leave a name the frame can evaluate.
     image = FakeSBValue('image', 'Buffer')
     this = FakeSBValue('this', 'Holder *', children=[image],
                        type_class=LLDB.eTypeClassPointer,
@@ -618,9 +601,8 @@ def test_a_nested_type_hides_an_inherited_field():
 
 
 def test_a_file_static_hidden_by_a_non_observable_member_is_not_listed():
-    # The member is not a buffer, so it never reserves its bare name, but
-    # C++ still resolves that name to it. Offering the static under it
-    # would plot an object the frame never reaches.
+    # The member is not a buffer so it never reserves its bare name, but C++
+    # resolves to it: the static under it would plot an unreachable object.
     member = FakeSBValue('image', 'int', type_class=LLDB.eTypeClassBuiltin)
     this = FakeSBValue('this', 'Holder *', children=[member],
                        type_class=LLDB.eTypeClassPointer,
@@ -651,9 +633,8 @@ def test_a_local_still_outranks_a_member_of_the_same_name():
 
 
 def test_a_file_static_hidden_by_a_class_scope_declaration_is_not_listed():
-    # A static data member or a nested type owns the bare name as firmly
-    # as a data member does, and neither can be enumerated -- lldb only
-    # answers them by name -- so each candidate has to be asked about.
+    # A static member or nested type owns the bare name as firmly as a data
+    # member, and lldb only answers them by name, so each must be asked for.
     this = FakeSBValue('this', 'Holder *', type_class=LLDB.eTypeClassPointer,
                        pointee_type_class=LLDB.eTypeClassClass,
                        static_field_names=('image',),
@@ -678,15 +659,9 @@ def test_a_scalar_local_is_not_descended_into():
     assert scalar.child_fetches == 0
 
 
-# --- LldbBridge.evaluate_expression / get_available_symbols: thin wrappers
-# around the shared functions above. These only prove delegation and
-# LldbBridge's own result shaping (a set of names), not the traversal
-# itself.
-
 def _make_bridge(observable_typenames):
     # Bypass LldbBridge.__init__: it starts a background event-loop thread
-    # and reaches into a real lldb.debugger, neither of which these tests
-    # need.
+    # and reaches into a real lldb.debugger.
     bridge = LldbBridge.__new__(LldbBridge)
     bridge._type_bridge = FakeTypeBridge(observable_typenames)
     # get_lldb_backend() reads this; its value is irrelevant once

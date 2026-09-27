@@ -89,10 +89,8 @@ def test_invalid_json_warns_and_skips_file(tmp_path, caplog):
 
 def test_document_recursion_error_warns_and_skips_file(tmp_path, caplog,
                                                        monkeypatch):
-    # A pathologically deep document can push json.load past the
-    # interpreter's recursion limit; the loader must degrade it like any
-    # other unreadable file rather than let RecursionError abort the whole
-    # debug session.
+    # A pathologically deep document can push json.load past the recursion
+    # limit; that must degrade like any unreadable file, not kill the session.
     caplog.set_level(logging.DEBUG, logger='oidscripts.logger')
     types_file = tmp_path / 'types.json'
     write_doc(types_file, VALID_DOC)
@@ -117,9 +115,8 @@ def test_wrong_version_warns_and_skips_file(tmp_path, caplog):
 
 
 def test_non_integer_version_warns_and_skips_file(tmp_path, caplog):
-    # JSON true/1.0 decode to Python True/1.0, both of which == 1, so a
-    # plain '!=' gate would accept them as version 1. The loader must
-    # require a real int and reject these with a warning.
+    # JSON true/1.0 decode to True/1.0, both of which == 1, so a plain '!='
+    # gate would accept them as version 1; the loader must require a real int.
     for bad_version in (True, 1.0):
         caplog.clear()
         caplog.set_level(logging.DEBUG, logger='oidscripts.logger')
@@ -161,9 +158,6 @@ def test_invalid_entry_skipped_rest_of_file_loads(tmp_path, caplog):
 def test_entry_recursion_error_skips_entry_rest_of_file_loads(tmp_path,
                                                               caplog,
                                                               monkeypatch):
-    # A single pathologically nested value node must not abort loading the
-    # whole file; only that entry is skipped, with a warning naming it,
-    # while a good entry elsewhere in the file still loads.
     caplog.set_level(logging.DEBUG, logger='oidscripts.logger')
     original_validate_entry = declarative._validate_entry
 
@@ -188,10 +182,8 @@ def test_entry_recursion_error_skips_entry_rest_of_file_loads(tmp_path,
 
 
 def test_unknown_document_level_fields_are_ignored(tmp_path):
-    # A document-level key this loader does not recognize (e.g. a future
-    # format addition) must not stop the file from loading. Entry-level
-    # unknown keys are a different matter -- see
-    # test_unknown_entry_key_warns_and_skips_entry below.
+    # An unrecognized document-level key (a future format addition) must not
+    # stop the file loading; entry-level unknown keys are rejected instead.
     document = dict(VALID_DOC, future_key={})
     types_file = tmp_path / 'types.json'
     write_doc(types_file, document)
@@ -199,9 +191,8 @@ def test_unknown_document_level_fields_are_ignored(tmp_path):
 
 
 def test_unknown_entry_key_warns_and_skips_entry(tmp_path, caplog):
-    # A misspelled field name used to load silently, running with a default
-    # in place of the value its author meant to set. The entry is now
-    # skipped with a warning naming the key.
+    # A misspelled field name would otherwise load silently, running with a
+    # default in place of the value its author meant to set.
     caplog.set_level(logging.DEBUG, logger='oidscripts.logger')
     entry = dict(VALID_DOC['types'][0], frobnicate=True)
     document = {'version': 1, 'types': [entry]}
@@ -228,9 +219,8 @@ def test_env_var_lists_files_in_order(tmp_path, monkeypatch):
 
 
 def test_env_var_trims_whitespace_around_separators(tmp_path, monkeypatch):
-    # A formatted list like 'a.json{sep} b.json' leaves a leading space on
-    # the second segment; without trimming it fails os.path.isfile() and is
-    # silently dropped. Both files must still be discovered and loaded.
+    # A formatted list like 'a.json{sep} b.json' leaves a leading space on the
+    # second segment; untrimmed it fails os.path.isfile() and is dropped.
     first = tmp_path / 'first.json'
     second = tmp_path / 'second.json'
     write_doc(first, VALID_DOC)
@@ -273,9 +263,8 @@ def test_walk_up_prefers_closest_directory(tmp_path, monkeypatch):
 
 def test_empty_env_var_disables_discovery_without_walk_up(tmp_path,
                                                           monkeypatch):
-    # An explicitly empty OID_TYPES_PATH means "no user type files": it is
-    # present, so it wins over the walk-up fallback and returns [] rather
-    # than loading a nearby .oid/types.json.
+    # An explicitly empty OID_TYPES_PATH means "no user type files": present,
+    # so it wins over the walk-up fallback instead of loading .oid/types.json.
     (tmp_path / '.oid').mkdir()
     write_doc(tmp_path / '.oid' / 'types.json', VALID_DOC)
     monkeypatch.setenv('OID_TYPES_PATH', '')

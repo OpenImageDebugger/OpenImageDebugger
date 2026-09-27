@@ -11,8 +11,6 @@ integer value (the address of the temporary) instead of the value itself.
 from oidscripts.oidtypes.declarative import _to_int
 
 
-# --- declarative._to_int -----------------------------------------------------
-
 def test_to_int_decimal_string():
     assert _to_int('640') == 640
 
@@ -30,8 +28,6 @@ def test_to_int_passthrough_int():
     assert _to_int(42) == 42
 
 
-# --- LLDB SymbolWrapper numeric / pointer accessors --------------------------
-#
 # lldbbridge hard-imports the `lldb` module, which is unavailable off a live
 # debugger. conftest.py installs the shared stub carrying the constant this
 # file reads (eTypeIsInteger) before any test module is collected, so the
@@ -117,9 +113,8 @@ def test_get_casted_pointer_pointer_type():
 
 
 def test_get_casted_pointer_integer_value_is_the_address():
-    # The reported bug: an integer-typed result (uintptr_t / numeric literal)
-    # must be read as its own value, NOT AddressOf() of the temporary holding
-    # it. The address_of sentinel would win if the old branch were taken.
+    # An integer-typed result (uintptr_t / numeric literal) must be read as
+    # its own value, NOT AddressOf() of the temporary holding it.
     sentinel_address_of = _FakeSBValue(unsigned=0x9999)
     wrapper = SymbolWrapper(_FakeSBValue(
         type_flags=lldb.eTypeIsInteger,

@@ -135,9 +135,8 @@ def test_json_only_call_rejects_declared_payload():
 
 
 def test_client_bounds_received_payload_without_explicit_max(monkeypatch):
-    # Omitting max_bytes must NOT disable the client-side bound: get_buffer
-    # falls back to a safe default ceiling so a misbehaving endpoint can't make
-    # us buffer an unbounded payload.
+    # Omitting max_bytes must NOT disable the client-side bound, or a
+    # misbehaving endpoint could make us buffer an unbounded payload.
     import socket
     import threading
 

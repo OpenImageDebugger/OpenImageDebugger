@@ -127,8 +127,6 @@ def test_session_manager_survives_invalid_max_bytes(monkeypatch):
     assert manager._max_bytes == server.DEFAULT_MAX_BYTES
 
 
-# --- viewer routing (SessionManager._resolve_viewer) ------------------
-
 def test_resolve_viewer_no_selector_picks_only_viewer(live_viewer):
     viewer = live_viewer()
     mgr = server.SessionManager()
@@ -161,10 +159,8 @@ def test_resolve_viewer_by_debugger_pid_pairing(live_viewer):
 
 
 def test_resolve_viewer_debugger_pid_without_viewer_raises(live_viewer):
-    # One live viewer exists, but it is not paired to the requested pid:
-    # this must raise a *distinct* error from the no-live-viewer-at-all
-    # case, naming the specific debugger pid rather than pointing at
-    # OID_AGENT=1 setup instructions.
+    # A live viewer not paired to the requested pid must raise a DISTINCT
+    # error naming that pid, not the OID_AGENT=1 setup message.
     live_viewer(debugger_pid=None)
     mgr = server.SessionManager()
     with pytest.raises(server.NoSessionError) as excinfo:
@@ -183,8 +179,6 @@ def test_resolve_viewer_multiple_paired_picks_most_recent(live_viewer):
     assert resolved.start_time == pytest.approx(200.0)
 
 
-# --- set_view / get_view -----------------------------------------------
-
 def test_set_view_get_view_roundtrip(live_viewer):
     live_viewer()
     mgr = server.SessionManager()
@@ -192,9 +186,8 @@ def test_set_view_get_view_roundtrip(live_viewer):
     assert result['buffer'] == 'grad'
     assert result['zoom'] == pytest.approx(2.0)
     assert result['center'] == [1.0, 2.0]
-    # Fields not passed keep their previous value (absolute/idempotent
-    # set, not a full replace): rotation_deg was never set, so it is
-    # still the fixture's initial None.
+    # set_view is an absolute, idempotent set, not a full replace: fields
+    # that are not passed keep their previous value.
     assert result['rotation_deg'] is None
 
     view = mgr.get_view(None)
@@ -219,10 +212,8 @@ def test_set_view_tool_wraps_errors_as_runtime_error(tmp_path, monkeypatch):
 
 
 def test_set_view_tool_schema_accepts_int_and_str_channel():
-    # The MCP-derived schema must accept a channel as an int index (0/1/2) as
-    # well as a string ("all"): the native endpoint and the docs use int
-    # indices, so a str-only hint would reject the documented channel=0/1/2 at
-    # the schema before the call ever reaches the viewer.
+    # The endpoint and the docs use int channel indices, so a str-only hint
+    # would reject the documented channel=0/1/2 before it reaches the viewer.
     import asyncio
     tools = asyncio.run(server.mcp.list_tools())
     schema = next(t.inputSchema for t in tools if t.name == 'set_view')
@@ -238,8 +229,6 @@ def test_get_view_tool_wraps_errors_as_runtime_error(tmp_path, monkeypatch):
         server.get_view()
     assert 'OID_AGENT=1' in str(excinfo.value)
 
-
-# --- pixel tools falling back to a viewer session -----------------------
 
 def test_fetch_falls_back_to_viewer_when_no_debugger_session(live_viewer):
     live_viewer()
@@ -286,8 +275,6 @@ def test_list_sessions_pairs_debugger_and_viewer(live_endpoint, live_viewer):
               for v in result['viewers'])
 
 
-# --- connect-per-call ------------------------------------------------
-
 def test_each_call_is_a_single_round_trip_no_ping(live_viewer):
     viewer = live_viewer()
     mgr = server.SessionManager()
@@ -307,9 +294,8 @@ def test_control_error_reply_is_not_retried(live_viewer):
 
 
 def test_restarted_endpoint_is_reached_on_the_next_call(live_viewer):
-    # A viewer that restarts between calls publishes a new port and token.
-    # Connect-per-call re-resolves discovery each time, so the next call
-    # reaches the new endpoint with no retry logic present.
+    # A restarted viewer publishes a new port and token; connect-per-call
+    # re-resolves discovery, so no retry logic is needed.
     old = live_viewer(start_time=100.0)
     mgr = server.SessionManager()
     mgr.set_view(None, zoom=1.5)          # connects to old, closes
@@ -323,12 +309,8 @@ def test_restarted_endpoint_is_reached_on_the_next_call(live_viewer):
 
 def test_fetch_cache_does_not_bleed_across_pid_reused_debugger_sessions(
         live_endpoint):
-    # A debug session that exits and a new one that starts under the same
-    # OS pid (pid reuse) must not read back the previous session's cached
-    # bytes, even though both sessions reach the same stop generation (a
-    # freshly started endpoint's stop generation always starts at 0). The
-    # cache key must therefore also discriminate on the endpoint's token,
-    # which is re-randomized on every `agentendpoint.start()`.
+    # Under pid reuse both sessions start at stop generation 0, so the cache
+    # key must also carry the endpoint's token, re-randomized on each start().
     from conftest import FakeBridge, FakeWindow, make_meta
     from oidmcp import discovery
     from oidscripts import agentendpoint
@@ -356,7 +338,7 @@ def test_fetch_cache_does_not_bleed_across_pid_reused_debugger_sessions(
     assert sessions[0].token != old_token         # but a fresh token
 
     _, arr2 = mgr.fetch(None, 'grad')
-    assert arr2[0, 0, 0] == pytest.approx(42.0)  # new session's bytes
+    assert arr2[0, 0, 0] == pytest.approx(42.0)
 
 
 def test_client_is_closed_when_a_call_raises(live_viewer, monkeypatch):

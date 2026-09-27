@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # End-to-end smoke test: real lldb + real endpoint + real client.
-# Usage: run_e2e_lldb.sh <deployed-oid-dir> [oidwindow-bin] [test-image]
-#   <deployed-oid-dir> must contain oid.py, oidscripts/, liboidbridge.
-#   [oidwindow-bin]/[test-image], or the OID_WINDOW_BIN/OID_E2E_IMAGE env
-#   vars, feed the optional viewer leg below (see OID_E2E_VIEWER).
+# <deployed-oid-dir> must contain oid.py, oidscripts/ and liboidbridge.
 set -euo pipefail
 
 OID_DEPLOY=${1:?usage: run_e2e_lldb.sh <deployed-oid-dir> [oidwindow-bin] [test-image]}
@@ -28,9 +25,8 @@ c++ -g -O0 -I "$REPO_ROOT/src/thirdparty/Eigen" \
 
 BREAK_LINE=$(grep -n 'BREAK' "$HERE/fixture.cpp" | cut -d: -f1)
 cat > "$WORK/cmds.lldb" <<EOF
-# Do not let lldb disable ASLR: that uses the personality() syscall, which
-# is blocked by the default container seccomp profile even with
-# CAP_SYS_PTRACE. ASLR is irrelevant to this smoke test.
+# Do not let lldb disable ASLR: personality() is blocked by the default
+# container seccomp profile even with CAP_SYS_PTRACE, and ASLR is moot here.
 settings set target.disable-aslr false
 breakpoint set --file fixture.cpp --line $BREAK_LINE
 run
@@ -39,26 +35,19 @@ EOF
 
 export OID_AGENT=1
 export OID_AGENT_DIR="$WORK/agent"
-# Custom-type leg: RgbFrame in the fixture matches no builtin entry, so if the
-# checker resolves it, the only thing that can have resolved it is this file.
-# Set here rather than in the lldb command file because the engine reads it
-# from the environment of the debugger's own interpreter.
+# RgbFrame matches no builtin entry, so resolving it proves this file was
+# read. Exported here: the engine reads it from the debugger's own env.
 export OID_TYPES_PATH="$HERE/custom_types.json"
 
-# `command script import oid.py` runs its main(), which builds the
-# LldbBridge; that bridge runs queue_request() callbacks on its own
-# Python thread, so the endpoint answers while lldb sits stopped at the
-# breakpoint. stdin from `sleep` only keeps the session alive for the
-# checker (lldb quits on EOF).
+# The bridge runs queue_request() callbacks on its own Python thread, so the
+# endpoint answers while lldb sits stopped. `sleep` stdin: lldb quits on EOF.
 lldb --no-lldbinit --source "$WORK/cmds.lldb" "$WORK/fixture" < <(sleep 90) &
 LLDB_PID=$!
 
 cd "$HERE/../.."
 
-# Prepare the oid-mcp venv from the committed lockfile without a
-# network re-resolve (--frozen) and without executing any dependency
-# build scripts (--no-build); the local project is imported from
-# source via PYTHONPATH below, so it is not installed.
+# --frozen: no network re-resolve; --no-build: no dependency build scripts.
+# The project itself is imported from source via PYTHONPATH below.
 uv sync --frozen --no-build --no-install-project
 STATUS=0
 OID_AGENT_DIR="$WORK/agent" PYTHONPATH="$PWD" .venv/bin/python tests/e2e/check_session.py \
@@ -66,7 +55,6 @@ OID_AGENT_DIR="$WORK/agent" PYTHONPATH="$PWD" .venv/bin/python tests/e2e/check_s
 
 kill "$LLDB_PID" 2>/dev/null || true
 
-# --- Optional viewer-endpoint leg -----------------------------------
 # Drives a *standalone* viewer window (oidwindow --open <image>, no
 # paired debugger) through the same control protocol, exercising
 # list_buffers/get_view/set_view/get_buffer on the viewer side of the
@@ -86,9 +74,8 @@ elif [[ ! -x "$OID_WINDOW_BIN" ]]; then
 elif [[ ! -f "$OID_E2E_IMAGE" ]]; then
     echo "SKIP: OID_E2E_IMAGE not found: $OID_E2E_IMAGE"
 else
-    # The viewer's own agent endpoint creates $WORK/agent/viewer (and its
-    # discovery file) on startup; nothing to prepare here beyond the dir
-    # already shared with the debugger leg above.
+    # The viewer's endpoint creates $WORK/agent/viewer and its discovery
+    # file on startup, so nothing needs preparing beyond the shared dir.
     OID_AGENT=1 OID_AGENT_DIR="$WORK/agent" "$OID_WINDOW_BIN" \
         --open "$OID_E2E_IMAGE" &
     VIEWER_PID=$!
