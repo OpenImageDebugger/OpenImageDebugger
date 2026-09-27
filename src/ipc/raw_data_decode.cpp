@@ -76,7 +76,6 @@ std::optional<std::size_t> padded_payload_size(const int width,
                                                const int channels,
                                                const int stride,
                                                const BufferType type) {
-    // As above: an unrecognised type would be sized as one byte per element.
     if (!is_known_buffer_type(type)) {
         return std::nullopt;
     }

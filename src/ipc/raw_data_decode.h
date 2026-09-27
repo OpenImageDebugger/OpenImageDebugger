@@ -44,15 +44,12 @@ enum class BufferType {
     FLOAT64 = 6
 };
 
-// Largest buffer, in bytes, that any path will accept. Bounds what an
-// untrusted wire declaration can make the viewer allocate, and is the same
-// ceiling Buffer::update() enforces before uploading a texture.
+// Largest buffer, in bytes, that any path will accept: bounds what an
+// untrusted wire declaration can allocate. Buffer::update() enforces it too.
 constexpr std::uint64_t MAX_BUFFER_BYTES = 16ULL * 1024ULL * 1024ULL * 1024ULL;
 
-// True if `byte_count` is past the ceiling above. Always false where size_t
-// cannot represent such a value -- the 32-bit wasm build -- because comparing
-// directly there is a tautology and a hard error under -Werror. That build is
-// bounded by the container's own max_size() instead.
+// True if `byte_count` is past the ceiling above. Always false on 32-bit
+// wasm, where the comparison is a tautology and a hard error under -Werror.
 [[nodiscard]] constexpr bool
 exceeds_max_buffer_bytes(const std::size_t byte_count) {
     if constexpr ((std::numeric_limits<std::size_t>::max)() >
@@ -63,18 +60,15 @@ exceeds_max_buffer_bytes(const std::size_t byte_count) {
     }
 }
 
-// What the viewer can actually display. They live here, below the renderer,
-// so the wire layer can refuse a buffer it would otherwise allocate and then
-// have Buffer::configure() drop.
+// What the viewer can actually display, declared below the renderer so the
+// wire layer can refuse a buffer Buffer::configure() would later drop.
 constexpr int MIN_BUFFER_DIMENSION = 1;
 constexpr int MAX_BUFFER_DIMENSION = 131072; // 2^17, ~the 100k practical max
 constexpr int MIN_CHANNEL_COUNT = 1;
 constexpr int MAX_CHANNEL_COUNT = 4;
 
 // True if the geometry is one the renderer will accept. Deliberately separate
-// from the sizing helpers below: those answer whether a payload can be
-// measured, this answers whether the result is displayable, and the two
-// refusals want different diagnostics.
+// from the sizing helpers below: displayable, not merely measurable.
 [[nodiscard]] constexpr bool
 within_display_limits(const int width, const int height, const int channels) {
     return width >= MIN_BUFFER_DIMENSION && width <= MAX_BUFFER_DIMENSION &&
@@ -83,8 +77,7 @@ within_display_limits(const int width, const int height, const int channels) {
 }
 
 // True if `type` is a value this protocol defines. The wire carries a plain
-// int, and an unknown one would otherwise be silently taken as UNSIGNED_BYTE
-// by type_size()'s default while drawing no pixel label at all.
+// int, and an unknown one would be taken as UNSIGNED_BYTE by type_size().
 [[nodiscard]] constexpr bool is_known_buffer_type(const BufferType type) {
     using enum BufferType;
     return type == UNSIGNED_BYTE || type == UNSIGNED_SHORT || type == SHORT ||
@@ -98,11 +91,8 @@ within_display_limits(const int width, const int height, const int channels) {
 std::vector<std::byte>
 make_float_buffer_from_double(const std::vector<std::byte>& buff_double);
 
-// True if `byte_count` wire bytes can hold every pixel the declared geometry
-// addresses. The last row needs only `width` pixels, not the full `stride`,
-// so a producer that trims trailing row padding is still accepted. It is a
-// floor for one contiguous payload, which is what the single-shot path
-// needs, and it implies nothing about rows being uniformly sized.
+// True if `byte_count` can hold every pixel the declared geometry addresses.
+// A floor: the last row needs only `width` pixels, so trimmed padding passes.
 [[nodiscard]] bool geometry_fits_payload(int width,
                                          int height,
                                          int channels,
@@ -110,11 +100,8 @@ make_float_buffer_from_double(const std::vector<std::byte>& buff_double);
                                          BufferType type,
                                          std::size_t byte_count);
 
-// Bytes a fully padded buffer of this geometry occupies, every row carrying
-// its whole stride. nullopt if the geometry is not renderable (non-positive
-// dimensions, or a stride narrower than the width) or if the size overflows.
-// Row-strip assembly needs this rather than the floor above, because it
-// addresses rows by a single fixed size.
+// Bytes a fully padded buffer occupies, every row at full stride; nullopt if
+// unrenderable or overflowing. Row-strip assembly needs this, not the floor.
 [[nodiscard]] std::optional<std::size_t> padded_payload_size(
     int width, int height, int channels, int stride, BufferType type);
 

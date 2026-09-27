@@ -64,13 +64,10 @@ class BufferAssembler {
         std::size_t total_byte_size;
     };
 
-    // Start transfer for buffer `name`. Returns false (without starting)
-    // unless total_byte_size is exactly the fully padded size of the
-    // declared width/height/channels/stride/type -- stricter than
-    // geometry_fits_payload(), because row-strip chunks are spaced
-    // uniformly and so cannot tolerate a trimmed final row; chunk()/end()
-    // then fail closed for `name` as if begin() was never called. Returns
-    // true once the transfer has started.
+    // Start transfer for `name`. Rejected unless total_byte_size is exactly
+    // the padded size -- stricter than geometry_fits_payload(), since row
+    // strips are uniformly spaced. A rejected begin also drops any transfer
+    // in flight under `name`: chunk()/end() then fail closed.
     [[nodiscard]] bool begin(BeginParams params);
 
     // Append row-strip chunk. Returns false if name unknown, rows out of

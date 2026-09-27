@@ -115,22 +115,13 @@ RgbaImage normalize_to_rgba8_impl(const std::uint8_t* data,
             const auto col_offset = x * static_cast<std::size_t>(channels_i);
             auto c = std::size_t{0};
 
-            // Perform contrast normalization
             for (; c < channels; ++c) {
                 const auto in_val = static_cast<float>(in_ptr[col_offset + c]);
 
-                // Rounded, not truncated. The display path renders through
-                // the GPU with round-to-nearest, so a truncating export
-                // wrote an image up to one level darker than the one the
-                // user was looking at when they asked for it. Truncation
-                // also biases every sample downward by half a level on
-                // average, where rounding biases nothing, and both
-                // extension hosts already round, so this is what makes the
-                // three implementations agree.
-                //
-                // Rounding after the clamp, not before: the clamp bounds
-                // the value to [0, 255] first, so nothing can round to 256
-                // and wrap the cast.
+                // Rounded, not truncated: the GPU display path and both
+                // extension hosts round to nearest, so a truncating export
+                // renders darker than the view. Round after the clamp:
+                // nothing can then reach 256 and wrap the cast.
                 unformatted_pixel[c] = static_cast<std::uint8_t>(std::lround(
                     std::clamp((in_val * bc_comp[c] +
                                 bc_comp[4 + c] *
@@ -140,19 +131,16 @@ RgbaImage normalize_to_rgba8_impl(const std::uint8_t* data,
                                255.f)));
             }
 
-            // Grayscale: Repeat first channel into G and B
             if (channels == 1) {
                 repeat_first_channel_into_g_and_b(unformatted_pixel, c);
             }
 
-            // The remaining, non-filled channels will be set to a default value
             for (; c < 4; ++c) {
                 constexpr auto default_channel_vals =
                     std::array<std::uint8_t, 4>{0, 0, 0, 255};
                 unformatted_pixel[c] = default_channel_vals[c];
             }
 
-            // Reorganize pixel layout according to user provided format
             for (c = 0; c < 4; ++c) {
                 out_ptr[pixel_layout[c]] = unformatted_pixel[c];
             }
@@ -293,9 +281,8 @@ bool export_npy_impl(const std::uint8_t* data,
     auto ofs = std::ofstream{std::filesystem::path{path}, std::ios::binary};
     write_npy_header(ofs, npy_descr(type), height, width, channels_i);
 
-    // step is measured in pixels; each pixel spans channels * sizeof(T) bytes.
-    // Offsetting the byte pointer directly avoids assuming the input is an
-    // aligned, live T[] sequence.
+    // step is measured in pixels, not bytes; offsetting the byte pointer
+    // avoids assuming the input is an aligned, live T[] sequence.
     const auto row_bytes = sizeof(T) * channels * width_i;
     const auto row_stride = sizeof(T) * channels * step_i;
     for (std::size_t y = 0; y < height_i; ++y) {

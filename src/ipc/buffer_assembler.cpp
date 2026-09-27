@@ -34,9 +34,8 @@
 namespace oid {
 
 bool BufferAssembler::begin(BeginParams params) {
-    // A rejected begin must also drop any transfer already in flight under
-    // this name, or its chunks would keep landing in the previous
-    // allocation, under the previous geometry.
+    // A rejected begin must drop any transfer already in flight under this
+    // name, or its chunks keep landing in the previous allocation/geometry.
     auto name = params.variable_name;
     // An unknown type would be taken as UNSIGNED_BYTE by type_size(), so the
     // size arithmetic below would silently use the wrong element width.
@@ -51,16 +50,13 @@ bool BufferAssembler::begin(BeginParams params) {
         return false;
     }
     // The renderer would refuse this geometry anyway (Buffer::configure());
-    // catching it here means the transfer never gets allocated and assembled
-    // first.
+    // rejecting here avoids allocating and assembling the transfer first.
     if (!within_display_limits(params.width, params.height, params.channels)) {
         in_progress_.erase(name);
         return false;
     }
-    // Exact, not a lower bound: chunk() spaces rows by
-    // total_byte_size / height, so the payload must have a uniform row size.
-    // Requiring the padded size also makes the total divisible by height, so
-    // bytes-per-row is always meaningful.
+    // Exact, not a lower bound: chunk() spaces rows by total_byte_size /
+    // height, and requiring the padded size keeps that division exact.
     if (const auto required =
             padded_payload_size(params.width,
                                 params.height,
@@ -97,9 +93,8 @@ bool BufferAssembler::chunk(const std::string& name,
         return false;
     }
 
-    // `stride` is row stride in elements, not bytes; derive real
-    // bytes-per-row from the allocation so multi-channel / multi-byte
-    // element buffers assemble correctly.
+    // `stride` is row stride in elements, not bytes; derive bytes-per-row
+    // from the allocation so multi-channel/multi-byte buffers assemble right.
     const auto bytes_per_row = entryBytes.size() / height;
     const auto offset = row_offset * bytes_per_row;
     if (const auto expected = row_count * bytes_per_row;
