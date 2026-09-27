@@ -11,10 +11,10 @@ import numpy as np
 def make_image(size: int = 256) -> np.ndarray:
     y, x = np.mgrid[0:size, 0:size]
     img = np.zeros((size, size, 3), np.uint8)
-    img[..., 0] = x.astype(np.uint8)                                 # red ramp L->R
-    img[..., 1] = y.astype(np.uint8)                                 # green ramp T->B
-    img[..., 2] = (((x // 32 + y // 32) % 2) * 255).astype(np.uint8)  # blue checker
-    img[np.abs(x - y) < 4] = 255                                     # white diagonal
+    img[..., 0] = x.astype(np.uint8)
+    img[..., 1] = y.astype(np.uint8)
+    img[..., 2] = (((x // 32 + y // 32) % 2) * 255).astype(np.uint8)
+    img[np.abs(x - y) < 4] = 255
     return img
 
 

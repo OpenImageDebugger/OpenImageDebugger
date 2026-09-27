@@ -16,10 +16,8 @@ import socket
 
 from ._wireframe import recv_frame, send_frame
 
-# Client-side ceiling on a single get_buffer payload, applied when the caller
-# does not request a smaller cap. Matches the endpoint's own default ceiling so
-# a legitimate buffer always fits, while still bounding how much a misbehaving
-# endpoint can make us read. server.py imports this as its transfer-cap default.
+# Matches the endpoint's own default ceiling, so a legitimate buffer always
+# fits while a misbehaving endpoint still can't make us read unbounded.
 DEFAULT_MAX_BYTES = 256 * 1024 * 1024
 
 
@@ -49,10 +47,8 @@ class ControlClient:
 
     def _call(self, request: dict,
               max_payload: int | None = 0) -> tuple[dict, bytes]:
-        # Default max_payload=0: control calls are JSON-only, so a server (or a
-        # corrupted frame) declaring a binary payload is rejected before
-        # recv_frame allocates for it. get_buffer, the only payload-carrying
-        # call, passes its own cap explicitly.
+        # Control calls are JSON-only, so max_payload=0 rejects a declared
+        # binary payload before recv_frame allocates for it.
         send_frame(self._sock, request)
         response, payload = recv_frame(self._sock, max_payload=max_payload)
         if 'error' in response:
@@ -86,11 +82,8 @@ class ControlClient:
         request = {'method': 'get_buffer', 'symbol': symbol}
         if max_bytes is not None:
             request['max_bytes'] = max_bytes
-        # Enforce the cap on the client side too: bound how many payload bytes
-        # we will read so a misbehaving endpoint can't make us buffer more
-        # than requested. When the caller omits max_bytes we still apply a safe
-        # default ceiling instead of reading unbounded. The endpoint rejects
-        # buffers above the cap, so a legitimate payload always fits.
+        # Bound the read client-side too, so a misbehaving endpoint cannot
+        # make us buffer more than the cap the endpoint itself enforces.
         limit = max_bytes if max_bytes is not None else DEFAULT_MAX_BYTES
         meta, payload = self._call(request, max_payload=limit)
         meta.pop('payload', None)
