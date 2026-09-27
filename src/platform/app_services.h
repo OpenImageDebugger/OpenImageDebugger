@@ -63,19 +63,10 @@ struct Endpoint {
 // polling starts). Native: no-op.
 void install_platform_hooks();
 
-// Non-native: register `model` as the sink for file bytes an embedding host
-// pushes in (the host reads the file and hands the viewer the bytes to
-// decode). Native: no-op -- the native build opens files itself via the OS
-// dialog and the frame-loop file-open queue. Call once, after the model is
-// constructed and before the main loop starts.
+// Non-native: sink for host-pushed file bytes; call once before the main loop.
 void register_file_open_sink(host::IpcBufferModel& model);
 
-// Non-native: hands the out-of-tree platform port the same
-// model/stages/ui/canvas this frontend renders through, so the port's own
-// agent glue can adapt them behind the shared agent ViewModel seam
-// (host/agent/view_model.h). Native: no-op -- the native agent endpoint is
-// assembled directly in main.cpp (NativeViewModel + AgentServer). Call
-// once, after StageManager construction and before the frame loop starts.
+// Non-native: hands the port the model/stages/ui/canvas; call once pre-loop.
 void register_agent_targets(oid::host::IpcBufferModel& model,
                             oid::host::StageManager& stages,
                             oid::host::UiState& ui,
@@ -94,10 +85,7 @@ class SettingsBackend {
 
     [[nodiscard]] host::AppSettings load() const;
 
-    // Which parts of AppSettings this build is entitled to persist. Shared
-    // code asks rather than assuming, because the answer differs by platform
-    // and the wrong answer is silent: it sends an embedding host state that
-    // the host already owns, and reads it back as an instruction.
+    // A wrong scope silently feeds the host back state it already owns.
     [[nodiscard]] host::SettingsScope scope() const;
 
     [[nodiscard]] std::function<void(const host::AppSettings&)>
@@ -150,18 +138,11 @@ bool perform_export(const Buffer& buffer,
                     std::string& status_message,
                     std::string& last_export_dir);
 
-// Shows a native OS file-selection dialog (multi-select) filtered to the
-// image and .npy formats the viewer supports. Returns the chosen absolute
-// paths, or an empty vector if the user cancels. `window` may be null; the
-// dialog is shown unparented either way.
+// Multi-select OS open dialog; empty on cancel. `window` may be null.
 [[nodiscard]] std::vector<std::string> request_open_files(GLFWwindow* window);
 
-// Shows the native OS save dialog filtered to the supported export formats
-// (from `export_formats()`), seeded with `default_dir` as the folder and
-// `default_name` as the filename. Returns the chosen absolute path, or
-// std::nullopt if the user cancels or the dialog cannot open. Native-only:
-// the non-native port neither implements nor calls this (its confirm_export
-// delegates the save dialog to the embedding host).
+// OS save dialog; nullopt on cancel or when the dialog cannot open.
+// Native-only: no non-native port has it.
 [[nodiscard]] std::optional<std::string>
 request_save_path(const std::string& default_dir,
                   const std::string& default_name);
