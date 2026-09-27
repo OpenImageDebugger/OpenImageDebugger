@@ -42,8 +42,8 @@ namespace oid::host {
 
 namespace {
 
-// Headers generated from src/resources/icons/*.svg; every IconId has a
-// matching array, so there is no "not found" case.
+// Headers generated from the SVGs under src/resources/icons; every IconId
+// has a matching array, so there is no "not found" case.
 std::pair<const unsigned char*, std::size_t> svg_source_for(const IconId id) {
     using enum IconId;
     switch (id) {
