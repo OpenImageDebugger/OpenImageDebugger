@@ -188,9 +188,8 @@ void draw_canvas_pane(oid::host::GlfwCanvas& canvas,
     sel.resize_callback(lw, lh);
     const GLuint tex = view.render(sel);
 
-    // The backend samples every texture through its own linear sampler;
-    // the stage texture is drawn 1:1 in framebuffer pixels and must stay
-    // nearest so a fractional DPI scale doesn't blur it.
+    // The backend's sampler is linear; the stage texture is drawn 1:1 in
+    // framebuffer pixels and must stay nearest, or fractional DPI blurs it.
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     draw_list->AddCallback(
         ImGui::GetPlatformIO().DrawCallback_SetSamplerNearest, nullptr);
@@ -269,19 +268,13 @@ void draw_canvas_pane(oid::host::GlfwCanvas& canvas,
     }
 }
 
-// Qt parity: the legacy Qt frontend's imageList minimumSize is 150
-// (width, 0 height; see tag legacy-qt); the left pane never shrinks
-// narrower than that.
+// Qt parity: the legacy Qt frontend's imageList minimum width is 150
+// (see tag legacy-qt).
 constexpr float MIN_PANE_W = 150.0f;
-// Splitter handle width. The handle is flush against the list pane and
-// painted, so this whole band is both visible and grabbable -- wide
-// enough to make a comfortable, easy-to-see target.
+// The handle is painted and flush against the list pane, so this whole
+// band is grabbable: wide enough to be an easy target.
 constexpr float SPLITTER_W = 12.0f;
 
-// Initializes the GLFW backend window (at the saved size/position) and the
-// ImGui layer, then seeds the canvas-pane logical size to the window's
-// initial size. Returns false if either backend or ImGui failed to
-// initialize (main() then exits with status 1, exactly as it did inline).
 bool initialize_backend_and_ui(oid::host::GlfwHostBackend& backend,
                                oid::host::ImGuiLayer& imgui,
                                const oid::host::AppSettings& loaded,
@@ -330,9 +323,6 @@ bool initialize_backend_and_ui(oid::host::GlfwHostBackend& backend,
     return true;
 }
 
-// Constructs the shared GlfwCanvas (SizeProvider bound to `pane_size`) and
-// resolves its OpenGL entry points. Returns false (after printing the same
-// diagnostic main() used to print inline) if entry-point resolution fails.
 bool create_canvas(GLFWwindow* window,
                    PaneRenderSize& pane_size,
                    std::shared_ptr<oid::host::GlfwCanvas>& canvas) {
@@ -354,14 +344,8 @@ bool create_canvas(GLFWwindow* window,
     return true;
 }
 
-// Groups the FrameContext members that exist solely to feed
-// persist_settings_if_dirty below: the per-session dedup set, the merged
-// previous-buffers list, the debounced saver, and the scope saying which
-// slice of settings this build owns. None of the four is read anywhere
-// else in the frame loop -- unlike, say, left_pane_w or last_export_dir,
-// which persist_settings_if_dirty also reads but which stay directly on
-// FrameContext because the pane-splitter layout and the export path read
-// them too.
+// The FrameContext members read only by persist_settings_if_dirty; ones
+// the layout and export paths also read stay directly on FrameContext.
 struct SettingsPersistence {
     std::set<std::string, std::less<>>& seen_this_session;
     std::vector<oid::host::PreviousBuffer>& prev_buffers;
@@ -369,17 +353,8 @@ struct SettingsPersistence {
     oid::host::SettingsScope settings_scope;
 };
 
-// Aggregates references to the frame loop's per-main() state so the frame
-// lambda's body (originally ~180 lines, all under one capture list) can be
-// split into named helpers below without re-threading each one's own
-// parameter list. Every member is a reference to a main()-local that
-// outlives the frame loop (the loop runs to completion inside main()), so
-// holding references here is safe; nothing here is copied out of the
-// locals the lambda used to mutate through its capture list -- except
-// `settings_persistence.settings_scope`, which is a plain value (an enum,
-// cheap to copy) rather than a reference to anything. settings_persistence
-// itself groups the settings-persistence-only state; see its comment
-// above.
+// Members that are references point at main() locals that outlive the
+// frame loop, so each helper takes one ctx rather than a capture list.
 struct FrameContext {
     oid::host::IpcClient& ipc;
     oid::host::UiState& ui;
@@ -399,18 +374,15 @@ struct FrameContext {
     SettingsPersistence settings_persistence;
     oid::host::FileOpenQueue& file_open_queue;
 #if !defined(__EMSCRIPTEN__)
-    // Non-null only when OID_AGENT=1; see the construction site in main()
-    // and the per-frame drain() call below. Native-only: the Emscripten
-    // build has no asio transport (its agent glue lives in the out-of-tree
-    // platform port), so the whole endpoint is compiled out there.
+    // Non-null only when OID_AGENT=1. Native-only: the Emscripten build has
+    // no asio transport, so the whole endpoint is compiled out there.
     oid::host::agent::AgentServer* agent = nullptr;
 #endif
 };
 
 #if !defined(__EMSCRIPTEN__)
-// Dispatches agent requests queued since the last rendered frame on this
-// (the GL) thread. Native-only: the Emscripten build has no agent endpoint
-// (its glue lives in the out-of-tree platform port), so this is a no-op.
+// Dispatches agent requests queued since the last frame, on the GL
+// thread. Native-only: the Emscripten build has no agent endpoint.
 void drain_agent(const FrameContext& ctx) {
     if (ctx.agent != nullptr) {
         ctx.agent->drain();
@@ -424,17 +396,9 @@ void drain_agent(FrameContext& /*ctx*/) {}
 // Drains inbound IPC and reconciles the buffer-list thumbnail cache for
 // this frame; must run before any panel below reads the model.
 void poll_ipc_and_update_thumbnails(FrameContext& ctx) {
-    // Drain inbound IPC before drawing anything this frame, so the
-    // model (and thus every panel below) reflects the debugger's
-    // latest state, and refresh the symbol-search candidate list
-    // from it.
     ctx.ipc.poll();
     ctx.ui.set_available_symbols(ctx.ipc.available_symbols());
 
-    // Buffer-list thumbnails: reset the per-frame icon-render budget
-    // and drop cached textures for buffers no longer in the model,
-    // now that ipc.poll() above has reconciled the model for this
-    // frame.
     ctx.thumbnails.begin_frame();
     std::vector<std::string> live_buffer_names;
     live_buffer_names.reserve(ctx.model.size());
@@ -444,10 +408,7 @@ void poll_ipc_and_update_thumbnails(FrameContext& ctx) {
     ctx.thumbnails.evict_missing(live_buffer_names);
 }
 
-// Draws the menu bar and handles the frame's global keyboard shortcuts
-// (quit, go-to toggle, symbol-search focus). Returns whether the symbol
-// search box should claim focus this frame (draw_main_ui's search panel
-// acts on it).
+// Returns whether the symbol search box should claim focus this frame.
 bool process_menu_and_shortcuts(const FrameContext& ctx) {
     bool request_quit = false;
     bool request_open = false;
@@ -456,24 +417,14 @@ bool process_menu_and_shortcuts(const FrameContext& ctx) {
         glfwSetWindowShouldClose(ctx.backend.window(), 1);
     }
 
-    // Primary shortcut modifier: accept EITHER Ctrl or Cmd/Super so
-    // the shortcuts follow each platform's convention without a
-    // compile-time split. On macOS the Qt app binds "Ctrl+..." to Cmd,
-    // so Cmd must work; on Linux/Windows it is Ctrl. This matters for
-    // non-native builds too: the GLFW shim maps the host's metaKey to
-    // GLFW_MOD_SUPER -> io.KeySuper, so a compile-time __APPLE__ split
-    // (undefined on non-native builds) would wrongly force Ctrl-only
-    // even on macOS. Accepting both is harmless: Ctrl+K/Ctrl+L collide
-    // with nothing, and Ctrl stays as a reliable fallback wherever the
-    // host reserves Cmd (e.g. a full tab's Cmd+L address bar; the
-    // embedding host's webview does deliver Cmd).
+    // Accept EITHER Ctrl or Cmd: macOS Qt binds "Ctrl+..." to Cmd, and Ctrl
+    // stays the fallback where the host reserves Cmd (a tab's Cmd+L address
+    // bar). A compile-time __APPLE__ split is undefined on non-native builds,
+    // whose GLFW shim maps metaKey to GLFW_MOD_SUPER.
     const bool shortcut_mod = ImGui::GetIO().KeyCtrl || ImGui::GetIO().KeySuper;
 
-    // Ctrl+L (Cmd+L on macOS) toggles the go-to widget (parity
-    // with the Qt app's toggle_go_to_dialog() global QShortcut). A
-    // modified key is never text input, so this fires even while a
-    // text field holds focus -- NOT gated on WantCaptureKeyboard
-    // (see shortcuts.h).
+    // Ctrl/Cmd+L toggles the go-to widget (Qt parity). A modified key is
+    // never text input, so this is NOT gated on WantCaptureKeyboard.
     if (oid::host::should_fire_ctrl_shortcut(
             shortcut_mod, ImGui::IsKeyPressed(ImGuiKey_L, /*repeat=*/false))) {
         ctx.goto_open = !ctx.goto_open;
@@ -481,9 +432,6 @@ bool process_menu_and_shortcuts(const FrameContext& ctx) {
     oid::host::draw_goto_panel(
         ctx.ui, ctx.stages, ctx.goto_open, ctx.svg_icons);
 
-    // Ctrl+O (Cmd+O on macOS) opens the native file dialog, same as
-    // File > Open. Like Ctrl+L, it fires regardless of keyboard capture
-    // and reuses the same platform modifier (shortcut_mod).
     if (oid::host::should_fire_ctrl_shortcut(
             shortcut_mod, ImGui::IsKeyPressed(ImGuiKey_O, /*repeat=*/false))) {
         request_open = true;
@@ -493,13 +441,8 @@ bool process_menu_and_shortcuts(const FrameContext& ctx) {
             oid::platform::request_open_files(ctx.backend.window()));
     }
 
-    // Ctrl+K (Cmd+K on macOS) focuses the symbol search box
-    // (parity with the Qt app's global QShortcut calling
-    // symbolList->setFocus()). Computed once per frame, before the
-    // panel draws, so draw_symbol_search() can act on it the same
-    // frame. Like Ctrl+L, it fires regardless of keyboard capture
-    // (a modified key is not text input) and reuses the same
-    // platform modifier (shortcut_mod).
+    // Ctrl/Cmd+K focuses the symbol search box (Qt parity). Computed before
+    // the panel draws so draw_symbol_search can act on it the same frame.
     bool focus_symbol_search = false;
     if (oid::host::should_fire_ctrl_shortcut(
             shortcut_mod, ImGui::IsKeyPressed(ImGuiKey_K, /*repeat=*/false))) {
@@ -508,11 +451,6 @@ bool process_menu_and_shortcuts(const FrameContext& ctx) {
     return focus_symbol_search;
 }
 
-// Decodes and upserts every file path queued so far, whether seeded once
-// from the `-o`/`--open` CLI flags or pushed by File > Open / Ctrl+O on any
-// later frame. Reports the outcome on the status bar (success) or stderr
-// (failures), mirroring the FileOpenQueue unit tests'
-// succeeded/failed/last_error/last_success fields.
 void process_pending_file_opens(FrameContext& ctx) {
     if (ctx.file_open_queue.empty()) {
         return;
@@ -544,23 +482,14 @@ void process_pending_file_opens(FrameContext& ctx) {
     }
 }
 
-// Draws the app-chrome host body: menu-bar-adjacent layout math, the left
-// (buffer list) pane, the draggable splitter, the right (canvas) pane, and
-// the status bar. `focus_symbol_search` comes from
-// process_menu_and_shortcuts (Ctrl+K), computed earlier in the frame so the
-// symbol-search panel can act on it this same frame.
 void draw_main_ui(const FrameContext& ctx, const bool focus_symbol_search) {
-    // Host body: fills the viewport work area (BeginMainMenuBar
-    // already shrank vp->WorkPos/WorkSize to sit below the menu
-    // bar). Fixed pos/size, no title bar, no move/resize/scrollbar
-    // -- this is the app-chrome frame the LEFT (buffer list) and
-    // RIGHT (canvas) panes and the status bar sit inside.
+    // BeginMainMenuBar already shrank vp->WorkPos/WorkSize to sit below
+    // the menu bar, so filling the work area needs no menu-height fudge.
     const ImGuiViewport* vp = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(vp->WorkPos);
     ImGui::SetNextWindowSize(vp->WorkSize);
-    // Qt parity: centralwidget's QHBoxLayout has 4/4/4/4 margins
-    // (leftMargin/topMargin/rightMargin/bottomMargin; see tag
-    // legacy-qt).
+    // Qt parity: centralwidget's QHBoxLayout has 4/4/4/4 margins (see
+    // tag legacy-qt).
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
     if (constexpr ImGuiWindowFlags host_flags =
             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
@@ -568,21 +497,14 @@ void draw_main_ui(const FrameContext& ctx, const bool focus_symbol_search) {
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
             ImGuiWindowFlags_NoBringToFrontOnFocus;
         ImGui::Begin("##host_body", nullptr, host_flags)) {
-        // Reserve the status-bar strip from font metrics (a
-        // Separator + one text line) rather than a fixed literal, so
-        // it scales with the HiDPI-rasterized UI font set up in
-        // setup_ui_fonts() -- otherwise the status text clips on
-        // Retina displays.
+        // From font metrics, not a literal, so the strip scales with the
+        // HiDPI-rasterized UI font -- otherwise status text clips on Retina.
         const float status_h = ImGui::GetTextLineHeightWithSpacing() +
                                ImGui::GetStyle().ItemSpacing.y;
         const float avail_h =
             (std::max)(ImGui::GetContentRegionAvail().y - status_h, 0.0f);
-        // Qt parity for the splitter's right-hand stop: QSplitter
-        // stops when frame_image hits its layout minimum, which is
-        // dominated by the toolbar row (9 fixed-26px buttons +
-        // "Format:" label + the 100px combo, with a spacing gap
-        // between each of the 11 items). Reserve that width for the
-        // canvas pane instead of a flat MIN_PANE_W.
+        // Qt parity for the splitter's right-hand stop: frame_image's
+        // layout minimum is the toolbar row (9 26px buttons, label, combo).
         const float min_canvas_w = 9.0f * 26.0f +
                                    ImGui::CalcTextSize("Format:").x + 100.0f +
                                    10.0f * ImGui::GetStyle().ItemSpacing.x;
@@ -595,9 +517,6 @@ void draw_main_ui(const FrameContext& ctx, const bool focus_symbol_search) {
         // selection, delete -- see thumbnail_cache.h).
         ImGui::BeginChild(
             "##list_pane", ImVec2(ctx.left_pane_w, avail_h), true);
-        // Symbol search sits above the buffer list (parity with the
-        // Qt app's layout: SymbolSearchInput above the buffer list
-        // widget).
         oid::host::draw_symbol_search(ctx.ui, ctx.ipc, focus_symbol_search);
         oid::host::draw_buffer_list(ctx.ui,
                                     ctx.model,
@@ -608,26 +527,8 @@ void draw_main_ui(const FrameContext& ctx, const bool focus_symbol_search) {
                                     ctx.last_export_dir);
         ImGui::EndChild();
 
-        // Draggable splitter handle, flush against the list pane's
-        // right edge. ctx.left_pane_w refers to a main() local, so
-        // the width persists frame to
-        // frame and
-        // across selection changes (parity with QSplitter's draggable
-        // handle).
-        //
-        // SameLine(0,0) on both sides is load-bearing: a plain
-        // SameLine() inserts the default ItemSpacing.x (~8px) of dead,
-        // non-grabbable space before AND after this button, which both
-        // offsets the 6px grab band ~8px to the right of the visible
-        // divider the user aims at and leaves an 8px gap before the
-        // canvas begins. The net effect is a splitter that only grabs
-        // from a narrow sliver (feels like it "works only sometimes")
-        // while clicks just past it fall onto the canvas and pan the
-        // image (feels like "the background drags the image"). On
-        // non-native builds the resize cursor is also stubbed out by
-        // the GLFW shim, so a mis-aimed grab gives no feedback -- hence
-        // painting the handle (below) so there is something visible to
-        // aim at.
+        // SameLine(0,0) on both sides is load-bearing: the default
+        // ItemSpacing offsets the grab band ~8px from the painted divider.
         ImGui::SameLine(0.0f, 0.0f);
         ImGui::InvisibleButton("##vsplit", ImVec2(SPLITTER_W, avail_h));
         const bool split_hot = ImGui::IsItemHovered() || ImGui::IsItemActive();
@@ -640,7 +541,8 @@ void draw_main_ui(const FrameContext& ctx, const bool focus_symbol_search) {
                            MIN_PANE_W,
                            max_pane_w);
         }
-        // Paint the handle so it reads as a grabbable divider.
+        // The GLFW shim stubs the resize cursor out on non-native builds,
+        // so this paint is the only thing left to aim a grab at.
         ImGui::GetWindowDrawList()->AddRectFilled(
             ImGui::GetItemRectMin(),
             ImGui::GetItemRectMax(),
@@ -656,22 +558,14 @@ void draw_main_ui(const FrameContext& ctx, const bool focus_symbol_search) {
                           false,
                           ImGuiWindowFlags_NoScrollbar |
                               ImGuiWindowFlags_NoScrollWithMouse);
-        // Qt parity: frame_image's QVBoxLayout (see tag legacy-qt)
-        // spaces its rows (toolbar, canvas) 3px apart; only the Y
-        // component changes so horizontal spacing inside the
-        // toolbar row is unaffected.
+        // Qt parity: frame_image's QVBoxLayout spaces its rows 3px apart
+        // (see tag legacy-qt); Y only, so toolbar spacing is unaffected.
         ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 3.0f);
-        // Toolbar first so draw_canvas_pane's
-        // GetContentRegionAvail() (used to size the offscreen
-        // texture below) reflects the space left after this row,
-        // not the whole pane.
+        // Toolbar first so draw_canvas_pane's GetContentRegionAvail() sees
+        // the space left after this row, not the whole pane.
         oid::host::draw_toolbar(ctx.ui, ctx.stages, ctx.model, ctx.goto_open);
-        // Contrast min/max editor for the selected buffer, above
-        // the canvas (parity with the legacy Qt frontend's
-        // minMaxEditor row in frame_image's QVBoxLayout; see tag
-        // legacy-qt); shown only while the toolbar's acEdit toggle
-        // is on (parity with Qt's acEdit -> minMaxEditor visibility
-        // binding).
+        // Qt parity: the minMaxEditor row above the canvas in frame_image's
+        // QVBoxLayout (see tag legacy-qt).
         if (ctx.ui.ac_editor_visible()) {
             oid::host::draw_contrast_panel(ctx.ui, ctx.stages, ctx.svg_icons);
         }
@@ -685,9 +579,8 @@ void draw_main_ui(const FrameContext& ctx, const bool focus_symbol_search) {
                              ctx.model,
                              ctx.pane_size);
         }
-        // else: selected buffer's Stage failed to initialize (or
-        // the model is empty); skip rendering the canvas this
-        // frame, but keep the rest of the UI going.
+        // No else: a Stage that failed to initialize (or an empty model)
+        // just skips the canvas this frame; the rest of the UI keeps going.
         ImGui::PopStyleVar();
         ImGui::EndChild();
 
@@ -698,12 +591,8 @@ void draw_main_ui(const FrameContext& ctx, const bool focus_symbol_search) {
     ImGui::PopStyleVar();
 }
 
-// Looks up the confirmed export's target buffer (by model index -> live
-// Stage -> Buffer component, mirroring the Qt app's
-// UIEventHandler::export_buffer() lookup chain; see panel_accessors.h's
-// buffer_of()) and performs the export if found. Early-returns (leaving
-// `status` empty) on each lookup miss instead of nesting three deep,
-// preserving the original guard order and side effects exactly.
+// Mirrors the Qt app's UIEventHandler::export_buffer() lookup chain;
+// leaves `status` empty on a miss, which handle_export_requests reports.
 void export_confirmed_buffer(const FrameContext& ctx, std::string& status) {
     const auto idx = ctx.ui.model_index_of(ctx.export_dialog.buffer_name);
     if (!idx.has_value()) {
@@ -721,20 +610,14 @@ void export_confirmed_buffer(const FrameContext& ctx, std::string& status) {
         *buffer, ctx.export_dialog, ctx.ipc, status, ctx.last_export_dir);
 }
 
-// Export request pump: an ImGui action queues a pending export request,
-// then confirm_export shows the native OS save dialog (native) or consumes
-// the request (non-native); on confirmation the selected buffer is
-// exported and the outcome is recorded in the status bar. A successful
-// export also updates `last_export_dir` from the saved file's parent
-// directory, so the next dialog open (and the persisted settings snapshot)
-// default to it.
+// Export pump: confirm_export shows the native OS save dialog (native)
+// or consumes the queued request (non-native).
 void handle_export_requests(const FrameContext& ctx) {
     if (!oid::platform::confirm_export(ctx.export_dialog)) {
         return;
     }
-    // perform_export always sets a non-empty status, so an empty
-    // status afterwards means the buffer lookup failed (deleted
-    // between dialog-open and confirm).
+    // perform_export always sets a non-empty status, so an empty one
+    // means the buffer was deleted between dialog-open and confirm.
     std::string status;
     export_confirmed_buffer(ctx, status);
     if (status.empty()) {
@@ -743,15 +626,9 @@ void handle_export_requests(const FrameContext& ctx) {
     ctx.ui.set_status_message(status);
 }
 
-// Recomputes the merged previous-buffers list, builds a live settings
-// snapshot, and hands it to the saver (debounced disk/IPC write).
+// Runs every rendered frame: bounded by the currently-loaded buffer count,
+// and the debounced saver does no I/O unless it decides to flush.
 void persist_settings_if_dirty(const FrameContext& ctx) {
-    // Settings persistence: recompute the merged
-    // previous-buffers list from this frame's model contents, build
-    // a live AppSettings snapshot, and hand it to the saver, which
-    // debounces the actual disk write. Cheap: bounded by the number
-    // of currently-loaded buffers, no I/O unless the saver decides
-    // to flush.
     for (std::size_t i = 0; i < ctx.model.size(); ++i) {
         if (ctx.model.at(i).kind == oid::host::BufferKind::LOCAL_FILE) {
             continue;
@@ -788,16 +665,11 @@ void persist_settings_if_dirty(const FrameContext& ctx) {
     live.link_views = ctx.ui.link_views();
     live.previous_buffers = ctx.settings_persistence.prev_buffers;
     live.last_export_dir = ctx.last_export_dir;
-    // Hold off saving until the platform says persisting is safe
-    // (see SessionBridge::can_persist -- non-native builds gate on the
-    // embedding host's first real session-state update, so a
-    // default/empty snapshot doesn't get echoed back and overwrite the
-    // persisted buffer list; native is always safe).
+    // Non-native gates on the embedding host's first real session-state
+    // update, so a default snapshot can't overwrite the persisted list.
     if (ctx.session_bridge.can_persist()) {
-        // Scoped before the saver, not after: the saver's whole job is
-        // deciding whether anything changed, and on a build that does not own
-        // the window the geometry never settles, so an unscoped snapshot
-        // differs on nearly every frame and it would emit for ever.
+        // Scoped before the saver: on a build that does not own the window
+        // the geometry never settles, so an unscoped snapshot emits for ever.
         ctx.settings_persistence.saver.update(
             oid::host::settings_for_scope(
                 std::move(live), ctx.settings_persistence.settings_scope),
@@ -808,27 +680,19 @@ void persist_settings_if_dirty(const FrameContext& ctx) {
 } // namespace
 
 int main(int argc, char** argv) {
-    // Qt-free CLI parse (mirrors the Qt app's --hostname/--port flags, see
-    // parse_connection_settings() in src/main.cpp -- not reused here since
-    // it's Qt-coupled), plus the repeatable -o/--open file-open flags this
-    // frontend adds on top. Defaults match the bridge's default listen port.
-    // Unrecognized args (e.g. a stray "-style fusion" the bridge may still
-    // pass on the Qt side) are ignored.
+    // Qt-free CLI parse: the Qt app's --hostname/--port, plus the repeatable
+    // -o/--open flags. Unrecognized args (e.g. "-style fusion") are ignored.
     const auto [hostname, port, open_files, agent_debugger_pid] =
         oid::host::parse_cli(argc, argv);
     const oid::platform::Endpoint endpoint{hostname,
                                            static_cast<unsigned short>(port)};
 
-    // Wires the inbound message hook (non-native only; no-op native) so the
-    // embedding host can push buffer data into the module; must be installed
-    // before the transport (below) starts polling for inbound messages.
+    // Inbound message hook (non-native only); must be installed before the
+    // transport below starts polling for inbound messages.
     oid::platform::install_platform_hooks();
 
-    // Load persisted window geometry / UI prefs / previous-buffer list
-    // (Qt-free JSON settings) before creating the window, so the
-    // window is created at the saved size directly rather than resized
-    // after the fact. load() never throws: a missing/corrupt settings file
-    // just yields AppSettings{} defaults, so this never blocks startup.
+    // Loaded before the window is created, so it opens at the saved size
+    // rather than being resized after. A corrupt file just yields defaults.
     oid::platform::SettingsBackend settings_backend;
     const oid::host::AppSettings loaded = settings_backend.load();
 
@@ -847,9 +711,8 @@ int main(int argc, char** argv) {
     }
 
     oid::host::IpcBufferModel model;
-    // Register the model as the sink for file bytes an embedding host pushes
-    // in (non-native only; no-op native). Must run before the loop so an
-    // early host-driven open finds the sink installed.
+    // Sink for file bytes an embedding host pushes in (non-native only);
+    // must run before the loop so an early host-driven open finds it.
     oid::platform::register_file_open_sink(model);
     // Transport platform seam: Asio TCP on native, PostMessageTransport on
     // non-native builds. Connects (bounded, non-throwing) in its ctor; if the
@@ -899,19 +762,12 @@ int main(int argc, char** argv) {
             ui.set_link_views(s.link_views);
             left_pane_w = s.left_pane_w;
             last_export_dir = s.last_export_dir;
-            // Not redundant with the parser's own scope guard: the parser
-            // already declines host-owned keys under VIEWER_OWNED, but it
-            // returns *defaults* for them, and without this check those
-            // defaults would overwrite the viewer's own in-session tracking
-            // on every inbound message, emptying prev_buffers and clearing
-            // the restore list.
+            // Not redundant with the parser's scope guard: it returns
+            // *defaults* for host-owned keys, which would empty prev_buffers.
             if (scope == oid::host::SettingsScope::FULL) {
                 prev_buffers = s.previous_buffers;
-                // Seed the previous-session buffer list; IpcClient
-                // auto-re-requests each one (if still available and not
-                // expired) the next time the bridge sends
-                // SET_AVAILABLE_SYMBOLS, so previously-plotted buffers
-                // reappear once the debugger reconnects.
+                // IpcClient auto-re-requests each one on the next
+                // SET_AVAILABLE_SYMBOLS, so plotted buffers reappear.
                 ipc.set_restore_buffers(s.previous_buffers);
             }
         };
@@ -939,36 +795,22 @@ int main(int argc, char** argv) {
 
     oid::host::StageView view{*canvas};
 
-    // Platform seam: hand non-native ports the same model/stages/ui/canvas
-    // this frontend renders through, for the port's own agent glue.
-    // Native's implementation is a no-op (its endpoint is assembled below).
+    // Platform seam for a non-native port's own agent glue; native's is
+    // a no-op, since its endpoint is assembled below.
     oid::platform::register_agent_targets(model, stages, ui, canvas);
 
 #if !defined(__EMSCRIPTEN__)
-    // Native agent endpoint: off unless OID_AGENT=1. `agent_model` adapts
-    // the same model/stages/ui/canvas the ImGui frontend already renders
-    // through; `agent_server` owns the localhost transport and queues
-    // requests for the per-frame drain() call below to dispatch on this
-    // (the GL) thread. Native-only: the Emscripten build supplies its own
-    // agent glue via the out-of-tree platform port and has no asio.
-    // Paces the agent-run render loop (vsync is off then). Declared BEFORE
-    // agent_server so it is destroyed after it on every exit path: even an
-    // exception unwind that never reaches the explicit stop() below runs
-    // ~AgentServer -- whose stop() joins every serve thread -- before the
-    // pacer goes away, so a serve thread can never wake() a destroyed
-    // pacer. (Initialization order is independent: the optionals are
-    // emplaced in dependency order inside the try block below.)
+    // Native agent endpoint, off unless OID_AGENT=1. `pacer` is declared
+    // BEFORE agent_server, so ~AgentServer joins serve threads first.
     std::optional<oid::host::FramePacer> pacer;
-    // Declared BEFORE agent_server so it outlives it: agent_server (via
-    // AgentCore) holds a ViewModel& to this model and is used past the block
-    // below via FrameContext, so the model must not be destroyed first.
+    // Declared BEFORE agent_server, which holds a ViewModel& to it and is
+    // used past this block via FrameContext.
     std::optional<oid::host::agent::NativeViewModel> agent_model;
     std::optional<oid::host::agent::AgentServer> agent_server;
     if (const char* v = std::getenv("OID_AGENT");
         v && std::string_view(v) == "1") {
-        // Socket bind/listen and discovery-file writes below can throw;
-        // the agent endpoint is optional, so a failure here must not
-        // abort viewer startup -- fall back to running without it.
+        // Bind/listen and discovery-file writes can throw; the endpoint is
+        // optional, so a failure falls back to running without it.
         try {
             agent_model.emplace(model,
                                 stages,
@@ -982,10 +824,8 @@ int main(int argc, char** argv) {
                 oid::host::GlfwHostBackend::primary_refresh_rate_hz());
             agent_server->set_enqueue_listener([&p = *pacer] { p.wake(); });
             oid::platform::begin_agent_activity();
-            // Only after the endpoint is actually up, and as the very last
-            // step of agent startup: any earlier throw falls back to the
-            // default vsync loop, so vsync is never left off on a path
-            // that ends in plain loop.run().
+            // Last step of agent startup: an earlier throw falls back to the
+            // vsync loop, so vsync is never left off on a plain loop.run().
             oid::host::GlfwHostBackend::set_vsync(false);
         } catch (const std::exception& e) {
             agent_server.reset();
@@ -1024,13 +864,8 @@ int main(int argc, char** argv) {
             apply_settings(s);
         },
         [&ui, &model, &export_dialog, &last_export_dir] {
-            // Refused in words rather than by falling out of a bounds check.
-            // The host that sent this hears nothing back and keeps no copy of
-            // the selection, so a command arriving at an empty viewer used to
-            // end here with no dialog, no message and no log line anywhere,
-            // which from the user's side is indistinguishable from a broken
-            // menu entry. The viewer is the only place that can answer, and
-            // answering here covers both hosts at once.
+            // Refused in words: the host gets no reply, so a command arriving
+            // at an empty viewer would otherwise look like a broken menu.
             if (const std::string_view refusal =
                     oid::host::export_selected_refusal(model.size());
                 !refusal.empty()) {
@@ -1058,28 +893,16 @@ int main(int argc, char** argv) {
     // wiring), which persists it and can push it back as a session-state
     // update (see apply_settings above). No exit flush is needed there -- the
     // frame loop never returns on non-native builds.
-    // Seeded scoped, not with `loaded` as-is: the invariant "the saver never
-    // holds host-owned state under VIEWER_OWNED" should hold by
-    // construction rather than by relying on settings_backend.load() to
-    // have returned defaults for that scope. Identity under FULL, so native
-    // behaviour is unchanged.
+    // Seeded scoped, not with `loaded` as-is, so "the saver never holds
+    // host-owned state under VIEWER_OWNED" holds by construction.
     oid::host::SettingsSaver saver{
         oid::host::settings_for_scope(loaded, settings_backend.scope()),
         settings_backend.make_save_sink(ipc)};
     std::set<std::string, std::less<>> seen_this_session;
 
-    // Seeded once from the -o/--open CLI flags; File > Open / Ctrl+O also
-    // push into it later (see process_menu_and_shortcuts above), and
-    // process_pending_file_opens drains it (decode + upsert) every frame.
     oid::host::FileOpenQueue file_open_queue;
     file_open_queue.push_all(open_files);
 
-    // FrameContext bundles the frame loop's state so the frame lambda's body
-    // (originally one ~180-line block under a 19-entry capture list) can be
-    // split into named helpers instead of re-threading each one's own
-    // parameter list; see the FrameContext comment above. Every referenced
-    // object is a main() local declared above, so all of them outlive the
-    // frame loop below.
     FrameContext ctx{
         ipc,
         ui,
@@ -1107,33 +930,18 @@ int main(int argc, char** argv) {
                                   // Runs on every tick() that renders a frame.
                                   poll_ipc_and_update_thumbnails(ctx);
 
-                                  // Drain agent requests AFTER ipc.poll() so an
-                                  // agent readback (list_buffers/get_buffer/
-                                  // get_view) observes this frame's
-                                  // freshly-reconciled model, not the previous
-                                  // frame's -- drain_agent is itself a model
-                                  // reader/mutator, so it honors the same
-                                  // "poll IPC before reading the model"
-                                  // contract as every panel below. It also
-                                  // lets an agent set_view win over, rather
-                                  // than be clobbered by, a buffer that arrived
-                                  // over IPC this same frame. drain still runs
-                                  // before begin_frame/render below, so an
-                                  // applied set_view renders this frame. The
-                                  // final tick, where the backend has requested
-                                  // close, returns false before invoking this
-                                  // lambda at all, so that last iteration's
-                                  // drain() is skipped -- acceptable, since it
-                                  // is shutdown and agent_server->stop() below
-                                  // closes the socket regardless.
+                                  // After ipc.poll() so an agent
+                                  // readback sees this frame's model and
+                                  // a set_view is not clobbered by a
+                                  // same-frame IPC buffer; before
+                                  // begin_frame so an applied set_view
+                                  // renders this frame.
                                   drain_agent(ctx);
 
-                                  // Canvas sizing + HiDPI is handled in
-                                  // ImGuiLayer::begin_frame's hidpi_sync()
-                                  // (non-native): it makes the canvas track its
-                                  // container and drives the drawing buffer +
-                                  // ImGui display metrics from the device pixel
-                                  // ratio. Nothing to do here.
+                                  // Canvas sizing + HiDPI happen in
+                                  // ImGuiLayer::begin_frame's
+                                  // hidpi_sync() (non-native); nothing
+                                  // to do here.
 
                                   imgui.begin_frame();
 
@@ -1150,21 +958,14 @@ int main(int argc, char** argv) {
 
 #if !defined(__EMSCRIPTEN__)
     if (pacer) {
-        // Agent run: the swap returns immediately (vsync off above), and
-        // pace() owns the frame cadence. A request wakes the pacing wait
-        // and is drained within ~1 ms regardless of focus/occlusion,
-        // instead of once per (possibly OS-throttled) present.
+        // Vsync is off, so pace() owns the cadence: a request wakes the
+        // wait and drains within ~1 ms even when the window is occluded.
         while (loop.tick()) {
             pacer->pace([&ctx] {
-                // Same poll-before-read contract as the frame lambda: the
-                // agent is a model consumer, so inbound IPC is reconciled
-                // into the model before draining -- a gap-drained readback
-                // must not answer with the previous frame's state, and a
-                // gap-applied set_view must land on the current model.
-                // Only the minimal reconcile runs here: the thumbnail
-                // bookkeeping in poll_ipc_and_update_thumbnails is
-                // render-side, budgeted once per frame, and never read by
-                // the agent.
+                // Poll before draining: a gap-drained readback must not
+                // answer with the previous frame's model. Bare poll(): the
+                // thumbnail work in poll_ipc_and_update_thumbnails is
+                // render-side, budgeted once per frame, never agent-read.
                 ctx.ipc.poll();
                 drain_agent(ctx);
             });
@@ -1177,9 +978,8 @@ int main(int argc, char** argv) {
 #endif
 
 #if !defined(__EMSCRIPTEN__)
-    // Stop accepting/serving agent connections before the GL context and
-    // Stage/Buffer state below are torn down, so no in-flight drain() call
-    // can touch them.
+    // Stop serving before the GL context and Stage/Buffer state are torn
+    // down, so no in-flight drain() can touch them.
     if (agent_server) {
         agent_server->stop();
         oid::platform::end_agent_activity();
