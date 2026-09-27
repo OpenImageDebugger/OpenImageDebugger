@@ -118,8 +118,8 @@ TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_Zero) {
 }
 
 TEST(RawDataDecodeTest, GeometryFitsPayloadAcceptsExactLowerBound) {
-    // pixels_needed = (height-1)*stride + width = 2*6+4 = 16 pixels, i.e.
-    // 16 * channels(2) * type_size(FLOAT32=4) = 128 bytes.
+    // Lower bound: two full strides of 6 plus a 4-wide last row is 16
+    // pixels, so 16 pixels x 2 channels x 4 bytes (FLOAT32) is 128.
     EXPECT_TRUE(geometry_fits_payload(4, 3, 2, 6, BufferType::FLOAT32, 128));
 }
 

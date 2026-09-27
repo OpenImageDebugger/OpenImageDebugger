@@ -38,16 +38,18 @@
 
 namespace oid::platform {
 
-// No-op on native: there is no inbound host message hook to wire here --
-// that only exists for the non-native (postMessage) embedding, which must
-// install it before its transport starts polling.
-void install_platform_hooks() {}
+void install_platform_hooks() {
+    // No-op on native: the inbound host message hook exists only for the
+    // non-native (postMessage) embedding, which installs it before polling.
+}
 
-// No-op on native: main.cpp assembles the agent endpoint directly.
 void register_agent_targets(oid::host::IpcBufferModel& /*model*/,
                             oid::host::StageManager& /*stages*/,
                             oid::host::UiState& /*ui*/,
-                            std::shared_ptr<RenderCanvas> /*canvas*/) {}
+                            std::shared_ptr<RenderCanvas> /*canvas*/) {
+    // No-op on native: main.cpp assembles the agent endpoint directly; only
+    // a non-native port needs these handed across the platform seam.
+}
 
 struct SettingsBackend::Impl {
     host::SettingsStore store{host::config_file_path()};
