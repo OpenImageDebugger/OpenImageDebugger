@@ -1,40 +1,8 @@
 /*
- * Live-debugger fixture for the declarative built-in buffer types.
- *
- * Unlike testbench/main.cpp (a dependency-free cv::Mat *simulator*), this file
- * holds one live instance of every buffer type declared in
- * resources/oidscripts/oidtypes/builtin_types.json, so the declarative JSON
- * entries can be checked against real memory under gdb and lldb.
- *
- *   - cv::Mat and all the Eigen types use the REAL current libraries.
- *   - CvMat and IplImage are the legacy OpenCV C API, which modern OpenCV
- *     (5, and 4 with the C API disabled) no longer ships. OID matches on the
- *     type NAME and reads members by name, so faithful local structs with the
- *     same member names and legacy constant values exercise those two entries
- *     exactly as the real types would.
- *   - Two deliberately large cv::Mats sit either side of the viewer's 8 MiB
- *     per-message budget: one just over it, to exercise the chunked transfer
- *     path every other fixture here is too small to reach, and one exactly on
- *     it, which must still cross as a single message.
- *   - A third, much larger one crosses in seven messages rather than two, so
- *     the middle of a chunked run is exercised and not only its edges.
- *   - Four structs no built-in entry matches, described only by
- *     testbench/.oid/types.json -- the user-supplied side of the format.
- *   - Four classes holding a 48x32 Eigen matrix through a base class, each
- *     carrying a differently shifted band so a buffer reached by the wrong
- *     path renders as the wrong picture rather than as a plausible one,
- *     covering the
- *     shapes an inherited buffer can take: reachable only through the base, a
- *     member named after the base, a member hiding an inherited one, and one
- *     reached from inside a method where members surface bare.
- *   - A parked worker thread holds worker_mat, so every stop shows two
- *     threads whose top frames share an index, and what gets listed and
- *     plotted can be checked to follow the selected thread rather than
- *     the frame index alone.
- *
- * This target is built only when OpenCV and Eigen are found (see CMakeLists).
- * Set a breakpoint on the marked line in main(), run under a debugger with OID
- * active, and plot each variable. Each fixture notes what it is meant to check.
+ * One live instance of every buffer type in builtin_types.json, against the
+ * REAL OpenCV and Eigen; built only when both are found (see CMakeLists).
+ * CvMat and IplImage are hand-rolled: modern OpenCV no longer ships the
+ * legacy C API, and OID matches on the type NAME and reads members by name.
  */
 #include <atomic>
 #include <cmath>
@@ -47,11 +15,9 @@
 
 #include <Eigen/Dense>
 
-// --- Legacy OpenCV C-API reproductions (see file header) -------------------
-// These are defined at GLOBAL scope, not inside the anonymous namespace below:
-// OID matches buffer types by their debug-info type name, and an anonymous
-// namespace would make them "(anonymous namespace)::CvMat" / "::IplImage",
-// which the builtin_types.json "^CvMat$" / "^IplImage$" matches would miss.
+// CvMat and IplImage are at GLOBAL scope, not in the anonymous namespace: OID
+// matches buffer types by debug-info type name, and an anonymous namespace
+// would defeat the builtin_types.json "^CvMat$" / "^IplImage$" matches.
 
 // Reads: .type (channels/dtype bit-fields), .step, .rows, .cols, .data.ptr.
 struct CvMat {
@@ -75,9 +41,8 @@ struct CvMat {
 constexpr int IPL_DEPTH_8U = 8;
 constexpr int IPL_DEPTH_16S = static_cast<int>(0x80000010u);
 
-// --- Custom types ----------------------------------------------------------
 // Described only by testbench/.oid/types.json. Global scope for the same
-// reason as the two structs above.
+// reason as CvMat above.
 
 // Five required fields only: channels, row_stride and pixel_layout default.
 struct PackedGray8 {
@@ -122,7 +87,6 @@ struct IplImage {
 
 namespace {
 
-// --- Inherited buffers -----------------------------------------------------
 // A debugger names a base-class subobject after the base TYPE; C++ has no such
 // path segment. NamesABase and HidesInherited are the shapes that defeat a
 // name-only or first-wins walker. 48x32 because a 3x3 matrix is a speck.
@@ -179,12 +143,6 @@ constexpr int kBigH = 1025;
 // Side of the many-chunk fixture; see make_mat_many_chunks_8uc3().
 constexpr int kHugeSide = 4096;
 
-// CvMat.type packs the depth (which doubles as the OID dtype code) in the low
-// 3 bits and (channels - 1) in the CV_CN_SHIFT (=3) field. CV_8U is OpenCV's
-// own macro (== 0) from <opencv2/core.hpp>.
-
-// --- Real cv::Mat fixtures -------------------------------------------------
-
 // 3-channel 8-bit: exercises the flags channel/depth bit-fields and the
 // byte-step -> pixel-stride division in the cv::Mat entry.
 cv::Mat make_mat_8uc3() {
@@ -210,14 +168,9 @@ cv::Mat make_mat_32fc1() {
     return m;
 }
 
-// Oversized single-channel float64: the only fixture here that is about the
-// transfer rather than a type entry. 1025 rows x 1024 float64 = 8,396,800
-// bytes, just past the viewer's 8 MiB per-message budget, so it crosses the
-// wire as a begin + one full 1024-row strip + a 1-row remainder instead of a
-// single message. float64 also makes bytes-per-row eight times the element
-// stride, which is where a transfer that measures strips in the wrong unit
-// goes wrong. Values ramp with the row, so a dropped tail reads as a flat
-// band rather than as plausible data.
+// 1025 x 1024 float64 = 8,396,800 bytes, one row past the 8 MiB per-message
+// budget; float64 also makes bytes-per-row 8x the element stride. Values ramp
+// with the row, so a dropped tail reads as a flat band, not plausible data.
 cv::Mat make_mat_chunked_64f() {
     cv::Mat m(kBigH, kBigW, CV_64FC1);
     for (int y = 0; y < m.rows; ++y) {
@@ -229,12 +182,8 @@ cv::Mat make_mat_chunked_64f() {
     return m;
 }
 
-// The other side of the same boundary: 1024 rows x 1024 float64 is 8,388,608
-// bytes, which is the per-message budget exactly. The sender's test is
-// "payload <= budget", so this must still cross as a single message while the
-// fixture above, one row larger, must not. It is also an exact multiple of the
-// page size the extension reads memory in, so nothing here is a remainder --
-// the case where an off-by-one leaves a page unread or requests an empty one.
+// 1024 x 1024 float64 = 8,388,608 bytes: the per-message budget exactly (the
+// sender tests payload <= budget) and an exact multiple of the read page size.
 cv::Mat make_mat_budget_edge_64f() {
     cv::Mat m(kBigW, kBigW, CV_64FC1);
     for (int y = 0; y < m.rows; ++y) {
@@ -246,20 +195,8 @@ cv::Mat make_mat_budget_edge_64f() {
     return m;
 }
 
-// The only fixture here that needs more than two messages to cross. The two
-// above sit either side of the per-message budget and so exercise at most one
-// split; this one is 4096 x 4096 x 3 = 50,331,648 bytes, six full messages and
-// a remainder, which is where a transfer that mishandles the MIDDLE of a run
-// rather than its first or last message has somewhere to show itself. It is
-// also large enough to be worth watching as a memory cost in its own right: a
-// path that keeps several copies of a buffer alive is visible here and
-// invisible at 8 MiB.
-//
-// Channel 2 ramps over the full height and channel 1 over the full width, each
-// spanning 0..255 exactly once, so a strip that arrives out of order or not at
-// all breaks a smooth gradient into a step rather than into plausible data.
-// Channel 0 is left flat, so a channel written at the wrong stride shows up as
-// colour where there should be none.
+// 4096 x 4096 x 3 = 50,331,648 bytes: six messages and a remainder, so a
+// chunked run has a middle here. Channel 0 is flat: colour means a bad stride.
 cv::Mat make_mat_many_chunks_8uc3() {
     cv::Mat m(kHugeSide, kHugeSide, CV_8UC3);
     for (int y = 0; y < m.rows; ++y) {
@@ -275,20 +212,11 @@ cv::Mat make_mat_many_chunks_8uc3() {
     return m;
 }
 
-// --- Second thread ---------------------------------------------------------
-
 std::atomic<bool> worker_ready{false};
 std::atomic<bool> worker_done{false};
 
-// Parks a second thread holding its own buffer, so a stopped session shows
-// two threads. Main sits at frame 0 of its breakpoint and this thread's top
-// frame is also frame 0 (inside its wait), which makes switching to it the
-// selection change easiest to mistake for no change at all: after selecting
-// this thread, what is listed and plotted must be its own, above all
-// worker_mat from the worker_thread_main frame, with main's fixtures
-// restored on the way back. The buffer is fully built before worker_ready
-// flips, and main waits for that flag before its first stop, so the buffer
-// is never seen half-constructed.
+// Parks a second thread whose top frame is also frame 0, so following the
+// selected thread cannot be mistaken for following the frame index.
 void worker_thread_main() {
     cv::Mat worker_mat(kH, kW, CV_8UC1);
     for (int y = 0; y < worker_mat.rows; ++y) {
@@ -307,12 +235,8 @@ void worker_thread_main() {
 } // namespace
 
 int main() {
-    // Started before anything else so the worker is parked and ready long
-    // before the first breakpoint below. Joined by scope rather than by
-    // reaching the end of main: destroying a joinable std::thread
-    // terminates the program, and whether an uncaught exception unwinds
-    // this far at all is implementation-defined, so the join must not
-    // depend on getting past every fixture construction below.
+    // Joined by a guard, not at the end of main: destroying a joinable
+    // std::thread terminates, and an exception could unwind past the fixtures.
     struct WorkerGuard {
         std::thread thread;
         ~WorkerGuard() {
@@ -324,14 +248,12 @@ int main() {
         }
     } worker{std::thread(worker_thread_main)};
 
-    // --- OpenCV cv::Mat (real library) ---
     cv::Mat mat_8uc3 = make_mat_8uc3();
     cv::Mat mat_32fc1 = make_mat_32fc1();
     cv::Mat mat_chunked_64f = make_mat_chunked_64f();
     cv::Mat mat_budget_edge_64f = make_mat_budget_edge_64f();
     cv::Mat mat_many_chunks_8uc3 = make_mat_many_chunks_8uc3();
 
-    // --- CvMat (legacy struct), single-channel 8-bit ---
     std::vector<unsigned char> cvmat_backing(static_cast<std::size_t>(kW) * kH);
     for (int y = 0; y < kH; ++y) {
         for (int x = 0; x < kW; ++x) {
@@ -346,14 +268,9 @@ int main() {
     cvmat.cols = kW;
     cvmat.data.ptr = cvmat_backing.data();
 
-    // --- CvMat (legacy struct), 3-channel 8-bit, OpenCV <=4 bit packing ---
-    // The real cv::Mat fixtures run against OpenCV 5, whose flags pack the
-    // channel count at CV_CN_SHIFT=5, so they only exercise that layout. The
-    // C-API CvMat actually lived in OpenCV <=4, which packs it at
-    // CV_CN_SHIFT=3, making CV_8UC3 == (3-1)<<3 | CV_8U(0) == 16. Build that
-    // value by hand: the CV_8UC3 macro on an OpenCV-5 build would use shift 5
-    // and yield 64. This drives the <=4 branch of the version-adaptive
-    // `channels` expression that no real cv::Mat here can reach.
+    // The real cv::Mat fixtures run on OpenCV 5 (CV_CN_SHIFT=5); the C-API
+    // CvMat lived in <=4, shift 3, so build it by hand: the macro gives 64.
+    // Only this reaches the <=4 branch of the entry's adaptive `channels`.
     constexpr int kCvLegacy8UC3 = (3 - 1) << 3; // == 16
     std::vector<unsigned char> cvmat3_backing(static_cast<std::size_t>(kW) *
                                               kH * 3);
@@ -372,7 +289,6 @@ int main() {
     cvmat_8uc3.cols = kW;
     cvmat_8uc3.data.ptr = cvmat3_backing.data();
 
-    // --- IplImage (legacy struct), unsigned 8-bit, 3 channels ---
     std::vector<char> ipl8_backing(static_cast<std::size_t>(kW) * kH * 3);
     IplImage ipl_8u{};
     ipl_8u.nChannels = 3;
@@ -391,9 +307,8 @@ int main() {
         }
     }
 
-    // --- IplImage (legacy struct), signed 16-bit: the signed depth exercises
-    // the row-stride computation for a signed IPL depth (a case the old Python
-    // arithmetic collapsed to zero). ---
+    // Signed depth (bit 31 set) exercises the dtype expression's
+    // & 0xffffffff mask, not the row-stride division.
     std::vector<char> ipl16_backing(static_cast<std::size_t>(kW) * kH *
                                     sizeof(short));
     IplImage ipl_16s{};
@@ -411,9 +326,8 @@ int main() {
         }
     }
 
-    // --- Eigen fixtures (real library) ---
-    // Fixed-size float: compile-time dimensions come from the template args
-    // ({targ:1}/{targ:2}); default storage is column-major (transposed).
+    // Dimensions come from the template args ({targ:1}/{targ:2}); default
+    // storage is column-major, so the entry transposes.
     Eigen::Matrix<float, 3, 4> eig_fixed;
     for (int r = 0; r < eig_fixed.rows(); ++r) {
         for (int c = 0; c < eig_fixed.cols(); ++c) {
@@ -450,11 +364,8 @@ int main() {
     Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>> eig_map(
         map_backing.data(), 6, 8);
 
-    // Eigen::Map with an explicit outer stride: a 6x8 view whose columns are
-    // spaced 12 apart in a column-major backing store (6 real rows + 6 padding
-    // per column), so the row stride must come from the runtime outer stride
-    // rather than the width. Backing = stride(12) * cols(8) = 96 floats; the
-    // last written index is (7*12 + 5) = 89, so a 6*12 = 72 store overflows.
+    // Outer stride 12 on a 6x8 view, so the row stride must come from the
+    // runtime stride, not the width. Backing is 12*8 = 96; index 89 is written.
     std::vector<float> stride_backing(12 * 8, 0.0f);
     for (int c = 0; c < 8; ++c) {
         for (int r = 0; r < 6; ++r) {
@@ -467,9 +378,6 @@ int main() {
                Eigen::OuterStride<>>
         eig_map_strided(stride_backing.data(), 6, 8, Eigen::OuterStride<>(12));
 
-    // --- Inherited buffers (see the structs above) ---
-    // Each matrix gets a distinct constant so a wrong path shows as the wrong
-    // picture rather than as no picture.
     InheritedOnly inherited_only;
     inherited_only.inherited = banded(0);
     inherited_only.tag = 1;
@@ -486,9 +394,8 @@ int main() {
     inheriting_probe.inherited = banded(5);
     inheriting_probe.own = banded(6);
 
-    // --- Custom types (testbench/.oid/types.json) ---
-    // If these plot, the user-supplied types file was found and evaluated.
-    // If not, the Debug Console names the file or the offending key.
+    // Custom types from testbench/.oid/types.json: if these fail to plot, the
+    // Debug Console names the file or the offending key.
     constexpr int kCustomW = 64;
     constexpr int kCustomH = 48;
 
@@ -549,10 +456,8 @@ int main() {
     }
     DepthF64 custom_depth{depth_backing.data(), kCustomW, kCustomH};
 
-    // Never stop before the worker says its buffer exists: a breakpoint
-    // reached first would show that thread mid-construction. Deliberately
-    // unbounded: this program's job is to sit under a debugger, where any
-    // wall-clock deadline would expire while a human is merely paused.
+    // Unbounded by design: a stop before worker_ready would show that thread
+    // mid-construction, and any deadline would expire while a human is paused.
     worker_ready.wait(false);
 
     std::cout << "Fixtures live: mat_8uc3 " << mat_8uc3.cols << "x"
@@ -578,13 +483,8 @@ int main() {
     (void)custom_rgba;
     (void)custom_depth;
 
-        // Same fixtures, hit repeatedly, with the pixels different every time.
-    // A viewer that draws only the first stop's contents looks exactly like
-    // one that redraws correctly, until something actually moves on screen.
-    // Plot a buffer at the first stop, then continue: the gray ramp slides
-    // sideways, the depth plane lifts, and the green channel of the padded
-    // rows walks, so three different declared-type paths are visibly
-    // refreshed rather than merely re-sent.
+    // Pixels differ at every stop: a viewer that redraws nothing looks exactly
+    // like one that redraws correctly until something moves on screen.
     for (int step = 1; step <= 8; ++step) {
         for (int y = 0; y < kCustomH; ++y) {
             for (int x = 0; x < kCustomW; ++x) {
