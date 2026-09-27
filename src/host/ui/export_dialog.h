@@ -35,16 +35,12 @@
 
 namespace oid::host {
 
-// Transient state seeded by the buffer list's right-click "Export buffer"
-// item (open_export_dialog) and consumed by the platform's confirm_export/
-// perform_export seam, which shows the native OS save dialog. Carries the
-// target buffer_name, the seeded default destination in path_buf, and the
-// chosen OutputType format. Owned once by main.cpp and reused across every
-// open/close cycle.
+// Seeded by open_export_dialog and consumed by the platform confirm_export/
+// perform_export seam. Owned once by main.cpp, reused across open/close.
 struct ExportDialogState {
     bool open{false};
-    std::string buffer_name;           // target buffer's variable_name
-    std::array<char, 1024> path_buf{}; // fixed-size destination path buffer
+    std::string buffer_name; // target buffer's variable_name
+    std::array<char, 1024> path_buf{};
     BufferExporter::OutputType format{BufferExporter::OutputType::BITMAP};
 };
 
@@ -65,27 +61,18 @@ void open_export_dialog(ExportDialogState& st,
                         const std::string& buffer_name,
                         const std::string& last_export_dir);
 
-// Why an embedding host's "export selected buffer" command cannot be served,
-// or empty when it can. `buffer_count` is the buffer model's size.
-//
-// The viewer has to answer this because nothing else can: a host sends the
-// command and hears nothing back, and it keeps no copy of which buffer is
-// selected, so a request arriving at an empty viewer used to stop at the
-// callback's bounds check with no dialog, no message and no log line. Worded
-// as a situation rather than a failure -- nothing went wrong, there is simply
-// nothing loaded to export.
+// Why a host's "export selected buffer" cannot be served with `buffer_count`
+// buffers in the model, or empty when it can. Answered by the viewer: the
+// host gets no reply and keeps no copy of which buffer is selected.
 std::string_view export_selected_refusal(std::size_t buffer_count);
 
-// One row per supported export format. `extension` includes the leading dot
-// (".png"); `label` is the name shown in the OS save dialog's format filter.
-// Stored as const char* so the nfd filter list (which needs null-terminated C
-// strings) and the string_view-based helpers below can both use it directly.
-// Adding a format is one row in the registry, plus its OutputType enumerator
-// and encoder branch in export_buffer_imgui().
+// const char* rather than std::string: the nfd filter list needs
+// null-terminated C strings. A new format is one registry row plus an
+// OutputType enumerator and a case in export_buffer_imgui().
 struct ExportFormat {
     BufferExporter::OutputType type;
     const char* extension; // ".png"
-    const char* label;     // "PNG image"
+    const char* label;     // "PNG image", shown in the save dialog's filter
 };
 
 // The export-format registry, in dialog-filter order (first row is the
@@ -96,23 +83,15 @@ std::span<const ExportFormat> export_formats();
 // returns the default format's extension if `format` is somehow not listed.
 std::string_view extension_for(BufferExporter::OutputType format);
 
-// Returns the type of the first export_formats() row whose extension `path`
-// ends with (case-insensitively); falls back to the default first row
-// (currently BITMAP/PNG) when none matches. Used to derive the export
-// format from the
-// path chosen in the native save dialog (nfd appends the selected filter's
-// extension).
+// Derives the format from the path the native save dialog returned (nfd
+// appends the selected filter's extension); falls back to the first row.
 BufferExporter::OutputType classify_export_format(std::string_view path);
 
-// Appends the registry extension for `format` to `path` if it is not
-// already there; returns `path` unchanged otherwise. Safety net for when the
-// chosen path lacks a recognized extension.
+// Safety net for a confirmed path that carries no recognized extension.
 std::string ensure_export_extension(std::string path,
                                     BufferExporter::OutputType format);
 
-// Copies `path` into `st.path_buf` as a null-terminated C string, truncating
-// to fit the 1024-byte buffer. Used once a destination path has been
-// confirmed; perform_export() reads it back via st.path_buf.data().
+// Truncates to fit st.path_buf; perform_export() reads it back as a C string.
 void set_export_path(ExportDialogState& st, std::string_view path);
 
 } // namespace oid::host

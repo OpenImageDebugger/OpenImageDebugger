@@ -36,9 +36,7 @@ def compare(symbol_name):
     if _debugger_bridge is None or _type_bridge is None:
         print('conformance: no debugger bridge registered')
         return
-    # A failed symbol lookup (unknown symbol, no stopped frame) is reported
-    # once and returns, never raised: the diagnostic must not become a
-    # traceback before any inspector output is printed.
+    # A diagnostic must print, never raise.
     try:
         picked_obj = _debugger_bridge.evaluate_expression(symbol_name)
     except Exception as error:  # noqa: BLE001

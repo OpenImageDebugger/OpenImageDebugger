@@ -39,9 +39,8 @@ def test_stale_files_are_cleaned_up(tmp_path, monkeypatch):
 
 @pytest.mark.skipif(sys.platform == 'win32', reason='POSIX symlinks')
 def test_no_cleanup_through_symlinked_agent_dir(tmp_path, monkeypatch):
-    # A symlinked OID_AGENT_DIR is not a trusted agent dir: an attacker
-    # (or a footgun) could aim it at a directory whose matching *.json
-    # files would then be deleted. Discovery must delete nothing there.
+    # A symlinked OID_AGENT_DIR is not a trusted agent dir: it can aim at a
+    # directory whose matching *.json files would then be deleted.
     real_dir = tmp_path / 'real'
     real_dir.mkdir(mode=0o700)
     os.chmod(str(real_dir), 0o700)
@@ -56,17 +55,12 @@ def test_no_cleanup_through_symlinked_agent_dir(tmp_path, monkeypatch):
 
 @pytest.mark.skipif(sys.platform == 'win32', reason='POSIX permissions')
 def test_untrusted_dir_is_neither_read_nor_cleaned(tmp_path, monkeypatch):
-    # A group/world-accessible directory (e.g. the user accidentally points
-    # OID_AGENT_DIR at ~/Documents) is not a trusted OID agent dir: a token
-    # there could have been read or planted by another user. Discovery must
-    # surface no session from it -- not even a well-formed, live one -- and
-    # must unlink nothing there.
+    # A group/world-accessible dir is not a trusted agent dir: a token there
+    # could have been read or planted by another user.
     agent_dir = tmp_path / 'shared'
     agent_dir.mkdir()
-    # The loose 0o755 mode is the point of this test: discovery must refuse
-    # to touch a dir carrying any group/other bits. Sonar S2612 flags this
-    # world-accessible chmod, but it is intentional and confined to a
-    # throwaway tmp_path fixture, so the finding is reviewed as safe.
+    # The loose 0o755 is the point: discovery must refuse a dir carrying any
+    # group/other bits. Sonar S2612 flags it; intentional, tmp_path only.
     os.chmod(str(agent_dir), 0o755)  # nosec B103
     monkeypatch.setenv('OID_AGENT_DIR', str(agent_dir))
     _stale_and_garbage(agent_dir)
@@ -133,9 +127,8 @@ def test_live_viewers_finds_running_endpoint(tmp_path, monkeypatch):
 
 
 def test_live_viewers_reaps_malformed_and_keeps_valid(tmp_path, monkeypatch):
-    # A discovery file whose debugger_pid is a JSON object makes int() raise
-    # TypeError in _parse_viewer; enumeration must reap that file and still
-    # return the valid entries rather than aborting on the malformed one.
+    # A debugger_pid that is a JSON object makes int() raise TypeError in
+    # _parse_viewer; enumeration must reap that file, not abort on it.
     agent_dir = _make_agent_dir(tmp_path, monkeypatch)
     viewer_dir = agent_dir / 'viewer'
     viewer_dir.mkdir(mode=0o700)
@@ -157,9 +150,8 @@ def test_live_viewers_reaps_malformed_and_keeps_valid(tmp_path, monkeypatch):
 
 
 def test_live_viewers_survives_directory_entry(tmp_path, monkeypatch):
-    # A *.json entry that is itself a directory cannot be read (OSError) or
-    # unlinked; _reap must swallow the unlink failure and enumeration must
-    # still return the valid entries instead of crashing.
+    # A *.json entry that is itself a directory cannot be read or unlinked;
+    # _reap must swallow the unlink failure instead of crashing.
     agent_dir = _make_agent_dir(tmp_path, monkeypatch)
     viewer_dir = agent_dir / 'viewer'
     viewer_dir.mkdir(mode=0o700)
@@ -176,9 +168,8 @@ def test_live_viewers_survives_directory_entry(tmp_path, monkeypatch):
 
 
 def test_live_viewers_reaps_nonpositive_pid(tmp_path, monkeypatch):
-    # A record with pid <= 0 is malformed; os.kill(0/neg, 0) has special
-    # process-group/broadcast semantics that would look "alive", so the entry
-    # must be treated as dead and reaped rather than routed to.
+    # os.kill(0/neg, 0) has process-group/broadcast semantics that would look
+    # "alive", so a pid <= 0 record must be reaped, not routed to.
     agent_dir = _make_agent_dir(tmp_path, monkeypatch)
     viewer_dir = agent_dir / 'viewer'
     viewer_dir.mkdir(mode=0o700)
@@ -253,10 +244,8 @@ def test_live_viewers_debugger_pid_optional(tmp_path, monkeypatch):
 
 
 def test_pid_alive_never_calls_os_kill_on_windows(monkeypatch):
-    # os.kill(pid, 0) is destructive on Windows (CTRL_C_EVENT /
-    # TerminateProcess), so liveness must route through the process-handle
-    # probe and never touch os.kill -- otherwise enumerating discovery files
-    # would kill the viewers/debuggers it finds.
+    # os.kill(pid, 0) is destructive on Windows (CTRL_C_EVENT), so liveness
+    # must use the handle probe or enumeration would kill what it finds.
     monkeypatch.setattr(os, 'name', 'nt')
     called = []
     monkeypatch.setattr(os, 'kill', lambda *args: called.append(args))
@@ -292,10 +281,8 @@ def test_pid_alive_nonpositive_is_dead_without_probing(monkeypatch):
 
 @pytest.mark.skipif(sys.platform == 'win32', reason='POSIX passwd home')
 def test_discovery_dir_is_home_based_and_env_independent(monkeypatch):
-    # The dir must come from the passwd database, not $HOME/$TMPDIR/$XDG_*,
-    # so a stripped-env MCP subprocess and the GUI viewer agree. Skip where
-    # the uid has no passwd entry: _home_dir() then falls back to $HOME, which
-    # this env-independence assertion cannot hold for.
+    # The dir comes from passwd, not $HOME/$TMPDIR/$XDG_*, so a stripped-env
+    # subprocess and the GUI agree; with no passwd entry $HOME wins, so skip.
     import pwd
     try:
         home = pwd.getpwuid(os.getuid()).pw_dir
@@ -321,9 +308,8 @@ def test_discovery_dir_respects_override(monkeypatch):
 
 @pytest.mark.skipif(sys.platform == 'win32', reason='POSIX temp fallback')
 def test_discovery_dir_temp_fallback_is_per_uid(monkeypatch):
-    # No passwd entry and no $HOME: the fallback must be a per-uid temp dir so
-    # different uids do not contend for one shared /tmp/.oid-agent (which the
-    # owner check would then refuse).
+    # No passwd entry and no $HOME: the fallback must be per-uid so uids do
+    # not contend for one /tmp/.oid-agent the owner check would then refuse.
     import pwd
 
     def _no_passwd(_uid):

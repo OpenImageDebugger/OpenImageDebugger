@@ -69,8 +69,6 @@ def test_stats_multi_channel_keeps_layout_labels():
 
 
 def test_stats_promotes_2d_array_to_single_channel():
-    # A bare (H, W) matrix is a single-channel buffer; compute_stats must
-    # not crash on the missing channel axis.
     arr = np.array([[1, 2, 3, 4], [5, 6, 7, 8]], dtype=np.float32)
     meta = make_meta(4, 2, channels=1, type_value=5, raw=arr.tobytes())
     stats = compute_stats(arr, meta)
@@ -91,7 +89,7 @@ def test_stats_2d_array_with_region():
 
 
 def test_stats_rejects_non_2d_3d_array():
-    arr = np.arange(4, dtype=np.float32)   # 1-D
+    arr = np.arange(4, dtype=np.float32)
     meta = make_meta(4, 1, channels=1, type_value=5, raw=arr.tobytes())
     with pytest.raises(ValueError) as excinfo:
         compute_stats(arr, meta)
@@ -146,11 +144,9 @@ def test_values_cap_enforced():
 def test_dump_npy_roundtrip(dump_dir):
     arr = np.arange(24, dtype=np.int32).reshape(4, 3, 2)
     path = dump_npy(arr, 'img->data[0]', 7, path='out.npy')
-    # Writes are confined to the hardened per-user dump directory.
     assert (os.path.dirname(path)
             == str(dump_dir / ('oid-dumps-' + _current_user())))
     np.testing.assert_array_equal(np.load(path), arr)
-    # The atomic write leaves no temp file behind.
     assert not [name for name in os.listdir(os.path.dirname(path))
                 if name.endswith('.tmp')]
 
@@ -181,7 +177,6 @@ def test_dump_npy_refuses_to_overwrite_existing_file(dump_dir):
     with pytest.raises(FileExistsError) as excinfo:
         dump_npy(replacement, 'img', 1, path='out.npy')
     assert 'overwrite' in str(excinfo.value)
-    # The existing file is left untouched.
     np.testing.assert_array_equal(np.load(target), original)
 
 
@@ -194,11 +189,10 @@ def test_dump_npy_overwrite_flag_replaces_existing_file(dump_dir):
 
 
 def test_dump_npy_overwrite_guard_uses_final_suffixed_path(dump_dir):
-    # The guard checks the resolved '.npy' target, not the raw argument.
     arr = np.zeros((1, 1, 1), dtype=np.uint8)
     dump_npy(arr, 'img', 1, path='out.npy')
     with pytest.raises(FileExistsError):
-        dump_npy(arr, 'img', 1, path='out')   # no explicit suffix
+        dump_npy(arr, 'img', 1, path='out')
 
 
 def test_dump_npy_default_path_refuses_silent_overwrite(dump_dir):
@@ -210,11 +204,11 @@ def test_dump_npy_default_path_refuses_silent_overwrite(dump_dir):
 
 
 @pytest.mark.parametrize('bad_path', [
-    'sub/out.npy',        # relative path with a separator
-    '/etc/escape.npy',    # absolute path
-    '..',                 # parent-directory reference
-    '.',                  # the dump directory itself
-    '',                   # empty name
+    'sub/out.npy',
+    '/etc/escape.npy',
+    '..',
+    '.',
+    '',
 ])
 def test_dump_npy_rejects_non_bare_filename(dump_dir, bad_path):
     arr = np.zeros((1, 1, 1), dtype=np.uint8)
@@ -232,7 +226,6 @@ def test_dump_npy_refuses_symlink_at_target(dump_dir):
     with pytest.raises(ValueError) as excinfo:
         dump_npy(arr, 'img', 1, path='link.npy', overwrite=True)
     assert 'symlink' in str(excinfo.value)
-    # Nothing was written through the link.
     assert not victim.exists()
 
 

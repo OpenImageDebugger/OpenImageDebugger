@@ -138,9 +138,8 @@ def test_plot_failure_maps_to_internal():
 
 
 def test_get_buffer_passes_memoryview_pointer_without_copy():
-    # A bridge that hands back a memoryview (as gdb's read_memory does) must
-    # be forwarded without an eager bytes() copy, yet still yield the exact
-    # bytes on the wire.
+    # A bridge may hand back a memoryview (gdb's read_memory does); it must
+    # reach the wire without an eager bytes() copy.
     raw = bytes(range(48))
     meta = make_meta(4, 3, channels=4, type_value=0, raw=raw)
     meta['pointer'] = memoryview(bytearray(raw))

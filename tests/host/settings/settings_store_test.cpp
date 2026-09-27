@@ -251,9 +251,8 @@ TEST(SettingsForScope, ViewerOwnedDropsWhatTheHostOwns) {
     EXPECT_EQ(scoped.last_export_dir, "/home/user/exports");
 }
 
-// The traffic fix, stated as an assertion: two snapshots that differ only in
-// geometry must be indistinguishable to the saver's comparison once scoped,
-// because that comparison is the only thing deciding whether a frame goes out.
+// The saver's scoped comparison is the only thing deciding whether a frame
+// goes out, so geometry-only churn has to compare equal under it.
 TEST(SettingsForScope, GeometryChurnComparesEqualUnderViewerOwned) {
     AppSettings a;
     a.window_w = 800;
@@ -290,9 +289,8 @@ TEST(SettingsToJson, FullOutputIsByteIdenticalToWhatWeAlwaysWrote) {
     s.previous_buffers = {{"a", 111}, {"b", 222}};
     s.last_export_dir = "/home/user/exports";
 
-    // Byte-for-byte, from the build that shipped before the scope existed.
-    // The on-disk settings file is this format; a diff here is a migration
-    // nobody planned. Weakening this test defeats its only purpose.
+    // The on-disk settings file is this exact format: a diff here is an
+    // unplanned migration, so weakening the expectation defeats its purpose.
     EXPECT_EQ(settings_to_json(s, SettingsScope::FULL),
               R"({
   "previousBuffers": [
@@ -341,14 +339,8 @@ TEST(SettingsToJson, ViewerOwnedCarriesOnlyVersionAndUi) {
 }
 
 TEST(SettingsToJson, DoesNotThrowOnInvalidUtf8LastExportDir) {
-    // last_export_dir is filesystem-path-derived, and a filesystem path need
-    // not be valid UTF-8 on Linux. A lone 0xFF is not a valid UTF-8 lead
-    // byte on its own; confirmed against this vendored nlohmann/json (via a
-    // standalone probe against the library directly, not this codebase) that
-    // it makes json::dump() throw type_error.316 under the library's default
-    // (strict) error handler -- the throw settings_to_json's "Never throws"
-    // contract requires nothing ever hits. error_handler_t::replace is what
-    // keeps that contract true for this input.
+    // A filesystem path need not be valid UTF-8, and dump() throws
+    // type_error.316 on a lone 0xFF without error_handler_t::replace.
     AppSettings s;
     s.last_export_dir = std::string(1, static_cast<char>(0xFF));
 
@@ -442,11 +434,8 @@ TEST(SettingsFromJson, FullStillReadsEverything) {
 }
 
 TEST(SettingsFromJson, ViewerOwnedReportsMalformedHostOwnedKeysToo) {
-    // A host-owned key that is present but not the shape FULL would have
-    // parsed (a number instead of an object/array) is still declined, and
-    // that decline is still reported: under VIEWER_OWNED the shape never
-    // gets looked at, so it can't be the thing that decides whether to
-    // report.
+    // Under VIEWER_OWNED the host-owned shape is never looked at, so a
+    // malformed value must still be declined and still reported.
     const auto json =
         R"({"window": 5, "previousBuffers": 7, "ui": {"contrastEnabled": true}})";
 
@@ -464,9 +453,8 @@ TEST(SettingsFromJson, ViewerOwnedReportsMalformedHostOwnedKeysToo) {
 }
 
 namespace {
-// Test-local: distinguishes "the sink under test threw" from any exception
-// a real dependency (std::* or otherwise) might raise, so a passing
-// assertion can't be explained by the wrong throw.
+// A distinct type, so a passing assertion can't be explained by a throw
+// from a real dependency rather than from the sink under test.
 struct SinkFailure : std::exception {
     [[nodiscard]] const char* what() const noexcept override {
         return "on_ignored sink failure";
@@ -489,11 +477,8 @@ TEST(SettingsFromJson, AThrowingSinkDoesNotCostTheCallerItsData) {
 }
 
 TEST(SettingsFromJson, AThrowingSinkStillReportsEveryHostOwnedKey) {
-    // The test above pins containment for a single sink call; this one
-    // pins it per-call: a sink that throws on EVERY call must not stop
-    // after the first host-owned key, so a second one is still reported,
-    // and the parse result is still the cleanly-parsed "ui" value rather
-    // than a fall-back to defaults.
+    // Containment is per-call, not once: a sink throwing on EVERY call must
+    // still report the second key and still parse "ui" cleanly.
     const auto json = R"({
       "window": {"w": 800},
       "previousBuffers": [{"name": "a", "expiry": 111}],

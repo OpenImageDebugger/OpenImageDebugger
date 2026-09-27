@@ -34,25 +34,20 @@
 
 namespace oid::host {
 
-// Paces agent-enabled render loop in place of vsync. With agent
-// endpoint up, swap no longer blocks (vsync off), so the loop calls
-// pace() each frame: sleeps on condition variable until the next
-// frame deadline, so OS cannot stretch it the way it stretches a
-// background window's present. An agent request wake()s the wait,
-// drained immediately instead of waiting for the next presented frame.
+// Stands in for vsync once the agent endpoint is up and swap stops blocking:
+// sleeps to a deadline the OS cannot stretch the way it stretches a background
+// window's present, and wake() cuts the sleep short for an agent request.
 class FramePacer {
   public:
     explicit FramePacer(std::chrono::nanoseconds period);
 
-    // Thread-safe; called from any thread (an AgentServer serve thread,
-    // right after it queues a request). Interrupts pace() in progress; if
-    // none in progress, it is served on the next pace() entry.
+    // Thread-safe. Interrupts a pace() in progress; with none in progress the
+    // wake is served on the next pace() entry.
     void wake();
 
-    // GL-thread only. Serves all pending burst wake() calls, one per
-    // on_wake() invocation, until the frame deadline passes, advances the
-    // deadline by one period -- clamped to now + period on overrun so a
-    // slow frame never schedules a catch-up burst -- then returns.
+    // GL-thread only. A single on_wake() serves the whole pending wake()
+    // burst, bounded by the deadline; then advances it by one period, clamped
+    // to now + period on overrun so a slow frame schedules no catch-up burst.
     void pace(const std::function<void()>& on_wake);
 
   private:

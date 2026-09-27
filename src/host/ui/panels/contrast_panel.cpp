@@ -45,9 +45,8 @@ namespace oid::host {
 
 namespace {
 
-// Draws the lower_upper_bound icon spanning both rows, vertically centered
-// against the two-row block like a Qt grid rowspan cell (label_minmax,
-// 8x35).
+// Spans both rows, vertically centered like the Qt grid rowspan cell
+// (label_minmax, 8x35).
 void draw_min_max_icon(SvgIconCache& icons, const float block_h) {
     if (const GLuint lub = icons.texture_for(IconId::LOWER_UPPER_BOUND, 8, 35);
         lub != 0) {
@@ -83,9 +82,8 @@ void draw_channel_dot(SvgIconCache& icons,
     }
 }
 
-// Editable min/max value field: commits on focus-loss-after-edit (parity
-// with Qt's editingFinished) rather than on every keystroke, so recomputing
-// the contrast parameters doesn't happen mid-typing.
+// Commits on focus-loss-after-edit (Qt editingFinished parity), not per
+// keystroke, so contrast parameters are not recomputed mid-typing.
 void draw_channel_value_field(float* v, Buffer* buffer) {
     // %g matches Qt's QString::number display ("255", not "255.000").
     ImGui::InputFloat("##val", v, 0.0f, 0.0f, "%g");
@@ -101,9 +99,7 @@ void draw_unused_channel_field() {
         "##val", empty.data(), empty.size(), ImGuiInputTextFlags_ReadOnly);
 }
 
-// Stable, per-panel state shared by every row/column helper: constructed
-// once in draw_contrast_panel before the row loop, then threaded through by
-// const-ref so the per-call helpers only take the values that actually vary
+// Constructed once before the row loop so the helpers only take what varies
 // per row/channel.
 struct ContrastRowContext {
     SvgIconCache& icons;
@@ -119,9 +115,8 @@ struct ContrastRowContext {
     float field_w;
 };
 
-// Draws one channel column (color dot + value field) inside the
-// PushID/BeginDisabled scope that keeps the ImGui ID stack and disabled
-// state balanced around both.
+// The PushID/BeginDisabled scope wraps both dot and field to keep the ImGui
+// ID stack and disabled state balanced.
 void draw_contrast_channel_column(const ContrastRowContext& ctx,
                                   const int row,
                                   const int c,

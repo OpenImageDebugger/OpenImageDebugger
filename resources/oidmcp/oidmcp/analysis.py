@@ -181,9 +181,8 @@ def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
     if not overwrite and os.path.lexists(target):
         raise FileExistsError(
             f'{target} already exists; pass overwrite=true to replace it')
-    # Atomic, symlink-safe write: fill a temp file in the same 0700 dir,
-    # then os.replace() the directory entry (which never follows a
-    # symlink at the target).
+    # Atomic and symlink-safe: os.replace() swaps the directory entry
+    # and never follows a symlink sitting at the target.
     fd, tmp = tempfile.mkstemp(dir=str(directory), suffix='.npy.tmp')
     try:
         with os.fdopen(fd, 'wb') as handle:
@@ -193,9 +192,8 @@ def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
         try:
             os.unlink(tmp)
         except OSError:
-            # Best-effort cleanup of the temp file; a failure to unlink it
-            # (already gone, or a transient FS error) must not mask the
-            # original write error we are about to re-raise.
+            # A failed unlink must not mask the write error being
+            # re-raised.
             pass
         raise
     return os.path.abspath(target)

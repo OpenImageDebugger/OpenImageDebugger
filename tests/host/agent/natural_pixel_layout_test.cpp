@@ -33,9 +33,8 @@ using oid::host::BufferKind;
 using oid::host::BufferRecord;
 using oid::host::agent::natural_pixel_layout;
 
-// The unaffected case: a valid declared layout is what set_channel(-1, _)
-// ("all") should restore, exactly as declared, regardless of what the
-// buffer currently renders with.
+// The unaffected case: set_channel(-1, _) ("all") restores a valid declared
+// layout as declared, whatever the buffer currently renders with.
 TEST(NaturalPixelLayout, ValidLayoutIsReturnedAsIs) {
     BufferRecord record;
     record.pixel_layout = "bgra";
@@ -48,22 +47,8 @@ TEST(NaturalPixelLayout, ValidLayoutIsReturnedAsIs) {
     EXPECT_FALSE(result.cleared_isolation);
 }
 
-// Defect: NativeViewModel::set_channel's mode == -1 arm used to stamp the
-// documented default onto the live buffer unconditionally whenever the
-// record's layout failed validation, even for a multi-channel buffer: the
-// exact mechanism that turns a model-level corruption (see
-// IpcClient::handle_plot_buffer_contents) into a permanent, wrong render
-// (Buffer::set_pixel_layout() has no buff_tex_ guard of its own). This is
-// corruption only for a DEBUGGER_SYMBOL record whose current layout is not
-// itself an isolation swizzle (see the isolation-clearing test below for the
-// other branch): post-fix, the IPC ingest path guarantees a multi-channel
-// DEBUGGER_SYMBOL record is either valid or already defaulted (see
-// IpcClient::resolve_pixel_layout), so an invalid one reaching here really
-// is residue or corruption, and the caller must leave the live buffer's
-// layout untouched instead of guessing. "bgra" is used as the current
-// layout here (a valid, non-isolation layout the buffer might already be
-// correctly rendering with) so this is unambiguously the leave-alone case,
-// not the isolation-clearing one.
+// Post-ingest, a multi-channel DEBUGGER_SYMBOL layout is valid or defaulted,
+// so an invalid one is residue: leave the current (non-isolation) layout.
 TEST(NaturalPixelLayout,
      InvalidLayoutForMultiChannelDebuggerSymbolLeavesCurrentLayoutAlone) {
     BufferRecord record;
@@ -77,10 +62,8 @@ TEST(NaturalPixelLayout,
     EXPECT_FALSE(result.cleared_isolation);
 }
 
-// Same corruption, but the record's layout has the mechanical floor (four
-// characters) without the shader's alphabet: still invalid, still hands off
-// to the caller rather than guessing. Current layout is again a valid,
-// non-isolation layout, for the same reason as above.
+// Same corruption, but four characters without the shader's alphabet: it
+// clears the length floor and is still invalid, so it still hands off.
 TEST(NaturalPixelLayout,
      InvalidCharactersForMultiChannelDebuggerSymbolLeavesCurrentLayoutAlone) {
     BufferRecord record;
@@ -94,17 +77,8 @@ TEST(NaturalPixelLayout,
     EXPECT_FALSE(result.cleared_isolation);
 }
 
-// Defect, other half: exiting isolation must actually exit it. If the user
-// previously isolated a channel (set_channel(name, index, _) installs one of
-// ISOLATION_LAYOUTS: "rrra"/"ggga"/"bbba") and the record's layout is invalid
-// for a multi-channel DEBUGGER_SYMBOL buffer, leaving the buffer's current
-// (isolated) layout alone would silently keep rendering a single channel
-// even though "all channels" was just requested and display_channel_mode
-// resets to -1. This is the one case where an invalid layout is NOT residue
-// to be left alone: the current layout being an isolation swizzle proves it
-// was set by this same class's own index arm, not preserved from a valid
-// declaration, so restoring the default is correct, not a guess, and it must
-// happen loudly.
+// The one invalid layout that is not residue: a current isolation swizzle
+// was set by this class's index arm, so "all" must restore the default.
 TEST(NaturalPixelLayout,
      InvalidLayoutForMultiChannelDebuggerSymbolClearsIsolatedCurrentLayout) {
     BufferRecord record;
@@ -119,18 +93,8 @@ TEST(NaturalPixelLayout,
     EXPECT_TRUE(result.cleared_isolation);
 }
 
-// The other half of the discriminator: a LOCAL_FILE record's empty layout is
-// never corruption, whatever its channel count, even when the buffer
-// currently holds an isolation swizzle: the LOCAL_FILE/channel-count check
-// takes precedence over the isolation check, so this is a plain default, not
-// a "cleared isolation" one (there is nothing for this record to lose by
-// leaving isolation alone versus not; the default is simply always correct
-// here). layout_for_channels() (file_buffer_loader.cpp) returns "" for any
-// non-4-channel file (a plain 3-channel RGB image is the common case), and
-// main.cpp's file-open path upserts straight into the same IpcBufferModel
-// NativeViewModel reads, bypassing IpcClient::resolve_pixel_layout entirely:
-// nothing ever wire-validates this record, so an empty layout here is the
-// documented convention, not residue.
+// A LOCAL_FILE record never reaches resolve_pixel_layout (main.cpp upserts
+// direct), so "" is convention; that check outranks the isolation one.
 TEST(NaturalPixelLayout, LocalFileMultiChannelEmptyLayoutReturnsTheDefault) {
     BufferRecord record;
     record.pixel_layout = "";
@@ -144,14 +108,8 @@ TEST(NaturalPixelLayout, LocalFileMultiChannelEmptyLayoutReturnsTheDefault) {
     EXPECT_FALSE(result.cleared_isolation);
 }
 
-// The convention this must not disturb: a single-channel buffer's empty
-// layout is not a corruption (channel order is meaningless for one channel,
-// see shader_pixel_layout.h), so restoring the documented default here is not
-// a guess: it is exactly what a single-channel buffer already renders with.
-// This holds for a DEBUGGER_SYMBOL record too, not only a LOCAL_FILE one.
-// The current layout is again an isolation swizzle here, to prove the
-// single-channel check takes precedence over the isolation check the same
-// way the LOCAL_FILE one does above.
+// Channel order is meaningless for one channel (shader_pixel_layout.h), so ""
+// is convention even for DEBUGGER_SYMBOL, and outranks the isolation check.
 TEST(NaturalPixelLayout, EmptyLayoutForSingleChannelReturnsTheDefault) {
     BufferRecord record;
     record.pixel_layout = "";

@@ -28,9 +28,7 @@ class TypeBridge(object):
         for (_, mod_name, _) in pkgutil.iter_modules(oidtypes.__path__):
             importlib.import_module('.oidtypes.' + mod_name, __package__)
 
-        # Registration order is precedence order (first match wins):
-        # workspace/user JSON entries, then user Python inspectors, then
-        # the builtin JSON entries.
+        # Registration order is precedence order: first match wins.
         self._type_inspectors.extend(declarative.load_user_inspectors())
 
         for inspector_class in TypeInspectorInterface.__subclasses__():

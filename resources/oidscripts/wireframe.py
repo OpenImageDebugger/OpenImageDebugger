@@ -48,9 +48,7 @@ def send_frame(sock, obj, payload=b''):
 
 
 def _recv_exact(sock, size):
-    # Fill a single preallocated buffer with recv_into rather than
-    # accumulating a list of chunks and joining them, which would need a
-    # second payload-sized allocation for large (up to the cap) transfers.
+    # One preallocated buffer: joining chunks costs a second big allocation.
     if size == 0:
         return b''
     buf = bytearray(size)
@@ -78,9 +76,7 @@ def recv_frame(sock, max_payload=None):
         raise ValueError('JSON frame too large: %d bytes' % length)
     obj = json.loads(_recv_exact(sock, length).decode('utf-8'))
     if not isinstance(obj, dict):
-        # A scalar or array frame would make the 'payload' membership
-        # test / lookup below raise TypeError; reject it as a protocol
-        # error the callers already handle.
+        # A scalar frame would make the 'payload' test below raise TypeError.
         raise ValueError('frame is not a JSON object')
     payload = b''
     if 'payload' in obj:

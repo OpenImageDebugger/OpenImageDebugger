@@ -212,10 +212,8 @@ def test_payloads_always_carry_the_sentinel():
     assert oid_resolve.list_observable(0, 1, host=FakeHost()).endswith(SENTINEL)
 
 
-# --- C1: host acquisition on the default (no explicit host) path must be
-# guarded too, since current_host() raises RuntimeError for entirely
-# routine conditions (no stopped frame, no debugger at all). This is the
-# primary calling mode real callers use.
+# current_host() raises RuntimeError for routine conditions (no stopped
+# frame, no debugger), so the default host path must be guarded too.
 
 def test_resolve_with_no_host_and_no_debugger_returns_error_not_traceback(monkeypatch):
     monkeypatch.delitem(sys.modules, 'lldb', raising=False)
@@ -239,10 +237,8 @@ def test_list_observable_with_no_host_and_no_debugger_returns_error_not_tracebac
     assert 'error' in _payload(result)
 
 
-# --- I3: emission itself must stay inside the guard. A host is free to
-# hand back a contract value of any type (that is why `pointer` is
-# normalised elsewhere); one that is not JSON-serializable must still
-# yield an error payload rather than a bare TypeError traceback.
+# Emission must stay inside the guard: a host may hand back a value
+# json.dumps cannot encode, and that must not escape as a TypeError.
 
 class _Unserializable:
     """A value json.dumps cannot encode, standing in for a debugger-native

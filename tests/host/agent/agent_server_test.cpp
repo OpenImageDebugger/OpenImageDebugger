@@ -72,9 +72,8 @@ long current_pid() {
 class ScopedEnvVar {
   public:
     ScopedEnvVar(const char* name, const std::string& value) : name_(name) {
-        // The prior value is only saved to restore on teardown; it is never
-        // used to open or create files, so reading a TMPDIR or *_DIR env var
-        // here is safe.
+        // The prior value is only restored on teardown, never used to open or
+        // create files, so reading a TMPDIR or *_DIR env var here is safe.
         if (const char* prev = std::getenv(name)) { // NOSONAR(cpp:S5443)
             had_prev_ = true;
             prev_ = prev;
@@ -109,9 +108,8 @@ class ScopedEnvVar {
 
 std::filesystem::path make_temp_dir() {
 #ifndef _WIN32
-    // mkdtemp atomically creates a uniquely-named 0700 directory, avoiding the
-    // predictable-name race of creating a temp dir in a world-writable
-    // location (S5443).
+    // mkdtemp atomically creates a uniquely-named 0700 dir, avoiding the
+    // predictable-name race of a temp dir in a world-writable place (S5443).
     std::string tmpl = (std::filesystem::temp_directory_path() / // NOSONAR
                         "oid_agent_server_test_XXXXXX")
                            .string();
@@ -148,9 +146,8 @@ void send_frame(asio::ip::tcp::socket& sock, const json& obj) {
     asio::write(sock, asio::buffer(bytes.data(), bytes.size()));
 }
 
-// Repeatedly calls server.drain() (as the real main loop would once per
-// frame) until `sock` has bytes ready to read, bounded by a timeout so a
-// broken test fails fast instead of hanging.
+// Drives server.drain() (as the real main loop would, once per frame) until
+// `sock` has bytes ready, bounded so a broken test fails fast, not hangs.
 void drain_until_reply(AgentServer& server, const asio::ip::tcp::socket& sock) {
     asio::error_code ec;
     const auto deadline =
@@ -241,10 +238,8 @@ TEST_F(AgentServerTest, RemovesDiscoveryOnStop) {
 
 #ifndef _WIN32
 TEST_F(AgentServerTest, RejectsSymlinkedBaseDir) {
-    // The predictable base discovery dir (the viewer dir's parent) is hardened
-    // too, not just the leaf: a symlinked base -- which could redirect the
-    // token-bearing discovery file under an attacker-controlled location --
-    // must be rejected.
+    // The base discovery dir is hardened too, not just the leaf: a symlinked
+    // base could redirect the token-bearing file under attacker control.
     const std::filesystem::path target = tmp_dir_ / "real-target";
     const std::filesystem::path link = tmp_dir_ / "symlinked-base";
     std::filesystem::create_directory(target);
@@ -301,11 +296,8 @@ TEST_F(AgentServerTest, HelloThenListBuffers) {
 }
 
 TEST_F(AgentServerTest, StopUnblocksIdleServingConnection) {
-    // A connection whose serve thread is blocked in a post-auth read when
-    // stop() is called must tear down without hanging: stop() only sets the
-    // flag + stops the ctx (thread-safe), and run_async_op closes the socket on
-    // the serve thread itself. Run stop() under a watchdog so a regression to
-    // cross-thread teardown surfaces as a failure, not a frozen suite.
+    // stop() only sets the flag and stops the ctx; run_async_op closes the
+    // socket on the serve thread. The watchdog turns a hang into a failure.
     FakeViewModel model;
     model.add("frame", 4, 5, 1);
     AgentServerConfig cfg;
@@ -329,12 +321,9 @@ TEST_F(AgentServerTest, StopUnblocksIdleServingConnection) {
 }
 
 TEST_F(AgentServerTest, StopUnblocksIdlePreAuthConnection) {
-    // The pre-auth twin of StopUnblocksIdleServingConnection: a connection
-    // whose serve thread is blocked in the bounded (handshake-deadline) read
-    // when stop() is called must also tear down without hanging. That read
-    // takes run_async_op's timeout branch, whose drain has to survive stop()
-    // calling ctx.stop() mid-run_for -- a regression there strands the aborted
-    // read handler (use-after-free) or freezes the suite.
+    // Pre-auth twin: the bounded read takes run_async_op's timeout branch,
+    // whose drain must survive stop() calling ctx.stop() mid-run_for -- an
+    // undrained handler writes through read_exact_async's dead stack locals.
     FakeViewModel model;
     model.add("frame", 4, 5, 1);
     AgentServerConfig cfg;
@@ -342,10 +331,8 @@ TEST_F(AgentServerTest, StopUnblocksIdlePreAuthConnection) {
     AgentServer server(model, cfg);
 
     asio::ip::tcp::socket sock = connect_to(server);
-    // Drive one pre-auth frame and read its rejection (serviced via drain(),
-    // as the real main loop would): this proves the serve thread is up and now
-    // blocked in the *next* pre-auth read (run_async_op's timeout branch),
-    // without ever authenticating, and rules out racing stop() against accept.
+    // One pre-auth frame proves the serve thread is up and now blocked in the
+    // *next* pre-auth read, ruling out racing stop() against accept.
     send_frame(sock, {{"method", "ping"}});
     drain_until_reply(server, sock);
     const DecodedFrame denied = read_frame(sock);
@@ -363,10 +350,8 @@ TEST_F(AgentServerTest, StopUnblocksIdlePreAuthConnection) {
 }
 
 TEST_F(AgentServerTest, DrainContainsHandlerException) {
-    // A ViewModel handler that throws (e.g. bad_alloc on a large get_buffer
-    // copy) must be contained by drain(): it must not escape and crash the
-    // render thread. The serve thread rethrows via future.get() and closes just
-    // that connection.
+    // A throwing handler must not escape drain() and crash the render thread:
+    // the serve thread rethrows via future.get() and closes that connection.
     FakeViewModel model;
     model.add("frame", 4, 5, 1);
     model.set_bytes("frame", std::vector<std::byte>(4));
@@ -396,9 +381,8 @@ TEST_F(AgentServerTest, DrainContainsHandlerException) {
 }
 
 TEST_F(AgentServerTest, OversizeReplyReturnsStructuredError) {
-    // A reply whose JSON serializes past MAX_FRAME_BYTES -- here list_buffers
-    // on a session with a huge number of buffers -- must come back as a
-    // structured error the client can read, not a dropped connection.
+    // A reply serializing past MAX_FRAME_BYTES must come back as a structured
+    // error the client can read, not a dropped connection.
     FakeViewModel model;
     const std::string long_name(200, 'b');
     for (int i = 0; i < 6000; ++i) {
@@ -438,11 +422,8 @@ TEST_F(AgentServerTest, DrainRunsOnCallingThread) {
     asio::error_code ec;
     EXPECT_EQ(sock.available(ec), 0u);
 
-    // Loop drain() within the wait window (as HelloRequiredFirst/
-    // HelloThenListBuffers do) rather than a single fixed-delay call: a
-    // one-shot drain() right after a fixed sleep can race ahead of a slow
-    // CI's serve thread, land before the request is queued, and then never
-    // run again to service it once it does land.
+    // Loop drain() rather than one fixed-delay call: a one-shot drain() can
+    // race ahead of a slow CI's serve thread and then never run again.
     drain_until_reply(server, sock);
     EXPECT_GT(sock.available(ec), 0u);
 
@@ -472,9 +453,8 @@ TEST_F(AgentServerTest, EnqueueListenerFiresWhenARequestIsQueued) {
 }
 
 #ifndef _WIN32
-// The default discovery dir must come from the passwd-database home, not
-// $HOME/$TMPDIR, so a stripped-env MCP subprocess and the GUI-launched viewer
-// resolve the same directory. (An empty OID_AGENT_DIR reads as "no override".)
+// The default dir comes from the passwd-database home, not $HOME/$TMPDIR, so
+// a stripped-env subprocess and the GUI viewer agree; "" means "no override".
 TEST(AgentDiscoveryDir, DefaultIsHomeBasedAndEnvIndependent) {
     const ScopedEnvVar no_override("OID_AGENT_DIR", "");
     const std::filesystem::path base = viewer_discovery_dir();

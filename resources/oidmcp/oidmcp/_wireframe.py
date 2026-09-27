@@ -25,24 +25,11 @@ import sys
 import sysconfig
 from pathlib import Path
 
-# Three supported layouts for the shared scripts tree:
-#   repo layout:      resources/oidmcp/oidmcp/_wireframe.py with the tree at
-#                     resources/oidscripts (parents[2] == resources/)
-#   installed layout: site-packages/oidmcp/_wireframe.py with oidscripts
-#                     shipped in the same site-packages by the wheel
-#                     (parents[1] == site-packages)
-#   editable-install layout: a local `uv run`/`pip install -e` dev sync
-#                     redirects oidmcp/_wireframe.py's own __file__ back to
-#                     this repo file (so parents[1] above is not the venv's
-#                     site-packages), yet the build backend still has to
-#                     materialize the force-included oidscripts tree as a
-#                     real copy in the running interpreter's site-packages,
-#                     since there is no editable/redirect mechanism for a
-#                     force-include mapped from outside the project root.
+# Three layouts hold the shared tree: repo (parents[2]), wheel-installed
+# (parents[1]), and editable, where only purelib gets the force-include.
 _RESOURCES_DIR = Path(__file__).resolve().parents[2]
 _SITE_DIR = Path(__file__).resolve().parents[1]
 _PURELIB_DIR = Path(sysconfig.get_path('purelib'))
-# Single-sourced to avoid repeating the path components below.
 _OIDSCRIPTS_WIREFRAME = Path('oidscripts') / 'wireframe.py'
 _EXPECTED_WIREFRAMES = (
     _RESOURCES_DIR / _OIDSCRIPTS_WIREFRAME,
@@ -61,10 +48,8 @@ except ImportError as exc:  # pragma: no cover - deployment misconfiguration
         'from the OID install (uv run --directory resources/oidmcp).'
     ) from exc
 
-# Guard against an earlier sys.path entry resolving `oidscripts` to some
-# other tree: confirm we imported the wireframe that ships beside us. A
-# different module could encode frames incompatibly, so treat it as a
-# misconfiguration to fix, not a protocol to trust.
+# An earlier sys.path entry could resolve `oidscripts` to another tree
+# whose wireframe encodes frames incompatibly; reject it, never use it.
 _loaded = getattr(_wireframe, '__file__', None)
 if _loaded is not None and os.path.realpath(_loaded) not in {
         os.path.realpath(str(p)) for p in _EXPECTED_WIREFRAMES}:

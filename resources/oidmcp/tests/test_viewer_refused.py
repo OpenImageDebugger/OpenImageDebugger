@@ -75,9 +75,8 @@ def test_all_viewers_refused_raises_no_session(monkeypatch, tmp_path):
 
 
 def test_many_stale_viewers_do_not_hide_an_older_live_one(monkeypatch, tmp_path):
-    # Nine newer stale entries that all refuse, plus one older live viewer.
-    # A fixed small retry cap would give up before reaching the live one; the
-    # live-viewer-bounded walk must reap all nine and still serve the tenth.
+    # Nine newer stale entries that all refuse ahead of one older live
+    # viewer: a fixed small retry cap would give up before the tenth.
     stale = []
     for i in range(9):
         p = tmp_path / f'2{i:02d}.json'

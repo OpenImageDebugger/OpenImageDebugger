@@ -35,10 +35,8 @@
 
 namespace oid::host {
 
-// Already-decoded wire fields for a single buffer, grouped so
-// make_buffer_record() stays under Sonar's parameter-count limit. Field
-// names and order mirror BufferRecord (see buffer_model.h), except
-// `stride`, which becomes BufferRecord::step.
+// Decoded wire fields grouped so make_buffer_record() stays under Sonar's
+// parameter-count limit. Mirrors BufferRecord, except `stride` -> `step`.
 struct BufferRecordParams {
     std::string variable_name;
     std::string display_name;

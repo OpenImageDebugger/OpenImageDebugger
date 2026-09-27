@@ -7,12 +7,8 @@ import json
 import os
 import sys
 
-# The published MCP SDK exposes the server class as FastMCP; some builds
-# expose it as MCPServer under mcp.server.mcpserver. Choose by whether that
-# module actually exists (find_spec) rather than by catching ImportError from
-# the import itself -- so a genuine failure *inside* an existing mcpserver
-# module surfaces to the user instead of being silently swallowed into the
-# FastMCP fallback.
+# FastMCP, or MCPServer in some SDK builds. find_spec, not ImportError from
+# the import: a real error inside an existing mcpserver must surface.
 try:
     _has_mcpserver = (
         importlib.util.find_spec('mcp.server.mcpserver') is not None)
@@ -92,16 +88,8 @@ class SessionManager:
             client.close()
 
     def _call_viewer(self, session, fn):
-        # A viewer discovery file can outlive its endpoint while the pid
-        # that wrote it lives on (a long-lived embedding host whose bridge
-        # is gone): the reader's pid probe passes but the port refuses.
-        # Treat connection-refused as "dead viewer": reap that file and
-        # re-resolve so another live viewer can win. The walk is bounded by
-        # the live viewers themselves -- each refusal reaps one entry, and
-        # an entry we cannot make progress on (no path, or a reap that left
-        # the file in place) stops the walk -- so many stale entries can
-        # never hide an older live viewer, yet a pathological discovery dir
-        # cannot loop forever.
+        # A viewer discovery file can outlive its endpoint (its writer pid
+        # lives on): reap on refusal, re-resolve; a failed reap ends the walk.
         reaped = set()
         while True:
             info = self._resolve_viewer(session)
@@ -217,15 +205,9 @@ class SessionManager:
             meta = to_bridge_meta(viewer_meta)
             return meta, decode_buffer(meta, raw)
 
-        # ping is functional here (not a liveness probe): it returns the
-        # current stop generation, which keys the per-stop cache. One
-        # connection serves ping + cache-miss get_buffer, so the key always
-        # matches the endpoint that produced the bytes. info.token is
-        # included because it is per-instance (a restarted endpoint
-        # publishes a fresh random token): pid alone can be reused by an
-        # unrelated later session that happens to reach the same stop
-        # generation, and without the token that session would read back
-        # the previous session's cached bytes.
+        # ping returns the stop generation keying the cache; one connection
+        # serves it and get_buffer, so the key matches the stop that made the
+        # bytes. token is per-instance: a reused pid can't read stale bytes.
         info = self._resolve(session)
         client = self._connect(info)
         try:

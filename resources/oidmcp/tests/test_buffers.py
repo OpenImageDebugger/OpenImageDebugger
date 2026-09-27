@@ -29,7 +29,7 @@ def test_decode_transposed_matches_display_orientation():
     # layout (width=8, height=16, stride=8) and transpose_buffer=True.
     matrix = (np.arange(8)[:, None] * 100 + np.arange(16)[None, :]) \
         .astype(np.float32)                      # display: (8, 16)
-    stored = matrix.T.copy()                     # stored:  (16, 8)
+    stored = matrix.T.copy()
     meta = make_meta(8, 16, channels=1, type_value=5,
                      transpose_buffer=True, raw=stored.tobytes())
     decoded = decode_buffer(meta, stored.tobytes())

@@ -70,11 +70,8 @@ std::vector<std::string> collect_paths(const nfdpathset_t* path_set) {
 
 } // namespace
 
-// Deliberately unparented: nfd-extended's parented dialogs need a
-// platform-specific window handle (nfd_glfw3.h on GLFW builds), which this
-// seam does not thread through. `window` is accepted for interface symmetry
-// with callers that hold a GLFWwindow* (and possible future use), but the
-// dialog is shown without a parent either way.
+// Unparented: nfd's parented dialogs need a window handle (nfd_glfw3.h on
+// GLFW builds) this seam lacks; `window` is kept for symmetry with callers.
 std::vector<std::string> request_open_files(GLFWwindow* /*window*/) {
     if (NFD_Init() != NFD_OKAY) {
         return {};
@@ -104,11 +101,7 @@ std::vector<std::string> request_open_files(GLFWwindow* /*window*/) {
     return paths;
 }
 
-// On macOS the save dialog is implemented in native_file_dialog_mac.mm, which
-// adds a format-selector accessory view that nfd-extended's cocoa save backend
-// omits (it drops the friendly labels and shows no picker). Everywhere else nfd
-// renders the filter list as a native format dropdown, so the nfd save dialog
-// is used directly.
+// macOS uses native_file_dialog_mac.mm: nfd's cocoa save shows no picker.
 #if !defined(__APPLE__)
 std::optional<std::string> request_save_path(const std::string& default_dir,
                                              const std::string& default_name) {

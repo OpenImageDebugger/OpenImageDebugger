@@ -138,10 +138,7 @@ struct ThrowingTransport final : ITransport {
     }
 };
 
-// Transport whose receive() throws std::length_error, standing in for a
-// peer-supplied size overrunning a container elsewhere in the receive path
-// (e.g. BufferAssembler::begin()'s vector construction on a 32-bit size_t)
-// that this fake cannot reach directly.
+// Stands in for a peer size overrunning a container in the receive path.
 struct LengthErrorTransport final : ITransport {
     void send(std::span<const std::byte>) override {
         // Nothing to record: only the receive side is under test here.
@@ -156,9 +153,7 @@ struct LengthErrorTransport final : ITransport {
     }
 };
 
-// Redirects std::cerr into a buffer for the test's duration, restoring the
-// original streambuf on destruction (production code logs via std::cerr
-// directly, so this is the only hook available to observe it).
+// Production code logs to std::cerr directly; this is the only hook.
 struct CerrCapture {
     std::ostringstream out;
     std::streambuf* saved = std::cerr.rdbuf(out.rdbuf());
@@ -186,9 +181,7 @@ static std::vector<std::byte> frame(const MessageComposer& c) {
     return cap.b;
 }
 
-// Builds a PLOT_BUFFER_BEGIN frame for `name`: single-channel, row-major
-// geometry (channels=1, stride=width) so callers only need to pick width,
-// height and the total payload size.
+// channels=1 and stride=width are fixed; callers pick width, height, size.
 static std::vector<std::byte> begin_frame(const std::string& name,
                                           const int width,
                                           const int height,
@@ -208,17 +201,9 @@ static std::vector<std::byte> begin_frame(const std::string& name,
     return frame(c);
 }
 
-// Like begin_frame, but exposes channels, stride and type: the
-// geometry-vs-payload checks need shapes begin_frame's fixed
-// channels=1/stride=width can't reach. Declares "rgba" regardless of
-// `channels` for convenience, not fidelity: a real wire client would send ""
-// for the channels=1 callers instead (see BufferRecord::pixel_layout,
-// buffer_model.h). None of these tests assert on pixel_layout, and a
-// single-channel declared layout is used as-is regardless of validity
-// (ipc_client.cpp), so that mismatch is harmless here; it matters only for
-// the multi-channel callers, where a real layout is always four characters,
-// so "rgba" (not a shorter placeholder like "rgb") avoids spuriously
-// tripping the invalid-layout fallback.
+// "rgba" regardless of channels for convenience: a real client sends "" for
+// the channels=1 callers, which take the declared layout as-is; only the
+// multi-channel ones would trip the invalid-layout fallback on a shorter one.
 static std::vector<std::byte>
 begin_frame_ex(const std::string& name,
                const int width,
@@ -278,11 +263,7 @@ TEST(IpcClient, PlotBufferContentsUpsertsModel) {
     FakeTransport t;
     host::IpcBufferModel model;
     MessageComposer c;
-    // 2x2 rgb8, unpadded: stride counts PIXELS per row, so it equals width
-    // here, and the payload is channels * stride * height = 12 bytes. A real
-    // multi-channel layout is always four characters (see
-    // BufferRecord::pixel_layout, buffer_model.h), so "rgba" is used here
-    // even though only 3 channels are declared.
+    // stride counts PIXELS per row: payload is channels * stride * height.
     std::vector bytes(12, std::byte{5});
     c.push(MessageType::PLOT_BUFFER_CONTENTS)
         .push(std::string("v"))
@@ -306,10 +287,7 @@ TEST(IpcClient, PlotBufferContentsUpsertsModel) {
     EXPECT_EQ(model.at(0).bytes.size(), 12u);
 }
 
-// The single-shot sibling of the chunked-path fix: PLOT_BUFFER_CONTENTS
-// carries its whole payload in one message, with no BufferAssembler::begin()
-// to reject it, so handle_plot_buffer_contents() must apply the same check
-// itself.
+// PLOT_BUFFER_CONTENTS has no begin() to reject it, so it checks itself.
 TEST(IpcClient, PlotBufferContentsRejectsPayloadTooSmallForGeometry) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -341,10 +319,7 @@ TEST(IpcClient, PlotBufferContentsRejectsPayloadTooSmallForGeometry) {
     EXPECT_NE(logged.find("payload too small for geometry"), std::string::npos);
 }
 
-// The other half of the deliberate asymmetry: this is the exact geometry
-// LastRowOmittingTrailingStridePaddingIsRejectedOnChunkedPath refuses, and
-// the single-shot path takes it. Nothing here assembles row strips, so a
-// non-uniform final row is harmless and the floor is all that is required.
+// Nothing assembles row strips here, so the floor suffices; chunked refuses.
 TEST(IpcClient, PlotBufferContentsAcceptsLastRowOmittingStridePadding) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -374,18 +349,11 @@ TEST(IpcClient, PlotBufferContentsAcceptsLastRowOmittingStridePadding) {
     EXPECT_TRUE(cap.out.str().empty());
 }
 
-// Defect: a replot whose pixel_layout is invalid (here, empty, as if a
-// degraded resend dropped the format hint) must never overwrite a valid
-// layout the record already holds. IpcBufferModel::upsert() replaces the
-// whole record, so without this check the corruption would sit silent in
-// the model (Buffer::configure()'s own guard hides it from the render)
-// until something else re-derives from the record and makes it real. The
-// existing valid layout must stand, loudly.
+// upsert() replaces the whole record: a bad layout would overwrite a good one.
 TEST(IpcClient, ReplotWithInvalidLayoutKeepsExistingValidLayout) {
     FakeTransport t;
     host::IpcBufferModel model;
 
-    // First plot: 2x2, 3-channel, valid "bgra" layout.
     {
         MessageComposer c;
         std::vector bytes(12, std::byte{5});
@@ -441,16 +409,11 @@ TEST(IpcClient, ReplotWithInvalidLayoutKeepsExistingValidLayout) {
     EXPECT_NE(logged.find("pixel_layout ''"), std::string::npos);
 }
 
-// The kept layout's premise dies with the channel count: a layout declared
-// for the record's OLD shape must not survive onto a replot that changes
-// how many channels there are, or the preserved swizzle addresses
-// components the new texture does not have. A reshaping replot with an
-// invalid layout takes the default instead.
+// A layout declared for the OLD channel count would swizzle absent components.
 TEST(IpcClient, AReshapingReplotWithInvalidLayoutTakesTheDefault) {
     FakeTransport t;
     host::IpcBufferModel model;
 
-    // First plot: 2x2, 3-channel, valid "bgra" layout.
     {
         MessageComposer c;
         std::vector bytes(12, std::byte{5});
@@ -499,11 +462,7 @@ TEST(IpcClient, AReshapingReplotWithInvalidLayoutTakesTheDefault) {
     EXPECT_NE(cap.out.str().find("rgba"), std::string::npos);
 }
 
-// Defect, other half: a variable's very first plot ever, with an invalid
-// layout ("xyzq": four characters, but outside the r/g/b/a alphabet the
-// shader swizzles by) for a multi-channel buffer. There is no existing
-// record to fall back on, so this must land with the documented default,
-// loudly.
+// "xyzq" is four characters but outside the r/g/b/a swizzle alphabet.
 TEST(IpcClient, FirstPlotWithInvalidLayoutForMultiChannelDefaultsLoudly) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -536,11 +495,7 @@ TEST(IpcClient, FirstPlotWithInvalidLayoutForMultiChannelDefaultsLoudly) {
     EXPECT_NE(logged.find("xyzq"), std::string::npos);
 }
 
-// The echo of the rejected value must stay bounded: the wire allows strings
-// far larger than any legitimate layout, and a diagnostic must not let one
-// malformed message turn into megabytes of synchronous stderr. A long
-// rejected value is echoed as a short preview plus its byte count, never
-// verbatim.
+// The wire allows layouts far larger than legitimate: cap the stderr echo.
 TEST(IpcClient, ALargeInvalidLayoutIsEchoedBounded) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -578,9 +533,7 @@ TEST(IpcClient, ALargeInvalidLayoutIsEchoedBounded) {
         << "not one character more than the bound";
 }
 
-// The length bound alone does not make the echo safe: sixteen characters of
-// newlines or terminal escapes still forge log lines. Control characters in
-// the rejected value must land as visible escapes, never raw.
+// Sixteen characters of newlines or escapes still forge log lines.
 TEST(IpcClient, ControlCharactersInARejectedLayoutAreEchoedVisibly) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -615,12 +568,7 @@ TEST(IpcClient, ControlCharactersInARejectedLayoutAreEchoedVisibly) {
         << "the escape byte lands as its visible escape";
 }
 
-// The C1 controls are one layer up from the raw bytes: U+009B (CSI) arrives
-// as the UTF-8 pair 0xc2 0x9b, which a Unicode-aware consumer decodes into
-// a control character no C0 byte scan ever sees. Exactly those pairs land
-// as visible escapes; every other multi-byte sequence passes through
-// untouched, since 0x80..0x9f CONTINUATION bytes are how ordinary non-ASCII
-// text is spelled.
+// U+009B (CSI) is the UTF-8 pair 0xc2 0x9b, which no C0 byte scan sees.
 TEST(IpcClient, C1ControlsInARejectedLayoutAreEchoedVisibly) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -652,9 +600,7 @@ TEST(IpcClient, C1ControlsInARejectedLayoutAreEchoedVisibly) {
         << "the C1 control lands as its visible escape";
 }
 
-// The variable name travels the same wire as the layout and lands in the
-// same diagnostic, so it gets the same treatment: a control character in it
-// must not forge log lines just because the layout half is already safe.
+// The name reaches the same diagnostic, so it must be escaped too.
 TEST(IpcClient, ControlCharactersInTheNameAreEchoedVisiblyToo) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -687,10 +633,7 @@ TEST(IpcClient, ControlCharactersInTheNameAreEchoedVisiblyToo) {
         << "the raw newline must not reach the log: " << logged;
 }
 
-// The convention this whole check must not disturb: a single-channel
-// buffer's empty pixel_layout is legitimate (see BufferRecord::pixel_layout,
-// buffer_model.h, and layout_for_channels(), file_buffer_loader.cpp), not a
-// corruption, so it must upsert exactly as before: silently, and unchanged.
+// A single-channel buffer's empty pixel_layout is legitimate, not corruption.
 TEST(IpcClient, SingleChannelEmptyLayoutStillUpsertsSilently) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -757,10 +700,7 @@ TEST(IpcClient, GetObservedSymbolsRespondsWithModelNames) {
     EXPECT_EQ(h, MessageType::GET_OBSERVED_SYMBOLS_RESPONSE);
 }
 
-// LOCAL_FILE-tagged records (buffers opened directly from a local file, not
-// owned by the debugger) must never be advertised back via
-// GET_OBSERVED_SYMBOLS_RESPONSE -- only DEBUGGER_SYMBOL records belong in
-// that reply.
+// LOCAL_FILE records are not debugger-owned, so they are not advertised back.
 TEST(IpcClient, GetObservedSymbolsExcludesLocalFileBuffers) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -786,10 +726,7 @@ TEST(IpcClient, GetObservedSymbolsExcludesLocalFileBuffers) {
 
     ASSERT_EQ(t.sends.size(), 1u); // sent a GET_OBSERVED_SYMBOLS_RESPONSE
 
-    // Decode reply: [MessageType][size_t count][string...]. MessageDecoder
-    // only decodes off a live ITransport, so re-feed the captured send
-    // through a fresh FakeTransport (mirrors
-    // SendExportBufferRequestRoundTripsFields above).
+    // MessageDecoder only decodes off a live ITransport, hence the re-feed.
     FakeTransport decode_t;
     decode_t.feed(t.sends[0]);
     MessageType reply_type{};
@@ -842,11 +779,7 @@ TEST(IpcClient, RequestPlotSends) {
 TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
     FakeTransport t;
     host::IpcBufferModel model;
-    // 4x2 rgb8, unpadded: stride counts PIXELS per row, so it equals width
-    // here, and the payload is channels * stride * height = 24 bytes. A real
-    // multi-channel layout is always four characters (see
-    // BufferRecord::pixel_layout, buffer_model.h), so "rgba" is used here
-    // even though only 3 channels are declared.
+    // stride counts PIXELS per row: payload is channels * stride * height.
     std::vector bytes(24, std::byte{9});
 
     {
@@ -891,11 +824,7 @@ TEST(IpcClient, ChunkedRoundTripReassemblesBuffer) {
     }
 }
 
-// The BEGIN/CHUNK/END assembly path's sibling of
-// ReplotWithInvalidLayoutKeepsExistingValidLayout above:
-// handle_plot_buffer_end() upserts from the assembled transfer via its own call
-// site, independent of handle_plot_buffer_contents(), so it needs its own guard
-// against the same corruption.
+// handle_plot_buffer_end() upserts via its own call site, so it guards too.
 TEST(IpcClient, ChunkedReplotWithInvalidLayoutKeepsExistingValidLayout) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -958,16 +887,11 @@ TEST(IpcClient, ChunkedReplotWithInvalidLayoutKeepsExistingValidLayout) {
     EXPECT_NE(logged.find("pixel_layout ''"), std::string::npos);
 }
 
-// The reported failure mode: a huge stride paired with a tiny, but
-// height-divisible, total_byte_size sails through the old height-only/
-// divisibility checks. begin() must now refuse it outright, so the buffer
-// never reaches the model even if well-formed chunks and an END follow.
+// A huge stride with a tiny height-divisible total passes divisibility.
 TEST(IpcClient, BeginRejectsGeometryTooLargeForPayload) {
     FakeTransport t;
     host::IpcBufferModel model;
-    // width=4, height=2, channels=1, stride=100000, FLOAT32: needs
-    // (height-1)*stride+width = 100004 pixels, but total_byte_size=2 covers
-    // zero (2 / type_size(FLOAT32) == 0).
+    // needs (height-1)*stride+width = 100004 pixels; 2 bytes covers zero.
     t.feed(begin_frame_ex("v", 4, 2, 1, 100000, BufferType::FLOAT32, 2));
     const std::vector bytes(2, std::byte{9}); // 1 byte/row, height-divisible
     t.feed(chunk_frame("v", 0, 2, bytes));
@@ -982,9 +906,7 @@ TEST(IpcClient, BeginRejectsGeometryTooLargeForPayload) {
     EXPECT_EQ(model.size(), 0u);
 }
 
-// begin() must reject non-positive width/channels and stride < width: none
-// of these are checked by the pre-existing height/divisibility validation,
-// so a peer could otherwise declare a shape the payload cannot back.
+// The height/divisibility validation checks none of these three.
 TEST(IpcClient, BeginRejectsNonPositiveWidthChannelsAndStrideBelowWidth) {
     // width <= 0.
     {
@@ -1021,13 +943,7 @@ TEST(IpcClient, BeginRejectsNonPositiveWidthChannelsAndStrideBelowWidth) {
     }
 }
 
-// A producer that trims the trailing stride padding off only the last row is
-// rejected on the chunked path: chunk() spaces every strip by
-// total_byte_size / height, so a non-uniform final row has nowhere to go.
-// (The single-shot path still accepts this shape via geometry_fits_payload,
-// unaffected by this test.) This exercises stride > width so the fully
-// padded size (stride*height = 10) differs from the trimmed lower bound
-// ((height-1)*stride+width = 8) that used to be let through.
+// chunk() spaces strips uniformly, so a trimmed last row has nowhere to go.
 TEST(IpcClient, LastRowOmittingTrailingStridePaddingIsRejectedOnChunkedPath) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -1049,15 +965,8 @@ TEST(IpcClient, LastRowOmittingTrailingStridePaddingIsRejectedOnChunkedPath) {
     EXPECT_EQ(model.size(), 0u);
 }
 
-// Pins the exact contradiction the design review found: a geometry that
-// geometry_fits_payload() (the single-shot floor) accepts outright is still
-// refused on the chunked path, because chunk() needs every row spaced by a
-// single uniform size and this payload only has one if the trimmed last row
-// is ignored.
+// The single-shot floor accepts this; chunk() needs one uniform row size.
 TEST(IpcClient, BeginRejectsFloorAcceptedGeometryThatIsNotFullyPadded) {
-    // width=4, height=3, channels=2, stride=6, FLOAT32: floor =
-    // ((3-1)*6+4)*2*4 = 128 bytes; the fully padded size begin() now
-    // requires is stride*height*channels*type_size = 6*3*2*4 = 144.
     constexpr std::size_t floor_total = 128;
     ASSERT_TRUE(
         geometry_fits_payload(4, 3, 2, 6, BufferType::FLOAT32, floor_total));
@@ -1074,11 +983,7 @@ TEST(IpcClient, BeginRejectsFloorAcceptedGeometryThatIsNotFullyPadded) {
     client.poll();
 
     EXPECT_EQ(model.size(), 0u);
-    // The empty model alone proves nothing here: 128 / 3 truncates to 42
-    // bytes per row, so even a wrongly accepted BEGIN would refuse the
-    // 128-byte chunk and leave the model empty. The diagnostic is what
-    // discriminates -- it names BEGIN only when begin() did the refusing,
-    // and CHUNK otherwise.
+    // 128 / 3 truncates to 42 bytes/row, so an empty model proves nothing.
     const std::string logged = cap.out.str();
     EXPECT_NE(logged.find("rejected PLOT_BUFFER_BEGIN"), std::string::npos);
     // Naming both sizes is what makes this failure self-diagnosing for a
@@ -1087,9 +992,7 @@ TEST(IpcClient, BeginRejectsFloorAcceptedGeometryThatIsNotFullyPadded) {
     EXPECT_NE(logged.find("got 128"), std::string::npos);
 }
 
-// An unknown type would fall through type_size()'s default and be measured
-// as one byte per element, so the size arithmetic would use the wrong
-// element width without anything noticing.
+// type_size()'s default would measure an unknown type as one byte.
 TEST(IpcClient, BeginRejectsUnknownBufferType) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -1145,9 +1048,7 @@ TEST(IpcClient, PlotBufferContentsRejectsUnknownBufferType) {
     EXPECT_NE(cap.out.str().find("unknown buffer type 1"), std::string::npos);
 }
 
-// The declared size drives an allocation, so it is capped before allocating
-// rather than left for the allocator to refuse. Nothing is allocated here:
-// the BEGIN only carries the number.
+// The declared size drives an allocation: cap it before allocating.
 TEST(IpcClient, BeginRejectsDeclarationAboveTheByteLimit) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -1169,11 +1070,7 @@ TEST(IpcClient, BeginRejectsDeclarationAboveTheByteLimit) {
     EXPECT_NE(cap.out.str().find("exceeds the"), std::string::npos);
 }
 
-// The design review's motivating example: this geometry is otherwise
-// completely valid -- padded_payload_size(1, 131073, 1, 1, UNSIGNED_BYTE) is
-// exactly 131073, matching total_byte_size -- so only the new display-limits
-// check can be refusing it. Before this fix, begin() would have allocated,
-// assembled, and handed it to the model, for Buffer::configure() to drop.
+// padded_payload_size() matches exactly, so only display limits can refuse.
 TEST(IpcClient, BeginRejectsGeometryOutsideDisplayLimits) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -1191,9 +1088,7 @@ TEST(IpcClient, BeginRejectsGeometryOutsideDisplayLimits) {
     EXPECT_NE(logged.find("display limits"), std::string::npos);
 }
 
-// Same check, the other geometry axis: channels one past MAX_CHANNEL_COUNT,
-// on the chunked path. The payload backs this shape exactly (4*2*5*1 = 40
-// bytes), so again only the display-limits check can be refusing it.
+// The payload backs this shape exactly, so only display limits can refuse.
 TEST(IpcClient, BeginRejectsChannelsAboveDisplayLimit) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -1210,10 +1105,7 @@ TEST(IpcClient, BeginRejectsChannelsAboveDisplayLimit) {
     EXPECT_NE(logged.find("display limits"), std::string::npos);
 }
 
-// The single-shot sibling of BeginRejectsGeometryOutsideDisplayLimits: same
-// geometry, but via PLOT_BUFFER_CONTENTS, which has no BufferAssembler::begin
-// to reject it, so handle_plot_buffer_contents() must apply the same check
-// itself.
+// PLOT_BUFFER_CONTENTS has no begin(), so it applies the check itself.
 TEST(IpcClient, PlotBufferContentsRejectsGeometryOutsideDisplayLimits) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -1242,10 +1134,7 @@ TEST(IpcClient, PlotBufferContentsRejectsGeometryOutsideDisplayLimits) {
     EXPECT_NE(logged.find("display limits"), std::string::npos);
 }
 
-// The boundary itself must not be off by one: height == MAX_BUFFER_DIMENSION
-// and channels == MAX_CHANNEL_COUNT together are still accepted and round
-// trip into the model. (This passes even before the fix -- it pins the
-// boundary, it is not a regression test for the new check.)
+// Pins the boundary, not the check: the limits themselves must be accepted.
 TEST(IpcClient, BeginAcceptsGeometryExactlyAtDisplayLimits) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -1277,11 +1166,7 @@ TEST(IpcClient, BeginAcceptsGeometryExactlyAtDisplayLimits) {
     EXPECT_TRUE(cap.out.str().empty());
 }
 
-// Before the display-limits check existed, this geometry reached
-// padded_payload_size(), overflowed there, and was reported as "too large to
-// size in bytes". The display-limits check now runs first (width and height
-// are each far past MAX_BUFFER_DIMENSION) and refuses it earlier with a more
-// specific reason, so the overflow branch is never reached for this input.
+// Display limits run before padded_payload_size(), so no overflow report.
 TEST(IpcClient, BeginRejectsHugeGeometryWithTheDisplayLimitsDiagnostic) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -1320,20 +1205,12 @@ TEST(IpcClient, BeginReportsUnrenderableGeometryDistinctly) {
 }
 
 TEST(IpcClient, BeginRejectsPayloadOneByteAboveOrBelowPaddedSize) {
-    // width=4, height=1, channels=2, stride=6, FLOAT32: padded size is
-    // stride*height*channels*type_size = 6*1*2*4 = 48. height=1 is
-    // deliberate: with height>1 an off-by-one payload is already caught by
-    // the divisibility the exact size implies, so only height=1 leaves the
-    // exact comparison itself as the thing under test.
+    // height=1 is deliberate: with height>1 divisibility catches this first.
     for (const std::size_t total : {std::size_t{47}, std::size_t{49}}) {
         FakeTransport t;
         host::IpcBufferModel model;
         t.feed(begin_frame_ex("v", 4, 1, 2, 6, BufferType::FLOAT32, total));
-        // Chunk sized exactly as the old code would have computed
-        // bytes-per-row (total / height), followed by END: a full,
-        // internally-consistent round trip, so a wrongly-accepted begin()
-        // would actually complete the transfer instead of silently stalling
-        // on a missing END.
+        // A consistent round trip: a wrong begin() would complete, not stall.
         const std::vector bytes(total, std::byte{9});
         t.feed(chunk_frame("v", 0, 1, bytes));
         t.feed(end_frame("v"));
@@ -1398,9 +1275,7 @@ TEST(IpcClient, RejectedChunkAbortsTransferSoAWellFormedRetryCannotResumeIt) {
         t.feed(frame(c));
     }
     {
-        // A well-formed chunk covering every row, sent right after: without
-        // abort() this alone would complete the transfer, masking the
-        // earlier rejection instead of surfacing it.
+        // Without abort() this alone would complete the transfer.
         MessageComposer c;
         c.push(MessageType::PLOT_BUFFER_CHUNK)
             .push(std::string("v"))
@@ -1445,8 +1320,6 @@ TEST(IpcClient, RepeatedChunkFailuresForOneTransferReportOnlyOnce) {
             .push(bytes.size());
         t.feed(frame(c));
     }
-    // First chunk aborts the transfer; every one after fails too (unknown
-    // name) -- a naive implementation would log all of these.
     constexpr int kBadChunks = 200;
     for (int i = 0; i < kBadChunks; ++i) {
         MessageComposer c;
@@ -1473,11 +1346,7 @@ TEST(IpcClient, RejectedChunkLogsRowOffsetAndRowCountWithoutWrappedEndpoint) {
     host::IpcBufferModel model;
     t.feed(begin_frame("v", 4, 2, 8));
 
-    // row_offset + row_count overflows std::size_t and wraps to 0: a
-    // naively-computed endpoint would print an end row smaller than the
-    // start row, which is what this test guards against. row_count is
-    // chosen so its digits never appear inside row_offset's, so a substring
-    // search for it is unambiguous.
+    // row_offset + row_count wraps to 0; digits disjoint for substring search.
     constexpr auto row_offset = (std::numeric_limits<std::size_t>::max)() - 999;
     constexpr std::size_t row_count = 1000;
     const std::vector bytes(5, std::byte{1});
@@ -1520,13 +1389,9 @@ TEST(IpcClient, LaterTransferForSameNameStillReportsAfterEarlierRefusal) {
     FakeTransport t;
     host::IpcBufferModel model;
 
-    // First attempt: invalid geometry refuses the BEGIN outright.
     t.feed(begin_frame("v", 4, 0, 0)); // height <= 0 -> rejected
 
-    // Second attempt: a fresh, valid transfer under the same name that is
-    // then refused too (wrong-sized chunk). The old code tracked "already
-    // reported" per name with no bound on how long that lasts, so a second,
-    // unrelated failure for "v" could go unreported forever; it must not.
+    // "already reported" must not outlive the transfer it was set for.
     t.feed(begin_frame("v", 4, 2, 8));
     const std::vector wrong_size_bytes(3, std::byte{1});
     t.feed(chunk_frame("v", 0, 1, wrong_size_bytes));
@@ -1540,14 +1405,7 @@ TEST(IpcClient, LaterTransferForSameNameStillReportsAfterEarlierRefusal) {
     EXPECT_NE(logged.find("rejected PLOT_BUFFER_CHUNK"), std::string::npos);
 }
 
-// Sharper version of the above: no intervening successful begin() at all, so
-// the only way a second BEGIN failure for "v" can be reported is if rejected
-// BEGINs are never gated by "already reported" in the first place. This is
-// the precise regression test for the suppression half of the bug: the old
-// per-name "already reported" set was cleared only by a successful begin()
-// or by end() running for that name, so a peer that only ever sends invalid
-// BEGINs for "v" got exactly one diagnostic, forever, no matter how many
-// distinct malformed attempts followed.
+// No successful begin() here: rejected BEGINs must never be gated at all.
 TEST(IpcClient, RepeatedInvalidBeginsForSameNameEachReport) {
     FakeTransport t;
     host::IpcBufferModel model;
@@ -1625,12 +1483,7 @@ TEST(IpcClient, PollDoesNotThrowOnTruncatedMessage) {
     EXPECT_EQ(model.size(), 0u); // partial message dropped, not half-applied
 }
 
-// MessageDecoder's own size guards keep it from throwing std::length_error,
-// but other peer-size-driven allocations reachable from dispatch() (e.g.
-// BufferAssembler::begin()'s vector construction, on a 32-bit size_t) are not
-// guarded that way, and poll() backstops those. The throw is driven straight
-// from the transport so the test does not depend on any of them being
-// reachable on this host.
+// poll() backstops allocations MessageDecoder's own guards do not cover.
 TEST(IpcClient, PollCatchesLengthErrorBackstopWithoutCrashing) {
     LengthErrorTransport t;
     host::IpcBufferModel model;

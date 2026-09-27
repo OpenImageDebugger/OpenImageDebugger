@@ -36,10 +36,8 @@ class ViewerSessionInfo:
 
 
 def _home_dir():
-    # Passwd-based home so a stripped-env MCP subprocess and the GUI-launched
-    # viewer resolve the same dir independent of $HOME/$TMPDIR/$XDG_*. Returns
-    # None when the uid has no (or an empty) passwd entry and $HOME is unset;
-    # discovery_dir() then uses a per-uid temp dir so uids do not collide.
+    # Passwd-based home so a stripped-env MCP subprocess and the
+    # GUI-launched viewer agree, whatever $HOME/$TMPDIR/$XDG_* say.
     try:
         import pwd
         home = pwd.getpwuid(os.getuid()).pw_dir
@@ -127,16 +125,12 @@ def _warn_untrusted_dir(directory: Path) -> None:
 
 def _pid_alive(pid: int) -> bool:
     if pid <= 0:
-        # pid 0 and negatives have special os.kill semantics (current process
-        # group / broadcast), so a malformed record with a non-positive pid
-        # would look "alive" and never be reaped -- treat it as dead.
+        # os.kill(pid, 0) on a non-positive pid hits the process group
+        # or broadcasts, so a malformed record would never be reaped.
         return False
     if os.name == 'nt':
-        # os.kill(pid, 0) is NOT a liveness probe on Windows: signal 0 maps to
-        # CTRL_C_EVENT and any non-console signal to an unconditional
-        # TerminateProcess, so probing would disrupt or kill the very
-        # viewer/debugger this enumeration just discovered. Query the process
-        # object instead.
+        # os.kill(pid, 0) is destructive on Windows: signal 0 maps to
+        # CTRL_C_EVENT and anything else to TerminateProcess.
         return _pid_alive_windows(pid)
     try:
         os.kill(pid, 0)
@@ -175,9 +169,8 @@ def _pid_alive_windows(pid: int) -> bool:
 
     handle = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
     if not handle:
-        # No handle: access-denied means the pid is live but owned by another
-        # user (mirror POSIX os.kill's PermissionError => alive); any other
-        # error (e.g. invalid parameter) means there is no such process.
+        # Access-denied means the pid is live but owned by another user
+        # (as POSIX os.kill's PermissionError); anything else means gone.
         return ctypes.get_last_error() == ERROR_ACCESS_DENIED
     try:
         return kernel32.WaitForSingleObject(handle, 0) == WAIT_TIMEOUT
@@ -222,9 +215,8 @@ def _live_entries(directory: Path, parse):
             info = json.loads(path.read_text())
             entry = parse(path, info)
         except (ValueError, KeyError, TypeError, OSError):
-            # TypeError: a JSON field is the wrong type (e.g. debugger_pid an
-            # object) so int()/float() in parse() rejects it -- treat as a
-            # malformed file and reap it rather than aborting enumeration.
+            # TypeError: a JSON field of the wrong type makes int()/
+            # float() in parse() raise; reap it instead of aborting.
             _reap(path)
             continue
         if not _pid_alive(entry.pid):

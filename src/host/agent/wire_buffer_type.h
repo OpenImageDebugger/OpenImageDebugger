@@ -30,13 +30,7 @@
 
 namespace oid::host::agent {
 
-// Maps an in-memory buffer element type to the type actually served on the
-// wire. FLOAT64 payloads are narrowed to float32 on ingest (make_buffer_record
-// in buffer_decode.cpp), so the agent must report FLOAT32 for them and every
-// other type as-is. Reporting FLOAT64 would make oid-mcp size the payload at 8
-// bytes/element (rejecting every double buffer) and make the get_buffer
-// pre-copy cap over-estimate. Kept as a free function so it is testable without
-// the render-thread-bound NativeViewModel.
+// FLOAT64 is narrowed to float32 on ingest, so the wire must say FLOAT32.
 constexpr BufferType wire_buffer_type(const BufferType type) {
     return type == BufferType::FLOAT64 ? BufferType::FLOAT32 : type;
 }

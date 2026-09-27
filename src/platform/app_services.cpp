@@ -38,22 +38,17 @@
 
 namespace oid::platform {
 
-// No-op on native: there is no inbound host message hook to wire here --
-// that only exists for the non-native (postMessage) embedding, which must
-// install it before its transport starts polling.
 void install_platform_hooks() {
-    /* no-op on native: no inbound host message hook to wire here; see comment
-     * above */
+    // No-op on native: the inbound host message hook exists only for the
+    // non-native (postMessage) embedding, which installs it before polling.
 }
 
-// No-op on native: the native agent endpoint is assembled directly in
-// main.cpp (NativeViewModel + AgentServer); only a non-native platform
-// port needs these objects handed across the platform seam.
 void register_agent_targets(oid::host::IpcBufferModel& /*model*/,
                             oid::host::StageManager& /*stages*/,
                             oid::host::UiState& /*ui*/,
                             std::shared_ptr<RenderCanvas> /*canvas*/) {
-    // Nothing to register on native; see the header comment.
+    // No-op on native: main.cpp assembles the agent endpoint directly; only
+    // a non-native port needs these handed across the platform seam.
 }
 
 struct SettingsBackend::Impl {
@@ -70,8 +65,6 @@ host::AppSettings SettingsBackend::load() const {
 }
 
 host::SettingsScope SettingsBackend::scope() const {
-    // This build owns its window and its session, and writes both to its own
-    // settings file.
     return host::SettingsScope::FULL;
 }
 
@@ -86,11 +79,7 @@ SessionBridge::SessionBridge(
     const std::function<void()>& /*open_export*/) {}
 
 bool confirm_export(host::ExportDialogState& dialog) {
-    // A pending open request (set by open_export_dialog from the buffer-list
-    // context menu) resolves this frame via the blocking OS save dialog, so
-    // the one-shot flag is consumed up front. Runs from handle_export_requests
-    // -- the same top-level ImGui point after panels draw -- as the
-    // request_open_files call for File > Open.
+    // The blocking OS save dialog resolves this frame; consume the flag now.
     if (!dialog.open) {
         return false;
     }

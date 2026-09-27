@@ -59,12 +59,10 @@ enum class MessageType {
     PLOT_BUFFER_END = 12
 };
 
-// Ceiling on a decoded string length. Names, pixel layouts and session JSON
-// are the only strings on this wire; the bound exists so a peer-supplied
-// length cannot drive an unbounded allocation, not to constrain real data.
+// Ceiling on a decoded string length, so a peer-supplied length cannot drive
+// an unbounded allocation. Not a constraint on real data.
 constexpr std::size_t MAX_STRING_BYTES = 16ULL * 1024ULL * 1024ULL;
 
-// C++20 concept to replace SFINAE for primitive type checking
 template <typename T>
 concept PrimitiveType =
     std::is_same_v<T, MessageType> || std::is_same_v<T, int> ||
@@ -91,16 +89,14 @@ class SocketTimeoutError final : public std::runtime_error {
                                          loc.line())) {}
 };
 
-// Helper function for error reporting with source location
 [[noreturn]] inline void throw_socket_timeout_error(
     const char* operation,
     const std::source_location& loc = std::source_location::current()) {
     throw SocketTimeoutError{operation, loc};
 }
 
-// A message that cannot be decoded, as opposed to one that has not arrived
-// yet. Derives from std::runtime_error for the same cross-module RTTI reason
-// as SocketTimeoutError above: callers catch the base, never this type.
+// A message that cannot be decoded, not one that has not arrived yet. Hidden
+// RTTI never matches across modules, so callers catch std::runtime_error.
 class MessageDecodeError final : public std::runtime_error {
   public:
     using std::runtime_error::runtime_error;
@@ -215,7 +211,6 @@ class MessageComposer {
         message_blocks_.clear();
     }
 
-    // Overloads for non-primitive types
     MessageComposer& push(const std::string& value) {
         push(value.size());
         message_blocks_.emplace_back(std::make_unique<StringBlock>(value));
@@ -245,8 +240,6 @@ class MessageDecoder {
         return *this;
     }
 
-    // Overloads for non-primitive types - defined inline so templates can see
-    // them
     MessageDecoder& read(std::vector<std::byte>& value) {
         const auto container_size = [&] {
             auto size = std::size_t{};
@@ -254,21 +247,14 @@ class MessageDecoder {
             return size;
         }();
 
-        // The length comes from the peer and drives the allocation below.
-        // Refuse an impossible one rather than ask the allocator for it: a
-        // throw here has consumed only the length prefix, whereas a
-        // bad_alloc from resize() would leave the payload unread and every
-        // later message decoding from the wrong offset.
+        // Refuse a peer-declared length rather than hand it to the
+        // allocator: a bad_alloc leaves the payload unread, desyncing reads.
         if (exceeds_max_buffer_bytes(container_size)) {
             throw MessageDecodeError{"declared payload exceeds the maximum "
                                      "buffer size"};
         }
-        // Reachable only where size_t is 32 bits, i.e. the wasm build: there
-        // MAX_BUFFER_BYTES's 16 GiB ceiling can never be exceeded, so it
-        // cannot catch a length past what the container can represent;
-        // max_size() is the real limit there. resize() would otherwise throw
-        // std::length_error, which is not a std::runtime_error and would
-        // escape poll()'s catch. Keep this guard.
+        // 32-bit (wasm) only, where MAX_BUFFER_BYTES can never be exceeded:
+        // resize() throws std::length_error, which escapes poll()'s catch.
         if (container_size > value.max_size()) {
             throw MessageDecodeError{
                 "declared payload exceeds the container limit"};

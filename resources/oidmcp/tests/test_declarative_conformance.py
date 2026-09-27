@@ -82,9 +82,8 @@ import collections
 from oidscripts import symbols
 from oidscripts.oidtypes.declarative import EntryEvaluationError
 
-# The retired Python inspectors are the comparison basis. Once they are
-# removed the import fails and every @legacy_only test self-skips; the
-# JSON path (test_new_entry_matches_golden) is then authoritative.
+# The retired Python inspectors are the comparison basis; once deleted the
+# import fails, every @legacy_only test self-skips, and the JSON path rules.
 try:
     from oidscripts.oidtypes.opencv import Mat, CvMat, IplImage
     from oidscripts.oidtypes.eigen3 import EigenXX
@@ -210,8 +209,6 @@ class EvalFakeBridge:
         return int(obj)
 
 
-# --- fixture builders --------------------------------------------------------
-
 def _mat(flags, data, cols, rows, step0):
     return Struct(ctype='cv::Mat', fields={
         'flags': CInt(flags), 'data': CInt(data),
@@ -297,20 +294,16 @@ CLEAN_CASES = [
           'type': T.OID_TYPES_FLOAT32, 'row_stride': 320,
           'pixel_layout': 'rgba', 'transpose_buffer': False}),
     # OpenCV 4 and 5 pack `flags` differently (channel count starts at bit 3
-    # vs bit 5), and the low bits collide: 8 means 8UC2 on 4 and 16BFC1 on 5.
-    # The next case pins the v4 side of that colliding word; its v5 twin is
-    # test_opencv5_bf16_rejected_where_v4_sibling_decodes below. The two v5
-    # cases after it pin classic depths under the v5 packing. Those decoded
-    # correctly even before the version probe, by numeric accident (depths
-    # up to 7 fit inside the v4 mask, and multi-channel v5 words overflow
-    # the heuristic's channel gate into the right branch); these cases keep
-    # that from regressing now that the branch is chosen deliberately.
+    # vs bit 5), and the low bits collide: 8 is 8UC2 on 4 and 16BFC1 on 5.
     Case('mat_8uc2_v4_side_of_collision',
          _mat(_MAT_MAGIC | 8, 4096, 640, 480, 1280), 'mat', 'cv::Mat',
          {'display_name': 'mat (cv::Mat)', 'pointer': 4096,
           'width': 640, 'height': 480, 'channels': 2,
           'type': T.OID_TYPES_UINT8, 'row_stride': 640,
           'pixel_layout': 'rgba', 'transpose_buffer': False}),
+    # The two mat5_* cases decoded correctly by numeric accident even before
+    # the version probe (depths up to 7 fit the v4 mask; multi-channel v5
+    # words overflowed its channel gate), so they are not redundant here.
     Case('mat5_8uc3',
          _mat5(_MAT_MAGIC | 64, 4096, 640, 480, 1920), 'mat', 'cv::Mat',
          {'display_name': 'mat (cv::Mat)', 'pointer': 4096,
@@ -388,11 +381,9 @@ def test_legacy_inspector_matches_golden(case):
                             case.obj_name) == case.golden
 
 
-# Blessed diffs: the JSON path improves on the Python inspectors.
-# Diffs #1 (anchored CvMat/IplImage regexes) and #2 (Eigen tightened to
-# Matrix/Map) are covered by test_match_misses_non_builtins above.
-# Diff #6 is the general rule "old raised / new succeeds is an improvement",
-# with no dedicated case. The three metadata-affecting diffs are pinned here.
+# Blessed diffs where the JSON path improves on the Python inspectors: #1 and
+# #2 are covered by test_match_misses_non_builtins; #6 ("old raised / new
+# succeeds is an improvement") has no dedicated case.
 
 def test_diff5_null_mat_now_errors_but_legacy_returned_zero():
     # #5: null buffers now error uniformly; the Python Mat had no null check.
@@ -424,13 +415,9 @@ def test_diff4_legacy_mat_returns_invalid_code_one():
 
 
 def test_opencv5_bf16_rejected_where_v4_sibling_decodes():
-    # Low flag bits 8 mean 8UC2 on OpenCV 4 and 16BFC1 on OpenCV 5: the SAME
-    # word, told apart only by the step-layout probe. The v4 reading decodes
-    # (the mat_8uc2_v4_side_of_collision clean case); this v5 reading must be
-    # rejected, because bf16 has no OID pixel type. Under the old
-    # single-mask decode it aliased to uint8 and the channel heuristic read
-    # TWO channels, so a bf16 tensor rendered as interleaved garbage with no
-    # error anywhere.
+    # Low flag bits 8 are 8UC2 on OpenCV 4 and 16BFC1 on 5: the same word,
+    # told apart only by the step-layout probe. bf16 has no OID pixel type;
+    # the old single-mask decode aliased it to uint8 and drew silent garbage.
     symbol = _mat5(_MAT_MAGIC | 8, 4096, 640, 480, 1280)
     with pytest.raises(EntryEvaluationError) as excinfo:
         _new_metadata(symbol, 'mat')
@@ -439,9 +426,8 @@ def test_opencv5_bf16_rejected_where_v4_sibling_decodes():
 
 def test_opencv5_int64_rejected_not_misread_as_int16():
     # CV_64SC3 under the v5 packing: depth 11, three channels, low bits
-    # 11 | (2 << 5) = 75. The old decode masked 75 & 7 = 3 and rendered the
-    # 8-byte samples as int16. 64-bit integers have no OID pixel type, so
-    # the right answer is a typed dtype rejection, same as CV_8S above.
+    # 11 | (2 << 5) = 75. The old decode masked 75 & 7 = 3 and drew the
+    # 8-byte samples as int16. 64-bit integers have no OID pixel type.
     symbol = _mat5(_MAT_MAGIC | 75, 4096, 640, 480, 15360)
     with pytest.raises(EntryEvaluationError) as excinfo:
         _new_metadata(symbol, 'mat')
@@ -456,9 +442,8 @@ _IPL_16S_GOLDEN = {'display_name': 'ipl (IplImage)', 'pointer': 12288,
 
 
 def test_diff3_signed_iplimage_new_stride_is_correct():
-    # #3: for signed depths the Python inspector's `widthStep / depth * 8`
-    # divides by the huge signed-depth word (row_stride collapses to 0); the
-    # JSON divides by elemsize and gets the real stride.
+    # #3: for signed depths `widthStep / depth * 8` divides by the huge
+    # signed-depth word (stride collapses to 0); the JSON divides by elemsize.
     symbol = _iplimage(0x80000010, 1, 30, 20, 12288, 60)
     assert _new_metadata(symbol, 'ipl') == _IPL_16S_GOLDEN
 
@@ -472,13 +457,8 @@ def test_diff3_legacy_signed_iplimage_stride_collapses_to_zero():
 
 
 def test_diff7_single_channel_entries_declare_an_r_first_layout():
-    # #7: pixel_layout names the channel ORDER of multi-channel data, and its
-    # first character also selects which channel the viewer samples. A
-    # single-channel buffer is uploaded as GL_RED, where only .r carries data,
-    # so a layout starting with 'g'/'b'/'a' makes the fragment shader sample a
-    # constant 0 and the whole buffer renders black. The Eigen entries declared
-    # 'bgra' unconditionally even though Eigen matrices are always
-    # single-channel; the OpenCV entries already conditioned on {channels}.
+    # #7: a single-channel buffer uploads as GL_RED, so a pixel_layout whose
+    # first character is not 'r' makes the shader sample 0 and render black.
     for case in CLEAN_CASES:
         metadata = _new_metadata(case.symbol, case.obj_name)
         if metadata['channels'] == 1:
@@ -495,8 +475,6 @@ def test_diff7_legacy_eigen_declared_bgra_for_single_channel():
     assert metadata['pixel_layout'] == 'bgra'  # the bug the JSON path fixes
 
 
-# --- Editor schema tightness: schema-valid must imply loader-loadable ------
-#
 # The editor-facing JSON Schema is meant to be at least as strict as the
 # loader's own structural validation, so that any file which validates
 # against the schema is guaranteed to load. Each fixture below is a shape
@@ -573,9 +551,6 @@ def test_loader_rejected_shapes_are_also_schema_invalid(entry, tmp_path):
         jsonschema.validate({'version': 1, 'types': [entry]}, schema)
 
 
-# --- Editor schema tightness, converse direction: loader-loadable must ----
-# also be schema-valid -------------------------------------------------------
-#
 # The other half of the same guarantee: a shape the loader accepts (a
 # first_valid candidate that is itself a nested if/then/else node, or a
 # first_valid literal of a type the field's number policy allows) must
@@ -601,8 +576,6 @@ def test_loader_accepted_shapes_are_also_schema_valid(entry):
     jsonschema.validate({'version': 1, 'types': [entry]}, schema)
 
 
-# --- Editor schema tightness, document-level `version` field --------------
-#
 # The loader's version gate requires a real int equal to 1 (bool, string,
 # float, and other ints are all rejected). JSON Schema's `const`/`type`
 # keywords cannot fully express that: draft-07 has no separate "float" vs
@@ -631,11 +604,8 @@ def test_version_parity_both_reject(version, tmp_path):
 
 def test_version_documented_residual_float_one_accepted_by_schema_only(
         tmp_path):
-    # 1.0 is the one shape where the contracts diverge: JSON Schema draft-07
-    # has no way to say "reject a numeric literal for being a float", since
-    # 1.0 and 1 are the same JSON number. The loader still rejects it
-    # (isinstance(version, int) is False for a decoded 1.0), but the schema
-    # cannot follow — this is a known, irreducible residual, not a bug.
+    # JSON Schema draft-07 cannot reject 1.0 for being a float (1.0 and 1 are
+    # the same JSON number), so this divergence is irreducible, not a bug.
     document = {'version': 1.0, 'types': [_builtin_entry()]}
 
     types_file = tmp_path / 'types.json'
@@ -657,8 +627,6 @@ def test_version_one_accepted_by_both(tmp_path):
     jsonschema.validate(document, schema)  # does not raise
 
 
-# --- Unknown entry keys ---------------------------------------------------
-#
 # A typo'd field name used to load silently: the loader ignored the unknown
 # key and the entry ran with a default in place of the field the author
 # meant to set. Both sides now reject it, which keeps the bidirectional

@@ -38,13 +38,8 @@
 
 namespace oid::host::agent {
 
-// view_model.h is wasm-shared and must not include Camera, so
-// ViewModel::ZOOM_FACTOR (double) hand-mirrors oid::Camera::ZOOM_FACTOR
-// (float). This native-only translation unit already includes camera.h,
-// so it is the place to catch the two constants drifting apart. Comparing
-// double(1.1) to float(1.1f) promoted back to double is false -- rounding
-// 1.1 to float precision changes the bit pattern -- so the double side is
-// cast down to float before comparing at the engine's own precision.
+// view_model.h is wasm-shared and cannot include Camera, hence the mirror.
+// Compared as float: double(1.1) != float(1.1f) promoted back to double.
 static_assert(static_cast<float>(ViewModel::ZOOM_FACTOR) == Camera::ZOOM_FACTOR,
               "agent zoom factor must match Camera::ZOOM_FACTOR");
 
@@ -63,11 +58,7 @@ double normalize_degrees(const double radians) {
     return degrees;
 }
 
-// Pixel layout that isolates a single channel for Buffer's "specific
-// channel" display mode (set_display_channel_mode(1)): index 0/1/2 -> R/G/B.
-// Reads ISOLATION_LAYOUTS (natural_pixel_layout.h) rather than its own
-// literal array, so this and is_isolation_layout() can never drift apart on
-// what counts as an isolation swizzle.
+// Reads ISOLATION_LAYOUTS so this and is_isolation_layout() cannot drift.
 const char* isolated_layout(const int index) {
     return ISOLATION_LAYOUTS[static_cast<std::size_t>(index)];
 }
@@ -234,13 +225,7 @@ bool NativeViewModel::set_channel(const std::string_view name,
     }
 
     if (mode == -1) {
-        // A guess is never stamped onto a buffer that already carries a
-        // valid layout of its own: when the record cannot name a valid one
-        // (see natural_pixel_layout.h), the buffer's current layout stays,
-        // loudly, unless that current layout is itself an isolation swizzle
-        // installed by the index arm below, in which case leaving it in
-        // place would contradict the very "all channels" switch being
-        // requested here, so the default is restored instead, loudly.
+        // An isolation swizzle would contradict this "all channels" switch.
         const BufferRecord& record = model_.at(*idx);
         const std::string_view current_layout = buffer->get_pixel_layout();
         if (const auto decision = natural_pixel_layout(record, current_layout);
@@ -269,9 +254,7 @@ bool NativeViewModel::set_channel(const std::string_view name,
     if (index < 0 || index > 2) {
         return false;
     }
-    // A buffer only carries the channels it has. Isolating one it does not
-    // would leave view_of() reporting a channel that is not the one being
-    // rendered, since a single-channel buffer always renders from red.
+    // A single-channel buffer always renders red, so view_of() would lie.
     if (index >= buffer->channels()) {
         return false;
     }
@@ -285,9 +268,8 @@ bool NativeViewModel::auto_contrast() {
 }
 
 void NativeViewModel::set_auto_contrast(const bool enabled) {
-    // UiState only stores the flag; the per-frame toolbar/contrast-panel
-    // update (see host/ui/panels/contrast_panel.cpp) is what actually pushes
-    // it into each Stage's Buffer on the next frame.
+    // toolbar_panel's sync_selected_stage_contrast() pushes this into the
+    // selected Stage; auto-contrast is global, so any Stage picks it up.
     ui_.set_contrast_enabled(enabled);
 }
 

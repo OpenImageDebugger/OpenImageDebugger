@@ -121,7 +121,6 @@ void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params) {
     const auto& buffer_pose = params.buffer_pose;
     const auto pos = (y * step + x) * channels;
 
-    // Determine channel range based on display mode
     const bool single_channel = (buffer.get_display_channel_mode() == 1);
     const int start_ch =
         single_channel ? buffer.get_selected_channel_index() : 0;
@@ -129,13 +128,10 @@ void BufferValues::draw_pixel_values(const DrawPixelValuesParams& params) {
 
     for (int c = start_ch; c < end_ch; ++c) {
         constexpr auto label_length{30};
-        // A plain char buffer, not a std::string: pix2str() writes through
-        // this pointer and terminates it by hand, which would be writing past
-        // a string's size() into merely reserved capacity.
+        // A char array, not a std::string: pix2str() writes through the
+        // pointer and NUL-terminates by hand, past a string's size().
         std::array<char, label_length> pix_label{};
 
-        // For single-channel mode, center the value; otherwise use original
-        // calculation
         const float y_off =
             single_channel
                 ? 0.0f

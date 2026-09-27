@@ -1,11 +1,9 @@
 #include <Eigen/Dense>
 #include <array>
 
-// A plain struct no builtin entry matches, so the only thing that can resolve
-// it is the user-supplied custom_types.json this test points OID_TYPES_PATH
-// at. Rows are deliberately padded -- stride_bytes exceeds cols *
-// channel_count -- because a row_stride the engine got wrong still reads row 0
-// correctly and only corrupts the rows after it.
+// No builtin entry matches this struct, so only the custom_types.json this
+// test points at can resolve it. Rows are padded: a wrong row_stride still
+// reads row 0 correctly and corrupts only the rows after it.
 struct RgbFrame {
     unsigned char* pixels;
     int cols;

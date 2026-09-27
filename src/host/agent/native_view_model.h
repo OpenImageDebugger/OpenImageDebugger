@@ -43,22 +43,7 @@
 
 namespace oid::host::agent {
 
-// Concrete ViewModel backed by the live native viewer: IpcBufferModel for
-// buffer enumeration/readback, StageManager for the per-buffer Stage (each
-// holding a Camera/Buffer component pair), and UiState for selection and
-// the global auto-contrast flag. oidwindow constructs one of these and
-// hands it to AgentCore; every method here is a thin, direct translation of
-// a ViewModel call into the corresponding Stage/Camera/Buffer/UiState call
-// -- unit conversion (degrees<->radians, zoom multiplier<->power) already
-// happened at the AgentCore boundary, so this adapter forwards engine units
-// as-is.
-//
-// GL-thread invariant: set_channel() reaches Buffer::set_pixel_layout() and
-// Buffer::set_display_channel_mode(), both of which rebuild the GL shader
-// program. Every mutator on this class therefore MUST run on the render
-// thread that owns the GL context; NativeViewModel adds no locking of its
-// own and relies on the caller (AgentCore::handle(), invoked only from the
-// main loop's per-frame drain step) already being on that thread.
+// Every mutator MUST run on the GL thread; this class adds no locking.
 class NativeViewModel final : public ViewModel {
   public:
     NativeViewModel(IpcBufferModel& model,
@@ -85,10 +70,6 @@ class NativeViewModel final : public ViewModel {
     std::pair<int, int> viewport_size() override;
 
   private:
-    // Resolves `name` to its model slot via UiState::model_index_of(), then
-    // to that slot's Stage (created/reconciled lazily by
-    // StageManager::stage_for()); nullptr if the name is unknown or the
-    // Stage failed to initialize.
     [[nodiscard]] Stage* stage_for_name(std::string_view name) const;
 
     IpcBufferModel& model_;

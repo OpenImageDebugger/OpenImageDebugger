@@ -14,8 +14,7 @@ import pytest
 OIDMCP = Path(__file__).resolve().parents[1]
 
 # The registry derives publish permission from the GitHub OIDC claim, which
-# carries the organisation's canonical casing. A namespace that differs by case
-# is refused.
+# carries the org's canonical casing; a namespace differing by case is refused.
 GITHUB_NAMESPACE = 'io.github.OpenImageDebugger'
 
 
@@ -24,10 +23,8 @@ def _manifest():
 
 
 def _pyproject_version():
-    # tomllib is 3.11+ and the package supports 3.10, so the version
-    # comparisons sit out on the older interpreter rather than failing
-    # collection for the whole suite. The namespace check needs no parser and
-    # runs everywhere, which is the half that has actually broken a release.
+    # tomllib is 3.11+ and the package supports 3.10, so version comparisons
+    # sit out there rather than failing collection for the whole suite.
     tomllib = pytest.importorskip('tomllib')
     with open(OIDMCP / 'pyproject.toml', 'rb') as handle:
         return tomllib.load(handle)['project']['version']
@@ -38,10 +35,8 @@ def test_namespace_matches_the_github_organisation():
 
 
 def test_readme_carries_the_ownership_marker():
-    # The registry proves we own the PyPI package by finding this marker in the
-    # package description, and the name after it must match server.json exactly.
-    # The marker has to be followed by a boundary, so it stays on its own line
-    # inside a comment rather than being glued to trailing punctuation.
+    # The registry proves package ownership by this marker in the description;
+    # it needs a trailing boundary, so it stays alone on its own line.
     readme = (OIDMCP / 'README.md').read_text()
     assert f'<!-- mcp-name: {_manifest()["name"]} -->' in readme
 
@@ -54,11 +49,8 @@ def test_readme_reaches_pypi_as_the_long_description():
 
 
 def test_manifest_links_back_to_the_repository():
-    # Without this block the registry listing has no route to the source, which
-    # is how it read for the first four releases. The numeric id is what lets a
-    # registry tell this repository from one that reused its name, so it has to
-    # be the id GitHub reports (`gh api repos/<owner>/<repo> --jq .id`), and the
-    # subfolder points at the server rather than the repository root.
+    # The numeric id is what tells this repository from one that reused its
+    # name, so it must be the id `gh api repos/<owner>/<repo> --jq .id` gives.
     repository = _manifest()['repository']
     assert repository['url'] == (
         'https://github.com/OpenImageDebugger/OpenImageDebugger'

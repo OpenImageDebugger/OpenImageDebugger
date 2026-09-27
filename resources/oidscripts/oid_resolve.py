@@ -19,36 +19,16 @@ SENTINEL = '|OIDEND'
 CONTRACT_KEYS = ('display_name', 'width', 'height', 'channels', 'type',
                  'row_stride', 'pixel_layout', 'transpose_buffer')
 
-# Guards against a page overrunning a transport's ~1024-character string
-# ceiling -- the exact failure mode paging exists to prevent. Each item
-# carries a name plus a type string, and a canonical Eigen type name alone
-# can exceed 70 characters, so even a modest item count adds up fast. This
-# is a default, not a hard limit: a caller whose own transport can carry
-# more is free to ask for a bigger page (see MAX_OBSERVABLE_PAGE_LIMIT
-# below). A caller that asks for nothing gets this value.
+# Sized so a page fits a transport's ~1024-character string ceiling.
 DEFAULT_OBSERVABLE_PAGE_LIMIT = 8
 
-# The ceiling any caller's limit is clamped to, kept deliberately separate
-# from the default above: the default protects a caller stuck with a
-# roughly 1024-character transport, but that budget belongs to the
-# caller's transport, not to the engine, so it must not cap every caller.
-# The ceiling exists only to stop a request for something absurd.
-#
-# Sized the same way the default is: each item is JSON with a name plus a
-# type string, and a canonical template type name can run past 70
-# characters, so call it on the order of 100-150 bytes once the
-# surrounding quotes, colon, and comma are counted. 128 items keeps a
-# full page within roughly 16KB, comfortably above what the default
-# guards against, while still a concrete, finite stop rather than no
-# limit at all.
+# Only stops an absurd request; 128 items is roughly 16KB.
 MAX_OBSERVABLE_PAGE_LIMIT = 128
 
 
 def _emit(payload):
-    # Compact separators: the default ", "/": " spend bytes of the same
-    # ceiling MAX_OBSERVABLE_PAGE_LIMIT exists to stay under. ensure_ascii
-    # stays on, so a non-ASCII type name crosses as \uXXXX rather than as
-    # raw bytes the transport would have to carry intact.
+    # Compact separators: bytes count against the page ceiling. ensure_ascii
+    # stays on: a non-ASCII type name must cross as \uXXXX, not raw bytes.
     return json.dumps(payload, separators=(',', ':')) + SENTINEL
 
 
@@ -72,9 +52,7 @@ def resolve(name, host=None):
     try:
         out = {key: metadata[key] for key in CONTRACT_KEYS}
 
-        # Bridges disagree on the pointer's Python type: one yields an int,
-        # one yields a debugger value object. Normalise here so the
-        # contract is a plain address.
+        # Bridges disagree: one yields an int, one a debugger value object.
         pointer = int(metadata['pointer'])
         if pointer == 0:
             return _emit({'error': 'null buffer pointer for %r' % name})
@@ -87,10 +65,7 @@ def resolve(name, host=None):
         if out['byte_count'] <= 0:
             return _emit({'error': 'buffer of zero bytes for %r' % name})
 
-        # Serialization stays inside the guard too: a host that hands back
-        # a contract value json can't encode (e.g. a debugger-specific
-        # object left in place of a plain string) must still yield an
-        # error payload, not a bare TypeError traceback.
+        # Inside the guard: an unencodable value must yield an error payload.
         return _emit(out)
     except Exception as exc:                        # noqa: BLE001
         return _emit({'error': 'malformed metadata for %r: %s' % (name, exc)})

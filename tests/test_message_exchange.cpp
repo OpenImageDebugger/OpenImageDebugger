@@ -62,7 +62,6 @@ constexpr int TEST_VALUE_10 = 10;
 constexpr int TEST_VALUE_20 = 20;
 constexpr unsigned char MAX_UCHAR = 255;
 
-// Test string constants
 constexpr auto TEST_STRING_HELLO = "Hello, World!";
 constexpr auto TEST_STRING_TEST = "Test String";
 constexpr auto TEST_STRING_ROUND_TRIP = "Round Trip Test";
@@ -121,8 +120,6 @@ TEST_F(MessageExchangeTest, StringBlockSize) {
 TEST_F(MessageExchangeTest, StringBlockData) {
     const auto test_string = std::string(TEST_STRING_HELLO);
     const StringBlock block(test_string);
-    // Convert std::byte* to const char* for std::string (safe: same
-    // size/alignment)
     const auto* data = std::bit_cast<const char*>(block.data());
     EXPECT_EQ(std::string(data, data + block.size()), test_string);
 }
@@ -143,7 +140,6 @@ TEST_F(MessageExchangeTest, BufferBlockData) {
     const BufferBlock block(
         std::span{reinterpret_cast<const std::byte*>(TEST_BUFFER_VALUES),
                   TEST_BUFFER_SIZE});
-    // Compare std::byte values directly (convert to uint8_t for comparison)
     const auto* data = block.data();
     for (auto i = 0U; i < TEST_BUFFER_SIZE; ++i) {
         EXPECT_EQ(static_cast<uint8_t>(data[i]), TEST_BUFFER_VALUES[i]);
@@ -303,9 +299,8 @@ TEST_F(MessageExchangeTest, MessageDecoderReadVector) {
     EXPECT_EQ(std::memcmp(result.data(), test_vector.data(), result.size()), 0);
 }
 
-// A peer-supplied length drives the resize, so an impossible one must be
-// refused rather than handed to the allocator: a bad_alloc there would leave
-// the payload unread and every later message decoding from the wrong offset.
+// A peer-supplied length drives the resize: a bad_alloc there leaves the
+// payload unread and every later message decoding from the wrong offset.
 TEST_F(MessageExchangeTest, MessageDecoderRejectsOversizedVectorLength) {
     ConnectSockets();
 

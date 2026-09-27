@@ -51,10 +51,8 @@ class FileOpenQueue {
     void push_all(const std::vector<std::string>& paths);
     [[nodiscard]] bool empty() const;
 
-    // Load and upsert every pending path, clearing the queue. `loader` maps a
-    // path to an oid::Expected<BufferRecord>; `upsert` consumes each
-    // successfully loaded record. Loader failures are counted and their message
-    // retained but do not stop the drain.
+    // Loads and upserts every pending path, clearing the queue. A loader
+    // failure is counted and its message retained, but does not stop the drain.
     template <typename Loader, typename Upsert>
     FileOpenOutcome drain(const Loader& loader, const Upsert& upsert) {
         FileOpenOutcome outcome;

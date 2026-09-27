@@ -65,9 +65,8 @@ def test_channel_out_of_range():
 
 
 def test_bgra_layout_swaps_red_and_blue():
-    # Storage channel 0 holds blue values under 'bgra'. Explicit
-    # vmin/vmax gives identity mapping (constant channels would
-    # otherwise normalize to black).
+    # Storage channel 0 holds blue under 'bgra'. Explicit vmin/vmax forces an
+    # identity mapping; constant channels would otherwise normalize to black.
     arr = np.zeros((4, 4, 3), dtype=np.uint8)
     arr[:, :, 0] = 255
     meta = make_meta(4, 4, channels=3, type_value=0, pixel_layout='bgra',
@@ -91,9 +90,8 @@ def test_nan_pixels_are_magenta():
 
 
 def test_channel_selection_marks_nan_without_axis_error():
-    # _select_channels returns a list, so view[:, :, [i]] keeps the
-    # channel axis and the NaN mask's .any(axis=2) stays valid even
-    # when a single channel is selected.
+    # _select_channels returns a list, so view[:, :, [i]] keeps the channel
+    # axis and the NaN mask's .any(axis=2) stays valid for one channel.
     arr = np.zeros((4, 4, 3), dtype=np.float32)
     arr[1, 1, 2] = np.nan          # NaN only in the selected channel
     meta = make_meta(4, 4, channels=3, type_value=5, raw=arr.tobytes())

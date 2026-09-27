@@ -48,9 +48,8 @@ def test_recv_frame_rejects_oversized_json_frame():
 
 
 def test_send_frame_rejects_oversized_json_frame():
-    # The JSON cap is symmetric: a frame recv_frame would reject must not
-    # be transmitted in the first place. The sender raises *before* writing
-    # anything, so the peer's stream stays in sync.
+    # The JSON cap is symmetric, and the sender raises *before* writing
+    # anything, so a rejected frame leaves the peer's stream in sync.
     a, b = socket.socketpair()
     huge = {'blob': 'x' * (ep.MAX_FRAME_BYTES + 1)}
     with a, b:

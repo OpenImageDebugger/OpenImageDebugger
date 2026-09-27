@@ -8,9 +8,8 @@ from conftest import FakeFrame, fake_lldb_module
 from oidscripts import oid_resolve_host
 from oidscripts.debuggers import lldbbridge
 
-# conftest.py installs the one shared `lldb` stub every test in this suite
-# sees (see the comment there for why it must stay the sole owner); nothing
-# module-level is needed here.
+# lldbbridge binds its module-level `lldb` at first import, so only conftest's
+# import-time stub must be unique; per-test monkeypatched stubs are fine.
 
 
 def test_current_host_without_a_debugger_raises_a_named_error(monkeypatch):
@@ -22,10 +21,8 @@ def test_current_host_without_a_debugger_raises_a_named_error(monkeypatch):
 
 
 def test_current_host_with_gdb_present_returns_a_gdb_host(monkeypatch):
-    # gdb is a real, supported backend, and this entry point serves it (see
-    # the module docstring). Routing requires the module to carry gdb's
-    # actual Python API, not merely the name -- _install_fake_gdb (defined
-    # with the gdb tests below) provides the surface GdbHost drives.
+    # Routing requires the module to carry gdb's actual Python API, not just
+    # the name; _install_fake_gdb (below, with the gdb tests) provides it.
     _install_fake_gdb(monkeypatch, _FakeGdbFrame(_FakeGdbBlock([])), {})
     host = oid_resolve_host.current_host()
     assert isinstance(host, oid_resolve_host.GdbHost)
@@ -65,13 +62,8 @@ def test_current_host_falls_back_when_lldb_frame_is_present_but_falsy(monkeypatc
 
 
 def test_current_host_with_importable_but_inert_lldb_prefers_gdb(monkeypatch):
-    # `import lldb` can succeed merely because the package is installed
-    # and importable, without lldb actually hosting this interpreter --
-    # e.g. running under gdb on a machine with both debuggers present. No
-    # session marker (neither lldb.frame nor lldb.debugger) is set in that
-    # case; the probe must not claim lldb is active and must fall through
-    # to the real gdb underneath, rather than raising the lldb-specific
-    # "no stopped frame" error and masking gdb entirely.
+    # `import lldb` can succeed just because the package is installed, with
+    # no session marker set; the probe must fall through to the real gdb.
     _install_fake_gdb(monkeypatch, _FakeGdbFrame(_FakeGdbBlock([])), {})
     inert_lldb = types.ModuleType('lldb')
     monkeypatch.setitem(sys.modules, 'lldb', inert_lldb)
@@ -82,11 +74,8 @@ def test_current_host_with_importable_but_inert_lldb_prefers_gdb(monkeypatch):
 
 
 def test_current_host_with_lldb_present_but_no_stopped_frame_names_lldb_not_no_debugger(monkeypatch):
-    # lldb is loaded but there is no stopped frame (inferior running, or
-    # never launched) -- a routine condition, distinct from "no debugger at
-    # all". Falling through to the gdb probe and beyond would end on the
-    # misleading "no supported debugger" message; this must name lldb
-    # instead, the same defect class already fixed for gdb above.
+    # lldb loaded with no stopped frame is routine, not "no debugger at all":
+    # falling through to the gdb probe would end on a misleading message.
     monkeypatch.delitem(sys.modules, 'gdb', raising=False)
     # No frame_attr and no selected_frame: the walk finds no stopped thread.
     fake_lldb = fake_lldb_module()
@@ -107,10 +96,8 @@ def test_adapter_exposes_the_two_bridge_methods():
         assert callable(getattr(oid_resolve_host.LldbAdapter, method))
 
 
-# --- LldbAdapter.evaluate_expression and LldbHost.observable_symbols now
-# delegate to lldbbridge's shared functions; the traversal/evaluate/
-# frame-walk behaviour itself is tested once, there (test_lldbbridge.py).
-# These tests only prove each caller delegates and shapes its own result.
+# The traversal/evaluate/frame-walk behaviour is tested once, in
+# test_lldbbridge.py; these only prove each caller delegates to it.
 
 def test_adapter_evaluate_expression_delegates_to_the_shared_evaluator(monkeypatch):
     sentinel = object()
@@ -158,16 +145,11 @@ def test_host_observable_symbols_shapes_pairs_into_name_type_dicts(monkeypatch):
     ]
 
 
-# --- GdbAdapter/GdbHost: the gdb-side mirror of LldbAdapter/LldbHost above.
-# There is no gdbbridge.py-style shared helper for this entry point to
-# delegate to (unlike lldbbridge.py for lldb), so these exercise the gdb
-# idioms directly through a fake `gdb` module installed in sys.modules, the
-# same mechanism fake_lldb_module uses for lldb above.
+# There is no gdbbridge-style shared helper for this entry point to delegate
+# to, so these drive the gdb idioms through a fake `gdb` in sys.modules.
 
-# Sentinels standing in for gdb's TYPE_CODE_STRUCT: a fake type's `code`
-# defaults to a distinct, non-struct object so only types built with
-# `code=_STRUCT_CODE` (below) are ever treated as struct/class-typed by
-# GdbHost's member-expansion walk.
+# Sentinels for gdb's TYPE_CODE_STRUCT: a fake type's `code` defaults to a
+# distinct non-struct object, so only code=_STRUCT_CODE is ever expanded.
 _STRUCT_CODE = object()
 _NON_STRUCT_CODE = object()
 # Reference types (Wrapper &) peel to their target before the struct
@@ -274,16 +256,12 @@ def test_gdb_adapter_evaluate_and_cast(monkeypatch):
 
 
 def test_gdb_host_observable_symbols_ordered_and_deduped(monkeypatch):
-    # Bridge hygiene: force a fresh TypeBridge and disable the user-types
-    # walk-up, so a developer machine's own .oid/types.json cannot change
-    # which types match (the module-level _BRIDGE cache otherwise latches
-    # onto whatever was built by an earlier test).
+    # Fresh TypeBridge with the user-types walk-up off, so a developer's own
+    # .oid/types.json (or an earlier test's latched _BRIDGE) cannot match.
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
-    # 'mat' is cv::Mat (a builtin declarative type, so it is genuinely
-    # observable); 'i'/'argc' are plain ints, which nothing registers as a
-    # plottable buffer type, so they must be filtered out rather than
-    # merely deduplicated.
+    # 'mat' is a builtin declarative type; 'i'/'argc' are plain ints nothing
+    # registers as plottable, so they are filtered, not merely deduplicated.
     inner = _FakeGdbBlock(
         [_FakeGdbSymbol('mat', 'cv::Mat'), _FakeGdbSymbol('i', 'int')],
         superblock=_FakeGdbBlock(
@@ -300,10 +278,8 @@ def test_gdb_host_observable_symbols_ordered_and_deduped(monkeypatch):
 def test_gdb_host_observable_symbols_expands_struct_members(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
-    # `wrapper` itself is not a registered buffer type, so it must be
-    # expanded rather than emitted as-is: `img` (cv::Mat) is observable and
-    # surfaces as 'wrapper.img'; `count` (int) is neither observable nor a
-    # struct, so it contributes nothing.
+    # `wrapper` is not a registered buffer type, so it is expanded, not
+    # emitted: `img` surfaces as 'wrapper.img', `count` contributes nothing.
     wrapper_type = _FakeGdbType('Wrapper', code=_STRUCT_CODE, fields=[
         _FakeGdbField('img', _FakeGdbType('cv::Mat')),
         _FakeGdbField('count', _FakeGdbType('int')),
@@ -320,13 +296,8 @@ def test_gdb_host_observable_symbols_expands_struct_members(monkeypatch):
 def test_gdb_host_observable_symbols_expands_this_specially(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
-    # A symbol literally named 'this' is expanded through
-    # gdb.parse_and_eval('this').dereference().type.fields(), and its
-    # members surface BARE ('img', never 'this.img' and never a bare
-    # 'this' entry) -- the same names lldbbridge emits, so a client can
-    # feed any list_observable() item straight back into resolve() under
-    # either debugger (bare member names evaluate in method scope through
-    # the implicit this).
+    # Members of 'this' surface BARE ('img', never 'this.img'), matching what
+    # lldbbridge emits, so any listed name feeds straight back into resolve().
     wrapper_type = _FakeGdbType('Wrapper', code=_STRUCT_CODE, fields=[
         _FakeGdbField('img', _FakeGdbType('cv::Mat')),
         _FakeGdbField('count', _FakeGdbType('int')),
@@ -350,11 +321,8 @@ def test_current_host_routes_to_gdb(monkeypatch):
 def test_gdb_host_expands_reference_typed_aggregates(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
-    # A Wrapper& local (any reference parameter) is field-navigated with
-    # '.' exactly like a value -- the declarative engine already treats
-    # T& as not-a-pointer -- so the walk peels the reference and expands
-    # observable members; without the peel, reference-typed aggregates
-    # would never list at all.
+    # T& is field-navigated with '.' like a value (the declarative engine
+    # treats it as not-a-pointer), so the walk must peel the reference.
     wrapper_type = _FakeGdbType('Wrapper', code=_STRUCT_CODE, fields=[
         _FakeGdbField('img', _FakeGdbType('cv::Mat')),
         _FakeGdbField('count', _FakeGdbType('int')),
@@ -373,10 +341,8 @@ def test_gdb_host_expands_reference_typed_aggregates(monkeypatch):
 def test_gdb_host_skips_unnamed_block_symbols(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
-    # gdb can yield block symbols without a name; emitting them would put
-    # a JSON null (or a None-parented member path) into the page that
-    # resolve() can never evaluate. lldbbridge skips unnamed symbols the
-    # same way.
+    # gdb can yield block symbols without a name; emitting one puts a JSON
+    # null into the page that resolve() can never evaluate.
     unnamed = _FakeGdbSymbol(None, 'cv::Mat')
     named = _FakeGdbSymbol('mat', 'cv::Mat')
     block = _FakeGdbBlock([unnamed, named])
@@ -386,10 +352,9 @@ def test_gdb_host_skips_unnamed_block_symbols(monkeypatch):
 
 
 def test_gdb_host_buffer_metadata_normalizes_evaluation_errors(monkeypatch):
-    # buffer_metadata evaluates through the adapter so a failed lookup
-    # surfaces the adapter's uniform 'Expression "..." failed' contract --
-    # resolve() stringifies whatever escapes, and a raw backend exception
-    # (KeyError here, gdb.error live) is not a client-facing message.
+    # buffer_metadata evaluates through the adapter, so a failed lookup
+    # (KeyError from the empty eval table here, gdb.error live) surfaces as
+    # 'Expression "..." failed'; resolve() would stringify the raw exception.
     _install_fake_gdb(monkeypatch, _FakeGdbFrame(_FakeGdbBlock([])), {})
     host = oid_resolve_host.GdbHost()
     with pytest.raises(RuntimeError) as excinfo:
@@ -400,11 +365,8 @@ def test_gdb_host_buffer_metadata_normalizes_evaluation_errors(monkeypatch):
 def test_gdb_host_walks_through_unnamed_and_base_fields(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
-    # Anonymous aggregates and base-class subobjects contribute no path
-    # segment: C++ addresses their members directly on the containing
-    # object, so the emitted names must skip the nameless/base hop
-    # ('outer.img', never 'outer.None.img' or 'outer.Base.base_img'
-    # spelled through the base) or resolve() could never evaluate them.
+    # C++ addresses members of anonymous aggregates and base subobjects on
+    # the containing object, so the name must skip that hop ('outer.img').
     inner = _FakeGdbType('', code=_STRUCT_CODE, fields=[
         _FakeGdbField('img', _FakeGdbType('cv::Mat')),
     ])
@@ -457,11 +419,8 @@ def test_gdb_host_descends_into_a_union(monkeypatch):
 def test_gdb_host_omits_this_members_shadowed_by_locals(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
-    # C++ resolves an unqualified name to a local/argument before an
-    # implicit this-member, so a bare member name colliding with ANY
-    # in-scope symbol would list the member while resolve() evaluates the
-    # local -- the wrong object. Shadowed members are omitted; every
-    # emitted name resolves to exactly what was listed.
+    # C++ resolves an unqualified name to a local before an implicit this-
+    # member, so a colliding bare member would resolve to the wrong object.
     wrapper_type = _FakeGdbType('Wrapper', code=_STRUCT_CODE, fields=[
         _FakeGdbField('img', _FakeGdbType('cv::Mat')),
         _FakeGdbField('img2', _FakeGdbType('cv::Mat')),
@@ -479,10 +438,8 @@ def test_gdb_host_omits_this_members_shadowed_by_locals(monkeypatch):
 def test_gdb_host_skips_an_unevaluable_this_and_lists_the_rest(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
-    # `this` is in scope but not evaluable right now (optimized out, frame
-    # prologue, dead frame): its expansion must be skipped, never fatal --
-    # list_observable turns any escaped exception into a full-page error,
-    # which would hide every other observable symbol.
+    # `this` can be in scope but unevaluable (optimized out, prologue); a
+    # fatal expansion would hide every other symbol behind a page error.
     this_symbol = _FakeGdbSymbol('this', 'Wrapper *')
     mat_symbol = _FakeGdbSymbol('mat', 'cv::Mat')
     block = _FakeGdbBlock([this_symbol, mat_symbol])
@@ -496,8 +453,7 @@ def test_gdb_host_without_a_stopped_frame_names_the_condition(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')
     # Before `run` (or after the inferior exits) gdb raises from
-    # selected_frame(); the host must surface the same routine-condition
-    # message the lldb path uses, not an opaque internal error.
+    # selected_frame(); that must read as the lldb path's routine message.
     fake = _install_fake_gdb(monkeypatch, _FakeGdbFrame(_FakeGdbBlock([])), {})
 
     def no_frame():
@@ -511,10 +467,8 @@ def test_gdb_host_without_a_stopped_frame_names_the_condition(monkeypatch):
 
 
 def test_current_host_rejects_gdb_without_the_full_walk_api(monkeypatch):
-    # The probe must require every attribute the gdb path reads without a
-    # guard: a module carrying the rest of the surface but no
-    # TYPE_CODE_REF would pass selection and then crash mid-walk when
-    # reference peeling runs.
+    # The probe must require every attribute the gdb path reads unguarded: a
+    # module missing TYPE_CODE_REF would pass selection, then crash mid-walk.
     monkeypatch.delitem(sys.modules, 'lldb', raising=False)
     partial = types.ModuleType('gdb')
     partial.parse_and_eval = lambda expr: None
@@ -528,11 +482,8 @@ def test_current_host_rejects_gdb_without_the_full_walk_api(monkeypatch):
 
 
 def test_current_host_with_inert_gdb_names_no_debugger(monkeypatch):
-    # A module merely NAMED gdb (a leftover stub, a foreign package
-    # shadowing the name) does not host this interpreter: without gdb's
-    # actual API the router must end on the terminal no-debugger error
-    # instead of returning a GdbHost that fails later with AttributeError
-    # on its first use.
+    # A module merely NAMED gdb (a leftover stub, a shadowing package) does
+    # not host this interpreter; a GdbHost would AttributeError on first use.
     monkeypatch.delitem(sys.modules, 'lldb', raising=False)
     monkeypatch.setitem(sys.modules, 'gdb', types.ModuleType('gdb'))
     with pytest.raises(RuntimeError) as excinfo:

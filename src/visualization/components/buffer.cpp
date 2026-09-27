@@ -161,10 +161,8 @@ void Buffer::rotate(const float angle) {
 
 void Buffer::set_rotation(const float radians) {
     angle_ = radians;
-    // Apply the pose eagerly so the agent's synchronous get_view read-back (and
-    // any move_to in the same set_view request) sees the requested rotation
-    // rather than the previous frame's pose. Idempotent with the per-frame
-    // update_object_pose() call in Buffer::update().
+    // Eager so the agent's synchronous get_view read-back (and a move_to in
+    // the same set_view) sees it; idempotent with update()'s per-frame call.
     update_object_pose();
 }
 
@@ -376,10 +374,7 @@ void Buffer::configure(const BufferParams& params) {
         return;
     }
 
-    // Validate step. `step` is pixels per row (GL_UNPACK_ROW_LENGTH, see
-    // below), so it must be at least the row width -- not the channel count.
-    // A narrow multi-channel image (e.g. a 2x2 RGBA buffer, width 2 < 4
-    // channels) is valid and must not be rejected here.
+    // `step` is pixels per row, so the floor is the width, not the channels.
     if (params.step < params.buffer_width_i) {
         std::cerr << "[Error] Invalid step: " << params.step
                   << " (must be >= width: " << params.buffer_width_i << ")"
@@ -404,12 +399,7 @@ void Buffer::configure(const BufferParams& params) {
         return;
     }
 
-    // The ceiling above bounds how much memory a buffer may claim; this bounds
-    // how little. Drawing indexes as (y * step + x) * channels and nothing on
-    // that path checks the span, so a buffer describing more pixels than it
-    // carries reads off the end. The wire layer refuses such a buffer on the
-    // way in, but one can also arrive from a file, and this is the layer they
-    // share.
+    // Drawing does not bound (y*step+x)*channels; file loads skip the wire.
     if (const auto element_size = display_element_size(params.type);
         !buffer_span_fits(params.buffer_width_i,
                           params.buffer_height_i,

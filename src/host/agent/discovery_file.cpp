@@ -46,13 +46,7 @@ namespace oid::host::agent {
 
 namespace {
 
-// The home-directory base: the password database on POSIX (or
-// LOCALAPPDATA/USERPROFILE on Windows), so a stripped-env MCP subprocess and
-// the GUI-launched viewer resolve the same directory, agreeing byte-for-byte
-// with oid-mcp's discovery.py. Returns an empty path when the uid has no home;
-// base_discovery_dir() then uses a per-uid temp dir. $HOME is a POSIX fallback
-// only -- reading it (or $TMPDIR/$XDG_*) for the primary path would reintroduce
-// the launch-context mismatch this avoids.
+// Password db, not $HOME: a stripped-env subprocess must resolve the same dir.
 std::filesystem::path home_dir() {
 #ifdef _WIN32
     if (const char* local = std::getenv("LOCALAPPDATA");
@@ -65,9 +59,7 @@ std::filesystem::path home_dir() {
     }
     return {};
 #else
-    // NOSONAR(cpp:S1912): ::getpwuid returns a pointer into shared static
-    // storage another thread's lookup can overwrite; ::getpwuid_r fills our
-    // own buffer instead.
+    // NOSONAR(cpp:S1912): getpwuid_r fills our buffer, not shared static state.
     passwd pwd{};
     passwd* result = nullptr;
     long n = ::sysconf(_SC_GETPW_R_SIZE_MAX);
@@ -94,9 +86,7 @@ std::filesystem::path base_discovery_dir() {
         override_dir != nullptr && *override_dir != '\0') {
         return std::filesystem::path{override_dir};
     }
-    // Per-user home so the path is stable across launch contexts and agrees
-    // with oid-mcp's discovery.py; prepare_private_dir hardens it (owner check,
-    // O_NOFOLLOW, 0700).
+    // Stable across launch contexts, and agrees with oid-mcp's discovery.py.
 #ifdef _WIN32
     if (const std::filesystem::path home = home_dir(); !home.empty()) {
         return home / "oid-agent";
@@ -130,13 +120,6 @@ void prepare_private_dir(const std::filesystem::path& dir,
                              dir.string());
     }
 
-    // Whether this call actually created the directory (vs. it pre-existing):
-    // an enforce_mode=false caller still wants a directory *it* just created
-    // to be 0700 (so the viewer-created base dir satisfies oid-mcp's private-
-    // dir trust gate and matches the debugger endpoint, which always chmods
-    // its base 0700), while never chmodding a pre-existing caller-chosen path
-    // such as the CWD reached via OID_AGENT_DIR=".". Only read in the POSIX
-    // chmod path below, hence [[maybe_unused]] for the Windows build.
     [[maybe_unused]] const bool created =
         std::filesystem::create_directories(dir, ec);
     if (std::error_code stat_ec;
@@ -146,10 +129,7 @@ void prepare_private_dir(const std::filesystem::path& dir,
     }
 
 #ifndef _WIN32
-    // Operate on the directory's own descriptor so the owner check and mode
-    // change cannot be raced by swapping the path for a symlink between the
-    // check and the use (CWE-362): O_NOFOLLOW rejects a symlinked final
-    // component and O_DIRECTORY requires a real directory.
+    // Work on the dir's own fd, so a symlink swap cannot race it (CWE-362).
     const int dir_fd =
         open(dir.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
     if (dir_fd < 0) {
@@ -160,14 +140,8 @@ void prepare_private_dir(const std::filesystem::path& dir,
     struct stat info{};
     const bool stat_ok = fstat(dir_fd, &info) == 0;
     const bool owned_by_us = stat_ok && info.st_uid == getuid();
-    // Chmod to 0700 when enforce_mode is set, or when this call just created
-    // the directory (the owner + symlink checks always run either way).
-    // enforce_mode == false on a *pre-existing* dir skips the fchmod, so
-    // hardening a caller-chosen base never chmods a surprising location such
-    // as the CWD reached via OID_AGENT_DIR="."; but a base dir the viewer
-    // itself created is still tightened to 0700 so it meets the private-dir
-    // contract oid-mcp's discovery trust gate enforces (and matches the
-    // debugger endpoint, which always chmods its base 0700).
+    // A dir this call created gets 0700 for oid-mcp's private-dir trust gate.
+    // Skipping fchmod on a pre-existing dir spares a CWD given as the base.
     const bool chmod_ok = !(enforce_mode || created) ||
                           (owned_by_us && fchmod(dir_fd, S_IRWXU) == 0);
     close(dir_fd);
@@ -184,13 +158,9 @@ void prepare_private_dir(const std::filesystem::path& dir,
                              dir.string());
     }
 #endif
-    // Windows: the default discovery dir lives under the per-user %TEMP%,
-    // which is already ACL-restricted to its owner -- unlike POSIX's shared,
-    // sticky /tmp that the block above hardens. There is no ownership/mode
-    // model enforced here, so an OID_AGENT_DIR override pointed at a
-    // world-accessible location is NOT rejected on Windows; restricting the
-    // directory ACL to the current user is a tracked Windows-hardening
-    // follow-up (see the endpoint follow-ups doc).
+    // Windows enforces no mode model, so an OID_AGENT_DIR override at a
+    // world-accessible path is NOT rejected; restricting the directory ACL to
+    // the current user is a tracked Windows-hardening follow-up.
 }
 
 void write_discovery_atomic(const std::filesystem::path& path,
@@ -208,10 +178,7 @@ void write_discovery_atomic(const std::filesystem::path& path,
         throw DiscoveryError("failed to create temp discovery file in " +
                              dir.string());
     }
-    // mkstemp does not set close-on-exec; the temp file holds the bearer token,
-    // so mark the fd FD_CLOEXEC to keep a fork+exec in this window from leaking
-    // it to a child. (mkostemp with O_CLOEXEC would set it atomically but is
-    // not available on all target platforms, e.g. macOS.)
+    // mkstemp leaks this token fd to a fork+exec; mkostemp is not on macOS.
     (void)fcntl(fd, F_SETFD, FD_CLOEXEC);
     const std::filesystem::path tmp_path{name_buf.data()};
 
@@ -229,9 +196,7 @@ void write_discovery_atomic(const std::filesystem::path& path,
         }
         written += static_cast<std::size_t>(n);
     }
-    // fsync before the rename so a crash cannot publish a torn or zero-length
-    // discovery file (ext4 delayed allocation), and check close() so a
-    // deferred write error surfaces here rather than renaming a bad file.
+    // fsync before rename: ext4 delayed alloc can publish a zero-length file.
     if (!write_failed && fsync(fd) != 0) {
         write_failed = true;
     }

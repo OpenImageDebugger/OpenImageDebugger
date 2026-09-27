@@ -56,7 +56,7 @@ def main() -> None:
             slack = next_tick - time.perf_counter()
             if slack > 0:
                 time.sleep(slack)
-        client.set_view(rotation_deg=0.0, zoom=3.5, center=origin)  # clean view
+        client.set_view(rotation_deg=0.0, zoom=3.5, center=origin)
     finally:
         client.close()
 

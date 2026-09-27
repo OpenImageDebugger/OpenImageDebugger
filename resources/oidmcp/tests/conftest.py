@@ -9,37 +9,18 @@ import time
 import types
 from pathlib import Path
 
-# Make `import oidscripts.agentendpoint` work: the endpoint lives in the
-# sibling debugger-scripts tree, not in this package. Append (lowest
-# precedence) to avoid shadowing similarly named modules on the path.
+# The endpoint lives in the sibling debugger-scripts tree, not in this
+# package. Append, never insert, so it cannot shadow same-named modules.
 RESOURCES_DIR = str(Path(__file__).resolve().parents[2])
 if RESOURCES_DIR not in sys.path:
     sys.path.append(RESOURCES_DIR)
 
-# resources/oidscripts/debuggers/lldbbridge.py hard-imports `lldb`, which is
-# only available inside a live debugger's embedded interpreter -- never in
-# a plain pytest run. Several test modules exercise lldbbridge (directly, or
-# indirectly through oid_resolve_host's lazy imports), so something has to
-# put a stub `lldb` in sys.modules before any of them get collected.
-#
-# This MUST be the only place that does it. lldbbridge.py's own
-# `import lldb` runs once, the first time lldbbridge is imported in the
-# process, and permanently binds its module-level `lldb` name to whatever
-# object was in sys.modules at that instant -- later replacing
-# sys.modules['lldb'] does not rebind it. conftest.py is always imported
-# before any test module, so installing the stub here (with setdefault, so
-# a real `lldb` -- present when this suite runs inside a debugger's
-# interpreter -- always wins) guarantees every test sees the same object,
-# regardless of collection order or which file pytest starts with. A second
-# stub installed locally in a test module only "wins" by accident of
-# collection order (setdefault is a no-op once this one has already run),
-# which is exactly the flake this stub exists to prevent -- do not add
-# another one.
+# lldbbridge binds its module-level `lldb` at first import and never rebinds,
+# so this must stay the ONLY stub install; setdefault lets a real lldb win.
 _LLDB_STUB = types.ModuleType('lldb')
 _LLDB_STUB.eTypeIsInteger = 1 << 8
-# Type-class bits, carrying lldb's own values. lldbbridge reads these to
-# decide which values it may descend into: a struct's children are its
-# declared members, an array's are elements.
+# lldb's own type-class values: lldbbridge compares against these to pick
+# what it may descend into, so they must match the real constants.
 _LLDB_STUB.eTypeClassArray = 1
 _LLDB_STUB.eTypeClassBuiltin = 4
 _LLDB_STUB.eTypeClassClass = 8
@@ -48,10 +29,8 @@ _LLDB_STUB.eTypeClassReference = 8192
 _LLDB_STUB.eTypeClassStruct = 16384
 _LLDB_STUB.eTypeClassUnion = 65536
 _LLDB_STUB.SBValue = object
-# Whichever module actually ended up installed: the stub, or a real lldb
-# when this suite runs inside a debugger's interpreter. The fakes below
-# read their type-class constants from it, so they always agree with the
-# ones lldbbridge itself is looking at.
+# The fakes below read their type-class constants from whichever module won
+# the setdefault, so they always agree with what lldbbridge itself sees.
 LLDB = sys.modules.setdefault('lldb', _LLDB_STUB)
 
 from oidscripts import wireframe as wf
@@ -456,16 +435,8 @@ class _FakeViewerEndpoint:
         self._listener.bind(('127.0.0.1', 0))
         self._listener.listen(4)
         self.port = self._listener.getsockname()[1]
-        # Every accepted connection is tracked so `close()` can shut them
-        # all down, not just the listener: `SessionManager` connects a
-        # fresh `ControlClient` per call and closes it right after, so no
-        # test code holds a reference to any of these sockets. Without
-        # tracking them here, a stray open connection surviving past this
-        # fixture's teardown would let a later test's endpoint (a new
-        # `_FakeViewerEndpoint` on a new port, but possibly the same
-        # declared pid if the global `_manager` singleton is reused
-        # across tests) be silently reachable through this dead socket
-        # instead of a clean, freshly resolved connection.
+        # Tracked so close() can shut every accepted connection, not just
+        # the listener: one left open is reachable to a later same-pid test.
         self._conns_lock = threading.Lock()
         self._conns = []
         self._thread = threading.Thread(target=self._accept_loop,
@@ -555,19 +526,13 @@ class _FakeViewerEndpoint:
         wf.send_frame(conn, dict(self.view_state))
 
     def close(self):
-        # Wake a thread blocked in accept() so it can exit; on Linux
-        # close() alone does not interrupt accept() (mirrors
-        # agentendpoint._EndpointServer.close()).
+        # On Linux close() alone does not interrupt a thread blocked in
+        # accept(); shutdown() does (as agentendpoint._EndpointServer.close()).
         try:
             self._listener.shutdown(socket.SHUT_RDWR)
         except OSError:
             pass  # already closed or never connected; nothing to wake
         self._listener.close()
-        # Also force-close every still-open accepted connection (see the
-        # comment in __init__): connect-per-call means each call opens and
-        # closes its own connection, so nothing here is pooled -- this just
-        # stops this fixture's teardown from leaving a leftover socket that
-        # a later same-pid test could otherwise reach.
         with self._conns_lock:
             conns = list(self._conns)
         for conn in conns:
