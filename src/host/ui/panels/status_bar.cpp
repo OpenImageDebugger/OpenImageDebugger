@@ -119,19 +119,15 @@ float compute_zoom_pct(Stage* stage) {
     return zoom_pct;
 }
 
-// Formats the hovered pixel's value text (coordinates + per-channel
-// values, plus float precision when applicable) — Qt parity with
-// MainWindow::update_status_bar in the legacy Qt frontend (see tag
-// legacy-qt).
+// Qt parity with MainWindow::update_status_bar in the legacy Qt frontend
+// (tag legacy-qt).
 std::string format_pixel_value_text(const Buffer& buffer,
                                     Stage& stage,
                                     const int px,
                                     const int py) {
     auto pixel = std::stringstream{};
-    // Qt set fixed/setprecision(3) on its status stream (the legacy Qt
-    // frontend; see tag legacy-qt) and that stream state governs how
-    // get_pixel_info() prints float channels — replicate it or float
-    // values render with default precision.
+    // Qt set fixed/setprecision(3) on its status stream, and that state
+    // governs how get_pixel_info() prints float channels.
     pixel << std::fixed << std::setprecision(3);
     pixel << "(" << px << ", " << py << ") val=";
     buffer.get_pixel_info(pixel, px, py);
@@ -144,13 +140,8 @@ std::string format_pixel_value_text(const Buffer& buffer,
     return pixel.str();
 }
 
-// Pixel value under the (last-hovered) cursor — Qt parity with
-// MainWindow::update_status_bar in the legacy Qt frontend (see tag
-// legacy-qt) minus its second zoom readout: this bar already shows one
-// above.
-// mouse_x()/mouse_y() persist the last hover position (main.cpp only
-// feeds them while the canvas is hovered), so the readout persists after
-// the cursor leaves the canvas, exactly like Qt's QLabel.
+// Qt parity minus its second zoom readout (this bar shows one above);
+// mouse_x()/mouse_y() hold the last hover, so the readout survives unhover.
 std::optional<std::string> format_hovered_pixel_text(Stage* stage,
                                                      const GlfwCanvas& canvas) {
     if (stage == nullptr) {

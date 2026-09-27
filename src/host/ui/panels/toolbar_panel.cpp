@@ -139,22 +139,16 @@ int current_format_index(const Buffer& b) {
     return static_cast<int>(layout == "rgba" ? RGBA : BGRA);
 }
 
-// Auto-contrast is global UI state. Sync the selected Stage to it every
-// frame (not only on click): a Stage's own contrast flag defaults to off
-// and is otherwise never told about the toggle, so without this the
-// toggle and the actual render disagree at startup and after buffer
-// switches / newly-created Stages. AC is global, so syncing the currently
-// displayed Stage is sufficient -- any buffer shows the toggle's state
-// when viewed.
+// Every frame, not only on click: a Stage's contrast flag defaults to off
+// and is otherwise never told about the global toggle. No fan-out needed:
+// auto-contrast is global, so any Stage picks it up when displayed.
 void sync_selected_stage_contrast(const UiState& ui, StageManager& stages) {
     if (Stage* s = stages.selected_stage(ui.selected()); s != nullptr) {
         s->set_contrast_enabled(ui.contrast_enabled());
     }
 }
 
-// 1. acEdit / 2. acToggle: shows/hides the min/max intensity editor and
-// enables/disables contrast modifications. Plain UI-state toggles -- not
-// gated on selection.
+// 1. acEdit / 2. acToggle. Not gated on selection.
 void draw_auto_contrast_controls(UiState& ui) {
     {
         const bool ac_editor_visible = ui.ac_editor_visible();
@@ -246,8 +240,7 @@ void draw_goto_button(const bool has_selection, bool& goto_open) {
 }
 
 // 8. decrease_float_precision / 9. increase_float_precision. Gated on
-// selection AND float type (parity with the legacy Qt frontend's
-// per-selection updates; see tag legacy-qt).
+// selection AND float type (legacy Qt parity).
 void draw_precision_buttons(const UiState& ui,
                             StageManager& stages,
                             const BufferModel& model,
@@ -278,9 +271,8 @@ void draw_precision_buttons(const UiState& ui,
     ImGui::EndDisabled();
 }
 
-// Format combo: operates on the selected stage's buffer only (the legacy
-// Qt frontend's selector acted on the selected buffer only via
-// apply_format(); see tag legacy-qt), no link-views fan-out.
+// Format combo: selected stage's buffer only, no link-views fan-out
+// (legacy Qt's selector acted per-selection via apply_format()).
 void draw_format_combo(const UiState& ui, StageManager& stages) {
     ImGui::TextUnformatted("Format:");
     ImGui::SameLine();
