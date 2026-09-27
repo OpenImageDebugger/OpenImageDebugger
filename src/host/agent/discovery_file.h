@@ -40,36 +40,17 @@ class DiscoveryError : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
-// Directory holding per-viewer discovery files: <OID_AGENT_DIR> (if set)
-// or <home>/.oid-agent, plus a "viewer" subdirectory. That
-// subdirectory is what keeps the shipped flat *.json glob (which only
-// scans the parent directory for debugger sessions) from ever seeing a
-// viewer's discovery file, even though it never looks here regardless.
+// The "viewer" subdir keeps the flat *.json debugger glob from seeing these.
 std::filesystem::path viewer_discovery_dir();
 
-// Ensures `dir` (and its parents) exist as a private directory suitable
-// for discovery files. Rejects a symlinked `dir` outright. POSIX: creates
-// it mode 0700, then verifies the resulting directory is owned by the
-// calling user before chmod'ing it to 0700 (in case it pre-existed with
-// looser permissions). Windows: best-effort directory creation only --
-// there is no POSIX ownership/mode model to enforce. Throws
-// DiscoveryError if any check fails. Only `dir` itself is symlink/owner
-// checked -- a caller that needs a hardened parent (e.g. the predictable
-// base dir under a shared tempdir) must prepare that parent separately first.
-// enforce_mode=false keeps the symlink/owner checks and still chmods to 0700
-// a directory this call newly created, but skips the chmod for a pre-existing
-// caller-chosen base dir whose (possibly shared, e.g. the CWD) mode must not
-// be changed.
+// Only `dir` is checked: a caller needing a hardened parent prepares it too.
+// enforce_mode=false still chmods 0700 a dir this call created but spares a
+// pre-existing caller-chosen base (the CWD via OID_AGENT_DIR="."). Any failed
+// check throws DiscoveryError.
 void prepare_private_dir(const std::filesystem::path& dir,
                          bool enforce_mode = true);
 
-// Atomically publishes `contents` at `path`. POSIX: writes a mode-0600
-// temporary file in path's parent directory (a mkstemp-equivalent unique
-// name, so a stale temp file from a crashed run can never collide) and
-// renames it into place. Windows: writes a temporary file alongside
-// `path` and replaces it with MoveFileEx. `path`'s parent directory must
-// already exist (see prepare_private_dir). Throws DiscoveryError on
-// failure.
+// `path`'s parent directory must already exist (see prepare_private_dir).
 void write_discovery_atomic(const std::filesystem::path& path,
                             std::string_view contents);
 

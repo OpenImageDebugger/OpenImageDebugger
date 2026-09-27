@@ -47,10 +47,7 @@ namespace {
 constexpr std::size_t DEFAULT_MAX_BYTES = 256ULL * 1024 * 1024;
 constexpr double PI = std::numbers::pi;
 
-// Constant-time token compare: accumulates the XOR of every byte pair over
-// the longer of the two strings (out-of-range reads substitute 0) into a
-// volatile accumulator so neither the branch nor the loop can be optimized
-// into a short-circuiting compare.
+// Volatile accumulator: stops it collapsing into a short-circuiting compare.
 bool constant_time_equal(const std::string_view a, const std::string_view b) {
     const std::size_t max_len = (std::max)(a.size(), b.size());
     volatile unsigned char diff = // NOSONAR
@@ -72,16 +69,8 @@ Reply make_error(const char* code, std::string message) {
     return Reply{std::move(body), {}};
 }
 
-// A well-formed image buffer has positive width/height/channels and a row
-// stride (step, in pixels) at least as wide as the row. A non-positive
-// dimension or a step < width is a malformed/inconsistent BufferRecord whose
-// declared byte size can't be trusted -- and which oid-mcp's decode_buffer (it
-// needs width > 0 and stride >= width) would reject client-side anyway,
-// producing a cryptic failure instead of a clean endpoint rejection. Returns an
-// error Reply to send BEFORE read_pixels (so a malformed record can't force a
-// full backing-vector copy in read_pixels()), or nullopt when the dimensions
-// are sound. (width > 0 && step >= width implies step > 0, so the caller's
-// declared-bytes fold still divides by a positive step.)
+// Call BEFORE read_pixels: a bad record would force a full backing copy.
+// step >= width > 0 also keeps the caller's declared-bytes fold divisor > 0.
 std::optional<Reply> validate_buffer_dimensions(const BufferInfo& info,
                                                 const std::string& symbol) {
     if (info.width <= 0 || info.step < info.width || info.height <= 0 ||
@@ -92,9 +81,7 @@ std::optional<Reply> validate_buffer_dimensions(const BufferInfo& info,
     return std::nullopt;
 }
 
-// Builds the get_view body from the model's current state: this is both
-// get_view's own reply and the read-back set_view returns after applying a
-// patch.
+// Also the read-back set_view returns after applying a patch.
 nlohmann::json get_view_body(ViewModel& model) {
     const auto name = model.selected_name();
     const std::optional<ViewState> state =
@@ -131,16 +118,12 @@ bool as_finite_number(const nlohmann::json& j, double& out) {
     if (!std::isfinite(out)) {
         return false;
     }
-    // Reject magnitudes that would overflow to +/-inf when the native adapter
-    // narrows to float (center/zoom/rotation feed Camera as float); a
-    // non-finite float installs bad state and yields NaN read-back.
+    // Magnitudes that overflow float (Camera takes float) yield NaN read-back.
     return std::abs(out) <=
            static_cast<double>((std::numeric_limits<float>::max)());
 }
 
-// Parses a channel selector as either a JSON integer or an integer-valued
-// string ("0", "1", ...). std::nullopt means neither -- the caller treats
-// that as invalid.
+// Accepts a JSON integer or an integer-valued string; nullopt means neither.
 std::optional<long long> parse_channel_index(const nlohmann::json& j) {
     if (j.is_number_integer()) {
         return j.get<long long>();
@@ -165,9 +148,7 @@ struct ChannelSelection {
     int index = 0;
 };
 
-// Parsed, validated fields of a set_view request. They are applied together
-// (apply_view) only after every field validates, so a partially-invalid
-// request never mutates the model.
+// Applied together only after every field validates (set_view is atomic).
 struct ViewUpdate {
     std::optional<std::string> buffer_name;
     std::optional<std::string> target;
@@ -178,12 +159,7 @@ struct ViewUpdate {
     std::optional<bool> auto_contrast;
 };
 
-// Each set_view field validator below mirrors the same shape: if the field
-// is absent from the request, return std::nullopt and leave `out` untouched;
-// if present but invalid, return the error Reply (out is left untouched);
-// if present and valid, populate `out` and return std::nullopt. This keeps
-// handle_set_view's validation phase a flat sequence of
-// "validate -> return error on failure" calls.
+// Absent -> nullopt, `out` untouched; invalid -> error Reply; valid -> `out`.
 
 std::optional<Reply> parse_buffer_name(const nlohmann::json& request,
                                        ViewModel& model,
@@ -203,10 +179,7 @@ std::optional<Reply> parse_buffer_name(const nlohmann::json& request,
     return std::nullopt;
 }
 
-// Resolves the buffer that per-buffer fields (center/zoom/rotation_deg/
-// channel) apply to: the explicit `buffer` name if given, else whichever
-// buffer is currently selected. Errors only if a per-buffer field is present
-// but no buffer can be resolved.
+// Per-buffer fields target the explicit `buffer` if given, else the selected.
 std::optional<Reply>
 resolve_target(const nlohmann::json& request,
                ViewModel& model,
@@ -254,18 +227,13 @@ std::optional<Reply> parse_zoom(const nlohmann::json& request,
         return std::nullopt;
     }
     double value = 0.0;
-    // Reject non-positive zoom, and positive values so tiny they narrow to a
-    // subnormal/zero float in Camera::compute_zoom() (pow), where
-    // 1/compute_zoom() would then blow up to +inf and corrupt the view -- the
-    // lower-bound dual of as_finite_number's float-overflow guard.
+    // A zoom narrowing to subnormal float makes 1/compute_zoom() blow to +inf.
     if (!as_finite_number(request.at("zoom"), value) ||
         value < static_cast<double>((std::numeric_limits<float>::min)())) {
         return make_error(AgentCore::ERR_BAD_PARAMS,
                           "zoom must be finite and > 0");
     }
-    // Reject a zoom whose engine power (log(zoom)/log(ZOOM_FACTOR)) would
-    // overflow the float pow() in Camera::compute_zoom() -- pow(1.1f, ~931)
-    // exceeds FLT_MAX and would install a non-finite scale.
+    // pow(1.1f, ~931) exceeds FLT_MAX: a bigger power installs an inf scale.
     if (constexpr double MAX_ZOOM_POWER = 930.0;
         std::log(value) / std::log(ViewModel::ZOOM_FACTOR) > MAX_ZOOM_POWER) {
         return make_error(AgentCore::ERR_BAD_PARAMS, "zoom is too large");
@@ -302,9 +270,7 @@ std::optional<Reply> parse_rotation(const nlohmann::json& request,
         return make_error(AgentCore::ERR_BAD_PARAMS,
                           "rotation_deg must be finite");
     }
-    // Normalize to the [0, 360) range get_view reports, so the accepted value
-    // matches the read-back contract (e.g. set_view(450) and set_view(90) both
-    // read back as 90) rather than only agreeing modulo 360.
+    // Normalize into get_view's [0, 360), so set_view(450) reads back as 90.
     value = std::fmod(value, 360.0);
     if (value < 0.0) {
         value += 360.0;
@@ -326,13 +292,7 @@ std::optional<Reply> parse_auto_contrast(const nlohmann::json& request,
     return std::nullopt;
 }
 
-// Applies an already-validated ViewUpdate to the model. Returns true iff
-// every mutator invoked below succeeded. Every field present in `u` is
-// still applied even once a prior mutator fails (via &=, not short-circuit
-// &&) so a mutator failure never leaves the model in a different partial
-// state than success would -- it only changes what handle_set_view reports
-// back to the caller. Split out of handle_set_view so that function's
-// complexity stays low.
+// `&=` not `&&`: a mutator failure leaves the same state a success would.
 bool apply_view(ViewModel& model, const ViewUpdate& u) {
     bool ok = true;
     if (u.buffer_name.has_value()) {
@@ -341,11 +301,7 @@ bool apply_view(ViewModel& model, const ViewUpdate& u) {
     if (u.auto_contrast.has_value()) {
         model.set_auto_contrast(*u.auto_contrast);
     }
-    // Apply the geometry fields most-coupled-first: rotation sets the buffer
-    // pose that the center read-back is expressed against, and zoom (which is
-    // center-preserving in the engine) before center, so center is applied last
-    // and an absolute set_view lands the requested center regardless of which
-    // other fields ride in the same patch.
+    // center last: rotation sets the pose it reads against, zoom preserves it.
     if (u.rotation_deg.has_value()) {
         ok &= model.set_rotation_rad(*u.target, *u.rotation_deg * PI / 180.0);
     }
@@ -411,19 +367,10 @@ Reply AgentCore::handle_hello(const nlohmann::json& request, bool& authed) {
     if (request.contains("token") && request.at("token").is_string()) {
         supplied = request.at("token").get<std::string>();
     }
-    // Reject a wrong-length token before the constant-time compare: the token
-    // length (64 hex chars) is public, so this leaks nothing, and it bounds the
-    // per-hello work to the real token size. Otherwise a client could send a
-    // ~1 MiB token and force that many iterations on the render thread, where
-    // drain() runs.
+    // Length first: the length is public, and caps a ~1 MiB token's loop cost.
     if (supplied.size() != token_.size() ||
         !constant_time_equal(supplied, token_)) {
-        // Do not clear `authed`: a bad token only ever fails to *grant* auth,
-        // it must never *revoke* an already-authenticated session. Otherwise a
-        // stray or malformed re-hello would drop a live connection back to the
-        // pre-auth state, where the (long-expired) absolute handshake deadline
-        // then tears it down. A first, failed hello leaves authed as it was
-        // (false).
+        // A bad token must never *revoke* an already-authenticated session.
         return make_error(ERR_BAD_TOKEN, "bad or missing token");
     }
     authed = true;
@@ -486,25 +433,13 @@ Reply AgentCore::handle_get_buffer(const nlohmann::json& request) const {
         }
     }
 
-    // Reject a malformed/inconsistent shape (see validate_buffer_dimensions)
-    // BEFORE read_pixels, so it can't skip the cap below and force a full
-    // backing-vector copy -- defeating the reject-before-copy protection.
+    // Before read_pixels: a bad shape could skip the cap and force a full copy.
     if (auto dim_error = validate_buffer_dimensions(*info, symbol)) {
         return *dim_error;
     }
 
-    // Reject an oversized buffer BEFORE allocating/copying its pixel bytes.
-    // BufferInfo::step is a row's width in *pixels* (GL_UNPACK_ROW_LENGTH;
-    // see Buffer::configure), not bytes, and each pixel itself spans
-    // `channels` elements of `type`'s width. So the declared byte size is
-    // step * channels * type_size(type) * height, not step alone -- using step
-    // alone under-rejects any wide-element or multi-channel buffer. Fold the
-    // product one factor at a time and bail the moment it would exceed
-    // max_bytes: this rejects the oversized buffer AND keeps pathological
-    // (e.g. IPC-malformed) dimensions from overflowing the uint64 product and
-    // wrapping past the cap on any target (notably 32-bit wasm32). Every factor
-    // is >= 1 -- step/channels/height are checked > 0 above and type_size is
-    // 1..8 -- so max_bytes / factor never divides by zero.
+    // step is a row width in *pixels*; fold factor-wise so it cannot overflow.
+    // type_size is 1..8 and the rest are checked > 0: no divide by zero.
     std::uint64_t declared_bytes = 1;
     for (const std::uint64_t factor :
          {static_cast<std::uint64_t>(info->step),
@@ -550,9 +485,7 @@ Reply AgentCore::handle_get_view(const nlohmann::json& /*request*/) const {
 }
 
 Reply AgentCore::handle_set_view(const nlohmann::json& request) const {
-    // Validation phase: every field is parsed and validated into `update`;
-    // nothing here mutates the model. apply_view() below touches the model,
-    // and only once every field has validated (set_view is atomic).
+    // Nothing here mutates the model; apply_view() runs only once all validate.
     ViewUpdate update;
     if (auto err = parse_buffer_name(request, model_, update.buffer_name)) {
         return *err;
@@ -577,9 +510,7 @@ Reply AgentCore::handle_set_view(const nlohmann::json& request) const {
     if (auto err = parse_auto_contrast(request, update.auto_contrast)) {
         return *err;
     }
-    // Every field above is pre-validated against the model, so a mutator
-    // failing here means the model is internally inconsistent with what
-    // validation observed, not a bad request.
+    // Pre-validated, so a failure here means the model is inconsistent.
     if (!apply_view(model_, update)) {
         return make_error(ERR_INTERNAL, "failed to apply view");
     }

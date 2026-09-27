@@ -65,9 +65,7 @@ void log_listener_failure_once(const char* what) {
 // connections; connections beyond this are closed immediately.
 constexpr std::size_t MAX_CLIENTS = 8;
 
-// Mirrors agentendpoint.py's HANDSHAKE_TIMEOUT: an unauthenticated
-// connection must complete hello within this window; the deadline is
-// lifted once the connection has authenticated.
+// Mirrors agentendpoint.py's HANDSHAKE_TIMEOUT; lifted once authenticated.
 constexpr std::chrono::seconds HANDSHAKE_TIMEOUT{10};
 
 long current_pid() {
@@ -78,11 +76,8 @@ long current_pid() {
 #endif
 }
 
-// Fills a 64-hex-character session token from 32 bytes of
-// std::random_device entropy. std::random_device is the only portable
-// entropy source available without a third-party dependency; a stronger,
-// platform-specific CSPRNG (e.g. getrandom()/BCryptGenRandom) would be
-// preferable and is a known follow-up.
+// std::random_device is the only portable entropy source without a new dep.
+// A platform CSPRNG (getrandom()/BCryptGenRandom) is a tracked follow-up.
 std::string generate_token() {
     std::random_device rd;
     std::array<std::byte, 32> bytes{};
@@ -100,27 +95,14 @@ std::string generate_token() {
     return token;
 }
 
-// Dedicated exception type (S112) for agent-transport failures raised
-// below; callers already catch it via catch (const std::exception&), so
-// this changes no behavior.
+// Dedicated exception type (S112); callers already catch std::exception.
 class AgentServerError : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
-// Drains `ctx` until the pending op's completion handler has run (`done`).
-// A single run() can return early: AgentServer::stop() flips stop_requested and
-// calls ctx.stop() as two separate steps, so the ctx.stop() can land after
-// run_async_op's restart() or partway through this drain, leaving the context
-// stopped and a bare run() a no-op. Looping restart()+run() absorbs that -- the
-// caller has already closed the socket, so the pending op completes promptly
-// (operation_aborted) and some run() invocation runs its handler while the
-// stack-captured done/op_ec are still alive.
+// Loop restart()+run(): a stop() landing mid-drain makes a bare run() a no-op.
 void drain_until_done(asio::io_context& ctx, const bool& done) {
-    // ctx.run() blocks until the (already socket.close()'d) op completes, so
-    // one pass normally suffices; the loop only re-runs when stop() calls
-    // ctx.stop() again mid-drain and makes run() return early. run() == 0 means
-    // no handler ran and none is pending -- nothing left to drain -- so stop
-    // rather than spin, keeping this bounded even in a pathological state.
+    // run() == 0 means nothing ran and nothing is pending: stop, don't spin.
     while (!done) {
         ctx.restart();
         if (ctx.run() == 0) {
@@ -129,16 +111,7 @@ void drain_until_done(asio::io_context& ctx, const bool& done) {
     }
 }
 
-// Drives one already-started async operation on `ctx` to completion: bounded
-// by `timeout` pre-auth (so an idle connection cannot hold a serve thread/slot
-// open indefinitely without completing hello), unbounded post-auth. It runs
-// only on the connection's own serve thread, so the socket and ctx are never
-// touched concurrently by another thread. AgentServer::stop() requests teardown
-// with two documented-thread-safe calls -- stop_requested->store(true) and
-// ctx.stop() -- and the actual socket close happens here, on the serve thread.
-// The post-restart flag check closes the race where stop() runs between two
-// ops: ctx.restart() would otherwise erase the pending ctx.stop() and the next
-// ctx.run() would block forever.
+// Bounded pre-auth so an idle connection cannot hold a serve slot forever.
 void run_async_op(asio::io_context& ctx,
                   asio::ip::tcp::socket& socket,
                   const bool& done,
@@ -147,10 +120,7 @@ void run_async_op(asio::io_context& ctx,
                   const std::optional<std::chrono::milliseconds> timeout) {
     ctx.restart();
     if (stop_requested.load()) {
-        // stop() flipped the flag (and called ctx.stop()) before this restart
-        // cleared the stopped state; close the socket to force prompt
-        // completion of the pending op and drain its aborted handler so the
-        // stack-captured done/op_ec run while still alive, then unwind.
+        // restart() erased a stop() that already landed; close forces the op.
         asio::error_code ignore;
         socket.close(ignore);
         drain_until_done(ctx, done);
@@ -159,10 +129,7 @@ void run_async_op(asio::io_context& ctx,
     if (timeout) {
         ctx.run_for(*timeout);
         if (!done) {
-            // Timed out, or stop() called ctx.stop() during run_for (which
-            // leaves the context stopped, so a bare run() would no-op and
-            // strand the pending handler). close() forces the op to complete;
-            // drain_until_done then runs the handler while its captures live.
+            // Timed out, or stop() left ctx stopped; close forces completion.
             asio::error_code ignore;
             socket.close(ignore);
             drain_until_done(ctx, done);
@@ -201,9 +168,7 @@ void read_exact_async(asio::io_context& ctx,
     run_async_op(ctx, socket, done, op_ec, stop_requested, timeout);
 }
 
-// Full-span write, unbounded (see run_async_op): used for every outgoing
-// reply, once a connection has authenticated there is no deadline on it
-// either.
+// Unbounded (see run_async_op): an authenticated reply carries no deadline.
 void write_all_async(asio::io_context& ctx,
                      asio::ip::tcp::socket& socket,
                      const std::span<const std::byte> data,
@@ -219,13 +184,8 @@ void write_all_async(asio::io_context& ctx,
     run_async_op(ctx, socket, done, op_ec, stop_requested, std::nullopt);
 }
 
-// Frames and sends `reply` on `socket`: the JSON header, then the binary
-// payload straight from the reply (no combined-frame copy). If the reply's JSON
-// serializes past the frame cap (e.g. list_buffers on a session with a huge
-// number of buffers), sends a small structured error instead so the client
-// sees a clean failure rather than a dropped connection. A free function
-// (rather than an inline try in serve_client) keeps that loop's try/catch from
-// nesting (S1141).
+// An oversize JSON frame sends a structured error, not a dropped connection.
+// A free function keeps serve_client's loop try/catch from nesting (S1141).
 void write_reply(asio::io_context& ctx,
                  asio::ip::tcp::socket& socket,
                  const Reply& reply,
@@ -269,9 +229,7 @@ AgentServer::AgentServer(ViewModel& model, const AgentServerConfig cfg)
 }
 
 AgentServer::~AgentServer() {
-    // A destructor must not propagate exceptions (S1048): stop() touches the
-    // filesystem (discovery-file unlink) and joins threads, any of which could
-    // throw. Teardown failures are non-fatal at shutdown, so swallow them.
+    // A destructor must not propagate (S1048); teardown failures are benign.
     try {
         stop();
     } catch (...) { // NOSONAR
@@ -292,15 +250,7 @@ const std::string& AgentServer::token() const {
 
 void AgentServer::publish_discovery() {
     const std::filesystem::path dir = viewer_discovery_dir();
-    // Harden the predictable base dir (dir's parent, <home>/.oid-agent)
-    // before the viewer subdir. Previously only the leaf was checked, so a
-    // base pre-planted as a symlink or owned by another user could redirect
-    // where this token-bearing discovery file lands. Rejecting a symlinked /
-    // wrong-owner base here (plus /tmp's sticky bit, which stops the base from
-    // being swapped once we create it) closes that redirection.
-    // enforce_mode=false: the base only needs the symlink/owner check (its
-    // private viewer/ leaf protects the tokens), so hardening it never chmods a
-    // surprising directory such as the CWD when OID_AGENT_DIR is ".".
+    // A symlinked/wrong-owner base redirects the token file; no chmod (CWD).
     prepare_private_dir(dir.parent_path(), /*enforce_mode=*/false);
     prepare_private_dir(dir);
 
@@ -336,13 +286,7 @@ void AgentServer::reap_finished_clients_locked() {
 }
 
 void AgentServer::accept_loop() {
-    // A synchronous acceptor_.accept() unblocked by a cross-thread
-    // acceptor_.close() is not portable: on Linux, close() does not wake a
-    // thread blocked in the kernel's accept(), so stop() could hang
-    // joining this thread. async_accept driven by io_context_.run() is
-    // reliably cancellable from another thread (io_context_.stop(), plus
-    // acceptor_.close() to cancel the operation itself -- see stop()),
-    // mirroring how each per-connection ctx is cancelled in run_async_op.
+    // On Linux close() does not wake a blocked accept(); async_accept does.
     schedule_accept();
     io_context_.run();
 }
@@ -364,11 +308,7 @@ void AgentServer::schedule_accept() {
                 schedule_accept(); // keep accepting subsequent connections
                 return;
             }
-            // A transient accept error (e.g. ECONNABORTED when a peer aborts
-            // before accept, or EMFILE) must not permanently stop the endpoint
-            // from accepting. Re-arm after a short backoff so a persistent
-            // error cannot busy-spin the accept thread; schedule_accept()
-            // no-ops once stop() has closed the acceptor.
+            // Back off: a persistent error must not busy-spin this thread.
             accept_retry_timer_.expires_after(std::chrono::milliseconds(100));
             accept_retry_timer_.async_wait(
                 [this](const asio::error_code& wait_ec) {
@@ -410,11 +350,7 @@ void AgentServer::serve_client(asio::io_context& conn_ctx,
                                asio::ip::tcp::socket& socket,
                                const std::atomic<bool>& stop_requested) {
     bool authed = false;
-    // Absolute deadline for the whole pre-auth phase, captured at connection
-    // start. HANDSHAKE_TIMEOUT is a single budget shared across every read of
-    // every pre-auth frame -- not a per-read window that resets, which would
-    // let a client hold a MAX_CLIENTS slot forever by trickling frames just
-    // under the timeout without ever authenticating.
+    // One budget for all pre-auth reads; a resetting window never expires.
     const auto handshake_deadline =
         std::chrono::steady_clock::now() + HANDSHAKE_TIMEOUT;
     try {
@@ -447,12 +383,7 @@ void AgentServer::serve_client(asio::io_context& conn_ctx,
             write_reply(conn_ctx, socket, reply, stop_requested);
         }
     } catch (const std::exception&) { // NOSONAR
-        // Peer closed, sent garbage, missed the handshake deadline, or the
-        // server was stopped while a request/reply was pending (which
-        // surfaces here as a broken_promise future error, or as the
-        // "agent connection stopped" run_async_op raises once
-        // AgentServer::stop() has stopped conn_ctx) -- nothing to clean up
-        // beyond the socket, which closes on scope exit.
+        // Peer closed, garbage, deadline or stop(); the socket closes on exit.
     }
 }
 
@@ -463,11 +394,7 @@ std::future<Reply> AgentServer::enqueue(nlohmann::json request, bool* authed) {
     {
         const std::scoped_lock lock(queue_mutex_);
         if (stopped_.load()) {
-            // Shutting down: a serve thread can reach here concurrently
-            // with stop() (e.g. it finished decode_frame just as stop()
-            // was clearing pending_); fail immediately instead of queuing
-            // a request drain() will never run again to service, which
-            // would otherwise block this thread's future.get() forever.
+            // No drain() runs again: a queued request would block future.get().
             promise.set_exception(std::make_exception_ptr(
                 std::runtime_error("agent server stopped")));
         } else {
@@ -479,12 +406,7 @@ std::future<Reply> AgentServer::enqueue(nlohmann::json request, bool* authed) {
         }
     }
     if (on_enqueue) {
-        // Exception boundary: this runs on a serve thread, where an escaping
-        // exception would unwind the request loop and drop the client (or
-        // terminate). The listener contract says cheap and nonthrowing (it is
-        // FramePacer::wake), but a listener bug must not destabilize the
-        // transport, so failures are absorbed: the request is already queued
-        // and the per-frame drain still serves it.
+        // A listener bug must not unwind this serve thread's request loop.
         try {
             on_enqueue();
         } catch (const std::exception& e) { // NOSONAR - deliberate boundary
@@ -503,10 +425,7 @@ void AgentServer::drain() {
         batch.swap(pending_);
     }
     for (auto& [request, reply, authed] : batch) {
-        // Contain any handler exception (e.g. bad_alloc from a large get_buffer
-        // copy) to the one request: the serve thread's future.get() rethrows it
-        // and its existing catch closes just that connection, rather than
-        // letting it unwind through the render frame and crash the viewer.
+        // Contain a handler throw to one connection, not the render frame.
         try {
             reply.set_value(core_.handle(request, *authed));
         } catch (...) { // NOSONAR
@@ -522,15 +441,7 @@ void AgentServer::set_enqueue_listener(std::function<void()> listener) {
 
 void AgentServer::stop() {
     {
-        // Flip stopped_ and break every already-queued request as a single
-        // step guarded by queue_mutex_ -- the same lock enqueue() takes to
-        // decide whether to queue a request. That serialization is what
-        // closes the shutdown race: a serve thread that calls enqueue()
-        // concurrently with this either queues before this clear() (and is
-        // then broken by it) or observes stopped_ == true afterward (and
-        // fails immediately in enqueue() instead); either way its
-        // future.get() is guaranteed to return rather than block forever
-        // with no drain() left to run.
+        // One step under enqueue()'s lock, so no future.get() blocks forever.
         std::scoped_lock lock(queue_mutex_);
         if (stopped_.load()) {
             return;
@@ -540,36 +451,19 @@ void AgentServer::stop() {
     }
 
     if (cfg_.enabled) {
-        // Stopping the io_context is what ends the accept loop: async_accept
-        // never blocks, so unwinding accept_thread_'s io_context_.run() is
-        // enough for it to return. The acceptor itself is closed only AFTER
-        // accept_thread_ is joined (below): closing it here, while that
-        // thread may still be inside the async_accept handler (schedule_accept
-        // re-arming the acceptor), is concurrent access to a non-thread-safe
-        // asio I/O object (CWE-362) and can corrupt state / crash under load.
+        // Close the acceptor only after the join: asio I/O objects race.
         io_context_.stop();
     }
     if (accept_thread_.joinable()) {
         accept_thread_.join();
     }
     if (cfg_.enabled) {
-        // Safe now: accept_thread_ has been joined, so nothing else touches
-        // the acceptor. (Any still-pending async_accept is abandoned; its
-        // captured shared_ptrs release when io_context_ is destroyed.)
+        // Safe now: accept_thread_ is joined, so nothing else touches it.
         asio::error_code ec;
         acceptor_.close(ec);
     }
 
-    // Unblock every still-serving connection using only documented-thread-safe
-    // cross-thread calls: set stop_requested, then stop the connection's ctx.
-    // ctx->stop() makes a currently-running ctx.run()/run_for() return
-    // immediately; run_async_op then observes stop_requested and closes its own
-    // socket on the serve thread (never here), which is what cancels the
-    // pending read/write. The flag also covers the window where a serve thread
-    // is between ops when stop() runs and would otherwise restart the ctx and
-    // block on the next read. Without this, a connection still being served
-    // when stop() returns would leave a joinable std::thread in `clients_`, and
-    // destroying that (here, or in ~AgentServer) would call std::terminate.
+    // Cross-thread-safe calls only: run_async_op closes the socket, not us.
     {
         std::scoped_lock lock(clients_mutex_);
         for (const std::unique_ptr<ClientConnection>& client : clients_) {
