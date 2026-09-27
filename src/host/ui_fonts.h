@@ -30,8 +30,7 @@ namespace oid::host {
 
 inline constexpr float UI_FONT_SIZE_BASE = 13.0f; // Qt 10pt at 96dpi
 
-// Fontello glyphs as UTF-8 literals (codepoints match the legacy Qt
-// frontend's setFontIcon calls; see tag legacy-qt):
+// Fontello glyphs as UTF-8; codepoints match the legacy-qt setFontIcon calls:
 inline constexpr auto ICON_RECENTER = "\xEE\xA0\x80";       // U+E800
 inline constexpr auto ICON_ROTATE_CCW = "\xEE\xA0\x81";     // U+E801
 inline constexpr auto ICON_ROTATE_CW = "\xEE\xA0\x82";      // U+E802
@@ -43,10 +42,9 @@ inline constexpr auto ICON_PRECISION_UP = "\xEE\xA0\x87";   // U+E807
 inline constexpr auto ICON_AC_RESET = "\xEE\xA0\x88";       // U+E808
 inline constexpr auto ICON_GO_TO = "\xEF\x80\xB1";          // U+F031
 
-// Builds the ImGui font atlas: Roboto (UI font) + merged fontello glyphs,
-// rasterized at UI_FONT_SIZE_BASE * content_scale physical px with
-// io.FontGlobalScale = 1/content_scale (crisp HiDPI). Call between
-// ImGui::CreateContext() and backend init.
+// Rasterizes at UI_FONT_SIZE_BASE * content_scale physical px with
+// io.FontGlobalScale = 1/content_scale. Call between ImGui::CreateContext()
+// and backend init.
 void setup_ui_fonts(float content_scale);
 
 } // namespace oid::host

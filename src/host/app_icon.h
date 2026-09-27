@@ -31,10 +31,8 @@ struct GLFWwindow;
 
 namespace oid::host {
 
-// Sets the application window icon on `window` from the embedded logo
-// PNG, downscaled to 256/48/32/16 sizes so the window manager can pick a
-// crisp variant. No-op on macOS (GLFW reports window icons
-// unavailable) and on Emscripten (no window icon on web).
+// Sets the application icon from the embedded logo PNG, downscaled to
+// 256/48/32/16 so the window manager can pick a crisp variant.
 void set_window_icon(GLFWwindow* window);
 
 } // namespace oid::host

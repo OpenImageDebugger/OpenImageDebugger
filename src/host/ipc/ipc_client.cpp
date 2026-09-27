@@ -52,23 +52,16 @@ void IpcClient::poll() {
         } catch (const std::runtime_error&) { // SocketTimeoutError, base catch
             return; // cross-shared-lib RTTI-safe; drop the partial message
         } catch (const std::length_error&) {
-            // MessageDecoder's own size guards keep resize() from throwing
-            // this, but other allocations driven by peer-supplied sizes and
-            // reachable from dispatch() (e.g. BufferAssembler::begin(), on a
-            // 32-bit size_t) are not guarded that way. Only length_error is
-            // caught, not its logic_error base: the siblings of that base
-            // signal bugs here rather than hostile input, and swallowing
-            // them would hide them. Its type_info is a single shared symbol
-            // like std::runtime_error's above, so this is RTTI-safe across
-            // the same shared-lib boundary.
+            // Peer-supplied sizes drive allocations under dispatch() that
+            // MessageDecoder does not guard (BufferAssembler::begin() on a
+            // 32-bit size_t). Not the logic_error base: its other children
+            // signal bugs here, and swallowing them would hide them.
             std::cerr << "[OID] container limit exceeded decoding a message; "
                          "dropped\n";
             return;
         } catch (const std::bad_alloc&) {
-            // A buffer's size comes from the peer. Sizes are capped before
-            // any allocation, but the cap is generous enough that the request
-            // can still fail on a loaded machine: drop the message rather
-            // than take the viewer down with it.
+            // Peer-supplied sizes are capped before any allocation, but the
+            // cap is generous enough to still fail on a loaded machine.
             std::cerr << "[OID] out of memory decoding a message; dropped\n";
             return;
         }
@@ -139,10 +132,8 @@ void IpcClient::handle_set_available_symbols() {
 }
 
 void IpcClient::handle_get_observed_symbols() const {
-    // LOCAL_FILE-tagged buffers were opened directly from a local file and
-    // are never owned by the debugger, so they must never be advertised
-    // back via GET_OBSERVED_SYMBOLS_RESPONSE (re-plotting one would be
-    // meaningless and they must never be persisted in session state).
+    // LOCAL_FILE buffers are not owned by the debugger: advertising one back
+    // would ask for a meaningless replot and persist it into session state.
     std::vector<std::string> observed;
     for (std::size_t i = 0; i < model_.size(); ++i) {
         if (model_.at(i).kind == BufferKind::DEBUGGER_SYMBOL) {
@@ -233,9 +224,8 @@ void IpcClient::handle_plot_buffer_begin() {
     params.type = type_int;
     decoder.read(params.total_byte_size);
     const std::string name = params.variable_name;
-    // Captured before the move so a refusal can say what it wanted. These
-    // mirror begin()'s rejection reasons one for one, so the message is never
-    // at odds with the decision.
+    // Captured before the move so a refusal can say what it wanted, mirroring
+    // begin()'s rejection reasons one for one so the two never disagree.
     const auto wire_type = static_cast<BufferType>(params.type);
     const bool known_type = is_known_buffer_type(wire_type);
     // padded_payload_size() reports nullopt for two different things, so the
@@ -265,9 +255,8 @@ void IpcClient::handle_plot_buffer_begin() {
             std::cerr << "geometry needs " << *expected << " bytes, got "
                       << received << "\n";
         } else if (renderable) {
-            // Reachable only where size_t is 32 bits, i.e. the wasm build:
-            // with a 64-bit size_t the display limits above already bound the
-            // product some three orders of magnitude below overflow. Keep it.
+            // Reachable only with a 32-bit size_t (wasm): at 64 bits the
+            // display limits bound the product far below overflow. Keep it.
             std::cerr << "geometry is too large to size in bytes\n";
         } else {
             std::cerr << "geometry is not renderable (width, height and "
@@ -289,17 +278,12 @@ void IpcClient::handle_plot_buffer_chunk() {
     if (assembler_.chunk(name, row_offset, row_count, bytes)) {
         return;
     }
-    // Already unusable: holding the allocation until PLOT_BUFFER_END would
-    // only waste memory. Gating the report on abort() having dropped
-    // something is what collapses the flood: the first bad chunk reports and
-    // drops, so every later chunk -- of that transfer, or of a name that
-    // never had a BEGIN -- finds nothing and stays silent.
+    // abort() frees the partial peer-sized allocation instead of holding it
+    // until PLOT_BUFFER_END; gating the report on it having dropped something
+    // collapses the flood, since later chunks and stray names find nothing.
     if (assembler_.abort(name)) {
-        // row_offset and row_count are logged separately rather than as a
-        // computed row_offset + row_count endpoint: that sum is unchecked
-        // std::size_t addition, and a peer sending huge values -- already
-        // rejected for the transfer itself -- would wrap it into an end row
-        // smaller than the start row.
+        // Logged separately, not as a row_offset + row_count endpoint: that
+        // unchecked sum wraps into an end row below the start row.
         std::cerr << "[OID] rejected PLOT_BUFFER_CHUNK for '" << name
                   << "': row_offset " << row_offset << ", row_count "
                   << row_count << ", " << bytes.size() << " bytes received\n";
@@ -410,21 +394,16 @@ std::string IpcClient::resolve_pixel_layout(const std::string_view context,
                                             const std::string& variable_name,
                                             std::string declared_layout,
                                             const int channels) const {
-    // Channel order is meaningless for one channel (shader_pixel_layout.h
-    // always renders a single-channel buffer from red regardless): a
-    // single-channel record's declared layout, empty or not, is the
-    // documented convention, not a corruption, and is used exactly as it
-    // arrives.
+    // Channel order is meaningless for one channel (the shader always renders
+    // it from red), so a one-channel layout is convention, not corruption.
     if (channels == 1) {
         return declared_layout;
     }
     if (is_valid_pixel_layout(declared_layout)) {
         return declared_layout;
     }
-    // An invalid layout for a multi-channel buffer never overwrites a valid
-    // one already on record: replacing it would be exactly the silent
-    // corruption this guards against (the render survives only by accident,
-    // until anything re-derives from the record).
+    // An invalid layout never overwrites a valid one on record: that is the
+    // silent corruption this guards against.
     const BufferRecord* existing = nullptr;
     for (std::size_t i = 0; i < model_.size(); ++i) {
         if (model_.variable_name_of(i) == variable_name) {
@@ -432,10 +411,8 @@ std::string IpcClient::resolve_pixel_layout(const std::string_view context,
             break;
         }
     }
-    // The kept layout was declared for the record's shape: a replot that
-    // changes the channel count invalidates that premise (the preserved
-    // swizzle would address components the new texture does not have), so
-    // a reshaping replot falls through to the default.
+    // The kept layout was declared for the record's shape: after a channel
+    // count change its swizzle would address components the texture lacks.
     if (existing != nullptr && existing->channels == channels &&
         is_valid_pixel_layout(existing->pixel_layout)) {
         const std::string& kept = existing->pixel_layout;
@@ -468,10 +445,8 @@ void IpcClient::send_guarded(const MessageComposer& composer) const {
     try {
         composer.send(transport_);
     } catch (const std::runtime_error&) {
-        // Transport is closed or peer is gone (e.g. viewer opened with no
-        // debugger attached). Inbound poll() already tolerates this;
-        // outbound sends must too, so a stray IPC message never crashes the
-        // viewer.
+        // Peer gone or transport closed (viewer opened with no debugger).
+        // poll() tolerates this inbound; an outbound send must not crash.
     }
 }
 

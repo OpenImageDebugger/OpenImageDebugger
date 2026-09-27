@@ -40,12 +40,9 @@
 
 namespace oid::host {
 
-// Qt-free port of the window-side of the Qt MessageHandler: decodes inbound
-// messages (SET_AVAILABLE_SYMBOLS, GET_OBSERVED_SYMBOLS, PLOT_BUFFER_CONTENTS,
-// PLOT_BUFFER_BEGIN/Chunk/End) into the IpcBufferModel + symbol list, and
-// sends outbound requests (PLOT_BUFFER_REQUEST, BUFFER_REMOVED). The transport
-// is injected as oid::ITransport& so this is unit-testable against a fake
-// transport with no live socket.
+// Qt-free port of the window side of the Qt MessageHandler. The transport is
+// injected as oid::ITransport& so this is testable against a fake, with no
+// live socket.
 class IpcClient {
   public:
     IpcClient(ITransport& transport, IpcBufferModel& model);
@@ -116,26 +113,17 @@ class IpcClient {
 
     [[nodiscard]] bool model_has(std::string_view variable_name) const;
 
-    // Decides the pixel_layout a PLOT_BUFFER_CONTENTS/PLOT_BUFFER_END should
-    // actually be upserted with, given what it arrived with. A single-channel
-    // buffer's declared layout is used as-is (see BufferRecord::pixel_layout,
-    // buffer_model.h; empty is legitimate there). For every other channel
-    // count, an invalid `declared_layout` is never upserted verbatim: it
-    // keeps the existing record's layout if that one is valid, or falls back
-    // to DEFAULT_PIXEL_LAYOUT if not (first plot ever, or an equally invalid
-    // existing record). Either fallback logs to stderr via `context` (e.g.
-    // "PLOT_BUFFER_CONTENTS" or "PLOT_BUFFER_END") so the substitution is
-    // never silent.
+    // One channel: the declared layout is used as-is (empty is legitimate).
+    // Otherwise an invalid one falls back to the record's existing layout, or
+    // to DEFAULT_PIXEL_LAYOUT, logged through `context` so it is never silent.
     [[nodiscard]] std::string
     resolve_pixel_layout(std::string_view context,
                          const std::string& variable_name,
                          std::string declared_layout,
                          int channels) const;
 
-    // Sends `composer` over transport_, catching and swallowing
-    // std::runtime_error. Mirrors poll()'s tolerance of transport errors on
-    // the inbound side: if the peer is gone (e.g. viewer opened with no
-    // debugger attached), an outbound send must not crash the viewer.
+    // Swallows std::runtime_error: with the peer gone, an outbound send must
+    // not crash the viewer, the same way poll() tolerates it inbound.
     void send_guarded(const MessageComposer& composer) const;
 
     ITransport& transport_;

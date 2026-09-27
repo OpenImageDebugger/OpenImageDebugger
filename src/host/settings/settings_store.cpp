@@ -61,19 +61,14 @@ T get_or(const nlohmann::json& j, const std::string& key, T def) {
     }
 }
 
-// Parses the "window" section (size + optional position) into `out`,
-// clamping the persisted size to a sane range. Extracted from
-// settings_from_json() to keep that function's cognitive complexity down.
+// Split out of settings_from_json() to keep its cognitive complexity down.
 void apply_window_section(const nlohmann::json& w,
                           const AppSettings& defaults,
                           AppSettings& out) {
     out.window_w = get_or(w, "w", defaults.window_w);
     out.window_h = get_or(w, "h", defaults.window_h);
-    // glfwCreateWindow() returns NULL (fatal startup failure) for
-    // non-positive sizes, and huge persisted values can wrap to
-    // negative/garbage ints when narrowed to int. Clamp to a sane
-    // range so a bad persisted size (minimized-to-0x0, hand-edited,
-    // or hostile) can never brick startup.
+    // A non-positive size makes glfwCreateWindow() return NULL (a fatal
+    // startup failure) and a huge one wraps to garbage when narrowed to int.
     if (out.window_w < 100 || out.window_w > 16384) {
         out.window_w = defaults.window_w;
     }
@@ -88,8 +83,6 @@ void apply_window_section(const nlohmann::json& w,
     }
 }
 
-// Parses the "ui" section into `out`. Extracted from settings_from_json()
-// to keep that function's cognitive complexity down.
 void apply_ui_section(const nlohmann::json& ui,
                       const AppSettings& defaults,
                       AppSettings& out) {
@@ -100,9 +93,7 @@ void apply_ui_section(const nlohmann::json& ui,
     out.last_export_dir = get_or(ui, "lastExportDir", defaults.last_export_dir);
 }
 
-// Parses the "previousBuffers" array into `out`, skipping malformed
-// entries so one bad entry doesn't discard the rest. Extracted from
-// settings_from_json() to keep that function's cognitive complexity down.
+// Skips malformed entries so one bad entry does not discard the rest.
 void apply_previous_buffers_section(const nlohmann::json& buffers,
                                     AppSettings& out) {
     for (const auto& entry : buffers) {
@@ -117,12 +108,8 @@ void apply_previous_buffers_section(const nlohmann::json& buffers,
     }
 }
 
-// Reports a host-owned key an embedding-host build declined to apply, via
-// `on_ignored` if one was given. A sink that throws is swallowed here,
-// deliberately: it has nothing further to report, and letting the exception
-// escape would be caught by settings_from_json()'s own try/catch and
-// mistaken for a parse failure -- discarding fields (e.g. "ui") that had
-// already parsed cleanly because a diagnostic callback misbehaved.
+// A throwing sink is swallowed: escaping, it would reach
+// settings_from_json()'s catch and look like a parse failure.
 void report_ignored(const std::function<void(std::string_view key)>& on_ignored,
                     const std::string_view key) {
     if (!on_ignored) {
@@ -130,13 +117,9 @@ void report_ignored(const std::function<void(std::string_view key)>& on_ignored,
     }
     try {
         on_ignored(key);
-    } catch (...) { // NOSONAR(cpp:S2738,cpp:S2486) -- catch-all is
-        // deliberate here, not careless: narrowing to `const std::exception&`
-        // would let a non-std throw escape into settings_from_json()'s outer
-        // handler and reintroduce the exact defect this function exists to
-        // prevent, a logging fault discarding a "ui" section that had
-        // already parsed cleanly and reporting a parse failure that never
-        // happened. See the comment above.
+    } catch (...) { // NOSONAR(cpp:S2738,cpp:S2486) -- narrowing to
+        // `const std::exception&` would let a non-std throw escape into
+        // settings_from_json()'s handler and discard cleanly parsed fields.
     }
 }
 

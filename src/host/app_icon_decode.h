@@ -32,9 +32,8 @@
 
 namespace oid::host {
 
-// A decoded RGBA8 image. On decode failure width/height are 0 and rgba is
-// empty; on success rgba.size() == width * height * 4 (tightly packed, no
-// row padding).
+// Decoded RGBA8 image; 0 dimensions and empty rgba signal decode failure.
+// rgba is tightly packed: no row padding.
 struct DecodedImage {
     int width;
     int height;

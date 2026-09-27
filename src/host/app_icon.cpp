@@ -39,11 +39,8 @@
 #include "host/app_icon_decode.h"
 #include "host/ui/icons/app_icon_png.h"
 
-// This is the single translation unit in this target that provides the
-// stb_image_resize2 implementation (function bodies, not just declarations).
-// The stb include dir is a SYSTEM include (-isystem, see
-// src/CMakeLists.txt), which suppresses warnings from the vendored header
-// under -Werror.
+// Sole translation unit providing the stb_image_resize2 function bodies. Its
+// include dir is -isystem so the vendored header survives -Werror.
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include <stb_image_resize2.h>
 

@@ -32,10 +32,8 @@
 
 namespace oid {
 
-// Error branch of Expected<T>, carrying a human-readable message. Any
-// Expected<T> constructs a failure implicitly from an Unexpected, mirroring
-// the value/error pairing of the C++23 standard library's expected facility
-// (this project targets C++20, so it is reimplemented here).
+// Error branch of Expected<T>, constructed implicitly into one. Stands in for
+// std::expected, which this C++20 project cannot use.
 struct Unexpected {
     std::string message;
 };

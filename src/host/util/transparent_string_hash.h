@@ -32,9 +32,8 @@
 
 namespace oid::host {
 
-// Transparent hash for std::string-keyed unordered containers: paired with
-// std::equal_to<>, it enables heterogeneous lookup (std::string_view or
-// const char*) without constructing a temporary std::string.
+// Paired with std::equal_to<>, enables heterogeneous lookup (string_view or
+// const char*) on std::string-keyed containers without a temporary string.
 struct TransparentStringHash {
     using is_transparent = void;
 

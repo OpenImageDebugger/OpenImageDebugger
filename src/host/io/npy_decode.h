@@ -45,10 +45,8 @@ struct NpyArray {
     std::vector<std::byte> bytes;
 };
 
-// Decode a NumPy .npy byte buffer (v1/v2/v3, little-endian dtypes,
-// C- or Fortran-order 2-D, C-order 3-D). Returns an error string on any
-// unsupported or malformed input. FLOAT64 payloads are returned as raw
-// double bytes; downstream conversion to float32 happens in the loader.
+// Decodes .npy v1/v2/v3: little-endian dtypes, C- or Fortran-order 2-D,
+// C-order 3-D. FLOAT64 stays raw double bytes; the loader narrows to float32.
 [[nodiscard]] Expected<NpyArray> decode_npy(std::span<const std::byte> data);
 
 } // namespace oid

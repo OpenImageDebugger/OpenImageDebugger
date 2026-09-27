@@ -40,13 +40,8 @@ struct CliOptions {
     std::optional<int> agent_debugger_pid;
 };
 
-// Parses argv into CliOptions. Recognized flags: `--host H`; `--port N` /
-// `-p N` (via std::atoi -- invalid or non-positive input leaves the
-// default); repeatable `-o PATH` / `--open PATH` (each occurrence appends to
-// open_files); `--agent-debugger-pid PID` (invalid input leaves
-// agent_debugger_pid unset). Unknown arguments are ignored; a trailing
-// `-o`/`--open`/`--host`/`--port`/`-p`/`--agent-debugger-pid` with no
-// following value is ignored.
+// Flags: `--host H`, `-p`/`--port N`, repeatable `-o`/`--open PATH`,
+// `--agent-debugger-pid PID`. Unknown, invalid or valueless input is ignored.
 [[nodiscard]] CliOptions parse_cli(int argc, const char* const* argv);
 
 } // namespace oid::host

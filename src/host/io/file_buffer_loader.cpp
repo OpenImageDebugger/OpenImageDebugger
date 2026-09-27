@@ -65,8 +65,6 @@ std::string layout_for_channels(const int channels) {
     return channels == 4 ? "rgba" : "";
 }
 
-// Maps a decoded NumPy array onto the wire-shaped BufferRecordParams that
-// make_buffer_record() consumes.
 BufferRecordParams params_from_npy(NpyArray npy,
                                    std::string variable_name,
                                    std::string display_name) {
@@ -84,10 +82,8 @@ BufferRecordParams params_from_npy(NpyArray npy,
     return params;
 }
 
-// Preflight caps for decoded images, mirroring the renderer's BufferConstants.
-// Kept local so this translation unit (compiled for the non-native build too)
-// does not pull in the GL-backed buffer.h. A file whose header claims more than
-// this is rejected before any pixel memory is allocated.
+// Mirrors the renderer's BufferConstants, kept local so this translation unit
+// (built for the non-native build too) does not pull in the GL-backed buffer.h.
 constexpr int K_MAX_IMAGE_DIMENSION = 131072; // 2^17
 constexpr std::uint64_t K_MAX_DECODED_BYTES =
     16ULL * 1024 * 1024 * 1024; // 16 GB
@@ -99,9 +95,8 @@ element_count(const int width, const int height, const int channels) {
            static_cast<std::size_t>(channels);
 }
 
-// Copies `count` elements of type T (as returned by stb) into a byte vector.
-// The end pointer is computed in T-space (pixels + count) and only then cast to
-// bytes, so element size never enters the pointer arithmetic.
+// The end pointer is computed in T-space and only then cast to bytes, so
+// element size never enters the pointer arithmetic.
 template <typename T>
 std::vector<std::byte> pixels_to_bytes(const T* pixels, std::size_t count) {
     const auto* first = reinterpret_cast<const std::byte*>(pixels);
@@ -119,10 +114,8 @@ Expected<BufferRecordParams> decode_stb(std::span<const std::byte> bytes,
     const auto* data = reinterpret_cast<const stbi_uc*>(bytes.data());
     const auto len = static_cast<int>(bytes.size());
 
-    // Preflight the header before decoding: stbi_info reads the dimensions
-    // without allocating pixel memory, so a small compressed file that claims
-    // enormous dimensions (a decompression bomb) is rejected here instead of
-    // triggering a huge allocation during the decode below.
+    // stbi_info reads the dimensions without allocating, so a small file
+    // claiming enormous ones (a decompression bomb) dies before the decode.
     int width = 0;
     int height = 0;
     int channels = 0;

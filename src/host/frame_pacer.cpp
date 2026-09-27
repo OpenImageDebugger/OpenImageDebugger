@@ -42,12 +42,9 @@ void FramePacer::pace(const std::function<void()>& on_wake) {
     std::unique_lock lock(mutex_);
     for (;;) {
         while (consumed_ < wakes_ && Clock::now() < deadline_) {
-            // Coalesce: one on_wake serves the whole pending burst (drain()
-            // empties the queue), so N rapid wakes cost one dispatch. The
-            // deadline bound keeps a hot client that re-wakes during
-            // on_wake() from starving the frame: once the deadline passes,
-            // surplus wakes stay pending and the next pace() serves them on
-            // entry.
+            // One on_wake serves the whole pending burst. The deadline bound
+            // keeps a client that re-wakes during on_wake() from starving the
+            // frame; surplus wakes wait for the next pace().
             consumed_ = wakes_;
             lock.unlock();
             if (on_wake) {
@@ -58,8 +55,6 @@ void FramePacer::pace(const std::function<void()>& on_wake) {
         if (Clock::now() >= deadline_) {
             break;
         }
-        // Spurious wakeups are harmless: loop re-checks wake
-        // counter and deadline.
         cv_.wait_until(lock, deadline_);
     }
     deadline_ += period_;
