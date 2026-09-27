@@ -33,38 +33,16 @@
 
 namespace oid {
 
-// Returns the pixel layout the buffer fragment shader must be compiled with.
-//
-// A layout names the channel order of the buffer's data, and the shader takes
-// its source component from the layout's first character. A single-channel
-// buffer is uploaded as a GL_RED texture, whose samples are (r, 0, 0, 1): only
-// the red component carries data. A declared layout starting with 'g', 'b' or
-// 'a' would therefore make the shader read a component that is constant zero,
-// rendering the whole buffer black at every contrast setting. Channel order is
-// meaningless for a single channel, so such a buffer always samples red.
-//
-// Multi-channel buffers keep their declared layout, including the case where
-// the user has selected one channel of an RGB buffer for display: there the
-// texture really does carry that component and the first character is what
-// selects it.
+// GL_RED samples as (r, 0, 0, 1), so a 'g'/'b'/'a' layout would read zero.
 [[nodiscard]] inline std::string
 shader_pixel_layout(const std::string& declared_layout,
                     const int texture_channels) {
     return texture_channels == 1 ? std::string{"rgba"} : declared_layout;
 }
 
-// Returns the channel index a layout selects for display, given how many
-// channels the buffer actually has.
-//
-// The layout's first character names the channel, so this must agree with
-// shader_pixel_layout() or the viewer reports one channel while rendering
-// another. A buffer only carries `texture_channels` components, so a layout
-// naming one beyond that resolves to red -- which is what a single-channel
-// buffer renders, and the only component a GL_RG texture is guaranteed to
-// have when blue is asked for.
-//
-// This also bounds the loop in BufferValues::draw_pixel_values(), which reads
-// the pixel as buffer[pos + channel] without clamping to the channel count.
+// Must agree with shader_pixel_layout(); 'b' on a GL_RG texture resolves to
+// red. The clamp below is the only bound on draw_pixel_values()'s unchecked
+// buffer[pos + channel].
 [[nodiscard]] inline int selected_channel_index(const std::string& layout,
                                                 const int texture_channels) {
     if (layout.empty()) {

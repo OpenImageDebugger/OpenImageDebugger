@@ -42,9 +42,8 @@ namespace oid {
 namespace BufferConstants {
 constexpr int MAX_TEXTURE_SIZE = 2048;
 constexpr float ZOOM_BORDER_THRESHOLD = 40.0f;
-// The buffer dimension, channel and byte limits are not here: they live in
-// ipc/raw_data_decode.h, below this layer, so the wire code can refuse a
-// buffer this one would only reject later. Use them by their own names.
+// Buffer byte, dimension and channel limits live in ipc/raw_data_decode.h so
+// the wire layer can refuse first; use them by name, do not re-alias here.
 } // namespace BufferConstants
 
 struct BufferParams {
@@ -139,9 +138,7 @@ class Buffer final : public Component {
     void get_pixel_info(std::stringstream& message, int x, int y) const;
 
     void rotate(float angle);
-    // Absolute counterpart of rotate(): replaces the accumulated angle
-    // (radians) rather than adding to it. Used by the agent endpoint for
-    // idempotent view control; the human toolbar keeps using rotate().
+    // Absolute counterpart of rotate(): replaces the angle, does not add.
     void set_rotation(float radians);
     [[nodiscard]] float rotation() const;
 
