@@ -46,10 +46,8 @@ constexpr std::array<ExportFormat, 3> EXPORT_FORMATS{{
     {BufferExporter::OutputType::NUMPY_ARRAY, ".npy", "NumPy array"},
 }};
 
-// Case-insensitive ASCII suffix test. Export extensions are ASCII, so a
-// byte-wise tolower comparison is enough (and locale-independent); it lets a
-// user-typed ".PNG"/".OCT" match the registry's canonical ".png"/".oct" so the
-// format is classified correctly and no second extension is appended.
+// Export extensions are ASCII, so a byte-wise tolower is enough and
+// locale-independent; a user-typed ".PNG" must match the registry's ".png".
 bool ends_with_ci(const std::string_view s, const std::string_view suffix) {
     if (s.size() < suffix.size()) {
         return false;

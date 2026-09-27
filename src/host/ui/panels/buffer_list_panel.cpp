@@ -99,10 +99,8 @@ void draw_buffer_row_context_menu(ExportDialogState& export_dialog,
     }
 }
 
-// Stable UI context shared by every row drawn this frame, grouped so
-// draw_buffer_list_row() stays under Sonar's parameter-count limit. Holds
-// references only; the per-row `i` and `nav_moved` stay plain parameters
-// since they change on every call.
+// Grouped so draw_buffer_list_row() stays under Sonar's parameter-count
+// limit; the per-row `i` and `nav_moved` stay plain parameters.
 struct BufferListRowContext {
     UiState& ui;
     const IpcBufferModel& model;
@@ -168,9 +166,8 @@ void draw_buffer_list_row(const BufferListRowContext& ctx,
         row_start.y + (row_h - text_size.y) * 0.5f));
     ImGui::TextUnformatted(label.c_str());
 
-    // Put the cursor back where the Selectable's layout left it. Done with
-    // an item rather than a bare cursor move: imgui asserts when the cursor
-    // ends past the content extent.
+    // Back to where the Selectable's layout left it; an item, not a bare
+    // move, since imgui asserts when the cursor ends past the content extent.
     ImGui::SetCursorScreenPos(row_start);
     ImGui::Dummy(ImVec2(0.0f, row_h));
 

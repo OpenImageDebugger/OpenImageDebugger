@@ -113,13 +113,8 @@ class ThumbnailCache {
                        std::equal_to<>>
         entries_;
     bool rendered_this_frame_{false};
-    // Offscreen render size (Qt parity: the legacy Qt frontend's
-    // ICON_WIDTH_BASE/ICON_HEIGHT_BASE == 100x75, see tag legacy-qt, scaled
-    // by the window's content scale so the
-    // texture that later gets downsampled into the DISPLAY_W x DISPLAY_H
-    // slot stays crisp on HiDPI displays). Set once in the ctor and fixed
-    // for the life of this instance -- see texture_for()'s "same fixed
-    // size every time" comment.
+    // Qt's ICON_WIDTH_BASE/ICON_HEIGHT_BASE (100x75) scaled by content scale
+    // so the HiDPI downsample stays crisp; fixed for this instance's life.
     int render_w_;
     int render_h_;
 };
