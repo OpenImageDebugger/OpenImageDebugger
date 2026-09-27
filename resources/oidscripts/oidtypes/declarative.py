@@ -25,10 +25,7 @@ OID_TYPES_PATH_ENV = 'OID_TYPES_PATH'
 BUILTIN_TYPES_FILENAME = 'builtin_types.json'
 SUPPORTED_VERSION = 1
 
-# Expression dialect families this loader can evaluate. 'cpp' means
-# "native debugger expression" (C/C++, and any language gdb/lldb evaluates
-# natively). Entries in other dialects are skipped quietly so one types
-# file can serve future backends.
+# 'cpp' is any natively evaluated language; other dialects are skipped.
 ACCEPTED_LANGUAGES = ('cpp',)
 
 # Friendly dtype names plus the C scalar spellings produced by template
@@ -62,11 +59,7 @@ DTYPE_ELEMSIZE = {
 }
 
 REQUIRED_FIELDS = ('match', 'pointer', 'width', 'height', 'dtype')
-# Every key an entry may carry. Kept in lockstep with the `entry` definition
-# in resources/schemas/oid-types-v1.json: an editor validating against that
-# schema and this loader have to agree on what a valid entry looks like, in
-# both directions. `description` is free text, ignored at load time -- JSON
-# has no comments, so it is the only place to explain an expression.
+# Keep in lockstep with `entry` in resources/schemas/oid-types-v1.json.
 KNOWN_ENTRY_KEYS = frozenset({
     'name', 'description', 'match', 'language', 'pointer', 'width',
     'height', 'channels', 'dtype', 'row_stride', 'pixel_layout',
@@ -80,10 +73,8 @@ FIELD_DEFAULTS = {
     'display_name': '{name} ({type})',
 }
 
-# Fields resolve in this fixed order; each stage may reference the derived
-# placeholders of every earlier stage (checked statically at load time).
-# 'pointer' resolves to a cast object, never an int, so it is not
-# available as a placeholder.
+# Later stages may use earlier derived names; 'pointer' resolves to a cast
+# object, never an int, so it is never available as a placeholder.
 RESOLUTION_ORDER = ('dtype', 'transpose', 'width', 'height', 'channels',
                     'pointer', 'row_stride', 'pixel_layout')
 _DERIVED_BY_STAGE = {
@@ -99,9 +90,7 @@ _DERIVED_BY_STAGE = {
     'pixel_layout': ('dtype', 'elemsize', 'transpose', 'width', 'height',
                      'channels', 'row_stride'),
 }
-# Only these brace tokens are placeholders; any other brace content (e.g.
-# C initializer braces) passes through substitution untouched. Lowercase
-# tokens (sym, name, type, field names) are all covered by [a-z_]+.
+# Any other brace content, C initializer braces above all, passes through.
 _PLACEHOLDER_RE = re.compile(
     r'\{(targ:\d+(?:\.\d+)*|[a-z_]+)\}')
 _PIXEL_LAYOUT_RE = re.compile(r'^[rgba]{4}$')
@@ -176,11 +165,7 @@ def _resolve_targ_token(symbol_obj, token):
         return str(current)
 
 
-# Trailing reference markers ('&', '&&') and cv-qualifiers ('const',
-# 'volatile') that can follow a pointer star in a declared type, e.g.
-# 'T *&', 'T * const', 'T *const&'. They are peeled one token at a time
-# with a plain rstrip loop rather than a single regex so that a long run
-# of whitespace cannot trigger catastrophic regex backtracking.
+# Peeled one token at a time, not by regex: no catastrophic backtracking.
 _TRAILING_REF_MARKERS = ('&&', '&')
 _TRAILING_CV_WORDS = ('const', 'volatile')
 
@@ -243,10 +228,7 @@ def _symbol_expression(obj_name, symbol_obj):
 
 def _to_int(value):
     if isinstance(value, str):
-        # A textual expression result may be rendered in decimal or hex
-        # (e.g. '0x10'); base 0 parses both. Other values (ints, or a debugger
-        # symbol wrapper) use the normal int() conversion, which for the LLDB
-        # wrapper is itself hex-safe.
+        # A textual result may be decimal or hex; base 0 parses both.
         return int(value, 0)
     return int(value)
 
@@ -307,10 +289,7 @@ class _Resolution:
                 f'template argument resolution failed in {text!r}: {error}')
 
     def _evaluate_via_bridge(self, substituted):
-        # The bridge contract is to raise RuntimeError on failure, but a
-        # backend may leak another exception type; wrap any failure so the
-        # error always carries entry/field context and first_valid can
-        # treat it uniformly as a fall-through.
+        # A backend may leak more than the contracted RuntimeError.
         try:
             return self.bridge.evaluate_expression(substituted)
         except Exception as error:
@@ -329,9 +308,7 @@ class _Resolution:
         return self.evaluate_text(self.substitute(text))
 
     def evaluate_pointer(self, text):
-        # Pointer expressions must resolve to a debugger value object the
-        # bridge can cast, so evaluation always goes through the debugger
-        # and never takes the int() fast path used by numeric fields.
+        # Must yield a value object the bridge can cast, never an int.
         return self._evaluate_via_bridge(self.substitute(text))
 
 
@@ -377,9 +354,7 @@ def _resolve_first_valid(resolution, candidates, leaf):
                 value = _to_int(resolution.evaluate(candidate['expr']))
                 if value < candidate['min']:
                     continue
-                # Run the caller's leaf so per-field validation still applies
-                # (e.g. _leaf_int non-negative, _leaf_dtype valid-code). A leaf
-                # rejection falls through to the next candidate, per first_valid.
+                # A leaf rejection falls through to the next candidate.
                 return leaf(resolution, value)
             return _resolve_node(resolution, candidate, leaf)
         except (EntryEvaluationError, TypeError, ValueError):
@@ -408,10 +383,8 @@ def _resolve_map(resolution, node, leaf):
 def _leaf_int(resolution, node):
     value = resolution.evaluate(node) if isinstance(node, str) else node
     if isinstance(value, (bool, float)):
-        # A JSON bool/float literal for an integer field would be silently
-        # coerced by int() (True -> 1, 640.9 -> 640) and corrupt the buffer
-        # geometry. Expression results are never a Python bool/float, so
-        # this only rejects literal mistakes.
+        # int() would silently coerce True -> 1 and 640.9 -> 640. Expression
+        # results are never a Python bool/float: only literals reach here.
         raise EntryEvaluationError(
             resolution.entry_name, resolution.field,
             f'{value!r} is not an integer literal; use a whole number '
@@ -473,10 +446,8 @@ def _leaf_dtype(resolution, node):
         code = _dtype_code_from_name_or_expr(
             resolution, resolution.substitute(node).strip())
     elif isinstance(node, (bool, float)):
-        # A JSON bool/float literal would be silently coerced by int()
-        # (True -> 1, 5.9 -> 5) into a different pixel type code.
-        # Expression results are never a Python bool/float, so this only
-        # rejects literal mistakes.
+        # int() would silently coerce True -> 1 and 5.9 -> 5. Expression
+        # results are never a Python bool/float: only literals reach here.
         raise EntryEvaluationError(
             resolution.entry_name, resolution.field,
             f'{node!r} is not a dtype code; use a dtype name or a '
@@ -552,15 +523,7 @@ def _validate_min_wrapper(candidate, available):
     return _string_node_errors(candidate['expr'], available)
 
 
-# Numeric-literal policy for a field's value nodes, applied at the top
-# level and at every leaf nested inside first_valid/map/if:
-#   NONE    -- pointer: a bare number is never a valid value expression
-#              (it must resolve to a debugger value the bridge can cast).
-#   INTEGER -- sizes and dtype: an int literal is fine, but a bool/float
-#              literal would be silently coerced by int() at runtime
-#              (True -> 1, 5.9 -> 5), so reject it at load time for
-#              immediate feedback instead of a plot-time failure.
-#   ANY     -- transpose: any numeric literal is a valid value.
+# NONE rejects any bare number, INTEGER a bool/float, ANY nothing.
 _NUMBER_NONE = 'none'
 _NUMBER_INTEGER = 'integer'
 _NUMBER_ANY = 'any'
@@ -595,11 +558,7 @@ def _validate_first_valid(candidates, available, number_policy):
     for candidate in candidates:
         if isinstance(candidate, dict) and 'min' in candidate:
             if number_policy == _NUMBER_NONE:
-                # The min-wrapper gates on its candidate read as a Python int,
-                # but a pointer must stay a debugger value for the bridge to
-                # cast (its leaf takes an expression string, not an int). A
-                # min-wrapped pointer candidate would fail at plot time, so
-                # reject it here for immediate feedback.
+                # min reads an int; a pointer must stay a debugger value.
                 errors.append('pointer first_valid candidates cannot use the '
                               '{"expr": ..., "min": N} wrapper')
             else:
@@ -959,9 +918,7 @@ def discover_user_type_files():
     """
     if OID_TYPES_PATH_ENV in os.environ:
         raw = os.environ[OID_TYPES_PATH_ENV]
-        # Trim each segment so a formatted list like
-        # '/a/types.json{sep} /b/types.json' does not yield ' /b/types.json',
-        # which would silently fail os.path.isfile() and be dropped.
+        # A formatted list may leave ' /b/types.json', failing isfile().
         parts = (path.strip() for path in raw.split(os.pathsep))
         return [path for path in parts if path]
     directory = os.getcwd()

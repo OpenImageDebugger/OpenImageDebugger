@@ -28,9 +28,6 @@ class LldbAdapter(object):
         self._frame = frame
 
     def evaluate_expression(self, expression):
-        # Delegates to lldbbridge's shared evaluator: the fast-path lookup,
-        # the error guards, and the RuntimeError-on-failure contract all
-        # live there now.
         from oidscripts.debuggers.lldbbridge import evaluate_in_frame
         return evaluate_in_frame(self._frame, expression)
 
@@ -126,11 +123,7 @@ def _walk_gdb_members(gdb, bridge, node, parent_name, emit):
     for field in node_type.fields():
         field_name = getattr(field, 'name', None)
         if not field_name or getattr(field, 'is_base_class', False):
-            # Anonymous aggregates and base-class subobjects contribute no
-            # path segment: C++ addresses their members directly on the
-            # containing object, so an invented segment ('parent.None.x',
-            # 'parent.Base.x') would never evaluate back through
-            # resolve(). Recurse as if their members were direct members.
+            # 'parent.None.x' and 'parent.Base.x' evaluate nowhere.
             _walk_gdb_members(gdb, bridge, field, parent_name, emit)
             continue
         qualified_name = ('%s.%s' % (parent_name, field_name)
@@ -173,11 +166,7 @@ def _expand_gdb_symbol(gdb, bridge, symbol, emit, shadowed=frozenset()):
         try:
             this_value = gdb.parse_and_eval('this').dereference()
         except Exception:                          # noqa: BLE001
-            # `this` is in scope but not evaluable right now (optimized
-            # out, frame prologue, dead frame). Skip its expansion rather
-            # than aborting the whole listing -- the caller turns any
-            # escaped exception into a full-page error payload, which
-            # would hide every other observable symbol.
+            # An unevaluable `this` must not empty the whole listing.
             return
 
         def emit_unshadowed(member_name, member_type):
@@ -201,10 +190,7 @@ class GdbHost(object):
         self._adapter = GdbAdapter()
 
     def buffer_metadata(self, name):
-        # Evaluate through the adapter, not gdb.parse_and_eval directly:
-        # resolve() stringifies whatever escapes, and the adapter is the
-        # error-normalization contract ('Expression "..." failed: ...')
-        # shared with the engine's own expression evaluation.
+        # Through the adapter: it owns the error-normalization contract.
         picked = self._adapter.evaluate_expression(name)
         return _type_bridge().get_buffer_metadata(name, picked, self._adapter)
 
@@ -224,9 +210,6 @@ class GdbHost(object):
             block = gdb.selected_frame().block()
         except Exception as error:                 # noqa: BLE001
             # Before `run`, or after the inferior exits, gdb raises here.
-            # Name the routine condition the way the lldb path does
-            # instead of letting gdb's internal message surface as an
-            # opaque endpoint error.
             raise RuntimeError(
                 'gdb is available in this interpreter, but no stopped '
                 'frame is available') from error
@@ -246,9 +229,7 @@ class GdbHost(object):
                 if not (getattr(symbol, 'is_argument', False)
                         or getattr(symbol, 'is_variable', False)):
                     continue
-                # Unnamed symbols are skipped like lldbbridge does: a null
-                # name (or a None-parented member path) could never be fed
-                # back through resolve().
+                # A null name could never be fed back through resolve().
                 name = getattr(symbol, 'name', None)
                 if not name or name in processed:
                     continue
@@ -267,8 +248,7 @@ def _frame_from_lldb_debugger(lldb):
     return frame_from_debugger(getattr(lldb, 'debugger', None))
 
 
-# Every attribute the gdb path reads WITHOUT a guard must be listed here,
-# or a partial module passes selection and crashes mid-walk instead
+# Every attribute the gdb path reads WITHOUT a guard must be listed here
 # (TYPE_CODE_RVALUE_REF stays out: _peel_gdb_type reads it via getattr).
 _GDB_HOST_API = ('selected_frame', 'parse_and_eval', 'lookup_type',
                  'TYPE_CODE_STRUCT', 'TYPE_CODE_UNION', 'TYPE_CODE_REF')
@@ -292,31 +272,15 @@ def current_host():
         lldb = None
 
     if lldb is not None:
-        # lldb.frame is a convenience global some lldb script contexts
-        # populate; prefer it, but it can be absent or a stale-but-present
-        # (falsy) SBFrame, so fall back to the explicit walk lldbbridge.py
-        # itself always uses.
+        # lldb.frame exists only in some script contexts, and can be falsy.
         frame = getattr(lldb, 'frame', None)
         if not frame:
             frame = _frame_from_lldb_debugger(lldb)
         if frame:
             return LldbHost(frame)
-        # `import lldb` succeeding only proves the package is importable --
-        # not that lldb is actually hosting this interpreter. On a machine
-        # with both debuggers installed, running under gdb, lldb is
-        # importable but inert, and its session globals are absent/falsy.
-        # Only commit to the lldb-specific error below when some real
-        # session marker shows lldb genuinely is hosting this interpreter
-        # (a truthy lldb.debugger here; a truthy lldb.frame would already
-        # have returned above) -- otherwise fall through to the gdb probe
-        # so a merely-importable-but-inert lldb does not mask a real gdb.
+        # An importable but inert lldb must not mask a real gdb.
         if getattr(lldb, 'debugger', None):
-            # lldb is loaded but there is no stopped frame to inspect (e.g.
-            # the inferior is running or hasn't been launched yet). That is
-            # a routine, distinct condition from "no debugger at all" --
-            # say so instead of falling through to the gdb probe and
-            # ending on the misleading "no supported debugger" message
-            # below.
+            # Loaded, but nothing stopped: not "no debugger at all".
             raise RuntimeError(
                 'lldb is available in this interpreter, but no stopped '
                 'frame is available')

@@ -9,9 +9,7 @@ wrapped in a closure and marshalled onto the debugger thread through
 bridge.queue_request(), the same mechanism the viewer event loop uses.
 """
 
-# Framing is defined once in wireframe. send_frame/recv_frame are used by
-# the server below and re-exported so the endpoint's public surface
-# (agentendpoint.send_frame, .recv_frame) is unchanged.
+# Re-exported, not just imported: these are part of the endpoint's API.
 from oidscripts.wireframe import recv_frame, send_frame  # noqa: F401
 
 PROTOCOL_VERSION = 1
@@ -182,9 +180,7 @@ class AgentEndpoint(object):
 
     def _handle_get_buffer(self, request):
         symbol = str(request.get('symbol', ''))
-        # Always enforce the server-side cap. A client may lower it, but a
-        # missing/invalid value does NOT disable the guard (a direct
-        # endpoint client must not be able to force unbounded reads).
+        # A client may only lower the cap, never disable it.
         requested = request.get('max_bytes')
         if isinstance(requested, int) and 0 < requested < ENDPOINT_MAX_BYTES:
             max_bytes = requested
@@ -201,10 +197,7 @@ class AgentEndpoint(object):
                 ERROR_SYMBOL_NOT_FOUND,
                 '%r is not an observable buffer in the current frame'
                 % symbol)
-        # Avoid copying the whole buffer inside the debugger process: the
-        # bridge already materialized it into a bytes-like object (lldb:
-        # bytes; gdb: a read_memory memoryview), and send_frame/sendall
-        # accept the buffer protocol directly.
+        # No copy in the debugger process: sendall takes the buffer protocol.
         pointer = metadata.pop('pointer')
         if not isinstance(pointer, (bytes, bytearray, memoryview)):
             pointer = memoryview(pointer)
@@ -394,11 +387,7 @@ class _EndpointServer(object):
     def _serve_client(self, conn):
         try:
             with conn:
-                # Pre-auth: an idle connection may not hold its slot open; it
-                # must say hello within the handshake window. The deadline is
-                # absolute across the whole pre-auth frame, not per-recv, so a
-                # client cannot hold a MAX_CLIENTS slot forever by trickling
-                # bytes just under a per-recv timeout (mirrors agent_server.cpp).
+                # Deadline spans the whole frame, not each recv.
                 request, _ = recv_frame(
                     _DeadlineSocket(conn, HANDSHAKE_TIMEOUT), max_payload=0)
                 # Bound the reply send as a single op too (a small reply cannot

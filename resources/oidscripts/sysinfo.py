@@ -73,9 +73,7 @@ def _get_available_memory_win32():
     try:
         ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat))
     except OSError:
-        # Unknown availability. Return maxsize rather than 0: callers use
-        # this as a "buffer larger than a tenth of available memory" guard,
-        # and a 0 would reject every buffer instead of bypassing the guard.
+        # maxsize bypasses the caller's guard; 0 would reject every buffer.
         stderr.write('[OpenImageDebugger] warning: could not query available'
                      ' memory; skipping buffer size check\n')
         return maxsize

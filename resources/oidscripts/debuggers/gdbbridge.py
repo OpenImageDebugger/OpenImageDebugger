@@ -108,9 +108,7 @@ class GdbBridge(BridgeInterface):
         return gdb_object.cast(typename_pointer_obj)
 
     def evaluate_expression(self, expression):
-        # The interface contract is to raise RuntimeError on any failure so
-        # the declarative engine can treat evaluation errors uniformly, so
-        # normalize every backend exception (not just gdb.error) here.
+        # Contract is RuntimeError, so catch more than gdb.error.
         try:
             return gdb.parse_and_eval(expression)
         except Exception as error:
@@ -119,8 +117,7 @@ class GdbBridge(BridgeInterface):
 
     def _scope_names(self):
         """Names an unqualified expression resolves BEFORE a this-member."""
-        # Stop where lookup_local_symbol stops: the static and global
-        # blocks are searched AFTER the field-of-this check.
+        # gdb searches static/global blocks after the field-of-this check.
         names = set()
         block = gdb.selected_frame().block()
         while block is not None and not (getattr(block, 'is_static', False)
@@ -180,9 +177,8 @@ class GdbBridge(BridgeInterface):
             self._add_field(field, output_set, parent_name, visited, declared)
 
     def _add_field(self, field, output_set, parent_name, visited, declared):
-        # 'holder.Base.image' and 'holder.None.image' evaluate nowhere. An
-        # anonymous aggregate promotes its members into this level, so they
-        # hide inherited names rather than being hidden.
+        # Neither 'holder.Base.image' nor 'holder.None.image' evaluates. An
+        # anonymous aggregate hides inherited names rather than being hidden.
         if not field.name:
             self._get_observable_children_members(field, output_set,
                                                   parent_name, visited)
@@ -211,7 +207,6 @@ class GdbBridge(BridgeInterface):
                           if name[prefix:].split('.')[0] not in declared)
 
     def _add_observable_symbol(self, symbol, name, observable_symbols):
-        # Check if the symbol is already observable
         if self._type_bridge.is_symbol_observable(symbol, name):
             observable_symbols.add(name)
 

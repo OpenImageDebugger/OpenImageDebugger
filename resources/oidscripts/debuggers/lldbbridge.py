@@ -17,9 +17,7 @@ from oidscripts.debuggers.template_args import TemplateTypeName
 
 instance = None
 
-# A plain symbol name (identifier), as opposed to a dotted/complex expression.
-# These are looked up with frame.FindVariable(), which avoids lldb's expression
-# JIT and its trouble resolving heavy templated types (e.g. Eigen).
+# Looked up with FindVariable(), sidestepping lldb's expression JIT.
 _PLAIN_IDENTIFIER_RE = re.compile(r'^[A-Za-z_]\w*$')
 
 def _member_bearing_type_classes():
@@ -91,9 +89,7 @@ def evaluate_in_frame(frame, expression):
             return SymbolWrapper(variable)
 
     result = frame.EvaluateExpression(expression)
-    # A result can be truthy yet invalid, and GetError() need not return an
-    # object, so guard both rather than chaining off either; result itself
-    # may also be falsy/None outright (e.g. a dead frame).
+    # A result can be truthy yet invalid, and GetError() may return nothing.
     error = result.GetError() if result else None
     if not result or not result.IsValid() or \
             (error is not None and error.Fail()):
@@ -166,9 +162,7 @@ def _declared_by_name(value_type, name):
 
 def _class_binds(value, name, inherited=True):
     # type: (lldb.SBValue, str, bool) -> bool
-    # Any class-scope declaration binds the name, not only a data member.
-    # inherited=False asks what the class declares for ITSELF, which is
-    # what hides an inherited member.
+    # inherited=False: only what the class declares for ITSELF hides.
     if _declared_by_name(_peeled_type(value), name):
         return True
     if not _children_are_declared_members(value):
@@ -198,18 +192,10 @@ def _walk_members(symbol, member_name_chain, visited_typenames, type_bridge,
         return  # this type is already on the path from the root
     if not _children_are_declared_members(symbol):
         return  # a sequence, a scalar: no named member to reach
-    # Mark this symbol's type, not the child's, before descending: the
-    # latter trips the recursive call's own guard on its first check,
-    # stopping traversal after one hop. Copy rather than mutate, so
-    # sibling branches don't block each other from descending a type.
+    # This type, not the child's (guard trips); copied, so siblings stay free.
     visited_typenames = visited_typenames | {symbol.GetTypeName()}
 
-    # The value as the compiler declares it. A data formatter's children
-    # are its own invention: a std::vector's children ARE its elements,
-    # 57600 of them for a 160x120x3 image, so walking the formatted view
-    # makes listing a frame's symbols cost one wrap and one type test per
-    # element of every container in scope. The non-synthetic view of that
-    # same vector has three children however many bytes it holds.
+    # A formatter makes a vector's children its 57600 elements, not three.
     declared = symbol.GetNonSyntheticValue()
 
     members, anonymous, bases = _classify_children(declared)
@@ -402,11 +388,8 @@ class LldbBridge(BridgeInterface):
             # invalid SBFrame that is falsy but not None).
             return None
 
-        # Prefer a direct variable lookup: it is the same robust path
-        # get_available_symbols() uses, and it avoids lldb's expression JIT,
-        # which can fail to resolve heavy templated types (e.g. Eigen) on
-        # some architectures (observed on x86_64). Fall back to expression
-        # evaluation so dotted/complex symbol paths still work.
+        # FindVariable first: the expression JIT can fail to resolve heavy
+        # templated types (Eigen, observed on x86_64); the fallback retries.
         picked_obj = frame.FindVariable(variable)  # type: lldb.SBValue
         if not picked_obj.IsValid():
             picked_obj = frame.EvaluateExpression(variable)
@@ -437,9 +420,7 @@ class LldbBridge(BridgeInterface):
 
         buffer_metadata['variable_name'] = variable
 
-        # ReadMemory returns None on failure (e.g. the address went stale
-        # after the frame changed); surface a descriptive error instead of
-        # letting memoryview() fail on the None.
+        # ReadMemory returns None on failure, e.g. a stale address.
         read_error = lldb.SBError()
         buffer_contents = process.ReadMemory(
             buffer_metadata['pointer'], bufsize, read_error)
@@ -460,10 +441,7 @@ class LldbBridge(BridgeInterface):
         return lldb_object.get_casted_pointer()
 
     def evaluate_expression(self, expression):
-        # The interface contract is to raise RuntimeError on any failure so
-        # the declarative engine can treat evaluation errors uniformly. The
-        # intentional RuntimeErrors below carry the best message; any other
-        # backend exception is normalized to RuntimeError in the fallback.
+        # Contract is RuntimeError; re-raise ours, normalize the rest.
         try:
             # frame_from_debugger() can return an invalid SBFrame (falsy but
             # not None), so use a truthiness guard rather than "is None".
@@ -494,9 +472,7 @@ class LldbBridge(BridgeInterface):
 class SymbolWrapper(DebuggerSymbolReference):
     def __init__(self, symbol):
         self._symbol = symbol  # type: lldb.SBValue
-        # A str carrying the type name, plus GDB-style template_argument()
-        # backed by the canonical name so the Eigen inspector works under
-        # LLDB (whose GetTypeName() is a typedef with no template params).
+        # Canonical name: GetTypeName() is a typedef with no template params.
         sbtype = symbol.GetType()
         canonical = (sbtype.GetCanonicalType().GetName() or None) \
             if sbtype.IsValid() else None
@@ -508,9 +484,7 @@ class SymbolWrapper(DebuggerSymbolReference):
     def __int__(self):
         string_value = self._symbol.GetValue()
         try:
-            # LLDB may render integers in decimal or hex (e.g. '0x10'); base 0
-            # parses both, plus the 0o/0b prefixes. Fall back to the scalar
-            # accessor when there is no parseable textual value.
+            # LLDB renders integers in decimal or hex; base 0 parses both.
             return int(string_value, 0)
         except (TypeError, ValueError):
             return self._symbol.GetValueAsSigned()
@@ -533,10 +507,7 @@ class SymbolWrapper(DebuggerSymbolReference):
         if symbol.TypeIsPointerType():
             return symbol.GetValueAsUnsigned()
 
-        # A scalar integer result already *is* the address (e.g. a
-        # user-authored JSON expression yielding a uintptr_t, or a numeric
-        # literal like 0x...). Read its value directly; AddressOf() would
-        # instead return the address of the temporary that holds it.
+        # A scalar integer IS the address; AddressOf() gives the temporary's.
         if symbol.GetType().GetTypeFlags() & lldb.eTypeIsInteger:
             return symbol.GetValueAsUnsigned()
 
