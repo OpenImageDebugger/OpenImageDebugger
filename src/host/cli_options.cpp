@@ -37,10 +37,8 @@ namespace oid::host {
 
 namespace {
 
-// True if `arg` equals any of the given flag spellings. Null-safe: a null
-// arg (which cannot occur for an in-range argv entry, but the analyzer cannot
-// prove that) simply matches nothing. Routing every alias through here keeps
-// std::strcmp off any unguarded pointer.
+// Null-safe although an in-range argv entry cannot be null: routing every
+// alias through here keeps std::strcmp off a pointer no analyzer can prove.
 bool matches(const char* arg, std::initializer_list<const char*> names) {
     return arg != nullptr &&
            std::ranges::any_of(names, [arg](const char* name) {
@@ -48,17 +46,14 @@ bool matches(const char* arg, std::initializer_list<const char*> names) {
            });
 }
 
-// Parses a positive decimal integer, requiring the whole token to be numeric
-// and representable; non-numeric, out-of-range, or non-positive input is
-// rejected. std::from_chars (rather than std::atoi) turns out-of-range input
-// into a clean rejection instead of undefined behavior.
+// The whole token must be numeric, representable and positive. std::from_chars
+// rather than std::atoi: out-of-range input is rejected instead of being UB.
 std::optional<int> parse_positive_int(const char* text) {
     if (text == nullptr) {
         return std::nullopt;
     }
-    // A string_view derives the end from the (already null-checked) pointer
-    // without a raw strlen, matching how matches() keeps unbounded C-string
-    // functions off argv pointers.
+    // string_view derives the end from the null-checked pointer without a raw
+    // strlen, keeping unbounded C-string functions off argv.
     const std::string_view sv{text};
     int value = 0;
     const auto [ptr, ec] =
@@ -69,9 +64,8 @@ std::optional<int> parse_positive_int(const char* text) {
     return std::nullopt;
 }
 
-// Parses a TCP port, accepting only the valid 1..65535 range; anything outside
-// it would be narrowed to the wrong unsigned short later, so it is rejected and
-// the caller keeps the default.
+// Anything outside 1..65535 would narrow to the wrong unsigned short later, so
+// it is rejected and the caller keeps the default.
 std::optional<int> parse_port(const char* text) {
     if (const auto value = parse_positive_int(text);
         value.has_value() && *value <= 65535) {
@@ -85,10 +79,8 @@ std::optional<int> parse_port(const char* text) {
 CliOptions parse_cli(const int argc, const char* const* argv) {
     CliOptions options;
 
-    // Index-advancing walk: value-taking flags consume the following token and
-    // advance by two, while bare or unknown flags advance by one. Keeping the
-    // advance explicit (rather than ++i inside argv[]) makes the flag/value
-    // pairing clear and avoids mutating the loop counter mid-expression.
+    // The advance is kept explicit rather than ++i inside argv[] so the loop
+    // counter is never mutated mid-expression.
     int i = 1;
     while (i < argc) {
         const char* arg = argv[i];

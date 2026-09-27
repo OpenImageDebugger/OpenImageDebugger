@@ -33,24 +33,17 @@
 
 namespace oid::host {
 
-// The bound for a variable name echoed into a diagnostic, one policy for
-// every diagnostic that echoes one: wider than log_preview()'s default,
-// since names are legitimately long where layouts are not, and a truncated
-// name still has to be findable in the debuggee.
+// Bound for a variable name echoed into a diagnostic: wider than
+// log_preview()'s default, since a truncated name must stay findable.
 inline constexpr std::size_t NAME_PREVIEW_CHARS = 64;
 
 namespace detail {
 
-// Appends the escaped form of the character starting at text[i], answering
-// how many source bytes it consumed.
+// Escapes the character at text[i], returning the source bytes consumed.
 //
-// C0 controls and DEL land as \xNN escapes. U+0080..U+009F (the C1
-// controls, CSI among them) arrive as the UTF-8 pairs 0xc2 0x80..0x9f:
-// decoded, they steer a Unicode-aware consumer the way a C0 byte steers a
-// plain one, and no scan of single bytes below 0x20 ever sees them, so
-// exactly those pairs land as \u00NN escapes. Lone 0x80..0x9f bytes pass
-// through: they are the continuation bytes ordinary non-ASCII text is made
-// of, and escaping those would mangle every such name.
+// C1 controls arrive as the UTF-8 pairs 0xc2 0x80..0x9f and steer a
+// Unicode-aware consumer the way a C0 byte steers a plain one; lone
+// 0x80..0x9f bytes are ordinary continuation bytes and pass through.
 [[nodiscard]] inline std::size_t append_escaped(const std::string_view text,
                                                 const std::size_t i,
                                                 std::string& out) {
@@ -85,15 +78,9 @@ namespace detail {
 
 } // namespace detail
 
-// Renders an untrusted string safe to interpolate into one log line.
-//
-// Two hazards, both closed here rather than at each call site: the value may
-// be arbitrarily long (the wire allows strings far larger than anything a
-// diagnostic should echo, so a preview plus the byte count replaces the
-// tail), and it may carry control characters (a newline forges an extra log
-// line, a terminal escape repaints the one it is on, so both land as visible
-// escapes instead). The bound is applied to the source before escaping, so
-// the escaped output stays within a small constant factor of `max_chars`.
+// Renders an untrusted string safe to interpolate into one log line: a
+// newline would forge a second line and a terminal escape repaint this one.
+// The bound applies before escaping, so output stays near `max_chars`.
 [[nodiscard]] inline std::string log_preview(const std::string_view value,
                                              const std::size_t max_chars = 16) {
     const bool truncated = value.size() > max_chars;

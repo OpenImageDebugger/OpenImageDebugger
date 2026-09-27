@@ -45,9 +45,8 @@ decode_file_bytes(std::span<const std::byte> bytes,
                   std::string variable_name,
                   std::string display_name);
 
-// Reads a file from disk (rejecting files larger than max_bytes) and decodes
-// it into a LOCAL_FILE BufferRecord. variable_name is the canonical path;
-// display_name is the filename component.
+// Reads a file (rejecting one larger than max_bytes) into a LOCAL_FILE
+// BufferRecord: variable_name is the canonical path, display_name the filename.
 [[nodiscard]] Expected<BufferRecord>
 load_buffer_from_file(const std::string& path,
                       std::size_t max_bytes = MAX_OPEN_FILE_BYTES);

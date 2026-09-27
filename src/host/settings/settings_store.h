@@ -35,35 +35,15 @@
 
 namespace oid::host {
 
-// Serializes an AppSettings snapshot to the JSON shape SettingsStore
-// persists to disk. Never throws.
-//
-// Under SettingsScope::VIEWER_OWNED the host-owned keys are omitted entirely
-// rather than emitted empty: an embedding host that stores what it is given
-// should not be storing a window it owns, nor a buffer list the viewer would
-// read back as an instruction to re-plot.
+// Serializes a snapshot to the persisted JSON shape; never throws. Under
+// VIEWER_OWNED the host-owned keys are omitted entirely, not emitted empty.
 [[nodiscard]] std::string settings_to_json(const AppSettings& s,
                                            SettingsScope scope);
 
-// Parses a JSON snapshot back into AppSettings, tolerant field-by-field: a
-// missing/wrong-typed field (or a malformed/empty document) falls back to
-// that field's default without discarding any other valid field. Never
-// throws.
-//
-// Under SettingsScope::VIEWER_OWNED the host-owned sections are not applied,
-// however well-formed they are: on such a build the window and the buffer
-// list belong to whoever embeds the viewer, and reading them back would let
-// a stored payload drive a restore this build does not own.
-//
-// `on_ignored` is called once per host-owned key found in such a payload.
-// It is a sink rather than a log line so that this stays a pure function
-// with no opinion about logging, the same way SettingsSaver takes its
-// SaveSink -- inject a callback instead of doing I/O here (SaveSink itself
-// is mandatory and unguarded; this sink is optional and guarded, so the
-// likeness is in the shape, not in the contract). An empty sink is not an
-// error and parsing behaves identically without one. A sink that throws is
-// contained and cannot affect the parse result: it cannot discard a field
-// that had already parsed cleanly, nor be mistaken for a parse failure.
+// Tolerant field-by-field: a bad field falls back to its own default without
+// discarding the rest, and never throws. VIEWER_OWNED skips the host-owned
+// sections, reporting each skipped key to the optional `on_ignored`; a
+// throwing sink is contained and costs the caller no cleanly parsed field.
 [[nodiscard]] AppSettings settings_from_json(
     std::string_view json,
     SettingsScope scope,
