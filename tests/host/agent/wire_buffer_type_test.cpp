@@ -33,10 +33,8 @@ using oid::BufferType;
 using enum BufferType;
 using oid::host::agent::wire_buffer_type;
 
-// The only automated guard on the FLOAT64->float32 narrowing the ingest path
-// applies: NativeViewModel serves float32 bytes for a double buffer, so it must
-// advertise FLOAT32, or oid-mcp sizes the payload at 8 bytes/element (rejecting
-// every double buffer) and the get_buffer pre-copy cap over-estimates.
+// NativeViewModel serves float32 bytes for a double buffer, so it must
+// advertise FLOAT32 or oid-mcp sizes the payload at 8 bytes/element.
 TEST(WireBufferType, Float64IsNarrowedToFloat32) {
     EXPECT_EQ(wire_buffer_type(FLOAT64), FLOAT32);
 }

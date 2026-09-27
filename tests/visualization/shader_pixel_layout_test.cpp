@@ -31,11 +31,8 @@
 
 using oid::shader_pixel_layout;
 
-// A single-channel buffer is a GL_RED texture, sampled as (r, 0, 0, 1). The
-// fragment shader derives its source component from the layout's first
-// character, so any layout not starting with 'r' would read a constant zero
-// and render the buffer uniformly black regardless of contrast. This is the
-// defect a declared "bgra" on an always-single-channel type (Eigen) produced.
+// A single-channel buffer is a GL_RED texture, sampled as (r, 0, 0, 1): a
+// layout not starting with 'r' renders black, as Eigen's declared "bgra" did.
 TEST(ShaderPixelLayoutTest, SingleChannelAlwaysSamplesRed) {
     for (const auto* declared : {"bgra", "grba", "abgr", "rgba"}) {
         EXPECT_EQ(shader_pixel_layout(std::string{declared}, 1), "rgba")
@@ -51,18 +48,15 @@ TEST(ShaderPixelLayoutTest, MultiChannelKeepsDeclaredOrder) {
     EXPECT_EQ(shader_pixel_layout(std::string{"rgba"}, 2), "rgba");
 }
 
-// Selecting one channel of a multi-channel buffer for display rotates the
-// layout so the wanted component comes first. The texture still carries that
-// component, so the rotation must not be flattened back to red.
+// Channel selection rotates the layout so the wanted component comes first;
+// the texture still carries it, so the rotation must not flatten back to red.
 TEST(ShaderPixelLayoutTest, ChannelSelectionOnMultiChannelIsPreserved) {
     EXPECT_EQ(shader_pixel_layout(std::string{"grba"}, 3), "grba");
     EXPECT_EQ(shader_pixel_layout(std::string{"bgra"}, 3), "bgra");
 }
 
-// The selected index must agree with what shader_pixel_layout() causes to be
-// sampled, or the viewer reports one channel while rendering another. It also
-// bounds the channel loop in BufferValues::draw_pixel_values(), which indexes
-// the pixel as buffer[pos + channel] without clamping to the channel count.
+// Must agree with what shader_pixel_layout() samples, and it bounds the
+// unclamped buffer[pos + channel] loop in BufferValues::draw_pixel_values().
 TEST(SelectedChannelIndexTest, LayoutNamesTheChannelForMultiChannelBuffers) {
     EXPECT_EQ(oid::selected_channel_index(std::string{"rrra"}, 3), 0);
     EXPECT_EQ(oid::selected_channel_index(std::string{"ggga"}, 3), 1);

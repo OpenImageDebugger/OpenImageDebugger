@@ -32,9 +32,8 @@
 
 using namespace oid;
 
-// A FLOAT64 record carries float32 bytes by the time it reaches the renderer:
-// make_buffer_record() narrows it and leaves the type tag alone. Sizing it at
-// type_size()'s eight bytes would reject every valid float64 buffer.
+// make_buffer_record() narrows FLOAT64 to float32 and leaves the type tag
+// alone, so sizing at type_size()'s eight bytes rejects every valid buffer.
 TEST(DisplayElementSize, Float64IsFourBytesOnceNarrowed) {
     EXPECT_EQ(display_element_size(BufferType::FLOAT64), sizeof(float));
     EXPECT_EQ(display_element_size(BufferType::FLOAT32), sizeof(float));
@@ -56,9 +55,8 @@ TEST(BufferSpanFits, RejectsOneByteShort) {
 // The bound the renderer actually needs: the final row is only indexed out to
 // `width`, so trailing row padding on it need not be present.
 TEST(BufferSpanFits, AcceptsATrimmedFinalRow) {
-    // width 3, step 5, height 2, 1 channel: last addressed pixel is
-    // (1*5 + 3) = 8 pixels, so 8 bytes suffice even though a fully padded
-    // buffer would be 10.
+    // Last addressed pixel is (1*5 + 3) = 8, so 8 bytes suffice even though
+    // a fully padded buffer would be 10.
     EXPECT_TRUE(buffer_span_fits(3, 2, 1, 5, 1, 8));
     EXPECT_FALSE(buffer_span_fits(3, 2, 1, 5, 1, 7));
 }
@@ -84,14 +82,11 @@ TEST(BufferSpanFits, DoesNotOverflowOnHostileGeometry) {
     EXPECT_FALSE(buffer_span_fits(huge, huge, 4, huge, sizeof(float), 1024));
 }
 
-// Guards the 32-bit build specifically. (height - 1) * step here is exactly
-// 2^32, which wraps to zero in a 32-bit size_t and would make these four bytes
-// look sufficient for the whole geometry. The arithmetic is done in 64 bits so
-// the real requirement survives; this assertion is trivially true on a 64-bit
-// host and is the only thing standing behind wasm, where it is not.
+// (height - 1) * step is exactly 2^32, which wraps to zero in a 32-bit
+// size_t: trivially true on a 64-bit host, load-bearing on wasm.
 TEST(BufferSpanFits, DoesNotWrapWhereSizeTIsThirtyTwoBits) {
     constexpr int step = 65536;
-    constexpr int height = 65537; // (height - 1) * step == 2^32
+    constexpr int height = 65537;
     EXPECT_FALSE(buffer_span_fits(4, height, 1, step, 1, 4));
     // The same geometry with genuinely sufficient bytes is still accepted, so
     // the rejection above is the bound and not a blanket refusal.

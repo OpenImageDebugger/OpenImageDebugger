@@ -77,18 +77,8 @@ TEST(ExportCore, NormalizeFloatScalesTo255) {
 }
 
 TEST(ExportCore, NormalizeRoundsToNearestLikeTheScreen) {
-    // The display path renders through the GPU with round-to-nearest, so an
-    // export that truncated showed one image and wrote a slightly darker
-    // one. Truncation also biases every sample downward by half a level on
-    // average, where rounding biases nothing, and both extension hosts
-    // already round (Math.round in the VS Code exporter, Math.round in the
-    // plugin's), so this is what makes all three agree.
-    //
-    // Gain 0.5 on these inputs lands exactly on .5 boundaries, all three
-    // exactly representable in float32, so nothing here depends on
-    // floating-point luck: 127*0.5 = 63.5, 129*0.5 = 64.5, 255*0.5 = 127.5.
-    // 180*0.5 = 90.0 is included because it is NOT on a boundary: rounding
-    // must not shift values that were already exact.
+    // The GPU display path and both extension hosts round to nearest, so a
+    // truncating export writes a darker image; 180 is the off-boundary case.
     constexpr std::array<std::uint8_t, 4> px = {127, 129, 255, 180};
     const auto [width, height, pixels] =
         oid::BufferExporter::normalize_to_rgba8_raw(
@@ -110,11 +100,8 @@ TEST(ExportCore, NormalizeRoundsToNearestLikeTheScreen) {
 }
 
 TEST(ExportCore, NormalizeRoundsFloatSamplesToo) {
-    // The float path scales by 255 instead of 1, so it reaches the .5
-    // boundary from a different direction; 0.5f * 255 = 127.5 exactly.
-    // The exporter takes the raw bytes the IPC layer delivers, so the
-    // fixture IS those bytes: bit_cast spells that at compile time and
-    // needs no reinterpret_cast to feed the API.
+    // The float path scales by 255, so 0.5f * 255 = 127.5 reaches the .5
+    // boundary from the other direction; bit_cast gives the raw IPC bytes.
     constexpr auto px =
         std::bit_cast<std::array<std::uint8_t, 8>>(std::array{0.5f, 1.0f});
     const auto img = oid::BufferExporter::normalize_to_rgba8_raw(

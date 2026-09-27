@@ -164,25 +164,18 @@ TEST(ExportDialog, SetExportPathTruncatesOverlongPath) {
 }
 
 TEST(ExportDialog, AHostCommandWithNoBuffersIsRefusedInWords) {
-    // A host's "export selected buffer" command used to evaporate here: with
-    // nothing loaded the callback's bounds check failed and it returned,
-    // leaving no dialog, no message and nothing in any log. Neither host can
-    // cover for that, because neither keeps a copy of which buffer the viewer
-    // has selected and the wire carries no reply, so the answer has to come
-    // from the viewer.
+    // The answer has to come from the viewer: no host keeps a copy of which
+    // buffer is selected, and the wire carries no reply.
     EXPECT_FALSE(export_selected_refusal(0).empty());
 }
 
 TEST(ExportDialog, ARefusalNamesTheSituationRatherThanBlamingTheExport) {
-    // Wording, pinned because it is the whole point of the change. Nothing
-    // failed: the user asked to export from a viewer holding nothing, and
-    // "Export failed" would send them looking for a fault that is not there.
+    // Nothing failed here, so "Export failed" would send the user looking
+    // for a fault that is not there.
     const std::string_view refusal = export_selected_refusal(0);
     EXPECT_EQ(refusal, "Nothing to export: no buffer is loaded");
-    // Kept alongside the exact match rather than replaced by it: the exact
-    // match is the tighter pin, and this is the rule behind it, so whoever
-    // rewords the sentence and updates the line above is told what the new
-    // wording still has to avoid.
+    // Redundant with the exact match on purpose: it tells whoever rewords
+    // the sentence what the new wording still has to avoid.
     EXPECT_EQ(refusal.find("failed"), std::string_view::npos) << refusal;
 }
 

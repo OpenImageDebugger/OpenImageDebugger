@@ -35,9 +35,8 @@ namespace {
 
 using oid::host::FramePacer;
 
-// All assertions are on ordering/counts, never durations: periods are
-// milliseconds-scale so the suite stays fast, and no test asserts how long
-// anything took (CI machines stall arbitrarily).
+// All assertions are on ordering/counts, never durations: CI machines stall
+// arbitrarily.
 
 TEST(FramePacer, ReturnsAtDeadlineWithoutWakes) {
     FramePacer pacer{std::chrono::milliseconds(5)};
@@ -47,9 +46,8 @@ TEST(FramePacer, ReturnsAtDeadlineWithoutWakes) {
 }
 
 TEST(FramePacer, PendingWakeIsServedOnEntry) {
-    // 100 ms period: the pending wake must be served before the deadline
-    // check, so the period is the tolerance against a CI scheduling stall
-    // between wake() and pace() -- 5 ms was too tight for loaded VMs.
+    // The period is the tolerance against a CI scheduling stall between
+    // wake() and pace(); 5 ms was too tight on loaded VMs.
     FramePacer pacer{std::chrono::milliseconds(100)};
     pacer.wake();
     int calls = 0;
@@ -68,10 +66,8 @@ TEST(FramePacer, BurstOfWakesCoalescesIntoOneDrain) {
 }
 
 TEST(FramePacer, WakeDuringPaceRunsCallback) {
-    // No single fragile timing window: the waker retries until a wake is
-    // served, and pace() is re-entered until one lands -- a wake falling
-    // between two pace() calls is served on the next entry, so both loops
-    // terminate under any scheduling.
+    // Both loops retry until a wake lands, so no single timing window can
+    // go flaky: a wake between two pace() calls is served on the next entry.
     FramePacer pacer{std::chrono::milliseconds(5)};
     std::atomic calls{0};
     std::atomic done{false};
@@ -89,10 +85,8 @@ TEST(FramePacer, WakeDuringPaceRunsCallback) {
 }
 
 TEST(FramePacer, WakeStormCannotStarveTheDeadline) {
-    // A hot client can wake() again from inside on_wake (its reply lets it
-    // send the next request immediately). pace() must still return once the
-    // deadline passes -- with an unbounded drain loop this test never
-    // returns instead of failing an assertion.
+    // A hot client can wake() from inside on_wake, so pace() must still
+    // return at the deadline: an unbounded drain loop hangs here, not fails.
     FramePacer pacer{std::chrono::milliseconds(5)};
     int calls = 0;
     pacer.wake();
