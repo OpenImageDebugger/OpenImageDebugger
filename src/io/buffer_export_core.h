@@ -57,9 +57,8 @@ bool export_octave(const Buffer& buffer, const std::string& path);
 // NumPy .npy writer. Returns false on stream failure.
 bool export_npy(const Buffer& buffer, const std::string& path);
 
-// Buffer geometry/typing, grouped so normalize_to_rgba8_raw() stays under
-// Sonar's parameter-count limit. `data` and `bc_comp` stay separate
-// parameters: they're the payload being normalized, not buffer shape.
+// Grouped so normalize_to_rgba8_raw() stays under Sonar's parameter-count
+// limit; `data` and `bc_comp` stay separate as payload, not buffer shape.
 struct RawBufferDesc {
     BufferType type;
     int width;

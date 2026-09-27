@@ -112,16 +112,13 @@ class OidBridge {
         // as part of its construction.
         const auto portStdString = std::to_string(acceptor_.port());
 
-        // The viewer accepts --host/--hostname/-h for the host, --port/-p
-        // for the port, and -o/--open to open files. Process::start() takes
-        // a non-const reference (it builds a mutable argv from the strings'
-        // data()), so command cannot be const here.
+        // Not const: Process::start() takes a non-const reference, building
+        // a mutable argv from the strings' data().
         std::vector<std::string> command = {
             oid_path_ + "/oidwindow", "-p", portStdString};
 
-        // Passed explicitly (not via OID_AGENT env, which the child already
-        // inherits) so a standalone window launched outside the bridge never
-        // picks up a stale pid from a leftover environment variable.
+        // Passed explicitly rather than via the inherited OID_AGENT env, so a
+        // standalone window never picks up a stale pid from the environment.
         command.emplace_back("--agent-debugger-pid");
         command.emplace_back(std::to_string(oid::system::current_process_id()));
 
@@ -341,12 +338,10 @@ class OidBridge {
     }
 
     std::unique_ptr<UiMessage> fetch_message(const oid::MessageType& msg_type) {
-        // Return message if it was already received before
         if (auto result = try_get_stored_message(msg_type); result != nullptr) {
             return result;
         }
 
-        // Try to fetch message
         try_read_incoming_messages();
 
         return try_get_stored_message(msg_type);
@@ -409,9 +404,6 @@ oid_initialize_impl(std::function<int(const char*)> plot_callback,
 // NOSONAR: C API requires function pointer (extern "C")
 AppHandler oid_initialize(int (*plot_callback)(const char*), // NOSONAR
                           PyObject* optional_parameters) {
-    // Convert C-style function pointer to std::function for modern C++
-    // implementation. Function pointer parameter required for C API
-    // compatibility (extern "C" interface)
     auto app =
         oid_initialize_impl(plot_callback ? std::function{plot_callback}
                                           : std::function<int(const char*)>{},
@@ -606,7 +598,6 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata) {
     CHECK_FIELD_TYPE(row_stride, PY_INT_CHECK_FUNC, "plot_buffer");
     CHECK_FIELD_TYPE(pixel_layout, oid::check_py_string_type, "plot_buffer");
 
-    // Retrieve pointer to buffer
     uint8_t* buff_ptr{nullptr};
     auto buff_size = std::size_t{0};
     if (PyMemoryView_Check(py_pointer) != 0) {
@@ -647,7 +638,6 @@ void oid_plot_buffer(AppHandler handler, PyObject* buffer_metadata) {
         return;
     }
 
-    // Create span from pointer+size for buffer storage
     const auto buff_span =
         std::span{reinterpret_cast<const std::byte*>(buff_ptr), buff_size};
     if (buff_span.size() < buff_size_expected) [[unlikely]] {
