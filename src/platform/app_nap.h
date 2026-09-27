@@ -29,11 +29,7 @@
 namespace oid::platform {
 
 #if defined(__APPLE__)
-// Registers an NSProcessInfo activity while the agent endpoint is up, so
-// App Nap cannot stretch the FramePacer's timers when the viewer is
-// backgrounded. Idempotent; end without begin is a no-op. Not thread-safe:
-// both functions are for main()'s startup/shutdown path on the GL thread --
-// add external synchronization before calling them from anywhere else.
+// Stops App Nap stretching FramePacer timers; idempotent, main-thread only.
 void begin_agent_activity();
 void end_agent_activity();
 #else
