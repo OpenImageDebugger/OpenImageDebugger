@@ -96,9 +96,8 @@ TEST(CliOptionsTest, RejectsOutOfRangePort) {
 }
 
 TEST(CliOptionsTest, RejectsOverflowingOrTrailingGarbageNumbers) {
-    // A digit string past INT_MAX is undefined behavior for std::atoi; it must
-    // be rejected cleanly (from_chars reports out-of-range), keeping the
-    // default rather than crashing or mis-parsing.
+    // Past INT_MAX is undefined behavior for std::atoi; from_chars reports
+    // out-of-range instead, so the default is kept.
     EXPECT_EQ(parse({"oidwindow", "--port", "99999999999999999999"}).port,
               9588);
     // The whole token must parse -- trailing non-numeric bytes are rejected.

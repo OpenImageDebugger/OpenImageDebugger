@@ -118,9 +118,8 @@ TEST(RawDataDecodeTest, MakeFloatBufferFromDouble_Zero) {
 }
 
 TEST(RawDataDecodeTest, GeometryFitsPayloadAcceptsExactLowerBound) {
-    // width=4, height=3, channels=2, stride=6 (pixels/row), FLOAT32:
-    // pixels_needed = (height-1)*stride + width = 2*6+4 = 16 pixels,
-    // i.e. 16 * channels(2) * type_size(FLOAT32=4) = 128 bytes.
+    // pixels_needed = (height-1)*stride + width = 2*6+4 = 16 pixels, i.e.
+    // 16 * channels(2) * type_size(FLOAT32=4) = 128 bytes.
     EXPECT_TRUE(geometry_fits_payload(4, 3, 2, 6, BufferType::FLOAT32, 128));
 }
 
@@ -129,10 +128,8 @@ TEST(RawDataDecodeTest, GeometryFitsPayloadRejectsOneByteShortOfLowerBound) {
 }
 
 TEST(RawDataDecodeTest, GeometryFitsPayloadAcceptsTrimmedLastRowStridePadding) {
-    // stride(6) > width(4): a fully stride-padded buffer would need
-    // stride*height*channels*type_size = 6*3*2*4 = 144 bytes. The lower
-    // bound (128, from the exact-bound test above) must still be accepted
-    // -- that's what lets a producer omit trailing padding on the last row.
+    // A fully stride-padded buffer would need 6*3*2*4 = 144 bytes; still
+    // accepting 128 is what lets a producer omit the last row's padding.
     EXPECT_TRUE(geometry_fits_payload(4, 3, 2, 6, BufferType::FLOAT32, 128));
 }
 
@@ -169,19 +166,15 @@ TEST(RawDataDecodeTest, GeometryFitsPayloadAcceptsStrideEqualToWidth) {
 }
 
 TEST(RawDataDecodeTest, GeometryFitsPayloadUsesWireByteCountForFloat64) {
-    // FLOAT64 wire elements are 8 bytes; make_buffer_record() later halves
-    // this to float32, but the check must validate the wire size against
-    // type_size(FLOAT64), not the post-narrowing size, so it agrees with
-    // what the renderer (which reads the narrowed buffer as float32) needs.
+    // FLOAT64 wire elements are 8 bytes and make_buffer_record() narrows
+    // them later, so the check must size the wire, not the narrowed form.
     EXPECT_TRUE(geometry_fits_payload(2, 2, 1, 2, BufferType::FLOAT64, 32));
     EXPECT_FALSE(geometry_fits_payload(2, 2, 1, 2, BufferType::FLOAT64, 31));
 }
 
 TEST(RawDataDecodeTest, GeometryFitsPayloadDoesNotOverflowOnHostileGeometry) {
-    // pixels_needed * element_size overflows 64 bits if computed by direct
-    // multiplication; the division-based check must still correctly reject
-    // a payload nowhere near large enough, rather than wrapping around to a
-    // deceptively small (and thus falsely satisfied) requirement.
+    // pixels_needed * element_size overflows 64 bits by direct
+    // multiplication, wrapping to a deceptively satisfiable requirement.
     constexpr int width = 1000000;
     constexpr int height = 1000000;
     constexpr int stride = 1000000000;
@@ -250,9 +243,8 @@ TEST(RawDataDecodeTest, PaddedPayloadSizeRejectsStrideBelowWidth) {
 }
 
 TEST(RawDataDecodeTest, PaddedPayloadSizeDoesNotOverflowOnHostileGeometry) {
-    // stride*height*channels*type_size overflows 64 bits if computed by
-    // direct multiplication; each factor must be checked before it is
-    // applied, rather than wrapping around to a deceptively small value.
+    // stride*height*channels*type_size overflows 64 bits, so each factor
+    // must be checked before it is applied, not after it has wrapped.
     constexpr int width = 1000000;
     constexpr int height = 1000000;
     constexpr int stride = 1000000000;
@@ -263,11 +255,8 @@ TEST(RawDataDecodeTest, PaddedPayloadSizeDoesNotOverflowOnHostileGeometry) {
 }
 
 TEST(RawDataDecodeTest, PaddedPayloadSizeChecksTheFinalFactorToo) {
-    // The case above trips the guard on `channels`, leaving the last factor
-    // unexercised. Here stride*height*channels fits comfortably and only
-    // multiplying by sizeof(double) overflows, so a regression that applied
-    // the element size unchecked would return a wrapped size instead of
-    // nullopt.
+    // The case above trips the guard on `channels`; here only the final
+    // multiply by sizeof(double) overflows, so the last factor is exercised.
     constexpr int max_int = (std::numeric_limits<int>::max)();
     EXPECT_FALSE(
         padded_payload_size(1, max_int, 1, max_int, BufferType::FLOAT64)

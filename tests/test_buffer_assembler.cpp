@@ -70,14 +70,12 @@ TEST(BufferAssemblerTests, ReassemblesRowStripsIntoContiguousBuffer) {
 
     const auto full = iota_bytes(total);
 
-    // Feed chunk 0: first 2 rows
     ASSERT_TRUE(
         a.chunk("buf",
                 0,
                 2,
                 std::span{full.data(), 2 * static_cast<std::size_t>(stride)}));
 
-    // Feed chunk 1: next 2 rows
     ASSERT_TRUE(
         a.chunk("buf",
                 2,
@@ -120,12 +118,8 @@ TEST(BufferAssemblerTests, RejectsChunkAndEndForUnknownBuffer) {
     EXPECT_FALSE(a.end("missing").has_value());
 }
 
-// Regression test: `stride` is row stride in elements, not bytes. For a
-// multi-byte element the geometry must come from the payload (total bytes /
-// height), or rows silently go missing while size checks still pass. Type is
-// FLOAT64 (not the helper's UNSIGNED_BYTE default) so `total` -- sized for
-// 8-byte doubles -- is the geometry's exact padded size, as begin() now
-// requires.
+// `stride` is row stride in elements, not bytes: for a multi-byte element the
+// geometry must come from the payload, or rows silently go missing.
 TEST(BufferAssemblerTests, AssemblesMultiByteElementBufferFromPayloadGeometry) {
     constexpr int width = 4;
     constexpr int height = 6;
@@ -231,9 +225,8 @@ TEST(BufferAssemblerTests, RejectsRowOffsetThatWouldWrapByteMathAroundSizeT) {
     BufferAssembler a;
     ASSERT_TRUE(a.begin(make_begin("buf", 8, height, stride, total)));
     const auto strip = iota_bytes(2 * stride);
-    // row_offset * bytes_per_row == 2^61 * 8 == 2^64, which wraps to 0 in
-    // size_t arithmetic; an unchecked implementation would compute a
-    // deceptively in-bounds offset for a row far past `height`.
+    // 2^61 * 8 == 2^64 wraps to 0 in size_t arithmetic, so an unchecked
+    // offset lands deceptively in bounds for a row far past `height`.
     constexpr std::size_t wrapping_offset = std::size_t{1} << 61;
     EXPECT_FALSE(a.chunk(
         "buf", wrapping_offset, 2, std::span{strip.data(), strip.size()}));
@@ -263,14 +256,12 @@ TEST(BufferAssemblerTests, AssemblesCorrectlyWhenChunksArriveOutOfOrder) {
     ASSERT_TRUE(a.begin(make_begin("buf", 8, height, stride, total)));
     const auto full = iota_bytes(total);
 
-    // Second half arrives first.
     ASSERT_TRUE(
         a.chunk("buf",
                 2,
                 2,
                 std::span{full.data() + 2 * static_cast<std::size_t>(stride),
                           2 * static_cast<std::size_t>(stride)}));
-    // Then the first half.
     ASSERT_TRUE(
         a.chunk("buf",
                 0,
@@ -305,9 +296,8 @@ TEST(BufferAssemblerTests, InterleavedBuffersDoNotCorruptEachOther) {
 }
 
 TEST(BufferAssemblerTests, RejectedBeginDropsATransferAlreadyInFlight) {
-    // A rejected begin must leave nothing behind: otherwise the earlier
-    // transfer stays live under the same name and keeps accepting chunks
-    // against its own geometry, which is not the geometry being sent.
+    // Otherwise the earlier transfer stays live under the same name and
+    // keeps accepting chunks against geometry that is no longer being sent.
     constexpr int stride = 4;
     constexpr std::size_t total = 8;
     BufferAssembler a;

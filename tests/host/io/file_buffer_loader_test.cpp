@@ -75,13 +75,8 @@ std::vector<std::byte> make_png_rgba(int width, int height) {
     return sink;
 }
 
-// A PNG signature + IHDR claiming the given dimensions, followed by an empty
-// IDAT header and no pixel data -- what a decompression bomb looks like: a tiny
-// file whose header advertises an enormous image. stbi_info reads the claimed
-// dimensions from IHDR and stops at the IDAT without decoding, which is what
-// the size preflight inspects. (stb keeps scanning past IHDR for a tRNS chunk,
-// so the IDAT is required for the header scan to terminate; stb does not verify
-// the zero CRCs.)
+// IHDR advertises an enormous image in a tiny file: what the size preflight
+// inspects. The empty IDAT stops stb's tRNS scan; stb ignores the zero CRCs.
 std::vector<std::byte> make_png_header(std::uint32_t w, std::uint32_t h) {
     std::vector<std::byte> b;
     auto push = [&b](const std::initializer_list<int> xs) {
@@ -223,10 +218,8 @@ TEST(FileBufferLoaderTest, DecodesNarrowRgba) {
 }
 
 TEST(FileBufferLoaderTest, RejectsOversizeImageDimensions) {
-    // A tiny file claiming a width past the decode cap (a decompression bomb)
-    // must be rejected up front from the header, not attempted and crashed.
-    // (Dimensions stay within stb's own overflow guard so stbi_info reports
-    // them and our cap is what does the rejecting.)
+    // Dimensions stay within stb's own overflow guard, so stbi_info reports
+    // them and our decode cap is what does the rejecting.
     const auto bytes = make_png_header(200000, 100);
     const auto result = decode_file_bytes(bytes, "bomb.png", "bomb.png");
     ASSERT_FALSE(result.has_value());

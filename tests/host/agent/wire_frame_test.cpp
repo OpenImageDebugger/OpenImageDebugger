@@ -35,9 +35,8 @@
 using namespace oid::host::agent;
 using json = nlohmann::json;
 
-// Test-only: signals the fake reader() below ran out of buffered bytes.
-// Dedicated type (rather than a bare std::runtime_error) so the failure is
-// distinguishable from a FrameError thrown by the code under test.
+// Signals the fake reader() ran out of buffered bytes; a dedicated type so
+// it stays distinguishable from a FrameError thrown by the code under test.
 class ShortReadError : public std::runtime_error {
   public:
     using std::runtime_error::runtime_error;
@@ -139,38 +138,22 @@ TEST(WireFrame, DecodeRejectsNonIntegerPayloadField) {
 }
 
 TEST(WireFrame, DecodeRejectsPayloadAboveInt64Max) {
-    // UINT64_MAX has no representation as a signed int64_t. nlohmann's
-    // get<std::int64_t>() on a number_unsigned value does an unchecked
-    // static_cast (see from_json's get_arithmetic_value), so UINT64_MAX
-    // silently becomes -1 here and is caught by decode_frame's existing
-    // negative-size check -- not by the size_t-range guard exercised by
-    // DecodeRejectsPayloadOverMaxBeforeNarrowing below.
+    // nlohmann's get<int64_t>() static_casts unchecked, so UINT64_MAX becomes
+    // -1 and trips the negative-size check, not the size_t guard used below.
     auto bytes = encode_frame(json{{"payload", UINT64_MAX}});
     EXPECT_THROW(decode_frame(reader(bytes), 0), FrameError);
 }
 
 TEST(WireFrame, DecodeRejectsPayloadOverMaxBeforeNarrowing) {
-    // A positive length that fits in int64_t but overflows a 32-bit
-    // std::size_t must still be rejected against max_payload, computed
-    // widened to uint64_t before any narrowing cast is attempted --
-    // otherwise a 32-bit size_t target (e.g. wasm32) would wrap this
-    // value to 0 and silently bypass the cap. On the 64-bit hosts this
-    // suite runs on, std::size_t already matches int64_t's width, so the
-    // narrowing cast is a no-op and this assertion cannot by itself
-    // observe the wasm32 desync -- it pins the check ordering that
-    // prevents it.
+    // max_payload must be compared widened to uint64_t: on a 32-bit size_t
+    // target (wasm32) this length wraps to 0 and bypasses the cap. On 64-bit
+    // hosts the narrowing is a no-op, so this pins the ordering, not the wrap.
     auto bytes = encode_frame(json{{"payload", std::int64_t{1} << 32}});
     EXPECT_THROW(decode_frame(reader(bytes), 0), FrameError);
 }
 
-// Golden fixtures under GOLDEN_DIR (tests/host/agent/golden/) are canonical
-// wire bytes produced by the Python oidscripts.wireframe encoder (see
-// golden/generate.py) plus a manifest.json documenting what decoding them
-// is expected to yield. They pin the framing contract across languages via
-// decode parity, not byte-identical encoders: nlohmann's dump() legitimately
-// serializes JSON differently than Python's json.dumps (whitespace, key
-// order), so these tests never compare a C++-encoded frame against the
-// fixture bytes -- only decoded fields, and this codec's own round-trip.
+// Golden fixtures are Python-encoded wire bytes; parity is pinned by decode,
+// not bytes: nlohmann's dump() differs from json.dumps (whitespace, order).
 
 static std::vector<std::byte> read_golden_bytes(const std::string& name) {
     std::ifstream is{std::filesystem::path(GOLDEN_DIR) / name,

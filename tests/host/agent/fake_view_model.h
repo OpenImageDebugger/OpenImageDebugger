@@ -43,16 +43,12 @@
 
 namespace oid::host::agent {
 
-// In-memory ViewModel double: no Stage/Camera/BufferValues behind it, just
-// the plain data a test needs to poke at directly. Tests populate `buffers`
-// (and, for read_pixels(), `pixel_data`) before exercising the class under
-// test; every other ViewModel method reads or mutates the members below.
+// In-memory ViewModel double: no Stage/Camera/BufferValues behind it. Tests
+// populate `buffers` (and `pixel_data`, for read_pixels()) directly.
 class FakeViewModel : public ViewModel { // NOSONAR
   public:
-    // Per-buffer view state, held in the same units the real engine (Camera)
-    // would use internally: zoom as a power (multiplier == ZOOM_FACTOR^power)
-    // and rotation in radians. Defaults to an untouched view (mode == -1 =>
-    // "all" channels).
+    // Held in the real engine's (Camera's) internal units: zoom as a power
+    // (multiplier == ZOOM_FACTOR^power), rotation in radians, mode -1 == all.
     struct Record {
         double center_x = 0.0;
         double center_y = 0.0;
@@ -76,16 +72,12 @@ class FakeViewModel : public ViewModel { // NOSONAR
     int viewport_w = 0;
     int viewport_h = 0;
 
-    // Test hooks: force a specific mutator to report failure without
-    // actually touching its record, and count read_pixels() calls so a
-    // test can assert it was (or wasn't) invoked.
+    // Hooks: make a mutator report failure without touching its record, and
+    // count read_pixels() calls so a test can assert it was (or wasn't) run.
     bool fail_set_zoom_power = false;
     bool throw_in_read_pixels = false;
     int read_pixels_calls = 0;
 
-    // Convenience for tests that only care about shape: appends a buffer
-    // with a plausible display_name/step/pixel_layout so callers don't have
-    // to spell out every BufferInfo field by hand.
     void add(const std::string_view name,
              const int width,
              const int height,
@@ -96,11 +88,8 @@ class FakeViewModel : public ViewModel { // NOSONAR
         info.width = width;
         info.height = height;
         info.channels = channels;
-        // step is a row's width in *pixels* (GL_UNPACK_ROW_LENGTH), which for
-        // a dense buffer is just `width` -- the value the real ingest pipeline
-        // produces (buffer_decode.cpp / eigen3.py row_stride == width). The
-        // get_buffer size cap multiplies by channels separately, so a
-        // width*channels step here would over-declare a multi-channel row.
+        // step is a row width in *pixels* (GL_UNPACK_ROW_LENGTH), so `width`
+        // for a dense buffer; width*channels would over-declare the row.
         info.step = width;
         info.type = 0;
         const char* wide_layout = channels == 3 ? "rgb" : "";
