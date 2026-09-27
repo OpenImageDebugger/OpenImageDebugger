@@ -35,11 +35,7 @@
 
 namespace oid::host::agent {
 
-// A snapshot of one buffer's identity and shape, enough to describe it to an
-// agent without touching pixel data. `name` is the stable variable_name key
-// used to address the buffer through every other ViewModel method; the
-// remaining fields mirror what the visualization layer already tracks for
-// its buffers.
+// `name` is the stable key every other ViewModel method addresses by.
 struct BufferInfo {
     std::string name; // variable_name (stable key)
     std::string display_name;
@@ -52,10 +48,7 @@ struct BufferInfo {
     bool transpose = false;
 };
 
-// An absolute view of one buffer, expressed entirely in agent-facing units
-// (degrees, linear zoom multiplier, "all"/"0".."2" channel selector). Fields
-// that have no meaningful value when the buffer set is empty (no selection
-// yet) are carried as std::nullopt rather than an arbitrary default.
+// Agent-facing units; nullopt where an empty buffer set has no value.
 struct ViewState {
     std::optional<std::string>
         buffer;                     // selected buffer name, or nullopt if empty
@@ -69,19 +62,7 @@ struct ViewState {
     int viewport_h = 0;
 };
 
-// Abstract seam between AgentCore (unit conversion, request validation) and
-// the native visualization engine (Stage/Camera/BufferValues). AgentCore
-// only ever calls through this interface, in agent-facing units; a native
-// adapter implementation translates each call into the engine's own units
-// and performs the actual Stage/Camera mutation, while a test double
-// (tests/host/agent/fake_view_model.h) implements it purely in-memory.
-//
-// Unit split: `view_of` returns a fully-formed ViewState already converted
-// to agent units (rotation in degrees, zoom as a linear multiplier, channel
-// as "all"/index). The setters below, by contrast, take engine units
-// (radians, zoom power, mode/index) -- AgentCore performs the agent<->engine
-// conversion at the boundary using ZOOM_FACTOR, and the native adapter
-// simply forwards the already-converted engine value to Camera/Stage.
+// Unit split: view_of returns agent units, the setters take engine units.
 class ViewModel {
   public:
     virtual ~ViewModel() = default;

@@ -57,12 +57,8 @@ std::string dump_frame_json(const nlohmann::json& obj,
     return s;
 }
 
-// Write the big-endian 4-byte JSON length prefix followed by the JSON bytes
-// into the front of `out`, which must already be sized to hold at least them.
-// Big-endian byte ops (rather than htonl) keep this translation unit free of
-// any platform sockets header. Filling by index (rather than push_back onto a
-// reserved vector) avoids a -Wfree-nonheap-object false positive in GCC 15's
-// optimizer.
+// `out` must be pre-sized; not htonl, to keep sockets headers out of this TU.
+// Filling by index dodges a GCC 15 -Wfree-nonheap-object false positive.
 void fill_prefixed_json(std::vector<std::byte>& out, const std::string& s) {
     const auto json_len = static_cast<std::uint32_t>(s.size());
     out[0] = static_cast<std::byte>(json_len >> 24);
@@ -131,13 +127,7 @@ DecodedFrame decode_frame(
         if (nbytes < 0) {
             throw FrameError(std::format("negative payload size: {}", nbytes));
         }
-        // Bound-check the still-widest (int64) representation before ever
-        // narrowing to std::size_t: on a 32-bit size_t target (e.g. wasm32)
-        // a declared length that overflows size_t would otherwise wrap to a
-        // small value and silently defeat both the resize() below and the
-        // max_payload cap. Comparisons happen in the uint64 domain so the
-        // check itself cannot overflow regardless of the platform's size_t
-        // width.
+        // Check in uint64 before narrowing: a 32-bit size_t would wrap the cap.
         const auto unbytes64 = static_cast<std::uint64_t>(nbytes);
         if (unbytes64 > static_cast<std::uint64_t>(SIZE_MAX)) {
             throw FrameError(

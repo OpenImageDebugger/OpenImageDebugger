@@ -23,7 +23,6 @@
  * IN THE SOFTWARE.
  */
 
-// -----------------------------------------------------------------------
 // AgentCore glue contract
 //
 // AgentCore is the transport-neutral JSON-in/JSON-out request core for the
@@ -68,7 +67,6 @@
 // for injecting a "payload": <nbytes> field into the JSON body and
 // appending the raw bytes after it; a wasm glue layer surfaces those bytes
 // to JS as a heap view rather than copying them through the JSON body.
-// -----------------------------------------------------------------------
 
 #ifndef HOST_AGENT_AGENT_CORE_H_
 #define HOST_AGENT_AGENT_CORE_H_
@@ -83,20 +81,13 @@
 
 namespace oid::host::agent {
 
-// One dispatched request's outcome. `body` is the JSON the transport frames
-// as-is; `payload` is the (possibly empty) raw binary trailer -- only
-// get_buffer produces one. AgentCore never touches the wire format itself:
-// the transport is responsible for injecting the "payload": <nbytes> field
-// and appending payload bytes when it frames this Reply.
+// The transport, not AgentCore, injects "payload": <nbytes> and the trailer.
 struct Reply {
     nlohmann::json body;
     std::vector<std::byte> payload;
 };
 
-// Transport-neutral request dispatcher: given one already-decoded JSON
-// request object, calls into ViewModel and returns a JSON reply. Never
-// throws for protocol-level failures -- every error path returns
-// {"error": {"code", "message"}} in Reply::body instead.
+// Protocol failures never throw; they return {"error": ...} in Reply::body.
 class AgentCore {
   public:
     AgentCore(ViewModel& model,
@@ -104,10 +95,7 @@ class AgentCore {
               long pid = 0,
               std::string session_kind = "viewer");
 
-    // Dispatch one already-decoded request. `authed` is the per-connection
-    // hello state: it starts false, this call flips it true on a successful
-    // hello, and every other method is rejected with ERR_BAD_TOKEN until
-    // then.
+    // `authed` is the per-connection hello state; a good hello flips it true.
     Reply handle(const nlohmann::json& request, bool& authed);
 
     // Error codes reused from the debugger endpoint plus viewer-specific.
