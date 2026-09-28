@@ -312,12 +312,6 @@ def test_gdb_host_observable_symbols_expands_this_specially(monkeypatch):
     assert syms == [{'name': 'img', 'type': 'cv::Mat'}]
 
 
-def test_current_host_routes_to_gdb(monkeypatch):
-    _install_fake_gdb(monkeypatch, _FakeGdbFrame(_FakeGdbBlock([])), {})
-    host = oid_resolve_host.current_host()
-    assert isinstance(host, oid_resolve_host.GdbHost)
-
-
 def test_gdb_host_expands_reference_typed_aggregates(monkeypatch):
     monkeypatch.setattr(oid_resolve_host, '_BRIDGE', None)
     monkeypatch.setenv('OID_TYPES_PATH', '')

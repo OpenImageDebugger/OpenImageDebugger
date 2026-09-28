@@ -47,9 +47,12 @@ struct FileOpenOutcome {
 // Not thread-safe: push from and drain on the render thread.
 class FileOpenQueue {
   public:
-    void push(std::string path);
-    void push_all(const std::vector<std::string>& paths);
-    [[nodiscard]] bool empty() const;
+    void push_all(const std::vector<std::string>& paths) {
+        pending_.insert(pending_.end(), paths.begin(), paths.end());
+    }
+    [[nodiscard]] bool empty() const {
+        return pending_.empty();
+    }
 
     // Loads and upserts every pending path, clearing the queue. A loader
     // failure is counted and its message retained, but does not stop the drain.

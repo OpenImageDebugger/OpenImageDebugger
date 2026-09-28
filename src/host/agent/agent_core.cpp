@@ -141,18 +141,12 @@ std::optional<long long> parse_channel_index(const nlohmann::json& j) {
     return std::nullopt;
 }
 
-// Parsed "channel" field: either the "all" sentinel or a validated 0-based
-// index into the (capped-at-3) channel range.
-struct ChannelSelection {
-    bool all = false;
-    int index = 0;
-};
-
 // Applied together only after every field validates (set_view is atomic).
 struct ViewUpdate {
     std::optional<std::string> buffer_name;
     std::optional<std::string> target;
-    std::optional<ChannelSelection> channel;
+    // < 0 is the "all" sentinel; else a validated 0-based channel index.
+    std::optional<int> channel;
     std::optional<double> zoom;
     std::optional<std::pair<double, double>> center;
     std::optional<double> rotation_deg;
@@ -199,13 +193,13 @@ resolve_target(const nlohmann::json& request,
 std::optional<Reply> parse_channel(const nlohmann::json& request,
                                    ViewModel& model,
                                    const std::optional<std::string>& target,
-                                   std::optional<ChannelSelection>& out) {
+                                   std::optional<int>& out) {
     if (!request.contains("channel")) {
         return std::nullopt;
     }
     const auto& j = request.at("channel");
     if (j.is_string() && j.get<std::string>() == "all") {
-        out = ChannelSelection{true, 0};
+        out = -1;
         return std::nullopt;
     }
     const auto info = model.buffer_named(*target);
@@ -217,7 +211,7 @@ std::optional<Reply> parse_channel(const nlohmann::json& request,
             std::format("channel must be \"all\" or an int in 0..{}",
                         (std::max)(max_channel, 0)));
     }
-    out = ChannelSelection{false, static_cast<int>(*parsed)};
+    out = static_cast<int>(*parsed);
     return std::nullopt;
 }
 
@@ -270,12 +264,7 @@ std::optional<Reply> parse_rotation(const nlohmann::json& request,
         return make_error(AgentCore::ERR_BAD_PARAMS,
                           "rotation_deg must be finite");
     }
-    // Normalize into get_view's [0, 360), so set_view(450) reads back as 90.
-    value = std::fmod(value, 360.0);
-    if (value < 0.0) {
-        value += 360.0;
-    }
-    out = value;
+    out = normalize_degrees(value);
     return std::nullopt;
 }
 
@@ -312,22 +301,16 @@ bool apply_view(ViewModel& model, const ViewUpdate& u) {
     if (u.center.has_value()) {
         ok &= model.set_center(*u.target, u.center->first, u.center->second);
     }
-    if (u.channel) {
-        ok &= model.set_channel(*u.target,
-                                u.channel->all ? -1 : 1,
-                                u.channel->all ? 0 : u.channel->index);
+    if (u.channel.has_value()) {
+        ok &= model.set_channel(*u.target, *u.channel);
     }
     return ok;
 }
 
 } // namespace
 
-AgentCore::AgentCore(ViewModel& model,
-                     std::string token,
-                     const long pid,
-                     std::string session_kind)
-    : model_(model), token_(std::move(token)), pid_(pid),
-      session_kind_(std::move(session_kind)) {}
+AgentCore::AgentCore(ViewModel& model, std::string token, const long pid)
+    : model_(model), token_(std::move(token)), pid_(pid) {}
 
 Reply AgentCore::handle(const nlohmann::json& request, bool& authed) {
     if (!request.is_object() || !request.contains("method") ||
@@ -376,7 +359,7 @@ Reply AgentCore::handle_hello(const nlohmann::json& request, bool& authed) {
     authed = true;
     nlohmann::json body;
     body["version"] = 1;
-    body["kind"] = session_kind_;
+    body["kind"] = "viewer";
     body["pid"] = pid_;
     return Reply{std::move(body), {}};
 }

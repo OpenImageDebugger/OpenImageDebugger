@@ -462,23 +462,11 @@ struct SinkFailure : std::exception {
 };
 } // namespace
 
-TEST(SettingsFromJson, AThrowingSinkDoesNotCostTheCallerItsData) {
-    // AppSettings{}.contrast_enabled defaults to true, so a fall-back to
-    // defaults and a successful parse of "false" are distinguishable.
-    const auto json =
-        R"({"window": {"w": 800}, "ui": {"contrastEnabled": false}})";
-
-    const AppSettings out =
-        settings_from_json(json,
-                           SettingsScope::VIEWER_OWNED,
-                           [](std::string_view) { throw SinkFailure{}; });
-
-    EXPECT_FALSE(out.contrast_enabled);
-}
-
 TEST(SettingsFromJson, AThrowingSinkStillReportsEveryHostOwnedKey) {
     // Containment is per-call, not once: a sink throwing on EVERY call must
     // still report the second key and still parse "ui" cleanly.
+    // AppSettings{}.contrast_enabled defaults to true, so a fall-back to
+    // defaults and a successful parse of "false" are distinguishable.
     const auto json = R"({
       "window": {"w": 800},
       "previousBuffers": [{"name": "a", "expiry": 111}],

@@ -54,21 +54,9 @@ bool geometry_fits_payload(const int width,
                            const std::size_t byte_count) {
     // type_size() reports one byte for anything it does not recognise, which
     // would silently measure the payload with the wrong element width.
-    if (!is_known_buffer_type(type)) {
-        return false;
-    }
-    if (width <= 0 || height <= 0 || channels <= 0 || stride < width) {
-        return false;
-    }
-    const auto element_size =
-        static_cast<std::uint64_t>(channels) * type_size(type);
-    const auto pixels_needed = (static_cast<std::uint64_t>(height) - 1) *
-                                   static_cast<std::uint64_t>(stride) +
-                               static_cast<std::uint64_t>(width);
-    // Divided rather than multiplied: pixels_needed * element_size can
-    // overflow 64 bits for hostile geometry, the quotient cannot.
-    return static_cast<std::uint64_t>(byte_count) / element_size >=
-           pixels_needed;
+    return is_known_buffer_type(type) &&
+           buffer_span_fits(
+               width, height, channels, stride, type_size(type), byte_count);
 }
 
 std::optional<std::size_t> padded_payload_size(const int width,

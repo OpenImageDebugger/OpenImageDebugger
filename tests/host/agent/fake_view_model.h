@@ -48,14 +48,13 @@ namespace oid::host::agent {
 class FakeViewModel : public ViewModel { // NOSONAR
   public:
     // Held in the real engine's (Camera's) internal units: zoom as a power
-    // (multiplier == ZOOM_FACTOR^power), rotation in radians, mode -1 == all.
+    // (multiplier == ZOOM_FACTOR^power), rotation in radians, index -1 == all.
     struct Record {
         double center_x = 0.0;
         double center_y = 0.0;
         double zoom_power = 0.0;
         double rotation_rad = 0.0;
-        int mode = -1;
-        int index = 0;
+        int index = -1;
     };
 
     std::vector<BufferInfo> buffers;
@@ -162,23 +161,17 @@ class FakeViewModel : public ViewModel { // NOSONAR
             return std::nullopt;
         }
         const std::string key{name};
-        const auto& [center_x,
-                     center_y,
-                     zoom_power,
-                     rotation_rad,
-                     mode,
-                     index] = records[key];
+        const auto& [center_x, center_y, zoom_power, rotation_rad, index] =
+            records[key];
 
         ViewState state;
         state.buffer = key;
         state.center_x = center_x;
         state.center_y = center_y;
         state.zoom = std::pow(ZOOM_FACTOR, zoom_power);
-        state.rotation_deg = normalize_degrees(rotation_rad);
-        state.channel = mode == -1 ? "all" : std::to_string(index);
-        state.auto_contrast = auto_contrast_flag_;
-        state.viewport_w = viewport_w;
-        state.viewport_h = viewport_h;
+        state.rotation_deg =
+            normalize_degrees(rotation_rad * (180.0 / std::numbers::pi));
+        state.channel = index < 0 ? "all" : std::to_string(index);
         return state;
     }
 
@@ -203,12 +196,9 @@ class FakeViewModel : public ViewModel { // NOSONAR
             name, [radians](Record& record) { record.rotation_rad = radians; });
     }
 
-    bool
-    set_channel(const std::string_view name, int mode, int index) override {
-        return with_record(name, [mode, index](Record& record) {
-            record.mode = mode;
-            record.index = index;
-        });
+    bool set_channel(const std::string_view name, int index) override {
+        return with_record(name,
+                           [index](Record& record) { record.index = index; });
     }
 
     bool auto_contrast() override {
@@ -235,15 +225,6 @@ class FakeViewModel : public ViewModel { // NOSONAR
         Record& record = records[std::string(name)];
         mutate(record);
         return true;
-    }
-
-    static double normalize_degrees(const double radians) {
-        double degrees = radians * (180.0 / std::numbers::pi);
-        degrees = std::fmod(degrees, 360.0);
-        if (degrees < 0.0) {
-            degrees += 360.0;
-        }
-        return degrees;
     }
 };
 

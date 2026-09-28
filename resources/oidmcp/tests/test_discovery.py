@@ -320,3 +320,19 @@ def test_discovery_dir_temp_fallback_is_per_uid(monkeypatch):
     monkeypatch.setattr(pwd, 'getpwuid', _no_passwd)
     expected = Path(tempfile.gettempdir()) / f'oid-agent-{os.getuid()}'
     assert discovery.discovery_dir() == expected
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX passwd home')
+def test_endpoint_and_client_resolve_the_same_dir(monkeypatch):
+    # The debugger writes the files oid-mcp reads, so a drift between the two
+    # resolutions is invisible: no session is ever found, with no error.
+    import pwd
+    import types
+
+    from oidscripts import agentendpoint
+
+    monkeypatch.delenv('OID_AGENT_DIR', raising=False)
+    monkeypatch.setattr(
+        pwd, 'getpwuid', lambda _uid: types.SimpleNamespace(pw_dir='/fake'))
+    assert (Path(agentendpoint.discovery_dir())
+            == discovery.discovery_dir() == Path('/fake/.oid-agent'))

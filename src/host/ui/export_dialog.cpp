@@ -62,14 +62,6 @@ bool ends_with_ci(const std::string_view s, const std::string_view suffix) {
                       });
 }
 
-// Copies `s` into `buf` as a null-terminated C string, truncating to fit
-// if necessary (path_buf is a fixed-size ImGui InputText backing buffer).
-void set_path_buf(std::array<char, 1024>& buf, const std::string_view s) {
-    const std::size_t n = (std::min)(s.size(), buf.size() - 1);
-    std::copy_n(s.begin(), n, buf.begin());
-    buf[n] = '\0';
-}
-
 } // namespace
 
 std::span<const ExportFormat> export_formats() {
@@ -110,10 +102,8 @@ void open_export_dialog(ExportDialogState& st,
     st.buffer_name = buffer_name;
     // default format = the registry's first row
     st.format = export_formats().front().type;
-    set_path_buf(
-        st.path_buf,
-        default_export_path(
-            last_export_dir, std::getenv("HOME"), buffer_name, st.format));
+    st.path = default_export_path(
+        last_export_dir, std::getenv("HOME"), buffer_name, st.format);
 }
 
 std::string_view export_selected_refusal(const std::size_t buffer_count) {
@@ -139,10 +129,6 @@ std::string ensure_export_extension(std::string path,
         path += ext;
     }
     return path;
-}
-
-void set_export_path(ExportDialogState& st, const std::string_view path) {
-    set_path_buf(st.path_buf, path);
 }
 
 } // namespace oid::host

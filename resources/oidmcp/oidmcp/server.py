@@ -21,7 +21,7 @@ else:
 
 from .analysis import compute_stats, dump_npy, extract_values
 from .buffers import BufferCache, decode_buffer
-from .discovery import (NoSessionError, _pid_alive, _reap, live_sessions,
+from .discovery import (NoSessionError, _reap, live_sessions,
                         live_viewers, pick_session)
 from .protocol import DEFAULT_MAX_BYTES, ControlClient, ControlError
 from .render import render_view
@@ -126,10 +126,7 @@ class SessionManager:
         pairing instead. A debugger with no paired viewer window (e.g.
         before its first stop) raises a distinct "that debugger has no
         viewer window" error rather than silently falling back to an
-        unrelated window. Should the pairing ever resolve to more than
-        one live viewer (a transient window relaunch racing discovery
-        reaping), liveness is re-checked and the most recently started
-        one wins.
+        unrelated window.
         """
         viewers = live_viewers()
         if session is None:
@@ -152,9 +149,6 @@ class SessionManager:
                 f'no live OID viewer for pid {session}: it is not a '
                 f'live viewer itself, and that debugger has no viewer '
                 f'window paired to it.')
-        if len(paired) > 1:
-            alive = [v for v in paired if _pid_alive(v.pid)]
-            paired = alive or paired
         return max(paired, key=lambda v: v.start_time)
 
     def _resolve_pixel_source(self, session):
@@ -197,7 +191,7 @@ class SessionManager:
         state, so caching it under a constant key would serve stale
         pixels forever.
         """
-        kind, _ = self._resolve_pixel_source(session)
+        kind, info = self._resolve_pixel_source(session)
         if kind == 'viewer':
             viewer_meta, raw = self._call_viewer(
                 session, lambda c: c.get_buffer(symbol,
@@ -208,7 +202,6 @@ class SessionManager:
         # ping returns the stop generation keying the cache; one connection
         # serves it and get_buffer, so the key matches the stop that made the
         # bytes. token is per-instance: a reused pid can't read stale bytes.
-        info = self._resolve(session)
         client = self._connect(info)
         try:
             generation = client.ping()

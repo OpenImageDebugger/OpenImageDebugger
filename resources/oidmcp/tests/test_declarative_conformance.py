@@ -1,10 +1,4 @@
-"""Built-in declarative types: schema conformance and match anchoring.
-
-A follow-up appends the fake-symbol dual-run (old Python inspector vs. new
-JSON entry) to this module. Kept together because both are the same
-guarantee: the shipped builtin_types.json reproduces the retired Python
-inspectors.
-"""
+"""Built-in declarative types: schema conformance, match anchoring, goldens."""
 
 import json
 from pathlib import Path
@@ -82,20 +76,6 @@ import collections
 from oidscripts import symbols
 from oidscripts.oidtypes.declarative import EntryEvaluationError
 
-# The retired Python inspectors are the comparison basis; once deleted the
-# import fails, every @legacy_only test self-skips, and the JSON path rules.
-try:
-    from oidscripts.oidtypes.opencv import Mat, CvMat, IplImage
-    from oidscripts.oidtypes.eigen3 import EigenXX
-    _LEGACY = {'cv::Mat': Mat, 'CvMat': CvMat, 'IplImage': IplImage,
-               'Eigen::Matrix': EigenXX, 'Eigen::Map': EigenXX}
-except ImportError:
-    _LEGACY = None
-
-legacy_only = pytest.mark.skipif(
-    _LEGACY is None,
-    reason='Python inspectors deleted; the JSON entries are authoritative')
-
 
 class CInt(int):
     """An int whose `/` truncates like C integer division, so a fixture
@@ -114,25 +94,14 @@ class CInt(int):
 
 
 class Struct:
-    """A fake debugger value read through two lenses at once.
-
-    Legacy Python inspectors use item access, `picked_obj['field']`, plus
-    `picked_obj.type` for the C++ type name. The new engine's fake bridge
-    reads the SAME struct by attribute access, `(sym).field`, via eval_view()
-    — where a member literally named `type` (CvMat) or `data` resolves to
-    the struct member, exactly as a real debugger expression would, without
-    colliding with the C++ type that `.type` exposes to the legacy lens.
-    `ctype` is that C++ type string (None for anonymous inner nodes); `ptr`
-    is the address `get_casted_pointer` returns for pointer nodes.
+    """A member literally named `type` (CvMat) or `data` must resolve to the
+    member, so eval_view() reads by attribute and `.type` stays the C++ name.
     """
 
     def __init__(self, fields=None, ptr=None, ctype=None):
         self._fields = dict(fields or {})
         self._ptr = ptr
         self._ctype = ctype
-
-    def __getitem__(self, key):
-        return self._fields[key]
 
     @property
     def type(self):
@@ -269,7 +238,7 @@ def _eigen_map(ctype, data_ptr):
 
 
 T = symbols
-Case = collections.namedtuple('Case', 'id symbol obj_name legacy_key golden')
+Case = collections.namedtuple('Case', 'id symbol obj_name golden')
 
 # CV type words: 0x42FF0000 is cv::Mat's magic flag bits, 0x42420000 CvMat's;
 # the low bits are CV_MAKETYPE(depth, channels) = depth | ((channels-1) << 3).
@@ -282,13 +251,13 @@ _EIGEN_MAP = ('Eigen::Map<Eigen::Matrix<float, 3, 4, 1, 3, 4>, 0, '
 
 CLEAN_CASES = [
     Case('mat_8uc3',
-         _mat(_MAT_MAGIC | 16, 4096, 640, 480, 1920), 'mat', 'cv::Mat',
+         _mat(_MAT_MAGIC | 16, 4096, 640, 480, 1920), 'mat',
          {'display_name': 'mat (cv::Mat)', 'pointer': 4096,
           'width': 640, 'height': 480, 'channels': 3,
           'type': T.OID_TYPES_UINT8, 'row_stride': 640,
           'pixel_layout': 'bgra', 'transpose_buffer': False}),
     Case('mat_32fc1',
-         _mat(_MAT_MAGIC | 5, 4096, 320, 200, 1280), 'mat', 'cv::Mat',
+         _mat(_MAT_MAGIC | 5, 4096, 320, 200, 1280), 'mat',
          {'display_name': 'mat (cv::Mat)', 'pointer': 4096,
           'width': 320, 'height': 200, 'channels': 1,
           'type': T.OID_TYPES_FLOAT32, 'row_stride': 320,
@@ -296,7 +265,7 @@ CLEAN_CASES = [
     # OpenCV 4 and 5 pack `flags` differently (channel count starts at bit 3
     # vs bit 5), and the low bits collide: 8 is 8UC2 on 4 and 16BFC1 on 5.
     Case('mat_8uc2_v4_side_of_collision',
-         _mat(_MAT_MAGIC | 8, 4096, 640, 480, 1280), 'mat', 'cv::Mat',
+         _mat(_MAT_MAGIC | 8, 4096, 640, 480, 1280), 'mat',
          {'display_name': 'mat (cv::Mat)', 'pointer': 4096,
           'width': 640, 'height': 480, 'channels': 2,
           'type': T.OID_TYPES_UINT8, 'row_stride': 640,
@@ -305,43 +274,43 @@ CLEAN_CASES = [
     # the version probe (depths up to 7 fit the v4 mask; multi-channel v5
     # words overflowed its channel gate), so they are not redundant here.
     Case('mat5_8uc3',
-         _mat5(_MAT_MAGIC | 64, 4096, 640, 480, 1920), 'mat', 'cv::Mat',
+         _mat5(_MAT_MAGIC | 64, 4096, 640, 480, 1920), 'mat',
          {'display_name': 'mat (cv::Mat)', 'pointer': 4096,
           'width': 640, 'height': 480, 'channels': 3,
           'type': T.OID_TYPES_UINT8, 'row_stride': 640,
           'pixel_layout': 'bgra', 'transpose_buffer': False}),
     Case('mat5_32fc1',
-         _mat5(_MAT_MAGIC | 5, 4096, 320, 200, 1280), 'mat', 'cv::Mat',
+         _mat5(_MAT_MAGIC | 5, 4096, 320, 200, 1280), 'mat',
          {'display_name': 'mat (cv::Mat)', 'pointer': 4096,
           'width': 320, 'height': 200, 'channels': 1,
           'type': T.OID_TYPES_FLOAT32, 'row_stride': 320,
           'pixel_layout': 'rgba', 'transpose_buffer': False}),
     Case('cvmat_16uc1',
-         _cvmat(_CVMAT_MAGIC | 2, 8192, 100, 50, 200), 'cvmat', 'CvMat',
+         _cvmat(_CVMAT_MAGIC | 2, 8192, 100, 50, 200), 'cvmat',
          {'display_name': 'cvmat (CvMat)', 'pointer': 8192,
           'width': 100, 'height': 50, 'channels': 1,
           'type': T.OID_TYPES_UINT16, 'row_stride': 100,
           'pixel_layout': 'rgba', 'transpose_buffer': False}),
     Case('iplimage_8uc3',
-         _iplimage(8, 3, 64, 48, 12288, 192), 'ipl', 'IplImage',
+         _iplimage(8, 3, 64, 48, 12288, 192), 'ipl',
          {'display_name': 'ipl (IplImage)', 'pointer': 12288,
           'width': 64, 'height': 48, 'channels': 3,
           'type': T.OID_TYPES_UINT8, 'row_stride': 64,
           'pixel_layout': 'bgra', 'transpose_buffer': False}),
     Case('eigen_static',
-         _eigen_static(_EIGEN_STATIC, 16384), 'm', 'Eigen::Matrix',
+         _eigen_static(_EIGEN_STATIC, 16384), 'm',
          {'display_name': 'm (%s)' % _EIGEN_STATIC, 'pointer': 16384,
           'width': 4, 'height': 3, 'channels': 1,
           'type': T.OID_TYPES_FLOAT32, 'row_stride': 4,
           'pixel_layout': 'rgba', 'transpose_buffer': False}),
     Case('eigen_dynamic',
-         _eigen_dynamic(_EIGEN_DYNAMIC, 5, 7, 16384), 'm', 'Eigen::Matrix',
+         _eigen_dynamic(_EIGEN_DYNAMIC, 5, 7, 16384), 'm',
          {'display_name': 'm (%s)' % _EIGEN_DYNAMIC, 'pointer': 16384,
           'width': 5, 'height': 7, 'channels': 1,
           'type': T.OID_TYPES_FLOAT64, 'row_stride': 5,
           'pixel_layout': 'rgba', 'transpose_buffer': True}),
     Case('eigen_map',
-         _eigen_map(_EIGEN_MAP, 20480), 'm', 'Eigen::Map',
+         _eigen_map(_EIGEN_MAP, 20480), 'm',
          {'display_name': 'm (%s)' % _EIGEN_STATIC, 'pointer': 20480,
           'width': 4, 'height': 3, 'channels': 1,
           'type': T.OID_TYPES_FLOAT32, 'row_stride': 4,
@@ -364,21 +333,9 @@ def _new_metadata(symbol, obj_name):
     return inspector.get_buffer_metadata(obj_name, symbol, bridge)
 
 
-def _legacy_metadata(legacy_key, symbol, obj_name):
-    bridge = EvalFakeBridge(symbol, obj_name)
-    return _LEGACY[legacy_key]().get_buffer_metadata(obj_name, symbol, bridge)
-
-
 @pytest.mark.parametrize('case', CLEAN_CASES, ids=[c.id for c in CLEAN_CASES])
 def test_new_entry_matches_golden(case):
     assert _new_metadata(case.symbol, case.obj_name) == case.golden
-
-
-@legacy_only
-@pytest.mark.parametrize('case', CLEAN_CASES, ids=[c.id for c in CLEAN_CASES])
-def test_legacy_inspector_matches_golden(case):
-    assert _legacy_metadata(case.legacy_key, case.symbol,
-                            case.obj_name) == case.golden
 
 
 # Blessed diffs where the JSON path improves on the Python inspectors: #1 and
@@ -393,12 +350,6 @@ def test_diff5_null_mat_now_errors_but_legacy_returned_zero():
     assert excinfo.value.field == 'pointer'
 
 
-@legacy_only
-def test_diff5_legacy_mat_passes_null_pointer_through():
-    symbol = _mat(_MAT_MAGIC | 16, 0, 640, 480, 1920)
-    assert _legacy_metadata('cv::Mat', symbol, 'mat')['pointer'] == 0
-
-
 def test_diff4_cv_8s_rejected_by_new_entry():
     # #4: CV_8S (OID code 1) has no OID equivalent; the new dtype rule rejects
     # it. flags & 7 == 1 for CV_8SC1.
@@ -406,12 +357,6 @@ def test_diff4_cv_8s_rejected_by_new_entry():
     with pytest.raises(EntryEvaluationError) as excinfo:
         _new_metadata(symbol, 'mat')
     assert excinfo.value.field == 'dtype'
-
-
-@legacy_only
-def test_diff4_legacy_mat_returns_invalid_code_one():
-    symbol = _mat(_MAT_MAGIC | 1, 4096, 640, 480, 640)
-    assert _legacy_metadata('cv::Mat', symbol, 'mat')['type'] == 1
 
 
 def test_opencv5_bf16_rejected_where_v4_sibling_decodes():
@@ -448,14 +393,6 @@ def test_diff3_signed_iplimage_new_stride_is_correct():
     assert _new_metadata(symbol, 'ipl') == _IPL_16S_GOLDEN
 
 
-@legacy_only
-def test_diff3_legacy_signed_iplimage_stride_collapses_to_zero():
-    symbol = _iplimage(0x80000010, 1, 30, 20, 12288, 60)
-    metadata = _legacy_metadata('IplImage', symbol, 'ipl')
-    assert metadata['type'] == T.OID_TYPES_INT16   # dtype was already correct
-    assert metadata['row_stride'] == 0            # the bug the JSON path fixes
-
-
 def test_diff7_single_channel_entries_declare_an_r_first_layout():
     # #7: a single-channel buffer uploads as GL_RED, so a pixel_layout whose
     # first character is not 'r' makes the shader sample 0 and render black.
@@ -465,14 +402,6 @@ def test_diff7_single_channel_entries_declare_an_r_first_layout():
             assert metadata['pixel_layout'][0] == 'r', (
                 '%s is single-channel but declares layout %r'
                 % (case.id, metadata['pixel_layout']))
-
-
-@legacy_only
-def test_diff7_legacy_eigen_declared_bgra_for_single_channel():
-    metadata = _legacy_metadata('Eigen::Matrix',
-                                _eigen_static(_EIGEN_STATIC, 16384), 'm')
-    assert metadata['channels'] == 1
-    assert metadata['pixel_layout'] == 'bgra'  # the bug the JSON path fixes
 
 
 # The editor-facing JSON Schema is meant to be at least as strict as the

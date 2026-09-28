@@ -60,33 +60,15 @@ def test_semantic_errors_carry_codes(live_endpoint):
 def test_client_bounds_received_payload_to_max_bytes():
     # Defense in depth: even if the endpoint misbehaves and sends more than
     # the requested cap, the client refuses to buffer past max_bytes.
-    import socket
-    import threading
-
-    from oidscripts import wireframe as wf
-
-    listener = socket.socket()
-    listener.bind(('127.0.0.1', 0))
-    listener.listen(1)
-    port = listener.getsockname()[1]
-
-    def rogue_endpoint():
-        conn, _ = listener.accept()
-        with conn:
-            wf.recv_frame(conn)  # hello
-            wf.send_frame(conn, {'version': 1, 'debugger': 'x',
-                                 'stop_generation': 0})
-            wf.recv_frame(conn)  # get_buffer
-            wf.send_frame(conn, {'width': 1, 'stop_generation': 0},
-                          payload=b'x' * 100)
-
-    thread = threading.Thread(target=rogue_endpoint, daemon=True)
-    thread.start()
-
+    port, thread, listener = _start_rogue_viewer(
+        lambda request: {'width': 1, 'stop_generation': 0},
+        payload=b'x' * 100)
     client = ControlClient('127.0.0.1', port, 'tok')
     with pytest.raises((ValueError, ControlError)):
         client.get_buffer('img', max_bytes=16)
     client.close()
+    listener.close()
+    thread.join(timeout=2)
 
 
 def test_set_view_cannot_override_method(live_endpoint):
@@ -103,29 +85,9 @@ def test_set_view_cannot_override_method(live_endpoint):
 def test_json_only_call_rejects_declared_payload():
     # Control calls are JSON-only; a server declaring a binary payload must be
     # rejected (default max_payload=0), not allocated for.
-    import socket
-    import threading
-
-    from oidscripts import wireframe as wf
-
-    listener = socket.socket()
-    listener.bind(('127.0.0.1', 0))
-    listener.listen(1)
-    port = listener.getsockname()[1]
-
-    def rogue_endpoint():
-        conn, _ = listener.accept()
-        with conn:
-            wf.recv_frame(conn)  # hello
-            wf.send_frame(conn, {'version': 1, 'debugger': 'x',
-                                 'stop_generation': 0})
-            wf.recv_frame(conn)  # list_symbols
-            wf.send_frame(conn, {'symbols': [], 'stop_generation': 0},
-                          payload=b'x' * 100)
-
-    thread = threading.Thread(target=rogue_endpoint, daemon=True)
-    thread.start()
-
+    port, thread, listener = _start_rogue_viewer(
+        lambda request: {'symbols': [], 'stop_generation': 0},
+        payload=b'x' * 100)
     client = ControlClient('127.0.0.1', port, 'tok')
     with pytest.raises(ValueError):
         client.list_symbols()
@@ -137,32 +99,13 @@ def test_json_only_call_rejects_declared_payload():
 def test_client_bounds_received_payload_without_explicit_max(monkeypatch):
     # Omitting max_bytes must NOT disable the client-side bound, or a
     # misbehaving endpoint could make us buffer an unbounded payload.
-    import socket
-    import threading
-
     from oidmcp import protocol
-    from oidscripts import wireframe as wf
 
     monkeypatch.setattr(protocol, 'DEFAULT_MAX_BYTES', 16)
 
-    listener = socket.socket()
-    listener.bind(('127.0.0.1', 0))
-    listener.listen(1)
-    port = listener.getsockname()[1]
-
-    def rogue_endpoint():
-        conn, _ = listener.accept()
-        with conn:
-            wf.recv_frame(conn)  # hello
-            wf.send_frame(conn, {'version': 1, 'debugger': 'x',
-                                 'stop_generation': 0})
-            wf.recv_frame(conn)  # get_buffer
-            wf.send_frame(conn, {'width': 1, 'stop_generation': 0},
-                          payload=b'x' * 100)
-
-    thread = threading.Thread(target=rogue_endpoint, daemon=True)
-    thread.start()
-
+    port, thread, listener = _start_rogue_viewer(
+        lambda request: {'width': 1, 'stop_generation': 0},
+        payload=b'x' * 100)
     client = protocol.ControlClient('127.0.0.1', port, 'tok')
     with pytest.raises((ValueError, ControlError)):
         client.get_buffer('img')  # no max_bytes → default ceiling applies
@@ -171,7 +114,7 @@ def test_client_bounds_received_payload_without_explicit_max(monkeypatch):
     thread.join(timeout=2)
 
 
-def _start_rogue_viewer(handle_request):
+def _start_rogue_viewer(handle_request, payload=b''):
     """Spin up a one-shot fake viewer endpoint on a loopback socket.
 
     Speaks the hello handshake, then hands the next request's parsed JSON
@@ -198,7 +141,7 @@ def _start_rogue_viewer(handle_request):
                                   'stop_generation': 0})
             request, _ = wf.recv_frame(conn)
             response = handle_request(request)
-            wf.send_frame(conn, response)
+            wf.send_frame(conn, response, payload=payload)
 
     thread = threading.Thread(target=rogue_endpoint, daemon=True)
     thread.start()

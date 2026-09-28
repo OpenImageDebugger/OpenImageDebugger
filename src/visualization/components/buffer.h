@@ -110,8 +110,6 @@ class Buffer final : public Component {
 
     void draw(const mat4& projection, const mat4& viewInv) override;
 
-    [[nodiscard]] const std::vector<GLuint>& buff_tex() const;
-
     [[nodiscard]] float buffer_width_f() const;
     [[nodiscard]] float buffer_height_f() const;
 
@@ -121,11 +119,6 @@ class Buffer final : public Component {
     [[nodiscard]] BufferType type() const;
 
     [[nodiscard]] std::span<const std::byte> buffer() const;
-
-    [[nodiscard]] bool transpose() const;
-
-    [[nodiscard]] int num_textures_x() const;
-    [[nodiscard]] int num_textures_y() const;
 
     std::span<float> min_buffer_values();
 

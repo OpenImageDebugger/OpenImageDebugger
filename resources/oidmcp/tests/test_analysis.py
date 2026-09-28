@@ -10,7 +10,7 @@ from oidmcp.analysis import (
     dump_npy,
     extract_values,
 )
-from oidmcp.analysis import _current_user, _safe_dump_dir, _sanitize_tree
+from oidmcp.analysis import _current_user, _safe_dump_dir
 from conftest import make_meta
 
 
@@ -109,21 +109,6 @@ def test_values_encodes_non_finite_as_strings():
     result = extract_values(arr, x=0, y=0, w=2, h=2)
     flat = [v[0] for row in result['values'] for v in row]
     assert flat == ['NaN', 'Inf', '-Inf', 1.0]
-
-
-def test_sanitize_tree_recurses_into_dicts():
-    tree = {
-        'min': float('nan'),
-        'max': float('inf'),
-        'nested': {'low': float('-inf'), 'ok': 1.5},
-        'rows': [{'v': float('nan')}, [float('inf'), 2.0]],
-    }
-    assert _sanitize_tree(tree) == {
-        'min': 'NaN',
-        'max': 'Inf',
-        'nested': {'low': '-Inf', 'ok': 1.5},
-        'rows': [{'v': 'NaN'}, ['Inf', 2.0]],
-    }
 
 
 def test_values_channel_selection():

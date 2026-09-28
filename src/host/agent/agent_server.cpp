@@ -38,14 +38,9 @@
 #include <system_error>
 #include <utility>
 
-#ifdef _WIN32
-#include <process.h> // _getpid
-#else
-#include <unistd.h> // getpid
-#endif
-
 #include "host/agent/discovery_file.h"
 #include "host/agent/wire_frame.h"
+#include "system/process/process_id.h"
 
 namespace oid::host::agent {
 
@@ -67,14 +62,6 @@ constexpr std::size_t MAX_CLIENTS = 8;
 
 // Mirrors agentendpoint.py's HANDSHAKE_TIMEOUT; lifted once authenticated.
 constexpr std::chrono::seconds HANDSHAKE_TIMEOUT{10};
-
-long current_pid() {
-#ifdef _WIN32
-    return static_cast<long>(_getpid());
-#else
-    return static_cast<long>(getpid());
-#endif
-}
 
 // std::random_device is the only portable entropy source without a new dep.
 // A platform CSPRNG (getrandom()/BCryptGenRandom) is a tracked follow-up.
@@ -209,13 +196,11 @@ void write_reply(asio::io_context& ctx,
 
 } // namespace
 
-AgentServer::AgentServer(ViewModel& model, const AgentServerConfig cfg)
-    : cfg_(cfg), token_(generate_token()), core_(model, token_, current_pid()),
+AgentServer::AgentServer(ViewModel& model,
+                         const std::optional<int> debugger_pid)
+    : debugger_pid_(debugger_pid), token_(generate_token()),
+      core_(model, token_, oid::system::current_process_id()),
       acceptor_(io_context_), accept_retry_timer_(io_context_) {
-    if (!cfg_.enabled) {
-        return;
-    }
-
     const asio::ip::tcp::endpoint loopback{asio::ip::make_address("127.0.0.1"),
                                            0};
     acceptor_.open(loopback.protocol());
@@ -238,7 +223,7 @@ AgentServer::~AgentServer() {
 }
 
 unsigned short AgentServer::port() const {
-    if (!cfg_.enabled || stopped_.load()) {
+    if (stopped_.load()) {
         return 0;
     }
     return port_;
@@ -262,12 +247,13 @@ void AgentServer::publish_discovery() {
         std::chrono::duration<double>(
             std::chrono::system_clock::now().time_since_epoch())
             .count();
-    body["pid"] = current_pid();
-    if (cfg_.debugger_pid.has_value()) {
-        body["debugger_pid"] = *cfg_.debugger_pid;
+    body["pid"] = oid::system::current_process_id();
+    if (debugger_pid_.has_value()) {
+        body["debugger_pid"] = *debugger_pid_;
     }
 
-    discovery_path_ = dir / std::format("{}.json", current_pid());
+    discovery_path_ =
+        dir / std::format("{}.json", oid::system::current_process_id());
     write_discovery_atomic(discovery_path_, body.dump());
     discovery_written_ = true;
 }
@@ -450,18 +436,14 @@ void AgentServer::stop() {
         pending_.clear();
     }
 
-    if (cfg_.enabled) {
-        // Close the acceptor only after the join: asio I/O objects race.
-        io_context_.stop();
-    }
+    // Close the acceptor only after the join: asio I/O objects race.
+    io_context_.stop();
     if (accept_thread_.joinable()) {
         accept_thread_.join();
     }
-    if (cfg_.enabled) {
-        // Safe now: accept_thread_ is joined, so nothing else touches it.
-        asio::error_code ec;
-        acceptor_.close(ec);
-    }
+    // Safe now: accept_thread_ is joined, so nothing else touches it.
+    asio::error_code close_ec;
+    acceptor_.close(close_ec);
 
     // Cross-thread-safe calls only: run_async_op closes the socket, not us.
     {

@@ -63,7 +63,7 @@ class NativeViewModel final : public ViewModel {
     bool set_center(std::string_view name, double x, double y) override;
     bool set_zoom_power(std::string_view name, double power) override;
     bool set_rotation_rad(std::string_view name, double radians) override;
-    bool set_channel(std::string_view name, int mode, int index) override;
+    bool set_channel(std::string_view name, int index) override;
 
     bool auto_contrast() override;
     void set_auto_contrast(bool enabled) override;

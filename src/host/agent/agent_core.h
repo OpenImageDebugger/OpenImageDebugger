@@ -43,7 +43,7 @@
 //                        hello fails with ERR_BAD_TOKEN. Its reply's "pid"
 //                        is whatever pid the transport supplied when
 //                        constructing this AgentCore -- a wasm glue layer
-//                        passes its own; 0 if none was given.
+//                        passes its own.
 //   "ping"            -- liveness check.
 //   "list_buffers"    -- enumerate currently held buffers.
 //   "get_buffer"      -- fetch one buffer's metadata + pixel bytes.
@@ -90,10 +90,7 @@ struct Reply {
 // Protocol failures never throw; they return {"error": ...} in Reply::body.
 class AgentCore {
   public:
-    AgentCore(ViewModel& model,
-              std::string token,
-              long pid = 0,
-              std::string session_kind = "viewer");
+    AgentCore(ViewModel& model, std::string token, long pid);
 
     // `authed` is the per-connection hello state; a good hello flips it true.
     Reply handle(const nlohmann::json& request, bool& authed);
@@ -112,7 +109,6 @@ class AgentCore {
     ViewModel& model_;
     std::string token_;
     long pid_;
-    std::string session_kind_;
 
     Reply handle_hello(const nlohmann::json& request, bool& authed);
     Reply handle_ping(const nlohmann::json& request) const;

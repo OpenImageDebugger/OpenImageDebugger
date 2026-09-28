@@ -33,6 +33,7 @@
 #include <fstream>
 #include <future>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -46,26 +47,16 @@
 #include "host/agent/discovery_file.h"
 #include "host/agent/fake_view_model.h"
 #include "host/agent/wire_frame.h"
+#include "system/process/process_id.h"
 
-#ifdef _WIN32
-#include <process.h> // _getpid
-#else
+#ifndef _WIN32
 #include <sys/stat.h>
-#include <unistd.h> // getpid
 #endif
 
 using namespace oid::host::agent;
 using json = nlohmann::json;
 
 namespace {
-
-long current_pid() {
-#ifdef _WIN32
-    return static_cast<long>(_getpid());
-#else
-    return static_cast<long>(getpid());
-#endif
-}
 
 // Sets an environment variable for the lifetime of the object, restoring
 // whatever (if anything) was there before.
@@ -142,7 +133,7 @@ DecodedFrame read_frame(asio::ip::tcp::socket& sock) {
 }
 
 void send_frame(asio::ip::tcp::socket& sock, const json& obj) {
-    const std::vector<std::byte> bytes = encode_frame(obj);
+    const std::vector<std::byte> bytes = encode_frame_header(obj, 0);
     asio::write(sock, asio::buffer(bytes.data(), bytes.size()));
 }
 
@@ -189,14 +180,11 @@ class AgentServerTest : public ::testing::Test { // NOSONAR
 
 TEST_F(AgentServerTest, WritesDiscoveryFileInViewerSubdir) {
     FakeViewModel model;
-    AgentServerConfig cfg;
-    cfg.enabled = true;
-    cfg.debugger_pid = 4200;
-    AgentServer server(model, cfg);
+    AgentServer server(model, 4200);
 
     const std::filesystem::path viewer_dir = tmp_dir_ / "viewer";
     const std::filesystem::path discovery_path =
-        viewer_dir / std::format("{}.json", current_pid());
+        viewer_dir / std::format("{}.json", oid::system::current_process_id());
     ASSERT_TRUE(std::filesystem::exists(discovery_path));
 
     std::ifstream in(discovery_path, std::ios::binary);
@@ -223,12 +211,11 @@ TEST_F(AgentServerTest, WritesDiscoveryFileInViewerSubdir) {
 
 TEST_F(AgentServerTest, RemovesDiscoveryOnStop) {
     FakeViewModel model;
-    AgentServerConfig cfg;
-    cfg.enabled = true;
-    AgentServer server(model, cfg);
+    AgentServer server(model, std::nullopt);
 
     const std::filesystem::path discovery_path =
-        tmp_dir_ / "viewer" / std::format("{}.json", current_pid());
+        tmp_dir_ / "viewer" /
+        std::format("{}.json", oid::system::current_process_id());
     ASSERT_TRUE(std::filesystem::exists(discovery_path));
 
     server.stop();
@@ -247,17 +234,13 @@ TEST_F(AgentServerTest, RejectsSymlinkedBaseDir) {
     ScopedEnvVar base_override("OID_AGENT_DIR", link.string());
 
     FakeViewModel model;
-    AgentServerConfig cfg;
-    cfg.enabled = true;
-    EXPECT_THROW(AgentServer(model, cfg), DiscoveryError);
+    EXPECT_THROW(AgentServer(model, std::nullopt), DiscoveryError);
 }
 #endif
 
 TEST_F(AgentServerTest, HelloRequiredFirst) {
     FakeViewModel model;
-    AgentServerConfig cfg;
-    cfg.enabled = true;
-    AgentServer server(model, cfg);
+    AgentServer server(model, std::nullopt);
 
     asio::ip::tcp::socket sock = connect_to(server);
     send_frame(sock, {{"method", "ping"}});
@@ -273,9 +256,7 @@ TEST_F(AgentServerTest, HelloRequiredFirst) {
 TEST_F(AgentServerTest, HelloThenListBuffers) {
     FakeViewModel model;
     model.add("frame", 4, 5, 1);
-    AgentServerConfig cfg;
-    cfg.enabled = true;
-    AgentServer server(model, cfg);
+    AgentServer server(model, std::nullopt);
 
     asio::ip::tcp::socket sock = connect_to(server);
 
@@ -300,9 +281,7 @@ TEST_F(AgentServerTest, StopUnblocksIdleServingConnection) {
     // socket on the serve thread. The watchdog turns a hang into a failure.
     FakeViewModel model;
     model.add("frame", 4, 5, 1);
-    AgentServerConfig cfg;
-    cfg.enabled = true;
-    AgentServer server(model, cfg);
+    AgentServer server(model, std::nullopt);
 
     asio::ip::tcp::socket sock = connect_to(server);
     send_frame(sock, {{"method", "hello"}, {"token", server.token()}});
@@ -326,9 +305,7 @@ TEST_F(AgentServerTest, StopUnblocksIdlePreAuthConnection) {
     // undrained handler writes through read_exact_async's dead stack locals.
     FakeViewModel model;
     model.add("frame", 4, 5, 1);
-    AgentServerConfig cfg;
-    cfg.enabled = true;
-    AgentServer server(model, cfg);
+    AgentServer server(model, std::nullopt);
 
     asio::ip::tcp::socket sock = connect_to(server);
     // One pre-auth frame proves the serve thread is up and now blocked in the
@@ -356,9 +333,7 @@ TEST_F(AgentServerTest, DrainContainsHandlerException) {
     model.add("frame", 4, 5, 1);
     model.set_bytes("frame", std::vector<std::byte>(4));
     model.throw_in_read_pixels = true;
-    AgentServerConfig cfg;
-    cfg.enabled = true;
-    AgentServer server(model, cfg);
+    AgentServer server(model, std::nullopt);
 
     asio::ip::tcp::socket sock = connect_to(server);
     send_frame(sock, {{"method", "hello"}, {"token", server.token()}});
@@ -388,9 +363,7 @@ TEST_F(AgentServerTest, OversizeReplyReturnsStructuredError) {
     for (int i = 0; i < 6000; ++i) {
         model.add(std::format("{}{}", long_name, i), 4, 5, 1);
     }
-    AgentServerConfig cfg;
-    cfg.enabled = true;
-    AgentServer server(model, cfg);
+    AgentServer server(model, std::nullopt);
 
     asio::ip::tcp::socket sock = connect_to(server);
     send_frame(sock, {{"method", "hello"}, {"token", server.token()}});
@@ -409,9 +382,7 @@ TEST_F(AgentServerTest, OversizeReplyReturnsStructuredError) {
 
 TEST_F(AgentServerTest, DrainRunsOnCallingThread) {
     FakeViewModel model;
-    AgentServerConfig cfg;
-    cfg.enabled = true;
-    AgentServer server(model, cfg);
+    AgentServer server(model, std::nullopt);
 
     asio::ip::tcp::socket sock = connect_to(server);
     send_frame(sock, {{"method", "ping"}});
@@ -434,9 +405,7 @@ TEST_F(AgentServerTest, EnqueueListenerFiresWhenARequestIsQueued) {
     // The native main loop registers a listener that wakes its FramePacer;
     // this pins the seam: queuing a decoded request must invoke it.
     FakeViewModel model;
-    AgentServerConfig cfg;
-    cfg.enabled = true;
-    AgentServer server(model, cfg);
+    AgentServer server(model, std::nullopt);
 
     std::atomic notifications{0};
     server.set_enqueue_listener([&notifications] { ++notifications; });

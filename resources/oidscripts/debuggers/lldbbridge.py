@@ -313,11 +313,10 @@ class LldbBridge(BridgeInterface):
     def _check_frame_modification(self):
         process = self._get_process(self.get_lldb_backend())
         if process.is_stopped:
-            thread = self._get_thread(process)
-            frame = self._get_frame(thread)
+            frame = frame_from_debugger(self.get_lldb_backend())
 
-            thread_id = thread.id if thread is not None else 0
-            frame_idx = frame.idx if thread is not None else 0
+            thread_id = frame.thread.id if frame else 0
+            frame_idx = frame.idx if frame else 0
 
             frame_was_updated = thread_id != self._last_thread_id or \
                                 frame_idx != self._last_frame_idx
@@ -363,25 +362,10 @@ class LldbBridge(BridgeInterface):
         # type: (lldb.SBDebugger) -> lldb.SBProcess
         return debugger.GetSelectedTarget().process
 
-    def _get_thread(self, process):
-        # type: (lldb.SBProcess) -> lldb.SBThread
-        for t in process:
-            if t.GetStopReason() != lldb.eStopReasonNone and \
-                    t.GetStopReason() != lldb.eStopReasonInvalid:
-                return t
-        return None
-
-    def _get_frame(self, thread):
-        # type: (lldb.SBThread) -> lldb.SBFrame
-        if not thread:
-            return None
-        return thread.GetSelectedFrame()
-
     def get_buffer_metadata(self, variable, max_bytes=None):
         # type: (str) -> dict
         process = self._get_process(self.get_lldb_backend())
-        thread = self._get_thread(process)
-        frame = self._get_frame(thread)
+        frame = frame_from_debugger(self.get_lldb_backend())
 
         if not frame:
             # Could not fetch frame from debugger state (None, or an

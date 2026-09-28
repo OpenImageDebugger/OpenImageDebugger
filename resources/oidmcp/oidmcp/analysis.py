@@ -89,8 +89,6 @@ def _json_safe(value):
 def _sanitize_tree(node):
     if isinstance(node, list):
         return [_sanitize_tree(item) for item in node]
-    if isinstance(node, dict):
-        return {key: _sanitize_tree(value) for key, value in node.items()}
     return _json_safe(node)
 
 

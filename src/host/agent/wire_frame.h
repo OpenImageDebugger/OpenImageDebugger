@@ -48,10 +48,6 @@ class FrameError : public std::runtime_error {
 };
 
 // obj is never mutated: "payload": <nbytes> is injected into a copy.
-std::vector<std::byte> encode_frame(const nlohmann::json& obj,
-                                    std::span<const std::byte> payload = {});
-
-// Header plus a separate write is byte-identical to encode_frame(obj, bytes).
 std::vector<std::byte> encode_frame_header(const nlohmann::json& obj,
                                            std::size_t payload_size);
 

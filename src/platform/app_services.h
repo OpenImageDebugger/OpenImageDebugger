@@ -54,11 +54,6 @@ namespace oid::platform {
 // Platform seam: application bootstrap policy that differs between the native
 // app and the non-native embedding host.
 
-struct Endpoint {
-    std::string host{"127.0.0.1"};
-    unsigned short port{9588};
-};
-
 // Non-native: wire the inbound message hook (must run before transport
 // polling starts). Native: no-op.
 void install_platform_hooks();
@@ -129,11 +124,11 @@ class SessionBridge {
 bool confirm_export(host::ExportDialogState& dialog);
 
 // Perform a confirmed export of `buffer`. Native writes the file at
-// dialog.path_buf and updates last_export_dir from it. Non-native hands the
+// dialog.path and updates last_export_dir from it. Non-native hands the
 // buffer to the host over IPC (with the live auto-contrast array). Sets
 // status_message either way; returns success.
 bool perform_export(const Buffer& buffer,
-                    host::ExportDialogState& dialog,
+                    const host::ExportDialogState& dialog,
                     host::IpcClient& ipc,
                     std::string& status_message,
                     std::string& last_export_dir);

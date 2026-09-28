@@ -431,6 +431,7 @@ if(OID_BUILD_IMGUI_FRONTEND)
     add_executable(settings_store_test
         host/settings/settings_store_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/settings/settings_store.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/system/process/process_id.cpp
     )
 
     target_include_directories(settings_store_test
@@ -785,10 +786,9 @@ if(OID_BUILD_IMGUI_FRONTEND)
 
     # Test the pure helpers out of host/ui/export_dialog.cpp
     # (default_export_path, open_export_dialog, classify_export_format,
-    # ensure_export_extension, set_export_path). None of them touch
-    # ImGui/GL, so this target never needs to link either; export_dialog.h
-    # itself only pulls in the header-only io/buffer_export_core.h for
-    # BufferExporter::OutputType.
+    # ensure_export_extension). None of them touch ImGui/GL, so this target
+    # never needs to link either; export_dialog.h itself only pulls in the
+    # header-only io/buffer_export_core.h for BufferExporter::OutputType.
     add_executable(export_dialog_test
         host/ui/export_dialog_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/ui/export_dialog.cpp
@@ -859,13 +859,12 @@ if(OID_BUILD_IMGUI_FRONTEND)
 
     add_test(NAME FileBufferLoaderTests COMMAND file_buffer_loader_test)
 
-    # Test FileOpenQueue out of host/io/file_open_queue.cpp: the FIFO of
+    # Test FileOpenQueue out of host/io/file_open_queue.h: the FIFO of
     # pending open-file paths the frame loop drains each frame, loading via
     # an injected Loader and inserting via an injected Upsert. Pure logic --
     # no GL/disk dependency, since both callables are supplied by the test.
     add_executable(file_open_queue_test
         host/io/file_open_queue_test.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/io/file_open_queue.cpp
     )
 
     target_include_directories(file_open_queue_test
@@ -970,7 +969,8 @@ if(OID_BUILD_IMGUI_FRONTEND)
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/agent/agent_server.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/agent/discovery_file.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/agent/agent_core.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/agent/wire_frame.cpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/host/agent/wire_frame.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/system/process/process_id.cpp)
     target_include_directories(agent_server_test
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
     target_include_directories(agent_server_test SYSTEM

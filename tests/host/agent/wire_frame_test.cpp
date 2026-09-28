@@ -56,6 +56,13 @@ reader(std::vector<std::byte> data) {
     };
 }
 
+static std::vector<std::byte>
+encode_frame(const json& obj, std::span<const std::byte> payload = {}) {
+    auto out = encode_frame_header(obj, payload.size());
+    out.insert(out.end(), payload.begin(), payload.end());
+    return out;
+}
+
 TEST(WireFrame, RoundTripNoPayload) {
     const auto bytes = encode_frame(json{{"method", "ping"}});
     auto [obj, payload] = decode_frame(reader(bytes), 0);
@@ -73,32 +80,10 @@ TEST(WireFrame, RoundTripWithPayload) {
     EXPECT_EQ(payload, raw);
 }
 
-TEST(WireFrame, EncodeRejectsOversizeJson) {
-    json big{{"blob", std::string(MAX_FRAME_BYTES + 1, 'x')}};
-    EXPECT_THROW(encode_frame(big), FrameError);
-}
-
-TEST(WireFrame, EncodeHeaderMatchesEncodeFrame) {
-    // Writing the header then the raw payload separately must be byte-for-byte
-    // identical to a single combined encode_frame(obj, raw).
-    std::vector<std::byte> raw(1024);
-    for (std::size_t i = 0; i < raw.size(); ++i)
-        raw[i] = static_cast<std::byte>(i & 0xff);
-    const auto header = encode_frame_header(json{{"ok", true}}, raw.size());
-    std::vector<std::byte> combined = header;
-    combined.insert(combined.end(), raw.begin(), raw.end());
-    EXPECT_EQ(combined, encode_frame(json{{"ok", true}}, raw));
-
-    auto [obj, payload] = decode_frame(reader(combined), raw.size());
-    EXPECT_EQ(obj.at("payload"), raw.size());
-    EXPECT_EQ(payload, raw);
-}
-
 TEST(WireFrame, EncodeHeaderNoPayloadOmitsField) {
     // payload_size 0 leaves the JSON untouched (no "payload" field) and emits
     // no trailer, so it decodes as a plain no-payload frame.
     const auto header = encode_frame_header(json{{"method", "ping"}}, 0);
-    EXPECT_EQ(header, encode_frame(json{{"method", "ping"}}));
     auto [obj, payload] = decode_frame(reader(header), 0);
     EXPECT_EQ(obj.at("method"), "ping");
     EXPECT_FALSE(obj.contains("payload"));

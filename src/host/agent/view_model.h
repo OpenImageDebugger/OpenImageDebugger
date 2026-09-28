@@ -26,6 +26,7 @@
 #ifndef HOST_AGENT_VIEW_MODEL_H_
 #define HOST_AGENT_VIEW_MODEL_H_
 
+#include <cmath>
 #include <cstddef>
 #include <optional>
 #include <string>
@@ -57,10 +58,13 @@ struct ViewState {
     std::optional<double> zoom;     // linear multiplier
     std::optional<double> rotation_deg; // [0,360)
     std::string channel = "all";        // "all" or "0".."2"
-    bool auto_contrast = true;          // global
-    int viewport_w = 0;
-    int viewport_h = 0;
 };
+
+// Wraps into rotation_deg's [0, 360): set_view(450) reads back as 90.
+inline double normalize_degrees(const double degrees) {
+    const double wrapped = std::fmod(degrees, 360.0);
+    return wrapped < 0.0 ? wrapped + 360.0 : wrapped;
+}
 
 // Unit split: view_of returns agent units, the setters take engine units.
 class ViewModel {
@@ -81,8 +85,8 @@ class ViewModel {
     virtual bool set_center(std::string_view name, double x, double y) = 0;
     virtual bool set_zoom_power(std::string_view name, double power) = 0;
     virtual bool set_rotation_rad(std::string_view name, double radians) = 0;
-    // channel: mode==-1 => "all" (restore natural layout); else index 0..2
-    virtual bool set_channel(std::string_view name, int mode, int index) = 0;
+    // channel: index < 0 => all (restore natural layout); else 0..2
+    virtual bool set_channel(std::string_view name, int index) = 0;
 
     // global + viewport
     virtual bool auto_contrast() = 0;

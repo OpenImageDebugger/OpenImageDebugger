@@ -85,9 +85,9 @@ bool confirm_export(host::ExportDialogState& dialog) {
     }
     dialog.open = false;
 
-    // open_export_dialog seeded path_buf with "<dir>/<name>.<ext>"; split it
+    // open_export_dialog seeded path with "<dir>/<name>.<ext>"; split it
     // back into what the nfd save dialog wants as defaults.
-    const std::filesystem::path seeded{dialog.path_buf.data()};
+    const std::filesystem::path seeded{dialog.path};
 
     const std::optional<std::string> chosen = request_save_path(
         seeded.parent_path().string(), seeded.filename().string());
@@ -96,24 +96,24 @@ bool confirm_export(host::ExportDialogState& dialog) {
     }
 
     dialog.format = host::classify_export_format(*chosen);
-    host::set_export_path(
-        dialog, host::ensure_export_extension(*chosen, dialog.format));
+    dialog.path = host::ensure_export_extension(*chosen, dialog.format);
 
     return true;
 }
 
 bool perform_export(const Buffer& buffer,
-                    host::ExportDialogState& dialog,
+                    const host::ExportDialogState& dialog,
                     host::IpcClient& /*ipc*/,
                     std::string& status_message,
                     std::string& last_export_dir) {
-    const bool ok = host::export_buffer_imgui(
-        buffer, dialog.path_buf.data(), dialog.format);
-    const std::string path{dialog.path_buf.data()};
+    const bool ok =
+        host::export_buffer_imgui(buffer, dialog.path, dialog.format);
     status_message =
-        (ok ? std::string{"Exported "} : std::string{"Export failed: "}) + path;
+        (ok ? std::string{"Exported "} : std::string{"Export failed: "}) +
+        dialog.path;
     if (ok) {
-        last_export_dir = std::filesystem::path{path}.parent_path().string();
+        last_export_dir =
+            std::filesystem::path{dialog.path}.parent_path().string();
     }
     return ok;
 }

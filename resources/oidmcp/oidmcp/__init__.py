@@ -7,5 +7,3 @@ debugger-scripts tree to ``sys.path`` (idempotent and lowest-precedence)
 so it imports as a normal named package rather than being loaded by
 filesystem path.
 """
-
-__version__ = "0.2.0"
