@@ -25,12 +25,24 @@
 
 #include "host/io/npy_decode.h"
 
+#include <algorithm>
 #include <array>
 #include <charconv>
 #include <cstdint>
 #include <string_view>
 
 namespace oid {
+
+bool has_npy_magic(const std::span<const std::byte> bytes) {
+    static constexpr std::array<std::byte, 6> kMagic{std::byte{0x93},
+                                                     std::byte{'N'},
+                                                     std::byte{'U'},
+                                                     std::byte{'M'},
+                                                     std::byte{'P'},
+                                                     std::byte{'Y'}};
+    return bytes.size() >= kMagic.size() &&
+           std::ranges::equal(bytes.first(kMagic.size()), kMagic);
+}
 
 namespace {
 
@@ -180,16 +192,11 @@ struct NpyHeader {
 // Validate the magic and version prefix and locate the header dict. Handles the
 // differing header-length widths of v1 (2-byte) and v2+ (4-byte) formats.
 Expected<NpyHeader> parse_header_span(const std::span<const std::byte> data) {
-    static constexpr std::array<unsigned char, 6> kMagic = {
-        0x93, 'N', 'U', 'M', 'P', 'Y'};
-
     if (data.size() < 10) {
         return make_error("npy: buffer too small for header");
     }
-    for (std::size_t i = 0; i < kMagic.size(); ++i) {
-        if (std::to_integer<std::uint8_t>(data[i]) != kMagic[i]) {
-            return make_error("npy: bad magic");
-        }
+    if (!has_npy_magic(data)) {
+        return make_error("npy: bad magic");
     }
 
     const std::uint8_t major = std::to_integer<std::uint8_t>(data[6]);

@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 
-"""Bridge to the single source of the wire framing: ``oidscripts.wireframe``.
+"""Bridge to the modules oid-mcp shares with the in-debugger endpoint.
 
-oid-mcp and the in-debugger endpoint must agree byte-for-byte on the wire
-format. Rather than keep a second copy in step by hand, both sides import
-the one module that defines it. oid-mcp runs from the deployed OID
-resources tree (``uv run --directory resources/oidmcp``), where
-``resources/oidscripts`` is a sibling of this package, so this bridge puts
-that directory on ``sys.path`` and re-exports the shared helpers as a
-normal named-package import -- no code is loaded by filesystem path.
+The two must agree byte-for-byte on the wire format
+(``oidscripts.wireframe``) and resolve the identical discovery directory
+(``oidscripts.discoverydir``). Rather than keep second copies in step by
+hand, both sides import the one module that defines each. oid-mcp runs
+from the deployed OID resources tree (``uv run --directory
+resources/oidmcp``), where ``resources/oidscripts`` is a sibling of this
+package, so this bridge puts that directory on ``sys.path`` and
+re-exports the shared helpers as a normal named-package import -- no
+code is loaded by filesystem path.
 
 The append is idempotent and lowest-precedence, so it cannot shadow a
 stdlib or site module; it mirrors what the test suite's conftest already
@@ -17,7 +19,8 @@ however, also means an unrelated ``oidscripts`` earlier on ``sys.path``
 could win the import, and a foreign ``wireframe`` may carry an
 incompatible wire format. So the resolved module is verified to be the one
 shipped beside us and a mismatch is rejected loudly rather than used
-silently.
+silently. ``oidscripts`` is a regular package, so pinning ``wireframe`` to
+an expected directory pins every sibling imported below it too.
 """
 
 import os
@@ -40,6 +43,7 @@ if str(_RESOURCES_DIR) not in sys.path:
     sys.path.append(str(_RESOURCES_DIR))
 
 try:
+    from oidscripts import discoverydir as _discoverydir  # noqa: E402
     from oidscripts import wireframe as _wireframe  # noqa: E402
 except ImportError as exc:  # pragma: no cover - deployment misconfiguration
     raise ImportError(
@@ -62,5 +66,6 @@ if _loaded is not None and os.path.realpath(_loaded) not in {
 MAX_FRAME_BYTES = _wireframe.MAX_FRAME_BYTES
 recv_frame = _wireframe.recv_frame
 send_frame = _wireframe.send_frame
+discovery_dir = _discoverydir.discovery_dir
 
-__all__ = ['MAX_FRAME_BYTES', 'recv_frame', 'send_frame']
+__all__ = ['MAX_FRAME_BYTES', 'discovery_dir', 'recv_frame', 'send_frame']

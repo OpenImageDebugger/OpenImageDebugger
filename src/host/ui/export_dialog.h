@@ -26,7 +26,6 @@
 #ifndef HOST_UI_EXPORT_DIALOG_H_
 #define HOST_UI_EXPORT_DIALOG_H_
 
-#include <array>
 #include <span>
 #include <string>
 #include <string_view>
@@ -40,7 +39,7 @@ namespace oid::host {
 struct ExportDialogState {
     bool open{false};
     std::string buffer_name; // target buffer's variable_name
-    std::array<char, 1024> path_buf{};
+    std::string path;
     BufferExporter::OutputType format{BufferExporter::OutputType::BITMAP};
 };
 
@@ -55,7 +54,7 @@ std::string default_export_path(std::string_view last_export_dir,
                                 BufferExporter::OutputType format);
 
 // Opens the dialog for `buffer_name`: resets `st` (format back to the
-// BITMAP default) and seeds `path_buf` via default_export_path(
+// BITMAP default) and seeds `path` via default_export_path(
 // last_export_dir, getenv("HOME"), buffer_name, st.format).
 void open_export_dialog(ExportDialogState& st,
                         const std::string& buffer_name,
@@ -90,9 +89,6 @@ BufferExporter::OutputType classify_export_format(std::string_view path);
 // Safety net for a confirmed path that carries no recognized extension.
 std::string ensure_export_extension(std::string path,
                                     BufferExporter::OutputType format);
-
-// Truncates to fit st.path_buf; perform_export() reads it back as a C string.
-void set_export_path(ExportDialogState& st, std::string_view path);
 
 } // namespace oid::host
 

@@ -25,7 +25,6 @@
 
 #include "host/io/file_buffer_loader.h"
 
-#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <format>
@@ -44,20 +43,6 @@
 namespace oid::host {
 
 namespace {
-
-bool has_npy_magic(const std::span<const std::byte> bytes) {
-    static constexpr std::array<unsigned char, 6> kMagic{
-        0x93, 'N', 'U', 'M', 'P', 'Y'};
-    if (bytes.size() < kMagic.size()) {
-        return false;
-    }
-    for (std::size_t i = 0; i < kMagic.size(); ++i) {
-        if (std::to_integer<unsigned char>(bytes[i]) != kMagic[i]) {
-            return false;
-        }
-    }
-    return true;
-}
 
 // "rgba" for 4-channel buffers; empty (single-channel-style, unlabeled) for
 // everything else -- the renderer only recognizes the 4-char layout string.
@@ -218,8 +203,7 @@ Expected<BufferRecord> decode_file_bytes(std::span<const std::byte> bytes,
     return record;
 }
 
-Expected<BufferRecord> load_buffer_from_file(const std::string& path,
-                                             std::size_t max_bytes) {
+Expected<BufferRecord> load_buffer_from_file(const std::string& path) {
     std::error_code ec;
     const std::filesystem::path fs_path{path};
 
@@ -227,9 +211,9 @@ Expected<BufferRecord> load_buffer_from_file(const std::string& path,
     if (ec) {
         return make_error("cannot stat file: " + path);
     }
-    if (size > max_bytes) {
+    if (size > MAX_OPEN_FILE_BYTES) {
         return make_error(std::format("file exceeds {} MB open limit: {}",
-                                      max_bytes / (1024 * 1024),
+                                      MAX_OPEN_FILE_BYTES / (1024 * 1024),
                                       path));
     }
 

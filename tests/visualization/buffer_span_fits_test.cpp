@@ -28,7 +28,7 @@
 
 #include <gtest/gtest.h>
 
-#include "visualization/buffer_span_fits.h"
+#include "ipc/raw_data_decode.h"
 
 using namespace oid;
 
@@ -63,8 +63,11 @@ TEST(BufferSpanFits, AcceptsATrimmedFinalRow) {
 
 TEST(BufferSpanFits, RejectsNonsenseGeometry) {
     EXPECT_FALSE(buffer_span_fits(0, 2, 1, 4, 1, 1024));
+    EXPECT_FALSE(buffer_span_fits(-1, 2, 1, 4, 1, 1024));
     EXPECT_FALSE(buffer_span_fits(4, 0, 1, 4, 1, 1024));
+    EXPECT_FALSE(buffer_span_fits(4, -1, 1, 4, 1, 1024));
     EXPECT_FALSE(buffer_span_fits(4, 2, 0, 4, 1, 1024));
+    EXPECT_FALSE(buffer_span_fits(4, 2, -1, 4, 1, 1024));
     EXPECT_FALSE(buffer_span_fits(4, 2, 1, 3, 1, 1024)); // step < width
     EXPECT_FALSE(buffer_span_fits(4, 2, 1, 4, 0, 1024)); // zero element size
 }

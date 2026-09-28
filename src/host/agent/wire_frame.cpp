@@ -81,18 +81,6 @@ std::vector<std::byte> encode_frame_header(const nlohmann::json& obj,
     return out;
 }
 
-std::vector<std::byte> encode_frame(const nlohmann::json& obj,
-                                    const std::span<const std::byte> payload) {
-    const std::string s = dump_frame_json(obj, payload.size());
-    std::vector<std::byte> out(4 + s.size() + payload.size());
-    fill_prefixed_json(out, s);
-    std::size_t pos = 4 + s.size();
-    for (const std::byte b : payload) {
-        out[pos++] = b;
-    }
-    return out;
-}
-
 // NOSONAR: std::function kept intentionally -- templating decode_frame would
 // force it header-only and destabilize the wire codec.
 DecodedFrame decode_frame(

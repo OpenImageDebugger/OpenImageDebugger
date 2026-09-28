@@ -12,6 +12,19 @@ def manager(live_endpoint):
     return server.SessionManager(), live_endpoint
 
 
+@pytest.fixture
+def closed_clients(monkeypatch):
+    closed = []
+    real_close = server.ControlClient.close
+
+    def spy_close(self):
+        closed.append(self)
+        return real_close(self)
+
+    monkeypatch.setattr(server.ControlClient, 'close', spy_close)
+    return closed
+
+
 def test_list_buffers(manager):
     mgr, _ = manager
     result = mgr.list_buffers(None)
@@ -341,49 +354,25 @@ def test_fetch_cache_does_not_bleed_across_pid_reused_debugger_sessions(
     assert arr2[0, 0, 0] == pytest.approx(42.0)
 
 
-def test_client_is_closed_when_a_call_raises(live_viewer, monkeypatch):
+def test_client_is_closed_when_a_call_raises(live_viewer, closed_clients):
     live_viewer()
     mgr = server.SessionManager()
-    closed = []
-    real_close = server.ControlClient.close
-
-    def spy_close(self):
-        closed.append(self)
-        return real_close(self)
-
-    monkeypatch.setattr(server.ControlClient, 'close', spy_close)
     with pytest.raises(ControlError):
         mgr.fetch(None, 'missing')  # viewer get_buffer('missing') -> ControlError
-    assert len(closed) == 1  # the per-call client is closed despite the error
+    assert len(closed_clients) == 1  # closed despite the error
 
 
-def test_client_is_closed_after_a_successful_call(live_viewer, monkeypatch):
+def test_client_is_closed_after_a_successful_call(live_viewer, closed_clients):
     live_viewer()
     mgr = server.SessionManager()
-    closed = []
-    real_close = server.ControlClient.close
-
-    def spy_close(self):
-        closed.append(self)
-        return real_close(self)
-
-    monkeypatch.setattr(server.ControlClient, 'close', spy_close)
     mgr.get_view(None)
-    assert len(closed) == 1  # the per-call client is closed after success too
+    assert len(closed_clients) == 1  # closed after success too
 
 
 def test_client_is_closed_on_fetch_including_cache_hit(live_endpoint,
-                                                        monkeypatch):
+                                                       closed_clients):
     _, bridge = live_endpoint
     mgr = server.SessionManager()
-    closed = []
-    real_close = server.ControlClient.close
-
-    def spy_close(self):
-        closed.append(self)
-        return real_close(self)
-
-    monkeypatch.setattr(server.ControlClient, 'close', spy_close)
 
     mgr.fetch(None, 'grad')
     fetches = bridge.fetch_count
@@ -394,4 +383,4 @@ def test_client_is_closed_on_fetch_including_cache_hit(live_endpoint,
     assert bridge.fetch_count == fetches
     # ...but both calls -- the cache miss and the cache hit -- still each
     # opened and closed their own per-call client.
-    assert len(closed) == 2
+    assert len(closed_clients) == 2

@@ -25,7 +25,6 @@
 
 #include "host/agent/native_view_model.h"
 
-#include <cmath>
 #include <iostream>
 #include <numbers>
 
@@ -44,19 +43,6 @@ static_assert(static_cast<float>(ViewModel::ZOOM_FACTOR) == Camera::ZOOM_FACTOR,
               "agent zoom factor must match Camera::ZOOM_FACTOR");
 
 namespace {
-
-constexpr double PI = std::numbers::pi;
-
-// Converts a Buffer::rotation() radians value into the [0, 360) degrees
-// range ViewState::rotation_deg reports.
-double normalize_degrees(const double radians) {
-    double degrees = radians * (180.0 / PI);
-    degrees = std::fmod(degrees, 360.0);
-    if (degrees < 0.0) {
-        degrees += 360.0;
-    }
-    return degrees;
-}
 
 // Reads ISOLATION_LAYOUTS so this and is_isolation_layout() cannot drift.
 const char* isolated_layout(const int index) {
@@ -153,15 +139,12 @@ std::optional<ViewState> NativeViewModel::view_of(const std::string_view name) {
     state.center_x = static_cast<double>(position.x());
     state.center_y = static_cast<double>(position.y());
     state.zoom = static_cast<double>(camera->compute_zoom());
-    state.rotation_deg = normalize_degrees(buffer->rotation());
+    state.rotation_deg =
+        normalize_degrees(buffer->rotation() * (180.0 / std::numbers::pi));
     const int mode = buffer->get_display_channel_mode();
     state.channel = mode == -1
                         ? "all"
                         : std::to_string(buffer->get_selected_channel_index());
-    state.auto_contrast = ui_.contrast_enabled();
-    const auto [viewport_w, viewport_h] = viewport_size();
-    state.viewport_w = viewport_w;
-    state.viewport_h = viewport_h;
     return state;
 }
 
@@ -209,7 +192,6 @@ bool NativeViewModel::set_rotation_rad(const std::string_view name,
 }
 
 bool NativeViewModel::set_channel(const std::string_view name,
-                                  const int mode,
                                   const int index) {
     const auto idx = ui_.model_index_of(name);
     if (!idx.has_value()) {
@@ -224,7 +206,7 @@ bool NativeViewModel::set_channel(const std::string_view name,
         return false;
     }
 
-    if (mode == -1) {
+    if (index < 0) {
         // An isolation swizzle would contradict this "all channels" switch.
         const BufferRecord& record = model_.at(*idx);
         const std::string_view current_layout = buffer->get_pixel_layout();
@@ -251,7 +233,7 @@ bool NativeViewModel::set_channel(const std::string_view name,
         buffer->set_display_channel_mode(-1);
         return true;
     }
-    if (index < 0 || index > 2) {
+    if (index > 2) {
         return false;
     }
     // A single-channel buffer always renders red, so view_of() would lie.

@@ -37,7 +37,6 @@
 #include "camera.h"
 #include "math/linear_algebra.h"
 #include "platform/gl_dialect.h"
-#include "visualization/buffer_span_fits.h"
 #include "visualization/game_object.h"
 #include "visualization/shader_pixel_layout.h"
 #include "visualization/shaders/oid_shaders.h"
@@ -46,20 +45,6 @@
 namespace oid {
 
 namespace {
-
-// Helper function to validate buffer dimension
-bool validate_dimension(const int dimension,
-                        const char* dimension_name,
-                        const int min_value,
-                        const int max_value) {
-    if (dimension < min_value || dimension > max_value) {
-        std::cerr << "[Error] Invalid buffer " << dimension_name << ": "
-                  << dimension << " (must be between " << min_value << " and "
-                  << max_value << ")" << std::endl;
-        return false;
-    }
-    return true;
-}
 
 // Helper function to format pixel value based on buffer type
 void format_pixel_value(std::stringstream& message,
@@ -350,26 +335,13 @@ void Buffer::configure(const BufferParams& params) {
         return;
     }
 
-    // Validate dimensions
-    if (!validate_dimension(params.buffer_width_i,
-                            "width",
-                            MIN_BUFFER_DIMENSION,
-                            MAX_BUFFER_DIMENSION)) {
-        return;
-    }
-
-    if (!validate_dimension(params.buffer_height_i,
-                            "height",
-                            MIN_BUFFER_DIMENSION,
-                            MAX_BUFFER_DIMENSION)) {
-        return;
-    }
-
-    // Validate channel count
-    if (params.channels < MIN_CHANNEL_COUNT ||
-        params.channels > MAX_CHANNEL_COUNT) {
-        std::cerr << "[Error] Invalid channel count: " << params.channels
-                  << " (must be between " << MIN_CHANNEL_COUNT << " and "
+    if (!within_display_limits(
+            params.buffer_width_i, params.buffer_height_i, params.channels)) {
+        std::cerr << "[Error] Invalid buffer geometry: "
+                  << params.buffer_width_i << "x" << params.buffer_height_i
+                  << "x" << params.channels << " (dimensions must be between "
+                  << MIN_BUFFER_DIMENSION << " and " << MAX_BUFFER_DIMENSION
+                  << ", channels between " << MIN_CHANNEL_COUNT << " and "
                   << MAX_CHANNEL_COUNT << ")" << std::endl;
         return;
     }
@@ -711,10 +683,6 @@ void Buffer::draw(const mat4& projection, const mat4& viewInv) {
     }
 }
 
-const std::vector<GLuint>& Buffer::buff_tex() const {
-    return buff_tex_;
-}
-
 float Buffer::buffer_width_f() const {
     return buffer_width_f_;
 }
@@ -737,18 +705,6 @@ BufferType Buffer::type() const {
 
 std::span<const std::byte> Buffer::buffer() const {
     return buffer_;
-}
-
-bool Buffer::transpose() const {
-    return transpose_;
-}
-
-int Buffer::num_textures_x() const {
-    return num_textures_x_;
-}
-
-int Buffer::num_textures_y() const {
-    return num_textures_y_;
 }
 
 std::span<float> Buffer::min_buffer_values() {

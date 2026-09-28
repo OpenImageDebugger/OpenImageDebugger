@@ -25,10 +25,11 @@
 
 #include "host/io/file_buffer_loader.h"
 
-#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
+
+#include "npy_test_blob.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -39,6 +40,8 @@
 #include <gtest/gtest.h>
 
 using namespace oid::host;
+using oid::test::make_npy;
+using oid::test::u8_payload;
 
 namespace {
 
@@ -109,58 +112,6 @@ std::vector<std::byte> make_hdr_rgb(int width, int height) {
     std::vector<std::byte> sink;
     stbi_write_hdr_to_func(sink_write, &sink, width, height, 3, pixels.data());
     return sink;
-}
-
-// Build a minimal v1 .npy blob: magic, version 1.0, header, payload.
-std::vector<std::byte> make_npy(const std::string& descr,
-                                bool fortran_order,
-                                const std::vector<int>& shape,
-                                const std::vector<std::byte>& payload) {
-    std::string shape_str = "(";
-    for (std::size_t i = 0; i < shape.size(); ++i) {
-        shape_str += std::to_string(shape[i]);
-        shape_str += ",";
-        if (i + 1 < shape.size()) {
-            shape_str += " ";
-        }
-    }
-    shape_str += ")";
-
-    std::string dict = "{'descr': '" + descr + "', 'fortran_order': " +
-                       (fortran_order ? "True" : "False") +
-                       ", 'shape': " + shape_str + ", }";
-
-    // Pad so that (10 + header_len) is a multiple of 64; header ends in '\n'.
-    const std::size_t unpadded = 10 + dict.size() + 1;
-    const std::size_t padded = (unpadded + 63) / 64 * 64;
-    dict.append(padded - unpadded, ' ');
-    dict.push_back('\n');
-
-    const auto header_len = static_cast<std::uint16_t>(dict.size());
-
-    std::vector<std::byte> blob;
-    constexpr std::array<unsigned char, 6> magic = {
-        0x93, 'N', 'U', 'M', 'P', 'Y'};
-    for (unsigned char c : magic) {
-        blob.push_back(static_cast<std::byte>(c));
-    }
-    blob.push_back(static_cast<std::byte>(1)); // major
-    blob.push_back(static_cast<std::byte>(0)); // minor
-    blob.push_back(static_cast<std::byte>(header_len & 0xFF));
-    blob.push_back(static_cast<std::byte>(header_len >> 8 & 0xFF));
-    for (const char c : dict) {
-        blob.push_back(static_cast<std::byte>(static_cast<unsigned char>(c)));
-    }
-    blob.insert(blob.end(), payload.begin(), payload.end());
-    return blob;
-}
-
-std::vector<std::byte> u8_payload(std::size_t n) {
-    std::vector<std::byte> p(n);
-    for (std::size_t i = 0; i < n; ++i) {
-        p[i] = static_cast<std::byte>(i & 0xFF);
-    }
-    return p;
 }
 
 } // namespace

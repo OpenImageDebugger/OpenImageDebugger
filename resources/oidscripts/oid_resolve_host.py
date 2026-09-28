@@ -239,15 +239,6 @@ class GdbHost(object):
         return out
 
 
-def _frame_from_lldb_debugger(lldb):
-    """Walk from lldb.debugger down to the selected frame, rather than
-    trusting lldb.frame -- a convenience global that only exists in some
-    lldb script contexts. Delegates the actual walk to lldbbridge's shared
-    helper once lldb.debugger is extracted."""
-    from oidscripts.debuggers.lldbbridge import frame_from_debugger
-    return frame_from_debugger(getattr(lldb, 'debugger', None))
-
-
 # Every attribute the gdb path reads WITHOUT a guard must be listed here
 # (TYPE_CODE_RVALUE_REF stays out: _peel_gdb_type reads it via getattr).
 _GDB_HOST_API = ('selected_frame', 'parse_and_eval', 'lookup_type',
@@ -275,7 +266,8 @@ def current_host():
         # lldb.frame exists only in some script contexts, and can be falsy.
         frame = getattr(lldb, 'frame', None)
         if not frame:
-            frame = _frame_from_lldb_debugger(lldb)
+            from oidscripts.debuggers.lldbbridge import frame_from_debugger
+            frame = frame_from_debugger(getattr(lldb, 'debugger', None))
         if frame:
             return LldbHost(frame)
         # An importable but inert lldb must not mask a real gdb.

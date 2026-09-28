@@ -170,11 +170,11 @@ if(OID_BUILD_IMGUI_FRONTEND)
     host/io/imgui_buffer_exporter.cpp
     host/io/imgui_buffer_exporter_glue.cpp
     host/io/file_buffer_loader.cpp
-    host/io/file_open_queue.cpp
     host/io/npy_decode.cpp
     host/agent/wire_frame.cpp
     host/agent/agent_core.cpp
     host/ui/svg_raster.cpp
+    system/process/process_id.cpp
     ${VIZ_SOURCES}
   )
 

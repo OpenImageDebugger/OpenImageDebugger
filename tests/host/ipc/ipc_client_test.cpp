@@ -181,26 +181,6 @@ static std::vector<std::byte> frame(const MessageComposer& c) {
     return cap.b;
 }
 
-// channels=1 and stride=width are fixed; callers pick width, height, size.
-static std::vector<std::byte> begin_frame(const std::string& name,
-                                          const int width,
-                                          const int height,
-                                          const std::size_t total_byte_size) {
-    MessageComposer c;
-    c.push(MessageType::PLOT_BUFFER_BEGIN)
-        .push(name)
-        .push(std::string("disp"))
-        .push(std::string("rgb"))
-        .push(false)
-        .push(width)
-        .push(height)
-        .push(1)
-        .push(width)
-        .push(static_cast<int>(BufferType::UNSIGNED_BYTE))
-        .push(total_byte_size);
-    return frame(c);
-}
-
 // "rgba" regardless of channels for convenience: a real client sends "" for
 // the channels=1 callers, which take the declared layout as-is; only the
 // multi-channel ones would trip the invalid-layout fallback on a shorter one.
@@ -225,6 +205,20 @@ begin_frame_ex(const std::string& name,
         .push(static_cast<int>(type))
         .push(total_byte_size);
     return frame(c);
+}
+
+// channels=1 and stride=width are fixed; callers pick width, height, size.
+static std::vector<std::byte> begin_frame(const std::string& name,
+                                          const int width,
+                                          const int height,
+                                          const std::size_t total_byte_size) {
+    return begin_frame_ex(name,
+                          width,
+                          height,
+                          1,
+                          width,
+                          BufferType::UNSIGNED_BYTE,
+                          total_byte_size);
 }
 
 static std::vector<std::byte>

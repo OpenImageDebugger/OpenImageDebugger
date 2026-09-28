@@ -46,16 +46,11 @@
 
 namespace oid::host::agent {
 
-// debugger_pid, when set, is advertised in the discovery file.
-struct AgentServerConfig {
-    bool enabled = false;            // OID_AGENT=1
-    std::optional<int> debugger_pid; // --agent-debugger-pid, else nullopt
-};
-
 // No socket thread touches ViewModel: only drain() dispatches, on its thread.
 class AgentServer {
   public:
-    AgentServer(ViewModel& model, AgentServerConfig cfg);
+    // debugger_pid, when set, is advertised in the discovery file.
+    AgentServer(ViewModel& model, std::optional<int> debugger_pid);
     ~AgentServer();
 
     AgentServer(const AgentServer&) = delete;
@@ -111,7 +106,7 @@ class AgentServer {
     // Caller must hold clients_mutex_.
     void reap_finished_clients_locked();
 
-    AgentServerConfig cfg_;
+    std::optional<int> debugger_pid_;
     std::string token_;
     AgentCore core_;
 

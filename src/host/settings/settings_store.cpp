@@ -33,13 +33,9 @@
 #include <system_error>
 #include <utility>
 
-#if defined(_WIN32)
-#include <process.h> // _getpid
-#else
-#include <unistd.h> // getpid
-#endif
-
 #include <nlohmann/json.hpp>
+
+#include "system/process/process_id.h"
 
 namespace oid::host {
 
@@ -253,11 +249,7 @@ void SettingsStore::save(const AppSettings& settings) const {
         // A per-writer temp name lets each save complete independently
         // (last writer wins, which is fine for UI preferences).
         static std::atomic<unsigned> tmp_counter{0};
-#if defined(_WIN32)
-        const auto pid = static_cast<long>(_getpid());
-#else
-        const auto pid = static_cast<long>(getpid());
-#endif
+        const auto pid = oid::system::current_process_id();
         const std::filesystem::path tmp = std::format(
             "{}.{}.{}.tmp", file_.string(), pid, tmp_counter.fetch_add(1));
         {

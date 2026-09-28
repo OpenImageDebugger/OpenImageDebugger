@@ -126,6 +126,53 @@ make_float_buffer_from_double(const std::vector<std::byte>& buff_double);
     }
 }
 
+// Not type_size(): make_buffer_record() narrows a FLOAT64 payload to float32
+// while leaving the record tagged FLOAT64; eight bytes would reject every one.
+[[nodiscard]] constexpr std::size_t
+display_element_size(const BufferType type) noexcept {
+    using enum BufferType;
+    switch (type) {
+    case SHORT:
+        [[fallthrough]];
+    case UNSIGNED_SHORT:
+        return sizeof(short);
+    case INT32:
+        [[fallthrough]];
+    case FLOAT32:
+        [[fallthrough]];
+    case FLOAT64:
+        return sizeof(float);
+    case UNSIGNED_BYTE:
+        [[fallthrough]];
+    default:
+        return sizeof(unsigned char);
+    }
+}
+
+// Nothing bounds the draw index and a file load skips the wire check. The
+// last row needs only `width`, so a producer that trims its padding fits.
+[[nodiscard]] constexpr bool buffer_span_fits(const int width,
+                                              const int height,
+                                              const int channels,
+                                              const int step,
+                                              const std::size_t element_size,
+                                              const std::size_t byte_count) {
+    if (width <= 0 || height <= 0 || channels <= 0 || step < width ||
+        element_size == 0) {
+        return false;
+    }
+    // 32-bit wasm: (height - 1) * step wraps, hiding an undersized buffer.
+    // Dividing the byte count also keeps hostile geometry from overflowing.
+    const auto bytes_per_pixel = static_cast<std::uint64_t>(channels) *
+                                 static_cast<std::uint64_t>(element_size);
+    const auto affordable_pixels =
+        static_cast<std::uint64_t>(byte_count) / bytes_per_pixel;
+    const auto addressed_pixels = (static_cast<std::uint64_t>(height) - 1) *
+                                      static_cast<std::uint64_t>(step) +
+                                  static_cast<std::uint64_t>(width);
+    return affordable_pixels >= addressed_pixels;
+}
+
 } // namespace oid
 
 #endif // RAW_DATA_DECODE_H_

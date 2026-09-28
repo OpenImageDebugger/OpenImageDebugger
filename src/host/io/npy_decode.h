@@ -45,6 +45,9 @@ struct NpyArray {
     std::vector<std::byte> bytes;
 };
 
+// True when `bytes` starts with the 6-byte NumPy magic "\x93NUMPY".
+[[nodiscard]] bool has_npy_magic(std::span<const std::byte> bytes);
+
 // Decodes .npy v1/v2/v3: little-endian dtypes, C- or Fortran-order 2-D,
 // C-order 3-D. FLOAT64 stays raw double bytes; the loader narrows to float32.
 [[nodiscard]] Expected<NpyArray> decode_npy(std::span<const std::byte> data);

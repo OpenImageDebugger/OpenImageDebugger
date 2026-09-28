@@ -160,6 +160,7 @@ def test_an_anonymous_aggregate_contributes_no_path_segment(bridge_module):
 
 def test_a_buffer_held_directly_by_this_is_listed(bridge_module):
     # A field passed as its own parent loses its name; `this` names bare.
+    # gdb accepts `this.image`; three walks disagreeing is the defect.
     image = FakeGdbField('image', FakeGdbType('Buffer'))
     base = FakeGdbType('Base', code=STRUCT_CODE, fields=[
         FakeGdbField('baseMember', FakeGdbType('Buffer')),
@@ -207,30 +208,6 @@ def test_a_typedef_wrapped_union_is_descended_into(bridge_module):
     found = _observable_names(bridge_module, holder, {'Buffer'})
 
     assert found == {'holder.payload.image'}
-
-
-def test_members_of_this_surface_bare(bridge_module):
-    # gdb accepts `this.image`; three walks disagreeing is the defect.
-    image = FakeGdbField('image', FakeGdbType('Buffer'))
-    base = FakeGdbType('Base', code=STRUCT_CODE, fields=[
-        FakeGdbField('baseMember', FakeGdbType('Buffer')),
-    ])
-    this_type = FakeGdbType('Holder', code=STRUCT_CODE, fields=[
-        FakeGdbField('Base', base, is_base_class=True),
-        image,
-    ])
-    bridge_module.gdb.parse_and_eval = lambda _expr: types.SimpleNamespace(
-        dereference=lambda: FakeGdbSymbol('*this', this_type))
-    bridge_module.gdb.selected_frame = lambda: FakeGdbFrame(
-        FakeGdbBlock([FakeGdbSymbol('this', FakeGdbType('Holder *'))]))
-
-    bridge = bridge_module.GdbBridge.__new__(bridge_module.GdbBridge)
-    bridge._type_bridge = FakeTypeBridge({'Buffer'})
-    found = set()
-    bridge._add_observable_symbol(FakeGdbSymbol('this', FakeGdbType(
-        'Holder *')), 'this', found)
-
-    assert found == {'image', 'baseMember'}
 
 
 def test_a_this_member_shadowed_by_a_local_is_not_listed(bridge_module):

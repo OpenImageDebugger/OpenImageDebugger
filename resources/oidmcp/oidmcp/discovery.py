@@ -6,9 +6,10 @@ import json
 import os
 import stat
 import sys
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+from ._wireframe import discovery_dir as _shared_discovery_dir
 
 
 class NoSessionError(Exception):
@@ -35,38 +36,10 @@ class ViewerSessionInfo:
     debugger_pid: int | None
 
 
-def _home_dir():
-    # Passwd-based home so a stripped-env MCP subprocess and the
-    # GUI-launched viewer agree, whatever $HOME/$TMPDIR/$XDG_* say.
-    try:
-        import pwd
-        home = pwd.getpwuid(os.getuid()).pw_dir
-        if home:
-            return home
-    except (KeyError, ImportError, OSError):
-        pass  # no passwd entry -> try $HOME, then a per-uid temp dir
-    return os.environ.get('HOME') or None
-
-
 def discovery_dir() -> Path:
-    override = os.environ.get('OID_AGENT_DIR')
-    if override:
-        return Path(override)
-    if os.name == 'nt':
-        local = os.environ.get('LOCALAPPDATA')
-        if local:
-            return Path(local) / 'oid-agent'
-        profile = os.environ.get('USERPROFILE')
-        if profile:
-            return Path(profile) / 'AppData' / 'Local' / 'oid-agent'
-        # No LOCALAPPDATA/USERPROFILE: %TEMP% is already per-user.
-        return Path(tempfile.gettempdir()) / 'oid-agent'  # NOSONAR
-    home = _home_dir()
-    if home:
-        return Path(home) / '.oid-agent'
-    # No passwd entry and no $HOME: /tmp is shared, so key the fallback by uid
-    # to avoid collisions (a dir owned by another uid would be refused).
-    return Path(tempfile.gettempdir()) / f'oid-agent-{os.getuid()}'  # NOSONAR
+    # Single-sourced with the debugger endpoint that writes the files read
+    # here, so producer and consumer can never drift onto separate dirs.
+    return Path(_shared_discovery_dir())
 
 
 def viewer_discovery_dir() -> Path:

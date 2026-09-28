@@ -629,13 +629,6 @@ void handle_export_requests(const FrameContext& ctx) {
 // Runs every rendered frame: bounded by the currently-loaded buffer count,
 // and the debounced saver does no I/O unless it decides to flush.
 void persist_settings_if_dirty(const FrameContext& ctx) {
-    for (std::size_t i = 0; i < ctx.model.size(); ++i) {
-        if (ctx.model.at(i).kind == oid::host::BufferKind::LOCAL_FILE) {
-            continue;
-        }
-        ctx.settings_persistence.seen_this_session.insert(
-            ctx.model.variable_name_of(i));
-    }
     std::vector<std::string> loaded_names;
     loaded_names.reserve(ctx.model.size());
     for (std::size_t i = 0; i < ctx.model.size(); ++i) {
@@ -643,6 +636,7 @@ void persist_settings_if_dirty(const FrameContext& ctx) {
             continue;
         }
         loaded_names.push_back(ctx.model.variable_name_of(i));
+        ctx.settings_persistence.seen_this_session.insert(loaded_names.back());
     }
     const auto now_s = std::chrono::duration_cast<std::chrono::seconds>(
                            std::chrono::system_clock::now().time_since_epoch())
@@ -684,8 +678,6 @@ int main(int argc, char** argv) {
     // -o/--open flags. Unrecognized args (e.g. "-style fusion") are ignored.
     const auto [hostname, port, open_files, agent_debugger_pid] =
         oid::host::parse_cli(argc, argv);
-    const oid::platform::Endpoint endpoint{hostname,
-                                           static_cast<unsigned short>(port)};
 
     // Inbound message hook (non-native only); must be installed before the
     // transport below starts polling for inbound messages.
@@ -720,8 +712,8 @@ int main(int argc, char** argv) {
     // disconnected and ipc.poll() below becomes a no-op each frame -- the
     // app still runs with an empty buffer list rather than failing to
     // start.
-    const auto transport =
-        oid::platform::make_transport({endpoint.host, endpoint.port});
+    const auto transport = oid::platform::make_transport(
+        {hostname, static_cast<unsigned short>(port)});
     oid::host::IpcClient ipc{*transport, model};
     oid::host::UiState ui{model};
 
@@ -816,9 +808,7 @@ int main(int argc, char** argv) {
                                 stages,
                                 ui,
                                 /*viewport source*/ canvas);
-            agent_server.emplace(*agent_model,
-                                 oid::host::agent::AgentServerConfig{
-                                     /*enabled=*/true, agent_debugger_pid});
+            agent_server.emplace(*agent_model, agent_debugger_pid);
             pacer.emplace(
                 std::chrono::nanoseconds{std::chrono::seconds{1}} /
                 oid::host::GlfwHostBackend::primary_refresh_rate_hz());
@@ -864,12 +854,10 @@ int main(int argc, char** argv) {
             apply_settings(s);
         },
         [&ui, &model, &export_dialog, &last_export_dir] {
-            // Refused in words: the host gets no reply, so a command arriving
-            // at an empty viewer would otherwise look like a broken menu.
             if (const std::string_view refusal =
                     oid::host::export_selected_refusal(model.size());
                 !refusal.empty()) {
-                ui.set_status_message(std::string{refusal});
+                ui.set_status_message(std::string(refusal));
                 return;
             }
             oid::host::open_export_dialog(export_dialog,

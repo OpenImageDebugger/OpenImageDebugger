@@ -3,6 +3,8 @@
 import json
 import sys
 
+import pytest
+
 from oidscripts import oid_resolve
 
 SENTINEL = '|OIDEND'
@@ -119,28 +121,27 @@ def test_list_observable_clamps_a_negative_offset_to_the_start():
     assert [s['name'] for s in out['items']] == ['v0', 'v1']
 
 
-def test_list_observable_clamps_a_negative_limit_to_a_single_item():
-    syms = [{'name': 'v%d' % i, 'type': 'cv::Mat'} for i in range(5)]
+@pytest.mark.parametrize('limit,expected', [
+    (-7, 1),
+    (oid_resolve.DEFAULT_OBSERVABLE_PAGE_LIMIT + 10,
+     oid_resolve.DEFAULT_OBSERVABLE_PAGE_LIMIT + 10),
+    (oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT,
+     oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT),
+    (oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT + 1,
+     oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT),
+])
+def test_list_observable_clamps_the_limit(limit, expected):
+    """The transports this serves truncate long strings silently, so an
+    oversized ask must still come back bounded rather than whole."""
+    assert (oid_resolve.DEFAULT_OBSERVABLE_PAGE_LIMIT + 10
+            < oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT)
+    syms = [{'name': 'v%d' % i, 'type': 'cv::Mat'}
+            for i in range(max(expected, limit) + 5)]
     host = FakeHost(symbols=syms)
 
-    out = _payload(oid_resolve.list_observable(0, -7, host=host))
+    out = _payload(oid_resolve.list_observable(0, limit, host=host))
 
-    assert [s['name'] for s in out['items']] == ['v0']
-
-
-def test_list_observable_clamps_a_limit_above_the_maximum():
-    """An unbounded limit would defeat the reason this function pages at
-    all: the transports it serves truncate long strings silently, so a
-    caller asking for too much must still get a bounded page, not
-    everything."""
-    total_symbols = oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT + 20
-    syms = [{'name': 'v%d' % i, 'type': 'cv::Mat'} for i in range(total_symbols)]
-    host = FakeHost(symbols=syms)
-
-    out = _payload(oid_resolve.list_observable(0, total_symbols, host=host))
-
-    assert len(out['items']) == oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT
-    assert out['total'] == total_symbols
+    assert len(out['items']) == expected
 
 
 def test_list_observable_defaults_to_eight_when_no_limit_is_passed():
@@ -153,40 +154,6 @@ def test_list_observable_defaults_to_eight_when_no_limit_is_passed():
 
     assert oid_resolve.DEFAULT_OBSERVABLE_PAGE_LIMIT == 8
     assert len(out['items']) == oid_resolve.DEFAULT_OBSERVABLE_PAGE_LIMIT
-
-
-def test_list_observable_honors_a_limit_between_the_default_and_the_ceiling():
-    """The whole point of separating the two roles: a caller whose own
-    transport can carry more than the default must no longer be cut down
-    to it, as long as it asks for no more than the ceiling."""
-    limit = oid_resolve.DEFAULT_OBSERVABLE_PAGE_LIMIT + 10
-    assert limit < oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT
-    syms = [{'name': 'v%d' % i, 'type': 'cv::Mat'} for i in range(limit + 5)]
-    host = FakeHost(symbols=syms)
-
-    out = _payload(oid_resolve.list_observable(0, limit, host=host))
-
-    assert len(out['items']) == limit
-
-
-def test_list_observable_honors_a_limit_exactly_at_the_ceiling():
-    ceiling = oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT
-    syms = [{'name': 'v%d' % i, 'type': 'cv::Mat'} for i in range(ceiling + 5)]
-    host = FakeHost(symbols=syms)
-
-    out = _payload(oid_resolve.list_observable(0, ceiling, host=host))
-
-    assert len(out['items']) == ceiling
-
-
-def test_list_observable_clamps_a_limit_one_above_the_ceiling():
-    ceiling = oid_resolve.MAX_OBSERVABLE_PAGE_LIMIT
-    syms = [{'name': 'v%d' % i, 'type': 'cv::Mat'} for i in range(ceiling + 5)]
-    host = FakeHost(symbols=syms)
-
-    out = _payload(oid_resolve.list_observable(0, ceiling + 1, host=host))
-
-    assert len(out['items']) == ceiling
 
 
 def test_list_observable_total_reports_every_symbol_regardless_of_page_size():

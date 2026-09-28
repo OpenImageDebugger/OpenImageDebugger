@@ -25,12 +25,12 @@
 
 // Exercises the pure export-path helpers (default_export_path,
 // open_export_dialog, classify_export_format, ensure_export_extension,
-// set_export_path) declared in host/ui/export_dialog.h. None of them touch
-// ImGui/GL, so this test binary never needs to link either.
+// export_selected_refusal)
+// declared in host/ui/export_dialog.h. None of them touch ImGui/GL, so
+// this test binary never needs to link either.
 
 #include "host/ui/export_dialog.h"
 
-#include <cstring>
 #include <span>
 #include <string>
 #include <string_view>
@@ -46,7 +46,6 @@ using oid::host::export_selected_refusal;
 using oid::host::ExportDialogState;
 using oid::host::extension_for;
 using oid::host::open_export_dialog;
-using oid::host::set_export_path;
 
 TEST(ExportDialog, DefaultPathPrefersLastExportDir) {
     EXPECT_EQ(default_export_path("/exp", "/home/x", "buf", OutputType::BITMAP),
@@ -80,7 +79,7 @@ TEST(ExportDialog, OpenExportDialogSeedsStateFromBufferAndDir) {
     EXPECT_TRUE(st.open);
     EXPECT_EQ(st.buffer_name, "buf");
     EXPECT_EQ(st.format, OutputType::BITMAP);
-    EXPECT_STREQ(st.path_buf.data(), "/exp/buf.png");
+    EXPECT_EQ(st.path, "/exp/buf.png");
 }
 
 TEST(ExportDialog, OpenResetsStateFromPriorOpen) {
@@ -91,7 +90,7 @@ TEST(ExportDialog, OpenResetsStateFromPriorOpen) {
     open_export_dialog(st, "second", "/exp");
     EXPECT_EQ(st.buffer_name, "second");
     EXPECT_EQ(st.format, OutputType::BITMAP);
-    EXPECT_STREQ(st.path_buf.data(), "/exp/second.png");
+    EXPECT_EQ(st.path, "/exp/second.png");
 }
 
 TEST(ExportDialog, ClassifyFormatFromExtension) {
@@ -132,12 +131,6 @@ TEST(ExportDialog, EnsureExtensionNoDoubleAppendForUppercase) {
               "/a/buf.OCT");
 }
 
-TEST(ExportDialog, SetExportPathCopiesIntoBuffer) {
-    ExportDialogState st;
-    set_export_path(st, "/exp/img.png");
-    EXPECT_STREQ(st.path_buf.data(), "/exp/img.png");
-}
-
 TEST(ExportDialog, RegistryIsSelfConsistent) {
     ASSERT_FALSE(export_formats().empty());
 
@@ -153,20 +146,6 @@ TEST(ExportDialog, RegistryIsSelfConsistent) {
 
     EXPECT_EQ(classify_export_format("/x/noext"),
               export_formats().front().type);
-}
-
-TEST(ExportDialog, SetExportPathTruncatesOverlongPath) {
-    ExportDialogState st;
-    const std::string long_path(4000, 'a');
-    set_export_path(st, long_path);
-    // path_buf is a fixed 1024-byte buffer: result is NUL-terminated and fits.
-    EXPECT_EQ(std::strlen(st.path_buf.data()), st.path_buf.size() - 1);
-}
-
-TEST(ExportDialog, AHostCommandWithNoBuffersIsRefusedInWords) {
-    // The answer has to come from the viewer: no host keeps a copy of which
-    // buffer is selected, and the wire carries no reply.
-    EXPECT_FALSE(export_selected_refusal(0).empty());
 }
 
 TEST(ExportDialog, ARefusalNamesTheSituationRatherThanBlamingTheExport) {
