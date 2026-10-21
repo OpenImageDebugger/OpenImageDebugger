@@ -184,7 +184,8 @@ class AgentEndpoint(object):
                 box['gave_up'] = True
             raise EndpointError(
                 ERROR_TIMEOUT,
-                'debugger made no progress for %gs' % self._timeout)
+                'no request started or finished within %gs; '
+                'the debugger is busy or hung' % self._timeout)
         if not done.wait(self._timeout):
             raise EndpointError(
                 ERROR_TIMEOUT,
