@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.metadata
 import json
 import os
 import sys
@@ -293,7 +294,16 @@ class _OidServer(MCPServer):
             raise ToolError(f'{error}: {_friendly(cause)}') from cause
 
 
-mcp = _OidServer('oid', instructions=_INSTRUCTIONS)
+def _server_version() -> str:
+    # MCPServer types version as str; None fails every MCP handshake.
+    try:
+        return importlib.metadata.version('oid-mcp')
+    except importlib.metadata.PackageNotFoundError:
+        return ''
+
+
+mcp = _OidServer('oid', instructions=_INSTRUCTIONS,
+                 version=_server_version())
 _manager = SessionManager()
 
 

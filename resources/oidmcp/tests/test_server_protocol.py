@@ -71,3 +71,28 @@ def test_friendly_never_returns_blank_and_separates_hints():
 def test_friendly_joins_a_sentence_to_its_hint_with_one_space():
     text = server._friendly(ControlError('symbol_not_found', 'no symbol.'))
     assert text.startswith('no symbol. Call list_buffers()')
+
+
+def test_server_version_is_the_installed_distribution(monkeypatch):
+    monkeypatch.setattr(server.importlib.metadata, 'version',
+                        lambda name: '9.9.9' if name == 'oid-mcp' else None)
+    assert server._server_version() == '9.9.9'
+
+
+def test_server_version_is_empty_when_not_installed(monkeypatch):
+    def missing(name):
+        raise server.importlib.metadata.PackageNotFoundError(name)
+    monkeypatch.setattr(server.importlib.metadata, 'version', missing)
+    assert server._server_version() == ''
+
+
+@pytest.mark.parametrize('mode', ['legacy', 'auto'])
+def test_client_sees_the_server_version(monkeypatch, mode):
+    monkeypatch.setattr(server.importlib.metadata, 'version',
+                        lambda name: '9.9.9')
+    that_server = server._OidServer('oid', version=server._server_version())
+
+    async def run():
+        async with Client(that_server, mode=mode) as client:
+            return client.server_info.version
+    assert asyncio.run(run()) == '9.9.9'
