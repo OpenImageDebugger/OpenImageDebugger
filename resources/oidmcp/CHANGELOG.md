@@ -15,7 +15,7 @@ All notable changes to `oid-mcp` are documented here. This project adheres to
 - Tool errors reach the agent again on mcp 2.x, including the hints about
   `OID_AGENT=1` and `list_buffers`.
 - Parallel tool calls no longer race on the buffer cache, and no longer open
-  more connections to one debugger session than its listen backlog holds.
+  more connections to one debugger or viewer than it can serve.
 - `dump` without `overwrite` can no longer clobber a file written by a
   parallel call.
 - MCP clients now see oid-mcp's own version rather than the SDK's.
