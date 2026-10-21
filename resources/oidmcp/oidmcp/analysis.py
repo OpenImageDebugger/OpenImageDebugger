@@ -144,6 +144,21 @@ def _safe_dump_dir() -> Path:
     return directory
 
 
+def _dump_filename(symbol: str, stop_generation: int,
+                   path: str | None) -> str:
+    if path is None:
+        name = re.sub(r'[^A-Za-z0-9_.-]', '_', symbol)
+        return f'{name}_gen{stop_generation}.npy'
+    # The client picks only a name INSIDE the hardened dump dir; a path
+    # separator, '..', or an absolute path could escape it.
+    if (os.path.isabs(path)
+            or os.path.basename(path) != path
+            or path in ('.', '..', '')):
+        raise ValueError(
+            'dump path must be a bare filename within the dump directory')
+    return path if path.endswith('.npy') else f'{path}.npy'
+
+
 def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
              path: str | None = None, overwrite: bool = False) -> str:
     """
@@ -159,26 +174,14 @@ def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
     cannot silently destroy the caller's data.
     """
     directory = _safe_dump_dir()
-    if path is None:
-        name = re.sub(r'[^A-Za-z0-9_.-]', '_', symbol)
-        filename = f'{name}_gen{stop_generation}.npy'
-    else:
-        # The client picks only a name INSIDE the hardened dump dir; a
-        # path separator, '..', or an absolute path could escape it.
-        if (os.path.isabs(path)
-                or os.path.basename(path) != path
-                or path in ('.', '..', '')):
-            raise ValueError(
-                'dump path must be a bare filename within the dump '
-                'directory')
-        filename = path if path.endswith('.npy') else f'{path}.npy'
-    target = os.path.join(str(directory), filename)
+    target = os.path.join(str(directory),
+                          _dump_filename(symbol, stop_generation, path))
+    exists = f'{target} already exists; pass overwrite=true to replace it'
     if os.path.islink(target):
         raise ValueError(
             f'{target} is a symlink; refusing to write through it')
     if not overwrite and os.path.lexists(target):
-        raise FileExistsError(
-            f'{target} already exists; pass overwrite=true to replace it')
+        raise FileExistsError(exists)
     # Atomic and symlink-safe: os.replace() swaps the directory entry
     # and never follows a symlink sitting at the target. Without
     # overwrite, os.link() fails if the target appeared since the check
@@ -193,9 +196,7 @@ def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
             try:
                 os.link(tmp, target)
             except FileExistsError:
-                raise FileExistsError(
-                    f'{target} already exists; pass overwrite=true to '
-                    f'replace it') from None
+                raise FileExistsError(exists) from None
             os.unlink(tmp)
     except BaseException:
         try:

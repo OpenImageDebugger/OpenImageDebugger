@@ -57,8 +57,9 @@ def test_fetch_refetches_after_stop(manager):
 
 
 def test_unknown_symbol_reaches_the_client_with_its_hint(live_endpoint):
+    call = server.mcp.call_tool('stats', {'symbol': 'missing'})
     with pytest.raises(ToolError) as excinfo:
-        asyncio.run(server.mcp.call_tool('stats', {'symbol': 'missing'}))
+        asyncio.run(call)
     assert 'list_buffers' in str(excinfo.value)
 
 
@@ -76,9 +77,9 @@ def test_view_tool_returns_image_and_text(manager):
 def test_dump_tool_rejects_paths_outside_the_dump_dir(live_endpoint,
                                                       dump_dir):
     escaping = str(dump_dir / 'no-such-dir' / 'out.npy')
+    call = server.mcp.call_tool('dump', {'symbol': 'grad', 'path': escaping})
     with pytest.raises(ToolError) as excinfo:
-        asyncio.run(server.mcp.call_tool(
-            'dump', {'symbol': 'grad', 'path': escaping}))
+        asyncio.run(call)
     assert 'bare filename' in str(excinfo.value)
 
 
