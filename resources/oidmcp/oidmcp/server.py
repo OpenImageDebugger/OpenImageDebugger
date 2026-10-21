@@ -7,6 +7,7 @@ import os
 import sys
 
 from mcp.server.mcpserver import MCPServer, Image
+from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 
 from .analysis import compute_stats, dump_npy, extract_values
 from .buffers import BufferCache, decode_buffer
@@ -32,9 +33,13 @@ _HINTS = {
 
 def _friendly(error: Exception) -> str:
     if isinstance(error, ControlError):
+        message = error.message or error.code
         hint = _HINTS.get(error.code, '')
-        return f'{error.message}' + (f' {hint}' if hint else '')
-    return str(error)
+        if not hint:
+            return message
+        separator = ' ' if message.endswith(('.', '!', '?')) else '. '
+        return message + separator + hint
+    return str(error) or type(error).__name__
 
 
 def _parse_max_bytes() -> int:
@@ -251,7 +256,22 @@ _STARTUP_WARNING = (
     '`stats`/`values` over reading whole buffers.\n'
 )
 
-mcp = MCPServer('oid', instructions=_INSTRUCTIONS)
+_EXPECTED = (ControlError, NoSessionError, OSError, ValueError, RuntimeError)
+
+
+class _OidServer(MCPServer):
+    # mcp 2.x hides any non-ToolError text from the client; oid-mcp's errors tell the agent what to do next.
+    async def call_tool(self, name, arguments, context=None):
+        try:
+            return await super().call_tool(name, arguments, context)
+        except UnexpectedToolError as error:
+            cause = error.__cause__
+            if not isinstance(cause, _EXPECTED):
+                raise
+            raise ToolError(f'{error}: {_friendly(cause)}') from cause
+
+
+mcp = _OidServer('oid', instructions=_INSTRUCTIONS)
 _manager = SessionManager()
 
 
