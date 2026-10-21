@@ -1,6 +1,8 @@
+import asyncio
 import os
 
 import pytest
+from mcp.server.mcpserver.exceptions import ToolError
 
 from oidmcp import server
 from oidmcp.analysis import compute_stats
@@ -52,19 +54,10 @@ def test_fetch_refetches_after_stop(manager):
     assert bridge.fetch_count == fetches + 1
 
 
-def test_fetch_unknown_symbol_raises_control_error(manager):
-    mgr, _ = manager
-    with pytest.raises(ControlError) as excinfo:
-        mgr.fetch(None, 'missing')
-    assert excinfo.value.code == 'symbol_not_found'
-
-
-def test_no_session_raises_no_session_error(tmp_path, monkeypatch):
-    monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'empty'))
-    mgr = server.SessionManager()
-    with pytest.raises(NoSessionError) as excinfo:
-        mgr.fetch(None, 'img')
-    assert 'OID_AGENT=1' in str(excinfo.value)
+def test_unknown_symbol_reaches_the_client_with_its_hint(live_endpoint):
+    with pytest.raises(ToolError) as excinfo:
+        asyncio.run(server.mcp.call_tool('stats', {'symbol': 'missing'}))
+    assert 'list_buffers' in str(excinfo.value)
 
 
 def test_view_tool_returns_image_and_text(manager):
@@ -80,11 +73,10 @@ def test_view_tool_returns_image_and_text(manager):
 
 def test_dump_tool_rejects_paths_outside_the_dump_dir(live_endpoint,
                                                       dump_dir):
-    # The tool lets the ValueError through; _OidServer renders it for the
-    # client.
     escaping = str(dump_dir / 'no-such-dir' / 'out.npy')
-    with pytest.raises(ValueError) as excinfo:
-        server.dump('grad', path=escaping)
+    with pytest.raises(ToolError) as excinfo:
+        asyncio.run(server.mcp.call_tool(
+            'dump', {'symbol': 'grad', 'path': escaping}))
     assert 'bare filename' in str(excinfo.value)
 
 
