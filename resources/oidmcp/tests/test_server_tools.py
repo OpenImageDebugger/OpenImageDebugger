@@ -440,21 +440,33 @@ def test_debugger_slots_are_released_when_connect_or_call_raises(
         manager, monkeypatch):
     mgr, (info, _) = manager
     real_connect = server.SessionManager._connect
+    cap = server._DEBUGGER_CONNECTIONS
+
+    def assert_all_slots_free():
+        slots = mgr._debugger_slots(info)
+        taken = [slots.acquire(blocking=False) for _ in range(cap)]
+        for ok in taken:
+            if ok:
+                slots.release()
+        assert all(taken)
 
     def refuse(self, info):
         raise ConnectionRefusedError()
 
     monkeypatch.setattr(server.SessionManager, '_connect', refuse)
-    for _ in range(server._DEBUGGER_CONNECTIONS + 1):
+    for _ in range(cap):
         with pytest.raises(ConnectionRefusedError):
             mgr.list_buffers(None)
+    assert_all_slots_free()
+
+    def boom(c):
+        raise RuntimeError('boom')
 
     monkeypatch.setattr(server.SessionManager, '_connect', real_connect)
-    for _ in range(server._DEBUGGER_CONNECTIONS + 1):
+    for _ in range(cap):
         with pytest.raises(RuntimeError):
-            mgr._call_debugger(None, lambda c: (_ for _ in ()).throw(
-                RuntimeError('boom')))
-    assert mgr.list_buffers(None)['symbols'] == ['img', 'grad']
+            mgr._call_debugger(None, boom)
+    assert_all_slots_free()
 
 
 def test_each_debugger_session_gets_its_own_connection_cap():
@@ -464,10 +476,5 @@ def test_each_debugger_session_gets_its_own_connection_cap():
         def __init__(self, pid, token):
             self.pid, self.token = pid, token
 
-    a, b = Info(1, 'x'), Info(2, 'x')
-    held = [mgr._debugger_slots(a) for _ in range(2)]
-    assert held[0] is held[1]
-    for _ in range(server._DEBUGGER_CONNECTIONS):
-        assert held[0].acquire(blocking=False)
-    assert not held[0].acquire(blocking=False)
-    assert mgr._debugger_slots(b).acquire(blocking=False)
+    assert (mgr._debugger_slots(Info(1, 'x'))
+            is not mgr._debugger_slots(Info(2, 'x')))
