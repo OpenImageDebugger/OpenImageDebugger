@@ -176,7 +176,13 @@ def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
     if os.path.islink(target):
         raise ValueError(
             f'{target} is a symlink; refusing to write through it')
-    # Neither call follows a symlink at target; os.link fails if it exists.
+    if not overwrite and os.path.lexists(target):
+        raise FileExistsError(
+            f'{target} already exists; pass overwrite=true to replace it')
+    # Atomic and symlink-safe: os.replace() swaps the directory entry
+    # and never follows a symlink sitting at the target. Without
+    # overwrite, os.link() fails if the target appeared since the check
+    # above, so concurrent dumps to one path cannot clobber each other.
     fd, tmp = tempfile.mkstemp(dir=str(directory), suffix='.npy.tmp')
     try:
         with os.fdopen(fd, 'wb') as handle:
