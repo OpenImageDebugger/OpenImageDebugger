@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections import OrderedDict
 
 import numpy as np
@@ -78,15 +79,18 @@ class BufferCache:
     def __init__(self, capacity: int = 4):
         self._capacity = capacity
         self._entries: OrderedDict[CacheKey, CacheValue] = OrderedDict()
+        self._lock = threading.Lock()
 
     def get(self, key: CacheKey) -> CacheValue | None:
-        if key not in self._entries:
-            return None
-        self._entries.move_to_end(key)
-        return self._entries[key]
+        with self._lock:
+            if key not in self._entries:
+                return None
+            self._entries.move_to_end(key)
+            return self._entries[key]
 
     def put(self, key: CacheKey, value: CacheValue) -> None:
-        self._entries[key] = value
-        self._entries.move_to_end(key)
-        while len(self._entries) > self._capacity:
-            self._entries.popitem(last=False)
+        with self._lock:
+            self._entries[key] = value
+            self._entries.move_to_end(key)
+            while len(self._entries) > self._capacity:
+                self._entries.popitem(last=False)

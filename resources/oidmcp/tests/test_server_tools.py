@@ -1,5 +1,7 @@
 import asyncio
 import os
+import threading
+import time
 
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
@@ -378,3 +380,94 @@ def test_client_is_closed_on_fetch_including_cache_hit(live_endpoint,
     # ...but both calls -- the cache miss and the cache hit -- still each
     # opened and closed their own per-call client.
     assert len(closed_clients) == 2
+
+
+def test_parallel_calls_keep_between_two_and_three_connections_per_debugger(
+        manager, monkeypatch):
+    mgr, (_, bridge) = manager
+    state = {'open': 0, 'max': 0}
+    live = set()
+    guard = threading.Lock()
+    real_connect = server.SessionManager._connect
+    real_close = server.ControlClient.close
+    real_metadata = bridge.get_buffer_metadata
+
+    def counting_connect(self, info):
+        client = real_connect(self, info)
+        with guard:
+            live.add(id(client))
+            state['open'] += 1
+            state['max'] = max(state['max'], state['open'])
+        return client
+
+    def counting_close(self):
+        with guard:
+            if id(self) in live:
+                live.discard(id(self))
+                state['open'] -= 1
+        return real_close(self)
+
+    def slow_metadata(*args, **kwargs):
+        time.sleep(0.1)
+        return real_metadata(*args, **kwargs)
+
+    monkeypatch.setattr(server.SessionManager, '_connect', counting_connect)
+    monkeypatch.setattr(server.ControlClient, 'close', counting_close)
+    monkeypatch.setattr(bridge, 'get_buffer_metadata', slow_metadata)
+
+    results, errors = [], []
+
+    def call(fn):
+        try:
+            results.append(fn())
+        except BaseException as exc:
+            errors.append(exc)
+
+    calls = ([lambda: mgr.fetch(None, 'grad')] * 4
+             + [lambda: mgr.list_buffers(None)] * 4)
+    threads = [threading.Thread(target=call, args=(fn,)) for fn in calls]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert 2 <= state['max'] <= 3
+    assert errors == []
+    assert len(results) == 8
+
+
+def test_debugger_slots_are_released_when_connect_or_call_raises(
+        manager, monkeypatch):
+    mgr, (info, _) = manager
+    real_connect = server.SessionManager._connect
+
+    def refuse(self, info):
+        raise ConnectionRefusedError()
+
+    monkeypatch.setattr(server.SessionManager, '_connect', refuse)
+    for _ in range(server._DEBUGGER_CONNECTIONS + 1):
+        with pytest.raises(ConnectionRefusedError):
+            mgr.list_buffers(None)
+
+    monkeypatch.setattr(server.SessionManager, '_connect', real_connect)
+    for _ in range(server._DEBUGGER_CONNECTIONS + 1):
+        with pytest.raises(RuntimeError):
+            mgr._call_debugger(None, lambda c: (_ for _ in ()).throw(
+                RuntimeError('boom')))
+    assert mgr.list_buffers(None)['symbols'] == ['img', 'grad']
+
+
+def test_each_debugger_session_gets_its_own_connection_cap():
+    mgr = server.SessionManager()
+
+    class Info:
+        def __init__(self, pid, token):
+            self.pid, self.token = pid, token
+
+    a, b = Info(1, 'x'), Info(2, 'x')
+    held = [mgr._debugger_slots(a) for _ in range(2)]
+    assert held[0] is held[1]
+    for _ in range(server._DEBUGGER_CONNECTIONS):
+        assert held[0].acquire(blocking=False)
+    assert not held[0].acquire(blocking=False)
+    assert mgr._debugger_slots(b).acquire(blocking=False)

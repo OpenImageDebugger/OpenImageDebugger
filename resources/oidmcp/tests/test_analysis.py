@@ -1,5 +1,6 @@
 import os
 import sys
+import threading
 
 import numpy as np
 import pytest
@@ -224,3 +225,30 @@ def test_dump_npy_default_dir_rejects_symlink(dump_dir):
     with pytest.raises(RuntimeError) as excinfo:
         dump_npy(arr, 'img', 1)
     assert 'symlink' in str(excinfo.value)
+
+
+def test_parallel_dumps_to_one_path_clobber_nothing(dump_dir):
+    arrays = [np.full((2, 2, 1), i, dtype=np.float32) for i in range(8)]
+    barrier = threading.Barrier(len(arrays))
+    winners, losers = [], []
+
+    def dump(arr):
+        barrier.wait()
+        try:
+            winners.append((arr, dump_npy(arr, 'x', 0, path='race.npy')))
+        except FileExistsError as exc:
+            losers.append(str(exc))
+
+    threads = [threading.Thread(target=dump, args=(a,)) for a in arrays]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert len(winners) == 1
+    assert len(losers) == 7
+    assert all('pass overwrite=true' in m for m in losers)
+    winner, written = winners[0]
+    np.testing.assert_array_equal(np.load(written), winner)
+    assert not [f for f in os.listdir(os.path.dirname(written))
+                if f.endswith('.tmp')]

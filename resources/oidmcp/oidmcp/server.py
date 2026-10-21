@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 
 from mcp.server.mcpserver import MCPServer, Image
 from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
@@ -64,22 +65,41 @@ def _parse_max_bytes() -> int:
     return value
 
 
+# Older debugger endpoints listen with a backlog of 4, and their serial
+# debugger thread gains nothing from more than 2 requests in flight, so 3
+# keeps one spare slot without ever overflowing the backlog.
+_DEBUGGER_CONNECTIONS = 3
+
+
 class SessionManager:
     """Per-stop buffer cache over live sessions (a fresh connection per call)."""
 
     def __init__(self):
         self._cache = BufferCache(capacity=4)
         self._max_bytes = _parse_max_bytes()
+        self._slots_guard = threading.Lock()
+        self._slots: dict[tuple, threading.BoundedSemaphore] = {}
+
+    def _debugger_slots(self, info) -> threading.BoundedSemaphore:
+        key = (info.pid, info.token)
+        with self._slots_guard:
+            slots = self._slots.get(key)
+            if slots is None:
+                slots = self._slots[key] = threading.BoundedSemaphore(
+                    _DEBUGGER_CONNECTIONS)
+            return slots
 
     def _connect(self, info):
         return ControlClient('127.0.0.1', info.port, info.token)
 
     def _call_debugger(self, session, fn):
-        client = self._connect(self._resolve(session))
-        try:
-            return fn(client)
-        finally:
-            client.close()
+        info = self._resolve(session)
+        with self._debugger_slots(info):
+            client = self._connect(info)
+            try:
+                return fn(client)
+            finally:
+                client.close()
 
     def _call_viewer(self, session, fn):
         # A viewer discovery file can outlive its endpoint (its writer pid
@@ -196,16 +216,18 @@ class SessionManager:
         # ping returns the stop generation keying the cache; one connection
         # serves it and get_buffer, so the key matches the stop that made the
         # bytes. token is per-instance: a reused pid can't read stale bytes.
-        client = self._connect(info)
-        try:
-            generation = client.ping()
-            key = (info.pid, info.token, symbol, generation)
-            cached = self._cache.get(key)
-            if cached is not None:
-                return cached
-            meta, raw = client.get_buffer(symbol, max_bytes=self._max_bytes)
-        finally:
-            client.close()
+        with self._debugger_slots(info):
+            client = self._connect(info)
+            try:
+                generation = client.ping()
+                key = (info.pid, info.token, symbol, generation)
+                cached = self._cache.get(key)
+                if cached is not None:
+                    return cached
+                meta, raw = client.get_buffer(
+                    symbol, max_bytes=self._max_bytes)
+            finally:
+                client.close()
         arr = decode_buffer(meta, raw)
         self._cache.put(key, (meta, arr))
         return meta, arr

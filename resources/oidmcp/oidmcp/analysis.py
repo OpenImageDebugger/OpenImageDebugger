@@ -180,12 +180,23 @@ def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
         raise FileExistsError(
             f'{target} already exists; pass overwrite=true to replace it')
     # Atomic and symlink-safe: os.replace() swaps the directory entry
-    # and never follows a symlink sitting at the target.
+    # and never follows a symlink sitting at the target. Without
+    # overwrite, os.link() fails if the target appeared since the check
+    # above, so concurrent dumps to one path cannot clobber each other.
     fd, tmp = tempfile.mkstemp(dir=str(directory), suffix='.npy.tmp')
     try:
         with os.fdopen(fd, 'wb') as handle:
             np.save(handle, np.ascontiguousarray(arr))
-        os.replace(tmp, target)
+        if overwrite:
+            os.replace(tmp, target)
+        else:
+            try:
+                os.link(tmp, target)
+            except FileExistsError:
+                raise FileExistsError(
+                    f'{target} already exists; pass overwrite=true to '
+                    f'replace it') from None
+            os.unlink(tmp)
     except BaseException:
         try:
             os.unlink(tmp)
