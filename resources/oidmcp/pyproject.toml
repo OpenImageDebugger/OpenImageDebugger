@@ -8,7 +8,7 @@ description = "MCP server giving AI agents eyes on OpenImageDebugger buffers in 
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "mcp>=1.2",
+    "mcp>=2.3,<3",
     "numpy>=1.24",
     "pillow>=10.0",
 ]

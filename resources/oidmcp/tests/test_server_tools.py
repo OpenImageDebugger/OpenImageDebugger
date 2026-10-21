@@ -229,7 +229,7 @@ def test_set_view_tool_schema_accepts_int_and_str_channel():
     # would reject the documented channel=0/1/2 before it reaches the viewer.
     import asyncio
     tools = asyncio.run(server.mcp.list_tools())
-    schema = next(t.inputSchema for t in tools if t.name == 'set_view')
+    schema = next(t.input_schema for t in tools if t.name == 'set_view')
     types = {branch.get('type')
              for branch in schema['properties']['channel']['anyOf']}
     assert 'integer' in types

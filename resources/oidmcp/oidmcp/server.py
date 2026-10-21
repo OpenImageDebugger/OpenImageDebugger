@@ -2,22 +2,11 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import sys
 
-# FastMCP, or MCPServer in some SDK builds. find_spec, not ImportError from
-# the import: a real error inside an existing mcpserver must surface.
-try:
-    _has_mcpserver = (
-        importlib.util.find_spec('mcp.server.mcpserver') is not None)
-except (ImportError, ValueError):
-    _has_mcpserver = False
-if _has_mcpserver:
-    from mcp.server.mcpserver import MCPServer, Image
-else:
-    from mcp.server.fastmcp import FastMCP as MCPServer, Image
+from mcp.server.mcpserver import MCPServer, Image
 
 from .analysis import compute_stats, dump_npy, extract_values
 from .buffers import BufferCache, decode_buffer
