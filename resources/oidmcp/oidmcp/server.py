@@ -66,10 +66,9 @@ def _parse_max_bytes() -> int:
     return value
 
 
-# Older debugger endpoints listen with a backlog of 4, and their serial
-# debugger thread gains nothing from more than 2 requests in flight, so 3
-# keeps one spare slot without ever overflowing the backlog.
-_DEBUGGER_CONNECTIONS = 3
+# Older debugger endpoints listen with a backlog of 4 and every endpoint
+# drops a client past 8; a serial debugger gains nothing past 2 in flight.
+_CONNECTIONS_PER_ENDPOINT = 3
 
 
 class SessionManager:
@@ -81,13 +80,13 @@ class SessionManager:
         self._slots_guard = threading.Lock()
         self._slots: dict[tuple, threading.BoundedSemaphore] = {}
 
-    def _debugger_slots(self, info) -> threading.BoundedSemaphore:
+    def _connection_slots(self, info) -> threading.BoundedSemaphore:
         key = (info.pid, info.token)
         with self._slots_guard:
             slots = self._slots.get(key)
             if slots is None:
                 slots = self._slots[key] = threading.BoundedSemaphore(
-                    _DEBUGGER_CONNECTIONS)
+                    _CONNECTIONS_PER_ENDPOINT)
             return slots
 
     def _connect(self, info):
@@ -95,7 +94,7 @@ class SessionManager:
 
     def _call_debugger(self, session, fn):
         info = self._resolve(session)
-        with self._debugger_slots(info):
+        with self._connection_slots(info):
             client = self._connect(info)
             try:
                 return fn(client)
@@ -108,21 +107,22 @@ class SessionManager:
         reaped = set()
         while True:
             info = self._resolve_viewer(session)
-            try:
-                client = self._connect(info)
-            except ConnectionRefusedError:
-                if info.path is None or str(info.path) in reaped:
-                    raise NoSessionError(
-                        'viewer discovery entries kept refusing '
-                        'connections; restart the viewer window and '
-                        'retry.') from None
-                reaped.add(str(info.path))
-                _reap(info.path)
-                continue
-            try:
-                return fn(client)
-            finally:
-                client.close()
+            with self._connection_slots(info):
+                try:
+                    client = self._connect(info)
+                except ConnectionRefusedError:
+                    if info.path is None or str(info.path) in reaped:
+                        raise NoSessionError(
+                            'viewer discovery entries kept refusing '
+                            'connections; restart the viewer window and '
+                            'retry.') from None
+                    reaped.add(str(info.path))
+                    _reap(info.path)
+                    continue
+                try:
+                    return fn(client)
+                finally:
+                    client.close()
 
     def _resolve(self, session):
         return pick_session(live_sessions(), session)
@@ -217,7 +217,7 @@ class SessionManager:
         # ping returns the stop generation keying the cache; one connection
         # serves it and get_buffer, so the key matches the stop that made the
         # bytes. token is per-instance: a reused pid can't read stale bytes.
-        with self._debugger_slots(info):
+        with self._connection_slots(info):
             client = self._connect(info)
             try:
                 generation = client.ping()
@@ -280,6 +280,7 @@ _STARTUP_WARNING = (
 )
 
 _EXPECTED = (ControlError, NoSessionError, OSError, ValueError, RuntimeError)
+_BUGS = (NotImplementedError, RecursionError)
 
 
 class _OidServer(MCPServer):
@@ -289,7 +290,7 @@ class _OidServer(MCPServer):
             return await super().call_tool(name, arguments, context)
         except UnexpectedToolError as error:
             cause = error.__cause__
-            if not isinstance(cause, _EXPECTED):
+            if not isinstance(cause, _EXPECTED) or isinstance(cause, _BUGS):
                 raise
             raise ToolError(f'{error}: {_friendly(cause)}') from cause
 

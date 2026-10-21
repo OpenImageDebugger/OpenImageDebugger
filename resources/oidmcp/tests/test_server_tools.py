@@ -420,7 +420,7 @@ def test_parallel_calls_keep_between_two_and_three_connections_per_debugger(
     def call(fn):
         try:
             results.append(fn())
-        except BaseException as exc:
+        except Exception as exc:
             errors.append(exc)
 
     calls = ([lambda: mgr.fetch(None, 'grad')] * 4
@@ -436,14 +436,14 @@ def test_parallel_calls_keep_between_two_and_three_connections_per_debugger(
     assert len(results) == 8
 
 
-def test_debugger_slots_are_released_when_connect_or_call_raises(
+def test_connection_slots_are_released_when_connect_or_call_raises(
         manager, monkeypatch):
     mgr, (info, _) = manager
     real_connect = server.SessionManager._connect
-    cap = server._DEBUGGER_CONNECTIONS
+    cap = server._CONNECTIONS_PER_ENDPOINT
 
     def assert_all_slots_free():
-        slots = mgr._debugger_slots(info)
+        slots = mgr._connection_slots(info)
         taken = [slots.acquire(blocking=False) for _ in range(cap)]
         for ok in taken:
             if ok:
@@ -476,5 +476,43 @@ def test_each_debugger_session_gets_its_own_connection_cap():
         def __init__(self, pid, token):
             self.pid, self.token = pid, token
 
-    assert (mgr._debugger_slots(Info(1, 'x'))
-            is not mgr._debugger_slots(Info(2, 'x')))
+    assert (mgr._connection_slots(Info(1, 'x'))
+            is not mgr._connection_slots(Info(2, 'x')))
+
+
+def test_parallel_viewer_calls_stay_under_the_connection_cap(
+        live_viewer, monkeypatch):
+    live_viewer()
+    mgr = server.SessionManager()
+    lock = threading.Lock()
+    state = {'open': 0, 'max': 0}
+    real_connect = server.SessionManager._connect
+
+    def counting_connect(self, info):
+        with lock:
+            state['open'] += 1
+            state['max'] = max(state['max'], state['open'])
+        client = real_connect(self, info)
+        real_close = client.close
+
+        def close():
+            with lock:
+                state['open'] -= 1
+            real_close()
+        client.close = close
+        return client
+
+    monkeypatch.setattr(server.SessionManager, '_connect', counting_connect)
+
+    def slow_get_view(client):
+        time.sleep(0.1)
+        return client.get_view()
+
+    threads = [threading.Thread(target=mgr._call_viewer,
+                                args=(None, slow_get_view))
+               for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(5)
+    assert state['max'] <= server._CONNECTIONS_PER_ENDPOINT

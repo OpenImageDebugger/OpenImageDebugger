@@ -120,7 +120,7 @@ def test_cache_survives_concurrent_get_and_put():
                 cache.put((i % 5,), i)
                 cache.get((i % 5,))
                 i += 1
-        except BaseException as exc:
+        except Exception as exc:
             errors.append(exc)
 
     old = sys.getswitchinterval()

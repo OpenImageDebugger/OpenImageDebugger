@@ -59,6 +59,12 @@ def test_a_bug_stays_masked_and_keeps_its_traceback(throwaway_tool, caplog):
                for r in caplog.records)
 
 
+def test_a_recursion_bug_stays_masked(throwaway_tool):
+    throwaway_tool('t_deep', raises=RecursionError('too deep'))
+    assert _call('t_deep', {}).content[0].text == \
+        'Error executing tool t_deep'
+
+
 def test_friendly_never_returns_blank_and_separates_hints():
     assert server._friendly(TimeoutError()) == 'TimeoutError'
     assert server._friendly(ControlError('internal', '')) \
