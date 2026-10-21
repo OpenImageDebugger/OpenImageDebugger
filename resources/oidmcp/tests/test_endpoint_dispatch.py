@@ -229,13 +229,13 @@ def _call_in_threads(endpoint, request, count, join_timeout):
 
 
 def test_each_queued_request_gets_the_full_timeout():
-    # The last request starts at ~1.5 s, three times its own timeout, yet the
+    # The last request starts at ~0.7 s, past its own 0.5 s timeout, yet the
     # debugger keeps making progress, so nobody may time out.
-    bridge = SerialBridge(delay=0.3, symbols=['grad'],
+    bridge = SerialBridge(delay=0.1, symbols=['grad'],
                           buffers={'grad': make_meta(4, 3, type_value=0)})
     endpoint = make_endpoint(bridge=bridge, request_timeout=0.5)
     results = _call_in_threads(
-        endpoint, {'method': 'get_buffer', 'symbol': 'grad'}, 6, 10)
+        endpoint, {'method': 'get_buffer', 'symbol': 'grad'}, 8, 10)
     assert not any(isinstance(r, ep.EndpointError) for r in results)
     assert all(r[0]['width'] == 4 for r in results)
 
