@@ -260,7 +260,7 @@ _EXPECTED = (ControlError, NoSessionError, OSError, ValueError, RuntimeError)
 
 
 class _OidServer(MCPServer):
-    # mcp 2.x hides any non-ToolError text from the client; oid-mcp's errors tell the agent what to do next.
+    # mcp 2.x hides non-ToolError text; oid-mcp's errors say what to do next.
     async def call_tool(self, name, arguments, context=None):
         try:
             return await super().call_tool(name, arguments, context)

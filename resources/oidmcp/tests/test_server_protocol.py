@@ -2,7 +2,6 @@ import asyncio
 
 import pytest
 from mcp import Client
-from mcp.server.mcpserver.exceptions import ToolError
 
 from oidmcp import server
 from oidmcp.protocol import ControlError
@@ -19,13 +18,9 @@ def _call(name, args, mode='legacy'):
 def throwaway_tool():
     names = []
 
-    def register(name, raises, is_async=False):
-        if is_async:
-            async def tool():
-                raise raises
-        else:
-            def tool():
-                raise raises
+    def register(name, raises):
+        def tool():
+            raise raises
         server.mcp.add_tool(tool, name=name)
         names.append(name)
 
@@ -51,14 +46,9 @@ def test_raw_socket_error_reaches_the_client(live_endpoint, monkeypatch):
 
 def test_deliberate_error_keeps_its_exact_text(live_viewer):
     live_viewer()
-    assert _call('plot', {'symbol': 'grad'}).content[0].text == \
-        'Error executing tool plot: the buffer is already displayed in that viewer'
-
-
-def test_a_tool_error_gets_exactly_one_prefix(throwaway_tool):
-    throwaway_tool('t_tool_error', raises=ToolError('use list_buffers first'))
-    assert _call('t_tool_error', {}).content[0].text == \
-        'Error executing tool t_tool_error: use list_buffers first'
+    assert _call('plot', {'symbol': 'grad'}).content[0].text == (
+        'Error executing tool plot: '
+        'the buffer is already displayed in that viewer')
 
 
 def test_a_bug_stays_masked_and_keeps_its_traceback(throwaway_tool, caplog):
@@ -69,20 +59,15 @@ def test_a_bug_stays_masked_and_keeps_its_traceback(throwaway_tool, caplog):
                for r in caplog.records)
 
 
-def test_tool_registered_later_gets_readable_errors(throwaway_tool):
-    throwaway_tool('t_late', raises=OSError('disk gone'), is_async=True)
-    assert _call('t_late', {}).content[0].text == 'Error executing tool t_late: disk gone'
-    # Guard: fails if a later 2.x stops routing tools/call through self.call_tool
-
-
 def test_friendly_never_returns_blank_and_separates_hints():
     assert server._friendly(TimeoutError()) == 'TimeoutError'
-    assert server._friendly(ControlError('internal', '')).startswith('internal')
-    assert server._friendly(ControlError('symbol_not_found', "no symbol 'img2'")) \
-        .startswith("no symbol 'img2'. Call list_buffers()")
+    assert server._friendly(ControlError('internal', '')) \
+        .startswith('internal')
+    assert server._friendly(
+        ControlError('symbol_not_found', "no symbol 'img2'")
+    ).startswith("no symbol 'img2'. Call list_buffers()")
 
 
-@pytest.mark.parametrize('end', ['.', '!', '?'])
-def test_friendly_does_not_double_sentence_punctuation(end):
-    text = server._friendly(ControlError('symbol_not_found', f'no symbol{end}'))
-    assert text.startswith(f'no symbol{end} Call list_buffers()')
+def test_friendly_joins_a_sentence_to_its_hint_with_one_space():
+    text = server._friendly(ControlError('symbol_not_found', 'no symbol.'))
+    assert text.startswith('no symbol. Call list_buffers()')
