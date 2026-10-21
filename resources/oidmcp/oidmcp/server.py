@@ -275,13 +275,6 @@ mcp = _OidServer('oid', instructions=_INSTRUCTIONS)
 _manager = SessionManager()
 
 
-def _fetch_or_fail(manager, session, symbol):
-    try:
-        return manager.fetch(session, symbol)
-    except (ControlError, NoSessionError, ValueError) as error:
-        raise RuntimeError(_friendly(error)) from None
-
-
 def _format_info(info: dict) -> str:
     return '\n'.join(f'{key}: {json.dumps(value)}'
                      for key, value in info.items() if value is not None)
@@ -289,20 +282,14 @@ def _format_info(info: dict) -> str:
 
 def _view_impl(manager, symbol, region, channel, vmin, vmax, max_px,
                session):
-    meta, arr = _fetch_or_fail(manager, session, symbol)
-    try:
-        png, info = render_view(arr, meta, region=region, channel=channel,
-                                vmin=vmin, vmax=vmax, max_px=max_px)
-    except ValueError as error:
-        raise RuntimeError(str(error)) from None
+    meta, arr = manager.fetch(session, symbol)
+    png, info = render_view(arr, meta, region=region, channel=channel,
+                            vmin=vmin, vmax=vmax, max_px=max_px)
     return [Image(data=png, format='png'), _format_info(info)]
 
 
 def _plot_impl(manager, symbol, session):
-    try:
-        manager.plot(session, symbol)
-    except (ControlError, NoSessionError) as error:
-        raise RuntimeError(_friendly(error)) from None
+    manager.plot(session, symbol)
     return f'{symbol} plotted in the viewer'
 
 
@@ -332,10 +319,7 @@ def list_buffers(session: int | None = None) -> dict:
     the most recently started live debugger session, or the most
     recently started live viewer window if none is live.
     """
-    try:
-        return _manager.list_buffers(session)
-    except (ControlError, NoSessionError) as error:
-        raise RuntimeError(_friendly(error)) from None
+    return _manager.list_buffers(session)
 
 
 @mcp.tool()
@@ -360,12 +344,8 @@ def view(symbol: str, region: list[int] | None = None,
 def stats(symbol: str, region: list[int] | None = None,
           session: int | None = None) -> dict:
     """Per-channel min/max/mean/std and NaN/Inf/zero counts."""
-    meta, arr = _fetch_or_fail(_manager, session, symbol)
-    try:
-        return compute_stats(arr, meta,
-                             region=tuple(region) if region else None)
-    except ValueError as error:
-        raise RuntimeError(str(error)) from None
+    meta, arr = _manager.fetch(session, symbol)
+    return compute_stats(arr, meta, region=tuple(region) if region else None)
 
 
 @mcp.tool()
@@ -373,11 +353,8 @@ def values(symbol: str, x: int, y: int, w: int, h: int,
            channel: int | None = None,
            session: int | None = None) -> dict:
     """Exact pixel values for a small crop (at most 1024 numbers)."""
-    _, arr = _fetch_or_fail(_manager, session, symbol)
-    try:
-        return extract_values(arr, x, y, w, h, channel=channel)
-    except ValueError as error:
-        raise RuntimeError(str(error)) from None
+    _, arr = _manager.fetch(session, symbol)
+    return extract_values(arr, x, y, w, h, channel=channel)
 
 
 @mcp.tool()
@@ -388,12 +365,9 @@ def dump(symbol: str, path: str | None = None, overwrite: bool = False,
     Refuses to overwrite an existing file unless overwrite=true, so an
     unintended path cannot clobber your data.
     """
-    meta, arr = _fetch_or_fail(_manager, session, symbol)
-    try:
-        return dump_npy(arr, symbol, meta.get('stop_generation', 0),
-                        path=path, overwrite=overwrite)
-    except (OSError, ValueError) as error:
-        raise RuntimeError(str(error)) from None
+    meta, arr = _manager.fetch(session, symbol)
+    return dump_npy(arr, symbol, meta.get('stop_generation', 0),
+                    path=path, overwrite=overwrite)
 
 
 @mcp.tool()
@@ -421,10 +395,7 @@ def set_view(session: int | None = None, buffer: str | None = None,
         'buffer': buffer, 'center': center, 'zoom': zoom,
         'rotation_deg': rotation_deg, 'channel': channel,
         'auto_contrast': auto_contrast}.items() if v is not None}
-    try:
-        return _manager.set_view(session, **fields)
-    except (ControlError, NoSessionError) as error:
-        raise RuntimeError(_friendly(error)) from None
+    return _manager.set_view(session, **fields)
 
 
 @mcp.tool()
@@ -434,10 +405,7 @@ def get_view(session: int | None = None) -> dict:
     Returns buffer/center/zoom/rotation_deg/channel/auto_contrast.
     auto_contrast is global (not per-buffer).
     """
-    try:
-        return _manager.get_view(session)
-    except (ControlError, NoSessionError) as error:
-        raise RuntimeError(_friendly(error)) from None
+    return _manager.get_view(session)
 
 
 def main() -> None:

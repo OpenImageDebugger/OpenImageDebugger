@@ -4,6 +4,7 @@ import pytest
 
 from oidmcp import server
 from oidmcp.analysis import compute_stats
+from oidmcp.discovery import NoSessionError
 from oidmcp.protocol import ControlError
 
 
@@ -51,18 +52,18 @@ def test_fetch_refetches_after_stop(manager):
     assert bridge.fetch_count == fetches + 1
 
 
-def test_fetch_unknown_symbol_is_friendly(manager):
+def test_fetch_unknown_symbol_raises_control_error(manager):
     mgr, _ = manager
-    with pytest.raises(RuntimeError) as excinfo:
-        server._fetch_or_fail(mgr, None, 'missing')
-    assert 'list_buffers' in str(excinfo.value)
+    with pytest.raises(ControlError) as excinfo:
+        mgr.fetch(None, 'missing')
+    assert excinfo.value.code == 'symbol_not_found'
 
 
-def test_no_session_is_friendly(tmp_path, monkeypatch):
+def test_no_session_raises_no_session_error(tmp_path, monkeypatch):
     monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'empty'))
     mgr = server.SessionManager()
-    with pytest.raises(RuntimeError) as excinfo:
-        server._fetch_or_fail(mgr, None, 'img')
+    with pytest.raises(NoSessionError) as excinfo:
+        mgr.fetch(None, 'img')
     assert 'OID_AGENT=1' in str(excinfo.value)
 
 
@@ -77,11 +78,12 @@ def test_view_tool_returns_image_and_text(manager):
     assert 'stop_generation' in text
 
 
-def test_dump_tool_wraps_filesystem_errors(live_endpoint, dump_dir):
-    # A path outside the dump directory becomes a friendly RuntimeError,
-    # like the other tools, instead of a raw ValueError.
+def test_dump_tool_rejects_paths_outside_the_dump_dir(live_endpoint,
+                                                      dump_dir):
+    # The tool lets the ValueError through; _OidServer renders it for the
+    # client.
     escaping = str(dump_dir / 'no-such-dir' / 'out.npy')
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         server.dump('grad', path=escaping)
     assert 'bare filename' in str(excinfo.value)
 
@@ -91,7 +93,7 @@ def test_dump_tool_refuses_to_overwrite_without_flag(live_endpoint, dump_dir):
     # cannot clobber it by accident; the overwrite flag opts back in.
     first = server.dump('grad', path='out.npy')
     assert first.startswith(str(dump_dir))
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.raises(FileExistsError) as excinfo:
         server.dump('grad', path='out.npy')
     assert 'overwrite' in str(excinfo.value)
     assert server.dump('grad', path='out.npy', overwrite=True) == first
@@ -217,9 +219,9 @@ def test_set_view_only_sends_passed_fields(live_viewer):
     assert second['rotation_deg'] == 90
 
 
-def test_set_view_tool_wraps_errors_as_runtime_error(tmp_path, monkeypatch):
+def test_set_view_tool_raises_no_session_error(tmp_path, monkeypatch):
     monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'empty'))
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.raises(NoSessionError) as excinfo:
         server.set_view(zoom=2.0)
     assert 'OID_AGENT=1' in str(excinfo.value)
 
@@ -236,9 +238,9 @@ def test_set_view_tool_schema_accepts_int_and_str_channel():
     assert 'string' in types
 
 
-def test_get_view_tool_wraps_errors_as_runtime_error(tmp_path, monkeypatch):
+def test_get_view_tool_raises_no_session_error(tmp_path, monkeypatch):
     monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'empty'))
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.raises(NoSessionError) as excinfo:
         server.get_view()
     assert 'OID_AGENT=1' in str(excinfo.value)
 
