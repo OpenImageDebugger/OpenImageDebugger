@@ -12,6 +12,7 @@ Two independent legs, selected by argv[1]:
   OID_E2E_VIEWER guard for the manual/local invocation.
 """
 
+import asyncio
 import math
 import sys
 import time
@@ -59,6 +60,9 @@ def check_debugger() -> int:
 
     status = check_custom_type(client, symbols)
     client.close()
+    if status:
+        return status
+    status = check_parallel_tools()
     if status:
         return status
     print('PASS')
@@ -113,6 +117,40 @@ def check_custom_type(client, symbols) -> int:
         return 1
 
     print('custom type: PASS')
+    return 0
+
+
+def check_parallel_tools() -> int:
+    """
+    Fire 10 tool calls at once at the real debugger.
+
+    Ten is above the old endpoint's listen backlog (4) and its 8-client
+    cap, so this only passes if oid-mcp itself limits how many connections
+    it opens to one session.
+    """
+    # Imported here so the viewer leg never loads the server.
+    from mcp import Client
+
+    from oidmcp import server
+
+    calls = [('stats', {'symbol': 'gradient'})] * 8
+    calls += [('view', {'symbol': 'gradient', 'max_px': 64}),
+              ('list_buffers', {})]
+
+    async def run():
+        async with Client(server.mcp) as c:
+            return await asyncio.gather(
+                *(c.call_tool(name, args) for name, args in calls))
+
+    results = asyncio.run(run())
+    failed = 0
+    for (name, _), result in zip(calls, results):
+        if result.is_error:
+            print(f'FAIL: parallel {name}: {result.content[0].text}')
+            failed += 1
+    if failed:
+        return 1
+    print(f'parallel tools: PASS ({len(calls)} calls)')
     return 0
 
 
