@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import getpass
 import math
 import os
@@ -197,7 +198,9 @@ def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
                 os.link(tmp, target)
             except FileExistsError:
                 raise FileExistsError(exists) from None
-            os.unlink(tmp)
+            # The dump is already published; a stray temp file is harmless.
+            with contextlib.suppress(OSError):
+                os.unlink(tmp)
     except BaseException:
         try:
             os.unlink(tmp)

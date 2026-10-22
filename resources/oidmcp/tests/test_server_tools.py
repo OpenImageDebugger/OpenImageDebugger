@@ -383,37 +383,47 @@ def test_client_is_closed_on_fetch_including_cache_hit(live_endpoint,
     assert len(closed_clients) == 2
 
 
-def test_parallel_calls_keep_between_two_and_three_connections_per_debugger(
-        manager, monkeypatch):
-    mgr, (_, bridge) = manager
+@pytest.fixture
+def open_connections(monkeypatch):
+    # Counted from connect's start: a serial fake endpoint holds later
+    # connects in the handshake, so counting after connect sees only one.
+    lock = threading.Lock()
     state = {'open': 0, 'max': 0}
-    live = set()
-    guard = threading.Lock()
     real_connect = server.SessionManager._connect
-    real_close = server.ControlClient.close
-    real_metadata = bridge.get_buffer_metadata
 
     def counting_connect(self, info):
-        client = real_connect(self, info)
-        with guard:
-            live.add(id(client))
+        with lock:
             state['open'] += 1
             state['max'] = max(state['max'], state['open'])
+        try:
+            client = real_connect(self, info)
+        except BaseException:
+            with lock:
+                state['open'] -= 1
+            raise
+        real_close = client.close
+
+        def close():
+            with lock:
+                state['open'] -= 1
+            real_close()
+        client.close = close
         return client
 
-    def counting_close(self):
-        with guard:
-            if id(self) in live:
-                live.discard(id(self))
-                state['open'] -= 1
-        return real_close(self)
+    monkeypatch.setattr(server.SessionManager, '_connect', counting_connect)
+    return state
+
+
+def test_parallel_calls_keep_between_two_and_three_connections_per_debugger(
+        manager, monkeypatch, open_connections):
+    mgr, (_, bridge) = manager
+    state = open_connections
+    real_metadata = bridge.get_buffer_metadata
 
     def slow_metadata(*args, **kwargs):
         time.sleep(0.1)
         return real_metadata(*args, **kwargs)
 
-    monkeypatch.setattr(server.SessionManager, '_connect', counting_connect)
-    monkeypatch.setattr(server.ControlClient, 'close', counting_close)
     monkeypatch.setattr(bridge, 'get_buffer_metadata', slow_metadata)
 
     results, errors = [], []
@@ -482,28 +492,9 @@ def test_each_debugger_session_gets_its_own_connection_cap():
 
 
 def test_parallel_viewer_calls_stay_under_the_connection_cap(
-        live_viewer, monkeypatch):
+        live_viewer, open_connections):
     live_viewer()
     mgr = server.SessionManager()
-    lock = threading.Lock()
-    state = {'open': 0, 'max': 0}
-    real_connect = server.SessionManager._connect
-
-    def counting_connect(self, info):
-        with lock:
-            state['open'] += 1
-            state['max'] = max(state['max'], state['open'])
-        client = real_connect(self, info)
-        real_close = client.close
-
-        def close():
-            with lock:
-                state['open'] -= 1
-            real_close()
-        client.close = close
-        return client
-
-    monkeypatch.setattr(server.SessionManager, '_connect', counting_connect)
 
     def slow_get_view(client):
         time.sleep(0.1)
@@ -516,4 +507,4 @@ def test_parallel_viewer_calls_stay_under_the_connection_cap(
         thread.start()
     for thread in threads:
         thread.join(5)
-    assert state['max'] <= server._CONNECTIONS_PER_ENDPOINT
+    assert open_connections['max'] <= server._CONNECTIONS_PER_ENDPOINT

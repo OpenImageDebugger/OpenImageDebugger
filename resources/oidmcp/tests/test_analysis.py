@@ -166,6 +166,21 @@ def test_dump_npy_refuses_to_overwrite_existing_file(dump_dir):
     np.testing.assert_array_equal(np.load(target), original)
 
 
+def test_dump_npy_reports_success_when_temp_cleanup_fails(dump_dir,
+                                                         monkeypatch):
+    real_unlink = os.unlink
+
+    def unlink(path):
+        if str(path).endswith('.npy.tmp'):
+            raise PermissionError(path)
+        return real_unlink(path)
+
+    monkeypatch.setattr(os, 'unlink', unlink)
+    data = np.arange(6, dtype=np.int32).reshape(2, 3, 1)
+    target = dump_npy(data, 'img', 1, path='out.npy')
+    np.testing.assert_array_equal(np.load(target), data)
+
+
 def test_dump_npy_overwrite_flag_replaces_existing_file(dump_dir):
     dump_npy(np.arange(6, dtype=np.int32).reshape(2, 3, 1), 'img', 1,
              path='out.npy')
