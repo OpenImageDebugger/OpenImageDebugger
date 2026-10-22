@@ -121,13 +121,7 @@ def check_custom_type(client, symbols) -> int:
 
 
 def check_parallel_tools() -> int:
-    """
-    Fire 10 tool calls at once at the real debugger.
-
-    Ten is above the old endpoint's listen backlog (4) and its 8-client
-    cap, so this only passes if oid-mcp itself limits how many connections
-    it opens to one session.
-    """
+    # 10 calls exceed the old backlog (4) and 8-client cap: needs oid-mcp's.
     # Imported here so the viewer leg never loads the server.
     from mcp import Client
 

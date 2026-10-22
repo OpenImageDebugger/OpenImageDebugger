@@ -385,8 +385,7 @@ def test_client_is_closed_on_fetch_including_cache_hit(live_endpoint,
 
 @pytest.fixture
 def open_connections(monkeypatch):
-    # Counted from connect's start: a serial fake endpoint holds later
-    # connects in the handshake, so counting after connect sees only one.
+    # Count from connect's start: a serial fake holds later connects.
     lock = threading.Lock()
     state = {'open': 0, 'max': 0}
     real_connect = server.SessionManager._connect

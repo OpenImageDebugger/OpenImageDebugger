@@ -66,8 +66,7 @@ def _parse_max_bytes() -> int:
     return value
 
 
-# Older debugger endpoints listen with a backlog of 4 and every endpoint
-# drops a client past 8; a serial debugger gains nothing past 2 in flight.
+# Under old debuggers' backlog of 4 and every endpoint's 8-client cap.
 _CONNECTIONS_PER_ENDPOINT = 3
 
 

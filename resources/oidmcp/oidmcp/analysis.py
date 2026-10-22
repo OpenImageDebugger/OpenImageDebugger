@@ -150,8 +150,7 @@ def _dump_filename(symbol: str, stop_generation: int,
     if path is None:
         name = re.sub(r'[^A-Za-z0-9_.-]', '_', symbol)
         return f'{name}_gen{stop_generation}.npy'
-    # The client picks only a name INSIDE the hardened dump dir; a path
-    # separator, '..', or an absolute path could escape it.
+    # A separator, '..' or an absolute path would escape the dump dir.
     if (os.path.isabs(path)
             or os.path.basename(path) != path
             or path in ('.', '..', '')):
@@ -183,10 +182,7 @@ def dump_npy(arr: np.ndarray, symbol: str, stop_generation: int,
             f'{target} is a symlink; refusing to write through it')
     if not overwrite and os.path.lexists(target):
         raise FileExistsError(exists)
-    # Atomic and symlink-safe: os.replace() swaps the directory entry
-    # and never follows a symlink sitting at the target. Without
-    # overwrite, os.link() fails if the target appeared since the check
-    # above, so concurrent dumps to one path cannot clobber each other.
+    # Neither call follows a target symlink; os.link fails if it exists.
     fd, tmp = tempfile.mkstemp(dir=str(directory), suffix='.npy.tmp')
     try:
         with os.fdopen(fd, 'wb') as handle:

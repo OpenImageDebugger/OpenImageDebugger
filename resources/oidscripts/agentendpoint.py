@@ -144,12 +144,6 @@ class AgentEndpoint(object):
     def _run_in_debugger(self, fn):
         """
         Execute fn() on the debugger thread and return its result.
-
-        The debugger thread runs queued tasks one at a time, so a request
-        may wait behind others. It keeps waiting while the debugger starts
-        or finishes tasks and gives up after one timeout without such
-        progress; once its own task has started, the timeout applies to
-        running fn alone.
         """
         started = threading.Event()
         done = threading.Event()
@@ -177,6 +171,7 @@ class AgentEndpoint(object):
             return idle_since + self._timeout - time.monotonic()
 
         self._bridge.queue_request(task)
+        # Wait while the serial debugger progresses; then time fn alone.
         while not started.wait(max(idle_left(), 0)):
             with lock:
                 if started.is_set() or idle_left() > 0:

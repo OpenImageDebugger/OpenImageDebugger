@@ -188,8 +188,7 @@ def test_get_buffer_honors_smaller_client_cap(monkeypatch):
 
 
 class SerialBridge(FakeBridge):
-    """Runs queued callables one at a time on a single daemon thread,
-    like the debugger's own thread."""
+    # One drain thread runs queued callables in order, like the debugger.
 
     def __init__(self, delay=0.0, **kwargs):
         super().__init__(**kwargs)
@@ -229,8 +228,7 @@ def _call_in_threads(endpoint, request, count, join_timeout):
 
 
 def test_each_queued_request_gets_the_full_timeout():
-    # The last request starts at ~0.7 s, past its own 0.5 s timeout, yet the
-    # debugger keeps making progress, so nobody may time out.
+    # The last starts at ~0.7 s, past its 0.5 s timeout; progress keeps it.
     bridge = SerialBridge(delay=0.1, symbols=['grad'],
                           buffers={'grad': make_meta(4, 3, type_value=0)})
     endpoint = make_endpoint(bridge=bridge, request_timeout=0.5)
@@ -241,8 +239,7 @@ def test_each_queued_request_gets_the_full_timeout():
 
 
 def test_a_hung_debugger_still_times_out_queued_requests():
-    # MAX_CLIENTS * timeout (2.4 s) is well beyond the window, so a start
-    # wait that ignores debugger progress cannot pass.
+    # MAX_CLIENTS x timeout (2.4 s) overruns the window: progress-blind fails.
     timeout = 0.3
     window = 2 * timeout + 0.5
     endpoint = make_endpoint(bridge=FakeBridge(dead=True),

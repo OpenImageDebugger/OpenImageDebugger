@@ -34,8 +34,7 @@ class ControlClient:
     """One authenticated connection to an agent endpoint."""
 
     def __init__(self, host: str, port: int, token: str,
-                 # 3 queued requests x the endpoint's 15 s request timeout,
-                 # plus 15 s for our own run.
+                 # 3 queued x the endpoint's 15 s timeout, + 15 s to run.
                  timeout: float = 60.0):
         self._sock = socket.create_connection((host, port), timeout=timeout)
         self._sock.settimeout(timeout)
