@@ -499,11 +499,21 @@ def test_parallel_viewer_calls_stay_under_the_connection_cap(
         time.sleep(0.1)
         return client.get_view()
 
-    threads = [threading.Thread(target=mgr._call_viewer,
-                                args=(None, slow_get_view))
+    results, errors = [], []
+
+    def call():
+        try:
+            results.append(mgr._call_viewer(None, slow_get_view))
+        except Exception as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=call, daemon=True)
                for _ in range(8)]
     for thread in threads:
         thread.start()
     for thread in threads:
         thread.join(5)
+    assert not any(thread.is_alive() for thread in threads)
+    assert errors == []
+    assert len(results) == 8
     assert open_connections['max'] <= server._CONNECTIONS_PER_ENDPOINT

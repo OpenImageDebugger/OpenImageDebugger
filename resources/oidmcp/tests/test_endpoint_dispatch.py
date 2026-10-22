@@ -238,6 +238,17 @@ def test_each_queued_request_gets_the_full_timeout():
     assert all(r[0]['width'] == 4 for r in results)
 
 
+def test_a_request_after_an_idle_pause_still_runs():
+    # Idle past the timeout, then the first request must not expire at once.
+    bridge = SerialBridge(delay=0.05, symbols=['grad'],
+                          buffers={'grad': make_meta(4, 3, type_value=0)})
+    endpoint = make_endpoint(bridge=bridge, request_timeout=0.2)
+    time.sleep(0.3)
+    result = endpoint.handle_request(
+        {'method': 'get_buffer', 'symbol': 'grad'})
+    assert result[0]['width'] == 4
+
+
 def test_a_hung_debugger_still_times_out_queued_requests():
     # MAX_CLIENTS x timeout (2.4 s) overruns the window: progress-blind fails.
     timeout = 0.3

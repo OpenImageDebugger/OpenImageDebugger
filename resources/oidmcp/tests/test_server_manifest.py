@@ -10,7 +10,6 @@ import json
 import tomllib
 from pathlib import Path
 
-import pytest
 
 OIDMCP = Path(__file__).resolve().parents[1]
 
