@@ -279,7 +279,8 @@ _STARTUP_WARNING = (
 )
 
 _EXPECTED = (ControlError, NoSessionError, OSError, ValueError, RuntimeError)
-_BUGS = (NotImplementedError, RecursionError)
+_BUGS = (NotImplementedError, RecursionError, UnicodeError,
+         json.JSONDecodeError)
 
 
 class _OidServer(MCPServer):

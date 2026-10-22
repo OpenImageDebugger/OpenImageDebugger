@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import pytest
 from mcp import Client
@@ -59,10 +60,15 @@ def test_a_bug_stays_masked_and_keeps_its_traceback(throwaway_tool, caplog):
                for r in caplog.records)
 
 
-def test_a_recursion_bug_stays_masked(throwaway_tool):
-    throwaway_tool('t_deep', raises=RecursionError('too deep'))
-    assert _call('t_deep', {}).content[0].text == \
-        'Error executing tool t_deep'
+@pytest.mark.parametrize('name, exc', [
+    ('t_notimpl', NotImplementedError('todo')),
+    ('t_deep', RecursionError('too deep')),
+    ('t_unicode', UnicodeDecodeError('utf-8', b'\xff', 0, 1, 'bad')),
+    ('t_json', json.JSONDecodeError('x', 'doc', 0)),
+])
+def test_a_bug_type_stays_masked(throwaway_tool, name, exc):
+    throwaway_tool(name, raises=exc)
+    assert _call(name, {}).content[0].text == f'Error executing tool {name}'
 
 
 def test_friendly_never_returns_blank_and_separates_hints():
