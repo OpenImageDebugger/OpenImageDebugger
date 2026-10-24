@@ -255,6 +255,9 @@ def test_a_viewer_call_waiting_for_a_slot_follows_a_restart(
     slots = mgr._connection_slots(a)
     for _ in range(server._CONNECTIONS_PER_ENDPOINT):
         slots.acquire()
+    slots_b = mgr._connection_slots(b)
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots_b.acquire()
 
     def run():
         try:
@@ -268,6 +271,10 @@ def test_a_viewer_call_waiting_for_a_slot_follows_a_restart(
     current[0] = b
     for _ in range(server._CONNECTIONS_PER_ENDPOINT):
         slots.release()
+    thread.join(0.2)
+    assert connected == []
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots_b.release()
     thread.join(5)
     assert not thread.is_alive()
     assert errors == []
@@ -607,6 +614,9 @@ def test_a_fetch_waiting_for_a_slot_follows_the_resolver(monkeypatch):
     slots = mgr._connection_slots(a)
     for _ in range(server._CONNECTIONS_PER_ENDPOINT):
         slots.acquire()
+    slots_b = mgr._connection_slots(b)
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots_b.acquire()
 
     def run():
         try:
@@ -620,6 +630,10 @@ def test_a_fetch_waiting_for_a_slot_follows_the_resolver(monkeypatch):
     current[0] = b
     for _ in range(server._CONNECTIONS_PER_ENDPOINT):
         slots.release()
+    thread.join(0.2)
+    assert connected == []
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots_b.release()
     thread.join(5)
     assert not thread.is_alive()
     assert errors == []

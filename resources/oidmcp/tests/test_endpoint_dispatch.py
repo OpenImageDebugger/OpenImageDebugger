@@ -228,12 +228,12 @@ def _call_in_threads(endpoint, request, count, join_timeout):
 
 
 def test_each_queued_request_gets_the_full_timeout():
-    # The last starts at ~0.7 s, past its 0.5 s timeout; progress keeps it.
+    # The last starts at ~2.3 s, over 4 timeouts; progress keeps it alive.
     bridge = SerialBridge(delay=0.1, symbols=['grad'],
                           buffers={'grad': make_meta(4, 3, type_value=0)})
     endpoint = make_endpoint(bridge=bridge, request_timeout=0.5)
     results = _call_in_threads(
-        endpoint, {'method': 'get_buffer', 'symbol': 'grad'}, 8, 10)
+        endpoint, {'method': 'get_buffer', 'symbol': 'grad'}, 24, 10)
     assert not any(isinstance(r, ep.EndpointError) for r in results)
     assert all(r[0]['width'] == 4 for r in results)
 
@@ -250,7 +250,7 @@ def test_a_request_after_an_idle_pause_still_runs():
 
 
 def test_a_hung_debugger_still_times_out_queued_requests():
-    # MAX_CLIENTS x timeout (2.4 s) overruns the window: progress-blind fails.
+    # The 1.1 s window is ~3.7 timeouts: a wait of 4+ timeouts fails.
     timeout = 0.3
     window = 2 * timeout + 0.5
     endpoint = make_endpoint(bridge=FakeBridge(dead=True),
