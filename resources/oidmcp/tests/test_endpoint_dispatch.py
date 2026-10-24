@@ -244,8 +244,8 @@ def test_a_request_after_an_idle_pause_still_runs():
                           buffers={'grad': make_meta(4, 3, type_value=0)})
     endpoint = make_endpoint(bridge=bridge, request_timeout=0.2)
     time.sleep(0.3)
-    result = endpoint.handle_request(
-        {'method': 'get_buffer', 'symbol': 'grad'})
+    [result] = _call_in_threads(
+        endpoint, {'method': 'get_buffer', 'symbol': 'grad'}, 1, 5)
     assert result[0]['width'] == 4
 
 
@@ -266,9 +266,9 @@ def test_a_task_started_after_its_caller_gave_up_does_nothing():
     bridge = FakeBridge(dead=True,
                         buffers={'img': make_meta(4, 3, type_value=0)})
     endpoint = make_endpoint(bridge=bridge, request_timeout=0.05)
-    with pytest.raises(ep.EndpointError) as excinfo:
-        endpoint.handle_request({'method': 'get_buffer', 'symbol': 'img'})
-    assert excinfo.value.code == ep.ERROR_TIMEOUT
+    [result] = _call_in_threads(
+        endpoint, {'method': 'get_buffer', 'symbol': 'img'}, 1, 5)
+    assert result.code == ep.ERROR_TIMEOUT
     for late in bridge.pending:
         late()
     assert bridge.fetch_count == 0
