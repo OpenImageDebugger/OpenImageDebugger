@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.metadata
 import json
 import os
@@ -91,14 +92,25 @@ class SessionManager:
     def _connect(self, info):
         return ControlClient('127.0.0.1', info.port, info.token)
 
-    def _call_debugger(self, session, fn):
+    @contextlib.contextmanager
+    def _debugger_connection(self, session):
+        # A debugger can exit during the slot wait: re-resolve once held.
         info = self._resolve(session)
-        with self._connection_slots(info):
-            client = self._connect(info)
-            try:
-                return fn(client)
-            finally:
-                client.close()
+        while True:
+            with self._connection_slots(info):
+                current = self._resolve(session)
+                if (current.pid, current.token) == (info.pid, info.token):
+                    client = self._connect(current)
+                    try:
+                        yield client, current
+                    finally:
+                        client.close()
+                    return
+            info = current
+
+    def _call_debugger(self, session, fn):
+        with self._debugger_connection(session) as (client, _):
+            return fn(client)
 
     def _call_viewer(self, session, fn):
         # A viewer discovery file can outlive its endpoint (its writer pid
@@ -205,7 +217,7 @@ class SessionManager:
         state, so caching it under a constant key would serve stale
         pixels forever.
         """
-        kind, info = self._resolve_pixel_source(session)
+        kind, _ = self._resolve_pixel_source(session)
         if kind == 'viewer':
             viewer_meta, raw = self._call_viewer(
                 session, lambda c: c.get_buffer(symbol,
@@ -216,18 +228,13 @@ class SessionManager:
         # ping returns the stop generation keying the cache; one connection
         # serves it and get_buffer, so the key matches the stop that made the
         # bytes. token is per-instance: a reused pid can't read stale bytes.
-        with self._connection_slots(info):
-            client = self._connect(info)
-            try:
-                generation = client.ping()
-                key = (info.pid, info.token, symbol, generation)
-                cached = self._cache.get(key)
-                if cached is not None:
-                    return cached
-                meta, raw = client.get_buffer(
-                    symbol, max_bytes=self._max_bytes)
-            finally:
-                client.close()
+        with self._debugger_connection(session) as (client, info):
+            generation = client.ping()
+            key = (info.pid, info.token, symbol, generation)
+            cached = self._cache.get(key)
+            if cached is not None:
+                return cached
+            meta, raw = client.get_buffer(symbol, max_bytes=self._max_bytes)
         arr = decode_buffer(meta, raw)
         self._cache.put(key, (meta, arr))
         return meta, arr

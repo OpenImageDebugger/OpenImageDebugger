@@ -517,3 +517,59 @@ def test_parallel_viewer_calls_stay_under_the_connection_cap(
     assert errors == []
     assert len(results) == 8
     assert open_connections['max'] <= server._CONNECTIONS_PER_ENDPOINT
+
+
+def test_a_fetch_waiting_for_a_slot_follows_the_resolver(monkeypatch):
+    class Endpoint:
+        def __init__(self, pid):
+            self.pid, self.token, self.port = pid, 't%d' % pid, pid
+
+    class Client:
+        def ping(self):
+            return 0
+
+        def get_buffer(self, symbol, max_bytes):
+            return {}, b''
+
+        def close(self):
+            pass
+
+    a, b = Endpoint(1), Endpoint(2)
+    mgr = server.SessionManager()
+    current, connected, errors = [a], [], []
+    resolved = threading.Event()
+
+    def resolve(_):
+        endpoint = current[0]
+        resolved.set()
+        return endpoint
+
+    def connect(info):
+        connected.append(info)
+        return Client()
+
+    monkeypatch.setattr(mgr, '_resolve', resolve)
+    monkeypatch.setattr(mgr, '_connect', connect)
+    monkeypatch.setattr(server, 'decode_buffer', lambda meta, raw: raw)
+    slots = mgr._connection_slots(a)
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.acquire()
+
+    def run():
+        try:
+            mgr.fetch(None, 'img')
+        except Exception as exc:
+            errors.append(exc)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    assert resolved.wait(5)
+    time.sleep(0.1)
+    current[0] = b
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.release()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert errors == []
+    assert connected == [b]
+    assert mgr._cache.get((b.pid, b.token, 'img', 0)) is not None
