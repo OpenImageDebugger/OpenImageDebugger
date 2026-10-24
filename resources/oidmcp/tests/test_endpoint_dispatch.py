@@ -272,3 +272,29 @@ def test_a_task_started_after_its_caller_gave_up_does_nothing():
     for late in bridge.pending:
         late()
     assert bridge.fetch_count == 0
+
+
+def test_a_started_request_that_hangs_still_times_out():
+    release = threading.Event()
+
+    class HangingBridge(SerialBridge):
+        def get_buffer_metadata(self, variable, max_bytes=None):
+            release.wait()
+            return super().get_buffer_metadata(variable, max_bytes)
+
+    endpoint = make_endpoint(bridge=HangingBridge(), request_timeout=0.3)
+    results = []
+
+    def run():
+        try:
+            endpoint.handle_request(
+                {'method': 'get_buffer', 'symbol': 'img'})
+        except ep.EndpointError as error:
+            results.append(error)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    thread.join(3)
+    release.set()
+    assert not thread.is_alive(), 'hung'
+    assert [r.code for r in results] == [ep.ERROR_TIMEOUT]

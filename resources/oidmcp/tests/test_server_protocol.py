@@ -96,3 +96,14 @@ def test_server_version_is_empty_when_not_installed(monkeypatch):
         raise server.importlib.metadata.PackageNotFoundError(name)
     monkeypatch.setattr(server.importlib.metadata, 'version', missing)
     assert server._server_version() == ''
+
+
+def test_clients_see_the_installed_server_version():
+    version = server._server_version()
+    if not version:
+        pytest.skip('oid-mcp is not installed as a distribution')
+
+    async def run():
+        async with Client(server.mcp, mode='legacy') as client:
+            return client.server_info.version
+    assert asyncio.run(run()) == version
