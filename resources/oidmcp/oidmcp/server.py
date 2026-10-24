@@ -119,6 +119,9 @@ class SessionManager:
         while True:
             info = self._resolve_viewer(session)
             with self._connection_slots(info):
+                current = self._resolve_viewer(session)
+                if (current.pid, current.token) != (info.pid, info.token):
+                    continue
                 try:
                     client = self._connect(info)
                 except ConnectionRefusedError:

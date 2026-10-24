@@ -8,7 +8,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from oidmcp import server
 from oidmcp.analysis import compute_stats
-from oidmcp.discovery import NoSessionError
+from oidmcp.discovery import NoSessionError, ViewerSessionInfo
 from oidmcp.protocol import ControlError
 
 
@@ -221,10 +221,62 @@ def test_set_view_tool_raises_no_session_error(tmp_path, monkeypatch):
     assert 'OID_AGENT=1' in str(excinfo.value)
 
 
+def test_a_viewer_call_waiting_for_a_slot_follows_a_restart(
+        monkeypatch, tmp_path):
+    class Client:
+        def get_view(self):
+            return {}
+
+        def close(self):
+            pass
+
+    path = tmp_path / 'viewer.json'
+    a = ViewerSessionInfo(path, 1, 1001, 'ta', 1.0, None)
+    b = ViewerSessionInfo(path, 1, 1002, 'tb', 2.0, None)
+    mgr = server.SessionManager()
+    current, connected, reaped, errors = [a], [], [], []
+    resolved = threading.Event()
+
+    def resolve(_):
+        info = current[0]
+        resolved.set()
+        return info
+
+    def connect(info):
+        connected.append(info)
+        if info == a:
+            raise ConnectionRefusedError
+        return Client()
+
+    monkeypatch.setattr(mgr, '_resolve_viewer', resolve)
+    monkeypatch.setattr(mgr, '_connect', connect)
+    monkeypatch.setattr(server, '_reap', reaped.append)
+    slots = mgr._connection_slots(a)
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.acquire()
+
+    def run():
+        try:
+            mgr._call_viewer(None, lambda c: c.get_view())
+        except Exception as exc:
+            errors.append(exc)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    assert resolved.wait(5)
+    current[0] = b
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.release()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert errors == []
+    assert connected == [b]
+    assert reaped == []
+
+
 def test_set_view_tool_schema_accepts_int_and_str_channel():
     # The endpoint and the docs use int channel indices, so a str-only hint
     # would reject the documented channel=0/1/2 before it reaches the viewer.
-    import asyncio
     tools = asyncio.run(server.mcp.list_tools())
     schema = next(t.input_schema for t in tools if t.name == 'set_view')
     types = {branch.get('type')
@@ -564,7 +616,6 @@ def test_a_fetch_waiting_for_a_slot_follows_the_resolver(monkeypatch):
     thread = threading.Thread(target=run, daemon=True)
     thread.start()
     assert resolved.wait(5)
-    time.sleep(0.1)
     current[0] = b
     for _ in range(server._CONNECTIONS_PER_ENDPOINT):
         slots.release()
