@@ -9,12 +9,12 @@
     "id": "205714671",
     "subfolder": "resources/oidmcp"
   },
-  "version": "0.3.5",
+  "version": "0.3.6",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "oid-mcp",
-      "version": "0.3.5",
+      "version": "0.3.6",
       "transport": {
         "type": "stdio"
       }
