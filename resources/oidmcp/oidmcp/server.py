@@ -183,24 +183,6 @@ class SessionManager:
                 f'window paired to it.')
         return max(paired, key=lambda v: v.start_time)
 
-    def _resolve_pixel_source(self, session):
-        """
-        Resolve a pixel-tool `session` selector to its source.
-
-        Prefers a debugger session, as before: `_resolve` picks the
-        explicit match, or (with no selector) the most recently started
-        live debugger session. Only when that fails -- the pid selects
-        no live debugger session, or none exist at all -- is `session`
-        instead resolved against live viewer windows (by the viewer's
-        own pid, or by `debugger_pid` pairing), so a caller can target a
-        standalone `oidwindow` or a viewer whose debugger session has
-        already exited.
-        """
-        try:
-            return 'debugger', self._resolve(session)
-        except NoSessionError:
-            return 'viewer', self._resolve_viewer(session)
-
     def list_buffers(self, session) -> dict:
         with contextlib.suppress(NoSessionError):
             symbols, generation = self._call_debugger(
@@ -246,11 +228,11 @@ class SessionManager:
         return meta, arr
 
     def plot(self, session, symbol) -> None:
-        kind, _ = self._resolve_pixel_source(session)
-        if kind == 'viewer':
-            raise RuntimeError(
-                'the buffer is already displayed in that viewer')
-        self._call_debugger(session, lambda c: c.plot(symbol))
+        with contextlib.suppress(NoSessionError):
+            self._call_debugger(session, lambda c: c.plot(symbol))
+            return
+        self._resolve_viewer(session)
+        raise RuntimeError('the buffer is already displayed in that viewer')
 
     def set_view(self, session, **fields) -> dict:
         return self._call_viewer(session, lambda c: c.set_view(**fields))

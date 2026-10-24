@@ -250,16 +250,16 @@ def test_a_request_after_an_idle_pause_still_runs():
 
 
 def test_a_hung_debugger_still_times_out_queued_requests():
-    # The 1.1 s window is ~3.7 timeouts: a wait of 4+ timeouts fails.
+    # 1.1 s is ~3.7 timeouts: a 4+ timeout wait or chained give-ups fail.
     timeout = 0.3
     window = 2 * timeout + 0.5
     endpoint = make_endpoint(bridge=FakeBridge(dead=True),
                              request_timeout=timeout)
     started = time.monotonic()
     results = _call_in_threads(
-        endpoint, {'method': 'list_symbols'}, 3, window)
+        endpoint, {'method': 'list_symbols'}, ep.MAX_CLIENTS, window)
     assert time.monotonic() - started < window
-    assert [r.code for r in results] == [ep.ERROR_TIMEOUT] * 3
+    assert [r.code for r in results] == [ep.ERROR_TIMEOUT] * ep.MAX_CLIENTS
 
 
 def test_a_task_started_after_its_caller_gave_up_does_nothing():
