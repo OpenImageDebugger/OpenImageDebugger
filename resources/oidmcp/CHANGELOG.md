@@ -7,9 +7,9 @@ All notable changes to `oid-mcp` are documented here. This project adheres to
 
 ### Changed
 - oid-mcp now requires mcp 2.x.
-- oid-mcp now requires Python 3.11 or newer. Pillow 13, which fixes several
-  security advisories, no longer supports 3.10. `uv run` fetches a newer
-  Python automatically where the system one is older.
+- oid-mcp now requires Python 3.11 or newer, and Pillow 13 or newer, which
+  fixes several security advisories and no longer supports 3.10. On Python
+  3.10, installs stay on the 0.3.x line.
 
 ### Fixed
 - Tool errors reach the agent again on mcp 2.x, including the hints about

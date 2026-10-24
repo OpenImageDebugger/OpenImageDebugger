@@ -534,7 +534,7 @@ dev = [
 requires-dist = [
     { name = "mcp", specifier = ">=2.3,<3" },
     { name = "numpy", specifier = ">=1.24" },
-    { name = "pillow", specifier = ">=10.0" },
+    { name = "pillow", specifier = ">=13" },
 ]
 
 [package.metadata.requires-dev]
