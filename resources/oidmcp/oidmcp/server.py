@@ -2,27 +2,20 @@
 
 from __future__ import annotations
 
-import importlib.util
+import contextlib
+import importlib.metadata
 import json
 import os
 import sys
+import threading
 
-# FastMCP, or MCPServer in some SDK builds. find_spec, not ImportError from
-# the import: a real error inside an existing mcpserver must surface.
-try:
-    _has_mcpserver = (
-        importlib.util.find_spec('mcp.server.mcpserver') is not None)
-except (ImportError, ValueError):
-    _has_mcpserver = False
-if _has_mcpserver:
-    from mcp.server.mcpserver import MCPServer, Image
-else:
-    from mcp.server.fastmcp import FastMCP as MCPServer, Image
+from mcp.server.mcpserver import MCPServer, Image
+from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 
 from .analysis import compute_stats, dump_npy, extract_values
 from .buffers import BufferCache, decode_buffer
-from .discovery import (NoSessionError, _reap, live_sessions,
-                        live_viewers, pick_session)
+from .discovery import (NoSessionError, ViewerSessionInfo, _reap,
+                        live_sessions, live_viewers, pick_session)
 from .protocol import DEFAULT_MAX_BYTES, ControlClient, ControlError
 from .render import render_view
 from .viewer_meta import to_bridge_meta
@@ -43,9 +36,13 @@ _HINTS = {
 
 def _friendly(error: Exception) -> str:
     if isinstance(error, ControlError):
+        message = error.message or error.code
         hint = _HINTS.get(error.code, '')
-        return f'{error.message}' + (f' {hint}' if hint else '')
-    return str(error)
+        if not hint:
+            return message
+        separator = ' ' if message.endswith(('.', '!', '?')) else '. '
+        return message + separator + hint
+    return str(error) or type(error).__name__
 
 
 def _parse_max_bytes() -> int:
@@ -70,22 +67,53 @@ def _parse_max_bytes() -> int:
     return value
 
 
+# Under old debuggers' backlog of 4 and every endpoint's 8-client cap.
+_CONNECTIONS_PER_ENDPOINT = 3
+
+
 class SessionManager:
     """Per-stop buffer cache over live sessions (a fresh connection per call)."""
 
     def __init__(self):
         self._cache = BufferCache(capacity=4)
         self._max_bytes = _parse_max_bytes()
+        self._slots_guard = threading.Lock()
+        self._slots: dict[tuple, threading.BoundedSemaphore] = {}
+
+    def _connection_slots(self, info) -> threading.BoundedSemaphore:
+        key = (info.pid, info.token)
+        with self._slots_guard:
+            slots = self._slots.get(key)
+            if slots is None:
+                slots = self._slots[key] = threading.BoundedSemaphore(
+                    _CONNECTIONS_PER_ENDPOINT)
+            return slots
 
     def _connect(self, info):
-        return ControlClient('127.0.0.1', info.port, info.token)
+        if isinstance(info, ViewerSessionInfo):
+            return ControlClient('127.0.0.1', info.port, info.token)
+        # 3 queued x the endpoint's 15 s timeout, + 15 s to run.
+        return ControlClient('127.0.0.1', info.port, info.token, timeout=60)
+
+    @contextlib.contextmanager
+    def _debugger_connection(self, session):
+        # A debugger can exit during the slot wait: re-resolve once held.
+        info = self._resolve(session)
+        while True:
+            with self._connection_slots(info):
+                current = self._resolve(session)
+                if (current.pid, current.token) == (info.pid, info.token):
+                    client = self._connect(current)
+                    try:
+                        yield client, current
+                    finally:
+                        client.close()
+                    return
+            info = current
 
     def _call_debugger(self, session, fn):
-        client = self._connect(self._resolve(session))
-        try:
+        with self._debugger_connection(session) as (client, _):
             return fn(client)
-        finally:
-            client.close()
 
     def _call_viewer(self, session, fn):
         # A viewer discovery file can outlive its endpoint (its writer pid
@@ -93,21 +121,25 @@ class SessionManager:
         reaped = set()
         while True:
             info = self._resolve_viewer(session)
-            try:
-                client = self._connect(info)
-            except ConnectionRefusedError:
-                if info.path is None or str(info.path) in reaped:
-                    raise NoSessionError(
-                        'viewer discovery entries kept refusing '
-                        'connections; restart the viewer window and '
-                        'retry.') from None
-                reaped.add(str(info.path))
-                _reap(info.path)
-                continue
-            try:
-                return fn(client)
-            finally:
-                client.close()
+            with self._connection_slots(info):
+                current = self._resolve_viewer(session)
+                if (current.pid, current.token) != (info.pid, info.token):
+                    continue
+                try:
+                    client = self._connect(info)
+                except ConnectionRefusedError:
+                    if info.path is None or str(info.path) in reaped:
+                        raise NoSessionError(
+                            'viewer discovery entries kept refusing '
+                            'connections; restart the viewer window and '
+                            'retry.') from None
+                    reaped.add(str(info.path))
+                    _reap(info.path)
+                    continue
+                try:
+                    return fn(client)
+                finally:
+                    client.close()
 
     def _resolve(self, session):
         return pick_session(live_sessions(), session)
@@ -151,34 +183,15 @@ class SessionManager:
                 f'window paired to it.')
         return max(paired, key=lambda v: v.start_time)
 
-    def _resolve_pixel_source(self, session):
-        """
-        Resolve a pixel-tool `session` selector to its source.
-
-        Prefers a debugger session, as before: `_resolve` picks the
-        explicit match, or (with no selector) the most recently started
-        live debugger session. Only when that fails -- the pid selects
-        no live debugger session, or none exist at all -- is `session`
-        instead resolved against live viewer windows (by the viewer's
-        own pid, or by `debugger_pid` pairing), so a caller can target a
-        standalone `oidwindow` or a viewer whose debugger session has
-        already exited.
-        """
-        try:
-            return 'debugger', self._resolve(session)
-        except NoSessionError:
-            return 'viewer', self._resolve_viewer(session)
-
     def list_buffers(self, session) -> dict:
-        kind, _ = self._resolve_pixel_source(session)
-        if kind == 'viewer':
-            buffers = self._call_viewer(
-                session, lambda c: c.list_viewer_buffers())
-            return {'symbols': [b['name'] for b in buffers],
-                    'stop_generation': 0}
-        symbols, generation = self._call_debugger(
-            session, lambda c: c.list_symbols())
-        return {'symbols': symbols, 'stop_generation': generation}
+        with contextlib.suppress(NoSessionError):
+            symbols, generation = self._call_debugger(
+                session, lambda c: c.list_symbols())
+            return {'symbols': symbols, 'stop_generation': generation}
+        buffers = self._call_viewer(
+            session, lambda c: c.list_viewer_buffers())
+        return {'symbols': [b['name'] for b in buffers],
+                'stop_generation': 0}
 
     def fetch(self, session, symbol):
         """
@@ -191,37 +204,35 @@ class SessionManager:
         state, so caching it under a constant key would serve stale
         pixels forever.
         """
-        kind, info = self._resolve_pixel_source(session)
-        if kind == 'viewer':
-            viewer_meta, raw = self._call_viewer(
-                session, lambda c: c.get_buffer(symbol,
-                                                max_bytes=self._max_bytes))
-            meta = to_bridge_meta(viewer_meta)
-            return meta, decode_buffer(meta, raw)
+        with contextlib.suppress(NoSessionError):
+            return self._fetch_debugger(session, symbol)
+        viewer_meta, raw = self._call_viewer(
+            session, lambda c: c.get_buffer(symbol,
+                                            max_bytes=self._max_bytes))
+        meta = to_bridge_meta(viewer_meta)
+        return meta, decode_buffer(meta, raw)
 
+    def _fetch_debugger(self, session, symbol):
         # ping returns the stop generation keying the cache; one connection
         # serves it and get_buffer, so the key matches the stop that made the
         # bytes. token is per-instance: a reused pid can't read stale bytes.
-        client = self._connect(info)
-        try:
+        with self._debugger_connection(session) as (client, info):
             generation = client.ping()
             key = (info.pid, info.token, symbol, generation)
             cached = self._cache.get(key)
             if cached is not None:
                 return cached
             meta, raw = client.get_buffer(symbol, max_bytes=self._max_bytes)
-        finally:
-            client.close()
         arr = decode_buffer(meta, raw)
         self._cache.put(key, (meta, arr))
         return meta, arr
 
     def plot(self, session, symbol) -> None:
-        kind, _ = self._resolve_pixel_source(session)
-        if kind == 'viewer':
-            raise RuntimeError(
-                'the buffer is already displayed in that viewer')
-        self._call_debugger(session, lambda c: c.plot(symbol))
+        with contextlib.suppress(NoSessionError):
+            self._call_debugger(session, lambda c: c.plot(symbol))
+            return
+        self._resolve_viewer(session)
+        raise RuntimeError('the buffer is already displayed in that viewer')
 
     def set_view(self, session, **fields) -> dict:
         return self._call_viewer(session, lambda c: c.set_view(**fields))
@@ -262,15 +273,34 @@ _STARTUP_WARNING = (
     '`stats`/`values` over reading whole buffers.\n'
 )
 
-mcp = MCPServer('oid', instructions=_INSTRUCTIONS)
-_manager = SessionManager()
+_EXPECTED = (ControlError, NoSessionError, OSError, ValueError, RuntimeError)
+_BUGS = (NotImplementedError, RecursionError, UnicodeError,
+         json.JSONDecodeError)
 
 
-def _fetch_or_fail(manager, session, symbol):
+class _OidServer(MCPServer):
+    # mcp 2.x hides non-ToolError text; oid-mcp's errors say what to do next.
+    async def call_tool(self, name, arguments, context=None):
+        try:
+            return await super().call_tool(name, arguments, context)
+        except UnexpectedToolError as error:
+            cause = error.__cause__
+            if not isinstance(cause, _EXPECTED) or isinstance(cause, _BUGS):
+                raise
+            raise ToolError(f'{error}: {_friendly(cause)}') from cause
+
+
+def _server_version() -> str:
+    # MCPServer types version as str; None fails every MCP handshake.
     try:
-        return manager.fetch(session, symbol)
-    except (ControlError, NoSessionError, ValueError) as error:
-        raise RuntimeError(_friendly(error)) from None
+        return importlib.metadata.version('oid-mcp')
+    except importlib.metadata.PackageNotFoundError:
+        return ''
+
+
+mcp = _OidServer('oid', instructions=_INSTRUCTIONS,
+                 version=_server_version())
+_manager = SessionManager()
 
 
 def _format_info(info: dict) -> str:
@@ -280,20 +310,14 @@ def _format_info(info: dict) -> str:
 
 def _view_impl(manager, symbol, region, channel, vmin, vmax, max_px,
                session):
-    meta, arr = _fetch_or_fail(manager, session, symbol)
-    try:
-        png, info = render_view(arr, meta, region=region, channel=channel,
-                                vmin=vmin, vmax=vmax, max_px=max_px)
-    except ValueError as error:
-        raise RuntimeError(str(error)) from None
+    meta, arr = manager.fetch(session, symbol)
+    png, info = render_view(arr, meta, region=region, channel=channel,
+                            vmin=vmin, vmax=vmax, max_px=max_px)
     return [Image(data=png, format='png'), _format_info(info)]
 
 
 def _plot_impl(manager, symbol, session):
-    try:
-        manager.plot(session, symbol)
-    except (ControlError, NoSessionError) as error:
-        raise RuntimeError(_friendly(error)) from None
+    manager.plot(session, symbol)
     return f'{symbol} plotted in the viewer'
 
 
@@ -323,10 +347,7 @@ def list_buffers(session: int | None = None) -> dict:
     the most recently started live debugger session, or the most
     recently started live viewer window if none is live.
     """
-    try:
-        return _manager.list_buffers(session)
-    except (ControlError, NoSessionError) as error:
-        raise RuntimeError(_friendly(error)) from None
+    return _manager.list_buffers(session)
 
 
 @mcp.tool()
@@ -351,12 +372,8 @@ def view(symbol: str, region: list[int] | None = None,
 def stats(symbol: str, region: list[int] | None = None,
           session: int | None = None) -> dict:
     """Per-channel min/max/mean/std and NaN/Inf/zero counts."""
-    meta, arr = _fetch_or_fail(_manager, session, symbol)
-    try:
-        return compute_stats(arr, meta,
-                             region=tuple(region) if region else None)
-    except ValueError as error:
-        raise RuntimeError(str(error)) from None
+    meta, arr = _manager.fetch(session, symbol)
+    return compute_stats(arr, meta, region=tuple(region) if region else None)
 
 
 @mcp.tool()
@@ -364,11 +381,8 @@ def values(symbol: str, x: int, y: int, w: int, h: int,
            channel: int | None = None,
            session: int | None = None) -> dict:
     """Exact pixel values for a small crop (at most 1024 numbers)."""
-    _, arr = _fetch_or_fail(_manager, session, symbol)
-    try:
-        return extract_values(arr, x, y, w, h, channel=channel)
-    except ValueError as error:
-        raise RuntimeError(str(error)) from None
+    _, arr = _manager.fetch(session, symbol)
+    return extract_values(arr, x, y, w, h, channel=channel)
 
 
 @mcp.tool()
@@ -379,12 +393,9 @@ def dump(symbol: str, path: str | None = None, overwrite: bool = False,
     Refuses to overwrite an existing file unless overwrite=true, so an
     unintended path cannot clobber your data.
     """
-    meta, arr = _fetch_or_fail(_manager, session, symbol)
-    try:
-        return dump_npy(arr, symbol, meta.get('stop_generation', 0),
-                        path=path, overwrite=overwrite)
-    except (OSError, ValueError) as error:
-        raise RuntimeError(str(error)) from None
+    meta, arr = _manager.fetch(session, symbol)
+    return dump_npy(arr, symbol, meta.get('stop_generation', 0),
+                    path=path, overwrite=overwrite)
 
 
 @mcp.tool()
@@ -412,10 +423,7 @@ def set_view(session: int | None = None, buffer: str | None = None,
         'buffer': buffer, 'center': center, 'zoom': zoom,
         'rotation_deg': rotation_deg, 'channel': channel,
         'auto_contrast': auto_contrast}.items() if v is not None}
-    try:
-        return _manager.set_view(session, **fields)
-    except (ControlError, NoSessionError) as error:
-        raise RuntimeError(_friendly(error)) from None
+    return _manager.set_view(session, **fields)
 
 
 @mcp.tool()
@@ -425,10 +433,7 @@ def get_view(session: int | None = None) -> dict:
     Returns buffer/center/zoom/rotation_deg/channel/auto_contrast.
     auto_contrast is global (not per-buffer).
     """
-    try:
-        return _manager.get_view(session)
-    except (ControlError, NoSessionError) as error:
-        raise RuntimeError(_friendly(error)) from None
+    return _manager.get_view(session)
 
 
 def main() -> None:

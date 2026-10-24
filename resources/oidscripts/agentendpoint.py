@@ -26,6 +26,7 @@ ERROR_INTERNAL = 'internal'
 import os
 import secrets
 import threading
+import time
 
 from oidscripts.debuggers.interfaces import BufferTooLargeError
 
@@ -98,6 +99,7 @@ class AgentEndpoint(object):
         self.token = token
         self._timeout = request_timeout
         self._stop_generation = 0
+        self._progress = time.monotonic()
         self._backend = bridge.get_backend_name()
         self._handlers = {
             'hello': self._handle_hello,
@@ -143,18 +145,42 @@ class AgentEndpoint(object):
         """
         Execute fn() on the debugger thread and return its result.
         """
+        started = threading.Event()
         done = threading.Event()
+        lock = threading.Lock()
         box = {}
 
         def task():
+            with lock:
+                if box.get('gave_up'):
+                    return  # the caller already answered with a timeout
+                started.set()
+            self._progress = time.monotonic()
             try:
                 box['result'] = fn()
             except Exception as error:  # forwarded to the client
                 box['error'] = error
             finally:
+                self._progress = time.monotonic()
                 done.set()
 
+        enqueued = time.monotonic()
+
+        def idle_left():
+            idle_since = max(self._progress, enqueued)
+            return idle_since + self._timeout - time.monotonic()
+
         self._bridge.queue_request(task)
+        # Wait while the serial debugger progresses; then time fn alone.
+        while not started.wait(max(idle_left(), 0)):
+            with lock:
+                if started.is_set() or idle_left() > 0:
+                    continue
+                box['gave_up'] = True
+            raise EndpointError(
+                ERROR_TIMEOUT,
+                'no request started or finished within %gs; '
+                'the debugger is busy or hung' % self._timeout)
         if not done.wait(self._timeout):
             raise EndpointError(
                 ERROR_TIMEOUT,
@@ -225,7 +251,6 @@ import atexit
 import json
 import socket
 import tempfile
-import time
 
 from oidscripts.discoverydir import discovery_dir
 from oidscripts.logger import log
@@ -300,7 +325,7 @@ class _EndpointServer(object):
         self._endpoint = endpoint
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.bind(('127.0.0.1', 0))
-        self._sock.listen(4)
+        self._sock.listen(MAX_CLIENTS)
         self._clients = []
         self._lock = threading.Lock()
         self.port = self._sock.getsockname()[1]

@@ -1,9 +1,15 @@
+import asyncio
 import os
+import threading
+import time
 
 import pytest
+from mcp.server.mcpserver.exceptions import ToolError
 
 from oidmcp import server
 from oidmcp.analysis import compute_stats
+from oidmcp.discovery import (NoSessionError, SessionInfo,
+                              ViewerSessionInfo)
 from oidmcp.protocol import ControlError
 
 
@@ -51,19 +57,11 @@ def test_fetch_refetches_after_stop(manager):
     assert bridge.fetch_count == fetches + 1
 
 
-def test_fetch_unknown_symbol_is_friendly(manager):
-    mgr, _ = manager
-    with pytest.raises(RuntimeError) as excinfo:
-        server._fetch_or_fail(mgr, None, 'missing')
+def test_unknown_symbol_reaches_the_client_with_its_hint(live_endpoint):
+    call = server.mcp.call_tool('stats', {'symbol': 'missing'})
+    with pytest.raises(ToolError) as excinfo:
+        asyncio.run(call)
     assert 'list_buffers' in str(excinfo.value)
-
-
-def test_no_session_is_friendly(tmp_path, monkeypatch):
-    monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'empty'))
-    mgr = server.SessionManager()
-    with pytest.raises(RuntimeError) as excinfo:
-        server._fetch_or_fail(mgr, None, 'img')
-    assert 'OID_AGENT=1' in str(excinfo.value)
 
 
 def test_view_tool_returns_image_and_text(manager):
@@ -77,12 +75,12 @@ def test_view_tool_returns_image_and_text(manager):
     assert 'stop_generation' in text
 
 
-def test_dump_tool_wraps_filesystem_errors(live_endpoint, dump_dir):
-    # A path outside the dump directory becomes a friendly RuntimeError,
-    # like the other tools, instead of a raw ValueError.
+def test_dump_tool_rejects_paths_outside_the_dump_dir(live_endpoint,
+                                                      dump_dir):
     escaping = str(dump_dir / 'no-such-dir' / 'out.npy')
-    with pytest.raises(RuntimeError) as excinfo:
-        server.dump('grad', path=escaping)
+    call = server.mcp.call_tool('dump', {'symbol': 'grad', 'path': escaping})
+    with pytest.raises(ToolError) as excinfo:
+        asyncio.run(call)
     assert 'bare filename' in str(excinfo.value)
 
 
@@ -91,7 +89,7 @@ def test_dump_tool_refuses_to_overwrite_without_flag(live_endpoint, dump_dir):
     # cannot clobber it by accident; the overwrite flag opts back in.
     first = server.dump('grad', path='out.npy')
     assert first.startswith(str(dump_dir))
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.raises(FileExistsError) as excinfo:
         server.dump('grad', path='out.npy')
     assert 'overwrite' in str(excinfo.value)
     assert server.dump('grad', path='out.npy', overwrite=True) == first
@@ -217,28 +215,87 @@ def test_set_view_only_sends_passed_fields(live_viewer):
     assert second['rotation_deg'] == 90
 
 
-def test_set_view_tool_wraps_errors_as_runtime_error(tmp_path, monkeypatch):
+def test_set_view_tool_raises_no_session_error(tmp_path, monkeypatch):
     monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'empty'))
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.raises(NoSessionError) as excinfo:
         server.set_view(zoom=2.0)
     assert 'OID_AGENT=1' in str(excinfo.value)
+
+
+def test_a_viewer_call_waiting_for_a_slot_follows_a_restart(
+        monkeypatch, tmp_path):
+    class Client:
+        def get_view(self):
+            return {}
+
+        def close(self):
+            pass
+
+    path = tmp_path / 'viewer.json'
+    a = ViewerSessionInfo(path, 1, 1001, 'ta', 1.0, None)
+    b = ViewerSessionInfo(path, 1, 1002, 'tb', 2.0, None)
+    mgr = server.SessionManager()
+    current, connected, reaped, errors = [a], [], [], []
+    resolved = threading.Event()
+
+    def resolve(_):
+        info = current[0]
+        resolved.set()
+        return info
+
+    def connect(info):
+        connected.append(info)
+        if info == a:
+            raise ConnectionRefusedError
+        return Client()
+
+    monkeypatch.setattr(mgr, '_resolve_viewer', resolve)
+    monkeypatch.setattr(mgr, '_connect', connect)
+    monkeypatch.setattr(server, '_reap', reaped.append)
+    slots = mgr._connection_slots(a)
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.acquire()
+    slots_b = mgr._connection_slots(b)
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots_b.acquire()
+
+    def run():
+        try:
+            mgr._call_viewer(None, lambda c: c.get_view())
+        except Exception as exc:
+            errors.append(exc)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    assert resolved.wait(5)
+    current[0] = b
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.release()
+    thread.join(0.2)
+    assert connected == []
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots_b.release()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert errors == []
+    assert connected == [b]
+    assert reaped == []
 
 
 def test_set_view_tool_schema_accepts_int_and_str_channel():
     # The endpoint and the docs use int channel indices, so a str-only hint
     # would reject the documented channel=0/1/2 before it reaches the viewer.
-    import asyncio
     tools = asyncio.run(server.mcp.list_tools())
-    schema = next(t.inputSchema for t in tools if t.name == 'set_view')
+    schema = next(t.input_schema for t in tools if t.name == 'set_view')
     types = {branch.get('type')
              for branch in schema['properties']['channel']['anyOf']}
     assert 'integer' in types
     assert 'string' in types
 
 
-def test_get_view_tool_wraps_errors_as_runtime_error(tmp_path, monkeypatch):
+def test_get_view_tool_raises_no_session_error(tmp_path, monkeypatch):
     monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'empty'))
-    with pytest.raises(RuntimeError) as excinfo:
+    with pytest.raises(NoSessionError) as excinfo:
         server.get_view()
     assert 'OID_AGENT=1' in str(excinfo.value)
 
@@ -384,3 +441,256 @@ def test_client_is_closed_on_fetch_including_cache_hit(live_endpoint,
     # ...but both calls -- the cache miss and the cache hit -- still each
     # opened and closed their own per-call client.
     assert len(closed_clients) == 2
+
+
+@pytest.fixture
+def open_connections(monkeypatch):
+    # Count from connect's start: a serial fake holds later connects.
+    lock = threading.Lock()
+    state = {'open': 0, 'max': 0}
+    real_connect = server.SessionManager._connect
+
+    def counting_connect(self, info):
+        with lock:
+            state['open'] += 1
+            state['max'] = max(state['max'], state['open'])
+        try:
+            client = real_connect(self, info)
+        except BaseException:
+            with lock:
+                state['open'] -= 1
+            raise
+        real_close = client.close
+
+        def close():
+            with lock:
+                state['open'] -= 1
+            real_close()
+        client.close = close
+        return client
+
+    monkeypatch.setattr(server.SessionManager, '_connect', counting_connect)
+    return state
+
+
+def test_parallel_calls_keep_between_two_and_three_connections_per_debugger(
+        manager, monkeypatch, open_connections):
+    mgr, (_, bridge) = manager
+    state = open_connections
+    real_metadata = bridge.get_buffer_metadata
+
+    def slow_metadata(*args, **kwargs):
+        time.sleep(0.1)
+        return real_metadata(*args, **kwargs)
+
+    monkeypatch.setattr(bridge, 'get_buffer_metadata', slow_metadata)
+
+    results, errors = [], []
+
+    def call(fn):
+        try:
+            results.append(fn())
+        except Exception as exc:
+            errors.append(exc)
+
+    calls = ([lambda: mgr.fetch(None, 'grad')] * 4
+             + [lambda: mgr.list_buffers(None)] * 4)
+    threads = [threading.Thread(target=call, args=(fn,)) for fn in calls]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert 2 <= state['max'] <= 3
+    assert errors == []
+    assert len(results) == 8
+
+
+def test_connection_slots_are_released_when_connect_or_call_raises(
+        manager, monkeypatch):
+    mgr, (info, _) = manager
+    real_connect = server.SessionManager._connect
+    cap = server._CONNECTIONS_PER_ENDPOINT
+
+    def assert_all_slots_free():
+        slots = mgr._connection_slots(info)
+        taken = [slots.acquire(blocking=False) for _ in range(cap)]
+        for ok in taken:
+            if ok:
+                slots.release()
+        assert all(taken)
+
+    def refuse(self, info):
+        raise ConnectionRefusedError()
+
+    monkeypatch.setattr(server.SessionManager, '_connect', refuse)
+    for _ in range(cap):
+        with pytest.raises(ConnectionRefusedError):
+            mgr.list_buffers(None)
+    assert_all_slots_free()
+
+    def boom(c):
+        raise RuntimeError('boom')
+
+    monkeypatch.setattr(server.SessionManager, '_connect', real_connect)
+    for _ in range(cap):
+        with pytest.raises(RuntimeError):
+            mgr._call_debugger(None, boom)
+    assert_all_slots_free()
+
+
+def test_each_debugger_session_gets_its_own_connection_cap():
+    mgr = server.SessionManager()
+
+    class Info:
+        def __init__(self, pid, token):
+            self.pid, self.token = pid, token
+
+    assert (mgr._connection_slots(Info(1, 'x'))
+            is not mgr._connection_slots(Info(2, 'x')))
+
+
+def test_parallel_viewer_calls_stay_under_the_connection_cap(
+        live_viewer, open_connections):
+    live_viewer()
+    mgr = server.SessionManager()
+
+    def slow_get_view(client):
+        time.sleep(0.1)
+        return client.get_view()
+
+    results, errors = [], []
+
+    def call():
+        try:
+            results.append(mgr._call_viewer(None, slow_get_view))
+        except Exception as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=call, daemon=True)
+               for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(5)
+    assert not any(thread.is_alive() for thread in threads)
+    assert errors == []
+    assert len(results) == 8
+    assert open_connections['max'] <= server._CONNECTIONS_PER_ENDPOINT
+
+
+def test_a_fetch_waiting_for_a_slot_follows_the_resolver(monkeypatch):
+    class Endpoint:
+        def __init__(self, pid):
+            self.pid, self.token, self.port = pid, 't%d' % pid, pid
+
+    class Client:
+        def ping(self):
+            return 0
+
+        def get_buffer(self, symbol, max_bytes):
+            return {}, b''
+
+        def close(self):
+            pass
+
+    a, b = Endpoint(1), Endpoint(2)
+    mgr = server.SessionManager()
+    current, connected, errors = [a], [], []
+    resolved = threading.Event()
+
+    def resolve(_):
+        endpoint = current[0]
+        resolved.set()
+        return endpoint
+
+    def connect(info):
+        connected.append(info)
+        return Client()
+
+    monkeypatch.setattr(mgr, '_resolve', resolve)
+    monkeypatch.setattr(mgr, '_connect', connect)
+    monkeypatch.setattr(server, 'decode_buffer', lambda meta, raw: raw)
+    slots = mgr._connection_slots(a)
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.acquire()
+    slots_b = mgr._connection_slots(b)
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots_b.acquire()
+
+    def run():
+        try:
+            mgr.fetch(None, 'img')
+        except Exception as exc:
+            errors.append(exc)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    assert resolved.wait(5)
+    current[0] = b
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.release()
+    thread.join(0.2)
+    assert connected == []
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots_b.release()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert errors == []
+    assert connected == [b]
+    assert mgr._cache.get((b.pid, b.token, 'img', 0)) is not None
+
+
+def test_a_fetch_whose_debugger_exits_in_the_slot_wait_falls_back(
+        monkeypatch):
+    class Endpoint:
+        pid, token, port = 1, 't1', 1
+
+    mgr = server.SessionManager()
+    state, errors, results = {'dead': False}, [], []
+    resolved = threading.Event()
+
+    def resolve(_):
+        dead = state['dead']
+        resolved.set()
+        if dead:
+            raise NoSessionError('gone')
+        return Endpoint()
+
+    monkeypatch.setattr(mgr, '_resolve', resolve)
+    monkeypatch.setattr(mgr, '_call_viewer',
+                        lambda session, fn: ({'name': 'img'}, b'px'))
+    monkeypatch.setattr(server, 'to_bridge_meta', lambda m: m)
+    monkeypatch.setattr(server, 'decode_buffer', lambda meta, raw: raw)
+    slots = mgr._connection_slots(Endpoint())
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.acquire()
+
+    def run():
+        try:
+            results.append(mgr.fetch(None, 'img'))
+        except Exception as exc:
+            errors.append(exc)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    assert resolved.wait(5)
+    state['dead'] = True
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.release()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert errors == []
+    assert results == [({'name': 'img'}, b'px')]
+
+
+def test_connect_picks_the_timeout_by_endpoint_kind(monkeypatch):
+    timeouts = []
+    default = server.ControlClient.__init__.__defaults__[0]
+    monkeypatch.setattr(
+        server, 'ControlClient',
+        lambda host, port, token, timeout=default: timeouts.append(timeout))
+    mgr = server.SessionManager()
+    mgr._connect(SessionInfo(None, 1, 1, 't', 'gdb', 1.0))
+    mgr._connect(ViewerSessionInfo(None, 1, 1, 't', 1.0, None))
+    assert timeouts == [60, 20]

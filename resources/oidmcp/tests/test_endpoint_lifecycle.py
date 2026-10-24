@@ -262,3 +262,21 @@ def test_stale_tmp_does_not_block_start(tmp_path, monkeypatch):
         assert path is not None and os.path.exists(path)
     finally:
         ep.shutdown()
+
+
+def test_listen_backlog_matches_the_client_cap(monkeypatch, tmp_path):
+    monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'agent'))
+    backlogs = []
+    real_listen = socket.socket.listen
+
+    def spy(self, *args):
+        backlogs.extend(args)
+        return real_listen(self, *args)
+
+    monkeypatch.setattr(socket.socket, 'listen', spy)
+    endpoint = ep.AgentEndpoint(FakeBridge(), FakeWindow(), token='t')
+    server = ep._EndpointServer(endpoint)
+    try:
+        assert backlogs == [ep.MAX_CLIENTS]
+    finally:
+        server.close()

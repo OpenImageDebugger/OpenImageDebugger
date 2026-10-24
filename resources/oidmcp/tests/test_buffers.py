@@ -1,3 +1,7 @@
+import sys
+import threading
+import time
+
 import numpy as np
 import pytest
 
@@ -102,3 +106,31 @@ def test_cache_is_lru_with_capacity():
     assert cache.get('b') is None
     assert cache.get('a') == 1
     assert cache.get('c') == 3
+
+
+def test_cache_survives_concurrent_get_and_put():
+    errors = []
+    cache = BufferCache(capacity=2)
+    deadline = time.monotonic() + 0.5
+
+    def hammer():
+        i = 0
+        try:
+            while time.monotonic() < deadline:
+                cache.put((i % 5,), i)
+                cache.get((i % 5,))
+                i += 1
+        except Exception as exc:
+            errors.append(exc)
+
+    old = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+    try:
+        threads = [threading.Thread(target=hammer) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    finally:
+        sys.setswitchinterval(old)
+    assert errors == []
