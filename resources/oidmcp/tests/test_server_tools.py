@@ -8,7 +8,8 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from oidmcp import server
 from oidmcp.analysis import compute_stats
-from oidmcp.discovery import NoSessionError, ViewerSessionInfo
+from oidmcp.discovery import (NoSessionError, SessionInfo,
+                              ViewerSessionInfo)
 from oidmcp.protocol import ControlError
 
 
@@ -624,3 +625,58 @@ def test_a_fetch_waiting_for_a_slot_follows_the_resolver(monkeypatch):
     assert errors == []
     assert connected == [b]
     assert mgr._cache.get((b.pid, b.token, 'img', 0)) is not None
+
+
+def test_a_fetch_whose_debugger_exits_in_the_slot_wait_falls_back(
+        monkeypatch):
+    class Endpoint:
+        pid, token, port = 1, 't1', 1
+
+    mgr = server.SessionManager()
+    state, errors, results = {'dead': False}, [], []
+    resolved = threading.Event()
+
+    def resolve(_):
+        dead = state['dead']
+        resolved.set()
+        if dead:
+            raise NoSessionError('gone')
+        return Endpoint()
+
+    monkeypatch.setattr(mgr, '_resolve', resolve)
+    monkeypatch.setattr(mgr, '_call_viewer',
+                        lambda session, fn: ({'name': 'img'}, b'px'))
+    monkeypatch.setattr(server, 'to_bridge_meta', lambda m: m)
+    monkeypatch.setattr(server, 'decode_buffer', lambda meta, raw: raw)
+    slots = mgr._connection_slots(Endpoint())
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.acquire()
+
+    def run():
+        try:
+            results.append(mgr.fetch(None, 'img'))
+        except Exception as exc:
+            errors.append(exc)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    assert resolved.wait(5)
+    state['dead'] = True
+    for _ in range(server._CONNECTIONS_PER_ENDPOINT):
+        slots.release()
+    thread.join(5)
+    assert not thread.is_alive()
+    assert errors == []
+    assert results == [({'name': 'img'}, b'px')]
+
+
+def test_connect_picks_the_timeout_by_endpoint_kind(monkeypatch):
+    timeouts = []
+    default = server.ControlClient.__init__.__defaults__[0]
+    monkeypatch.setattr(
+        server, 'ControlClient',
+        lambda host, port, token, timeout=default: timeouts.append(timeout))
+    mgr = server.SessionManager()
+    mgr._connect(SessionInfo(None, 1, 1, 't', 'gdb', 1.0))
+    mgr._connect(ViewerSessionInfo(None, 1, 1, 't', 1.0, None))
+    assert timeouts == [60, 20]

@@ -14,8 +14,8 @@ from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 
 from .analysis import compute_stats, dump_npy, extract_values
 from .buffers import BufferCache, decode_buffer
-from .discovery import (NoSessionError, _reap, live_sessions,
-                        live_viewers, pick_session)
+from .discovery import (NoSessionError, ViewerSessionInfo, _reap,
+                        live_sessions, live_viewers, pick_session)
 from .protocol import DEFAULT_MAX_BYTES, ControlClient, ControlError
 from .render import render_view
 from .viewer_meta import to_bridge_meta
@@ -90,7 +90,10 @@ class SessionManager:
             return slots
 
     def _connect(self, info):
-        return ControlClient('127.0.0.1', info.port, info.token)
+        if isinstance(info, ViewerSessionInfo):
+            return ControlClient('127.0.0.1', info.port, info.token)
+        # 3 queued x the endpoint's 15 s timeout, + 15 s to run.
+        return ControlClient('127.0.0.1', info.port, info.token, timeout=60)
 
     @contextlib.contextmanager
     def _debugger_connection(self, session):
@@ -199,15 +202,14 @@ class SessionManager:
             return 'viewer', self._resolve_viewer(session)
 
     def list_buffers(self, session) -> dict:
-        kind, _ = self._resolve_pixel_source(session)
-        if kind == 'viewer':
-            buffers = self._call_viewer(
-                session, lambda c: c.list_viewer_buffers())
-            return {'symbols': [b['name'] for b in buffers],
-                    'stop_generation': 0}
-        symbols, generation = self._call_debugger(
-            session, lambda c: c.list_symbols())
-        return {'symbols': symbols, 'stop_generation': generation}
+        with contextlib.suppress(NoSessionError):
+            symbols, generation = self._call_debugger(
+                session, lambda c: c.list_symbols())
+            return {'symbols': symbols, 'stop_generation': generation}
+        buffers = self._call_viewer(
+            session, lambda c: c.list_viewer_buffers())
+        return {'symbols': [b['name'] for b in buffers],
+                'stop_generation': 0}
 
     def fetch(self, session, symbol):
         """
@@ -220,14 +222,15 @@ class SessionManager:
         state, so caching it under a constant key would serve stale
         pixels forever.
         """
-        kind, _ = self._resolve_pixel_source(session)
-        if kind == 'viewer':
-            viewer_meta, raw = self._call_viewer(
-                session, lambda c: c.get_buffer(symbol,
-                                                max_bytes=self._max_bytes))
-            meta = to_bridge_meta(viewer_meta)
-            return meta, decode_buffer(meta, raw)
+        with contextlib.suppress(NoSessionError):
+            return self._fetch_debugger(session, symbol)
+        viewer_meta, raw = self._call_viewer(
+            session, lambda c: c.get_buffer(symbol,
+                                            max_bytes=self._max_bytes))
+        meta = to_bridge_meta(viewer_meta)
+        return meta, decode_buffer(meta, raw)
 
+    def _fetch_debugger(self, session, symbol):
         # ping returns the stop generation keying the cache; one connection
         # serves it and get_buffer, so the key matches the stop that made the
         # bytes. token is per-instance: a reused pid can't read stale bytes.
