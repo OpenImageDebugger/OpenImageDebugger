@@ -9,7 +9,7 @@ All notable changes to `oid-mcp` are documented here. This project adheres to
 - oid-mcp now requires mcp 2.x.
 - oid-mcp now requires Python 3.11 or newer, and Pillow 13 or newer, which
   fixes several security advisories and no longer supports 3.10. On Python
-  3.10, installs stay on the 0.3.x line.
+  3.10, installs resolve 0.3.6, which stays on mcp 1.x.
 
 ### Fixed
 - Tool errors reach the agent again on mcp 2.x, including the hints about
@@ -19,6 +19,7 @@ All notable changes to `oid-mcp` are documented here. This project adheres to
 - `dump` without `overwrite` can no longer clobber a file written by a
   parallel call.
 - MCP clients now see oid-mcp's own version rather than the SDK's.
+- `view` rejects a `max_px` below 1 with a readable error.
 
 ## [0.3.5] — 2026-08-05
 

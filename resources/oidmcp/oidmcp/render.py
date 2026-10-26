@@ -94,6 +94,8 @@ def render_view(arr, meta, region=None, channel=None,
             f'channel {channel} out of range; buffer has {channels}')
     if (vmin is None) != (vmax is None):
         raise ValueError('vmin and vmax must be given together')
+    if max_px < 1:
+        raise ValueError(f'max_px must be at least 1, got {max_px}')
 
     bounds, mode = _channel_bounds(arr, vmin, vmax)
     view = crop_region(arr, region) if region is not None else arr
