@@ -249,6 +249,17 @@ def test_a_request_after_an_idle_pause_still_runs():
     assert result[0]['width'] == 4
 
 
+def test_a_request_starting_counts_as_progress_for_the_next():
+    # B's idle clock would expire at 0.9 s; A starts at 0.6 s, ends at 1.2 s.
+    bridge = SerialBridge(delay=0.6, symbols=['grad'],
+                          buffers={'grad': make_meta(4, 3, type_value=0)})
+    endpoint = make_endpoint(bridge=bridge, request_timeout=0.9)
+    bridge.queue_request(lambda: time.sleep(0.6))
+    results = _call_in_threads(
+        endpoint, {'method': 'get_buffer', 'symbol': 'grad'}, 2, 5)
+    assert [getattr(r, 'code', None) for r in results] == [None, None]
+
+
 def test_a_hung_debugger_still_times_out_queued_requests():
     # 1.1 s is ~3.7 timeouts: a 4+ timeout wait or chained give-ups fail.
     timeout = 0.3

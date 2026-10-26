@@ -336,6 +336,15 @@ def test_plot_against_viewer_session_is_a_clear_error(live_viewer):
     assert 'already displayed' in str(excinfo.value)
 
 
+def test_plot_with_no_debugger_and_no_viewer_is_no_session(tmp_path,
+                                                           monkeypatch):
+    monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'empty'))
+    mgr = server.SessionManager()
+    with pytest.raises(NoSessionError) as excinfo:
+        mgr.plot(None, 'grad')
+    assert 'OID_AGENT=1' in str(excinfo.value)
+
+
 def test_list_sessions_pairs_debugger_and_viewer(live_endpoint, live_viewer):
     session, _bridge = live_endpoint
     viewer = live_viewer(pid=os.getppid(), debugger_pid=session.pid)
@@ -579,6 +588,31 @@ def test_parallel_viewer_calls_stay_under_the_connection_cap(
     assert open_connections['max'] <= server._CONNECTIONS_PER_ENDPOINT
 
 
+@pytest.mark.parametrize('error', [ValueError, OSError])
+def test_a_viewer_call_that_raises_releases_its_slot(live_viewer, error):
+    live_viewer()
+    mgr = server.SessionManager()
+    raised, results = [], []
+
+    def boom(client):
+        raise error('boom')
+
+    def run():
+        for _ in range(server._CONNECTIONS_PER_ENDPOINT + 1):
+            try:
+                mgr._call_viewer(None, boom)
+            except error:
+                raised.append(error)
+        results.append(mgr._call_viewer(None, lambda c: c.get_view()))
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    thread.join(5)
+    assert not thread.is_alive(), 'hung waiting for a leaked slot'
+    assert len(raised) == server._CONNECTIONS_PER_ENDPOINT + 1
+    assert len(results) == 1
+
+
 def test_a_fetch_waiting_for_a_slot_follows_the_resolver(monkeypatch):
     class Endpoint:
         def __init__(self, pid):
@@ -641,8 +675,14 @@ def test_a_fetch_waiting_for_a_slot_follows_the_resolver(monkeypatch):
     assert mgr._cache.get((b.pid, b.token, 'img', 0)) is not None
 
 
-def test_a_fetch_whose_debugger_exits_in_the_slot_wait_falls_back(
-        monkeypatch):
+@pytest.mark.parametrize('call, viewer_result, expected', [
+    (lambda mgr: mgr.fetch(None, 'img'),
+     ({'name': 'img'}, b'px'), ({'name': 'img'}, b'px')),
+    (lambda mgr: mgr.list_buffers(None),
+     [{'name': 'img'}], {'symbols': ['img'], 'stop_generation': 0}),
+], ids=['fetch', 'list_buffers'])
+def test_a_call_whose_debugger_exits_in_the_slot_wait_falls_back(
+        monkeypatch, call, viewer_result, expected):
     class Endpoint:
         pid, token, port = 1, 't1', 1
 
@@ -659,7 +699,7 @@ def test_a_fetch_whose_debugger_exits_in_the_slot_wait_falls_back(
 
     monkeypatch.setattr(mgr, '_resolve', resolve)
     monkeypatch.setattr(mgr, '_call_viewer',
-                        lambda session, fn: ({'name': 'img'}, b'px'))
+                        lambda session, fn: viewer_result)
     monkeypatch.setattr(server, 'to_bridge_meta', lambda m: m)
     monkeypatch.setattr(server, 'decode_buffer', lambda meta, raw: raw)
     slots = mgr._connection_slots(Endpoint())
@@ -668,7 +708,7 @@ def test_a_fetch_whose_debugger_exits_in_the_slot_wait_falls_back(
 
     def run():
         try:
-            results.append(mgr.fetch(None, 'img'))
+            results.append(call(mgr))
         except Exception as exc:
             errors.append(exc)
 
@@ -681,7 +721,7 @@ def test_a_fetch_whose_debugger_exits_in_the_slot_wait_falls_back(
     thread.join(5)
     assert not thread.is_alive()
     assert errors == []
-    assert results == [({'name': 'img'}, b'px')]
+    assert results == [expected]
 
 
 def test_connect_picks_the_timeout_by_endpoint_kind(monkeypatch):
