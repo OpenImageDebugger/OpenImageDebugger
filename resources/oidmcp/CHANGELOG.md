@@ -21,6 +21,14 @@ All notable changes to `oid-mcp` are documented here. This project adheres to
 - MCP clients now see oid-mcp's own version rather than the SDK's.
 - `view` rejects a `max_px` below 1 with a readable error.
 
+## [0.3.6] — 2026-10-25
+
+### Fixed
+- Installing on Python 3.10 no longer picks up mcp 2.x. 0.3.x was written
+  against mcp 1.x, and on mcp 2.x every tool error reached the agent as only
+  "Error executing tool <name>". mcp is now capped below 2; later oid-mcp
+  releases need Python 3.11 and support mcp 2.x.
+
 ## [0.3.5] — 2026-08-05
 
 ### Added
