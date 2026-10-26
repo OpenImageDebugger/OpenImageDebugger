@@ -1,5 +1,8 @@
 import asyncio
 import json
+import os
+import subprocess
+import sys
 
 import pytest
 from mcp import Client
@@ -116,12 +119,25 @@ def test_server_version_is_empty_when_not_installed(monkeypatch):
     assert server._server_version() == ''
 
 
-def test_clients_see_the_installed_server_version():
-    version = server._server_version()
-    if not version:
-        pytest.skip('oid-mcp is not installed as a distribution')
+_PRINT_SERVER_VERSION = """
+import asyncio, importlib.metadata
+real = importlib.metadata.version
+importlib.metadata.version = (
+    lambda name: '9.9.9' if name == 'oid-mcp' else real(name))
+from mcp import Client
+from oidmcp import server
 
-    async def run():
-        async with Client(server.mcp, mode='legacy') as client:
-            return client.server_info.version
-    assert asyncio.run(run()) == version
+async def run():
+    async with Client(server.mcp, mode='legacy') as client:
+        print(client.server_info.version)
+asyncio.run(run())
+"""
+
+
+def test_clients_see_the_installed_server_version():
+    # A child process: server.mcp reads the version once, at import.
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join(sys.path))
+    child = subprocess.run([sys.executable, '-c', _PRINT_SERVER_VERSION],
+                           env=env, capture_output=True, text=True,
+                           timeout=60)
+    assert child.stdout.strip() == '9.9.9', child.stderr
