@@ -40,6 +40,11 @@ def test_start_writes_discovery_file(endpoint_session):
     assert os.path.basename(path) == '%d.json' % os.getpid()
 
 
+def test_discovery_file_advertises_three_in_flight_requests(endpoint_session):
+    path, _ = endpoint_session
+    assert json.loads(Path(path).read_text()).get('max_inflight') == 3
+
+
 @pytest.mark.skipif(sys.platform == 'win32', reason='POSIX permissions')
 def test_discovery_artifacts_are_private(endpoint_session):
     path, _ = endpoint_session

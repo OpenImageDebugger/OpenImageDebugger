@@ -551,12 +551,35 @@ def test_connection_slots_are_released_when_connect_or_call_raises(
 def test_each_debugger_session_gets_its_own_connection_cap():
     mgr = server.SessionManager()
 
-    class Info:
-        def __init__(self, pid, token):
-            self.pid, self.token = pid, token
+    assert (mgr._connection_slots(SessionInfo(None, 1, 1, 'x', 'gdb', 1.0))
+            is not mgr._connection_slots(
+                SessionInfo(None, 2, 1, 'x', 'gdb', 1.0)))
 
-    assert (mgr._connection_slots(Info(1, 'x'))
-            is not mgr._connection_slots(Info(2, 'x')))
+
+def _free_slots(slots):
+    count = 0
+    while slots.acquire(blocking=False):
+        count += 1
+    return count
+
+
+@pytest.mark.parametrize('max_inflight, expected', [
+    (None, 1),
+    (3, 3),
+    (99, server._CONNECTIONS_PER_ENDPOINT),
+], ids=['old-endpoint', 'new-endpoint', 'capped'])
+def test_a_debugger_gets_the_slots_its_endpoint_advertises(
+        max_inflight, expected):
+    extra = {} if max_inflight is None else {'max_inflight': max_inflight}
+    info = SessionInfo(None, 1, 1, 't', 'gdb', 1.0, **extra)
+    slots = server.SessionManager()._connection_slots(info)
+    assert _free_slots(slots) == expected
+
+
+def test_a_viewer_gets_the_full_connection_cap():
+    info = ViewerSessionInfo(None, 1, 1, 't', 1.0, None)
+    slots = server.SessionManager()._connection_slots(info)
+    assert _free_slots(slots) == server._CONNECTIONS_PER_ENDPOINT
 
 
 def test_parallel_viewer_calls_stay_under_the_connection_cap(
@@ -615,6 +638,8 @@ def test_a_viewer_call_that_raises_releases_its_slot(live_viewer, error):
 
 def test_a_fetch_waiting_for_a_slot_follows_the_resolver(monkeypatch):
     class Endpoint:
+        max_inflight = 3
+
         def __init__(self, pid):
             self.pid, self.token, self.port = pid, 't%d' % pid, pid
 
@@ -684,7 +709,7 @@ def test_a_fetch_waiting_for_a_slot_follows_the_resolver(monkeypatch):
 def test_a_call_whose_debugger_exits_in_the_slot_wait_falls_back(
         monkeypatch, call, viewer_result, expected):
     class Endpoint:
-        pid, token, port = 1, 't1', 1
+        pid, token, port, max_inflight = 1, 't1', 1, 3
 
     mgr = server.SessionManager()
     state, errors, results = {'dead': False}, [], []

@@ -85,8 +85,10 @@ class SessionManager:
         with self._slots_guard:
             slots = self._slots.get(key)
             if slots is None:
-                slots = self._slots[key] = threading.BoundedSemaphore(
-                    _CONNECTIONS_PER_ENDPOINT)
+                cap = _CONNECTIONS_PER_ENDPOINT
+                if not isinstance(info, ViewerSessionInfo):
+                    cap = min(info.max_inflight, cap)
+                slots = self._slots[key] = threading.BoundedSemaphore(cap)
             return slots
 
     def _connect(self, info):

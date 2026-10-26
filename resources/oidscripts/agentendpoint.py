@@ -13,6 +13,8 @@ bridge.queue_request(), the same mechanism the viewer event loop uses.
 from oidscripts.wireframe import recv_frame, send_frame  # noqa: F401
 
 PROTOCOL_VERSION = 1
+# Safe because a request's timeout starts when it runs, not when it queues.
+MAX_INFLIGHT = 3
 
 ERROR_BAD_TOKEN = 'bad_token'
 ERROR_UNKNOWN_METHOD = 'unknown_method'
@@ -281,6 +283,7 @@ def _write_discovery_file(port, token, backend):
         'debugger': backend,
         'pid': os.getpid(),
         'start_time': time.time(),
+        'max_inflight': MAX_INFLIGHT,
     })
     # Use a unique temp name (mkstemp, mode 0600) so a stale <pid>.json.tmp
     # left by a crashed run can never wedge startup with EEXIST.

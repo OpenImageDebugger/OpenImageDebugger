@@ -76,6 +76,25 @@ def test_untrusted_dir_is_neither_read_nor_cleaned(tmp_path, monkeypatch):
     assert live.exists()
 
 
+@pytest.mark.parametrize('fields, expected', [
+    ({}, 1),
+    ({'max_inflight': 3}, 3),
+    ({'max_inflight': True}, 1),
+    ({'max_inflight': '3'}, 1),
+    ({'max_inflight': 0}, 1),
+    ({'max_inflight': -1}, 1),
+], ids=['missing', 'three', 'bool', 'str', 'zero', 'negative'])
+def test_max_inflight_is_read_from_the_discovery_file(
+        tmp_path, monkeypatch, fields, expected):
+    agent_dir = _make_agent_dir(tmp_path, monkeypatch)
+    (agent_dir / f'{os.getpid()}.json').write_text(json.dumps({
+        'version': 1, 'port': 5555, 'token': 'x' * 64, 'debugger': 'gdb',
+        'pid': os.getpid(), 'start_time': 1.0, **fields}))
+    [session] = discovery.live_sessions()
+    assert type(session.max_inflight) is int
+    assert session.max_inflight == expected
+
+
 def test_pick_session_default_is_most_recent(tmp_path, monkeypatch):
     monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path))
     old = discovery.SessionInfo(path=tmp_path / 'a.json', pid=1, port=1,
