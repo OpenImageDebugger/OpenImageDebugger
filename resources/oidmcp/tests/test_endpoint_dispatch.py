@@ -227,6 +227,37 @@ def _call_in_threads(endpoint, request, count, join_timeout):
     return results
 
 
+def test_a_start_is_stamped_before_waiters_can_see_it(monkeypatch):
+    endpoint = make_endpoint(bridge=FakeBridge(symbols=['grad']))
+    endpoint._progress = idle = 0.0
+    seen = []
+
+    class Recording(threading.Event):
+        def set(self):
+            seen.append(endpoint._progress)
+            super().set()
+
+    monkeypatch.setattr(ep.threading, 'Event', Recording)
+    endpoint.handle_request({'method': 'list_symbols'})
+    assert seen and all(progress > idle for progress in seen)
+
+
+def test_a_start_at_the_deadline_is_answered_not_timed_out(monkeypatch):
+    bridge = FakeBridge(dead=True, buffers={'img': make_meta(1, 1)})
+    endpoint = make_endpoint(bridge=bridge, request_timeout=0)
+
+    class StartsAsItTimesOut(threading.Event):
+        def wait(self, timeout=None):
+            if bridge.pending:
+                bridge.pending.pop()()
+                return False
+            return super().wait(timeout)
+
+    monkeypatch.setattr(ep.threading, 'Event', StartsAsItTimesOut)
+    endpoint.handle_request({'method': 'get_buffer', 'symbol': 'img'})
+    assert bridge.fetch_count == 1
+
+
 def test_each_queued_request_gets_the_full_timeout():
     # The last starts at ~2.3 s, over 4 timeouts; progress keeps it alive.
     bridge = SerialBridge(delay=0.1, symbols=['grad'],

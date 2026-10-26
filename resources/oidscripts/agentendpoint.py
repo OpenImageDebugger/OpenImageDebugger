@@ -154,8 +154,8 @@ class AgentEndpoint(object):
             with lock:
                 if box.get('gave_up'):
                     return  # the caller already answered with a timeout
+                self._progress = time.monotonic()
                 started.set()
-            self._progress = time.monotonic()
             try:
                 box['result'] = fn()
             except Exception as error:  # forwarded to the client
