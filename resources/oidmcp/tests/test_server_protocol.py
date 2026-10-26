@@ -38,11 +38,29 @@ def test_hint_reaches_the_client(tmp_path, monkeypatch, mode):
     assert 'OID_AGENT=1' in result.content[0].text
 
 
-def test_raw_socket_error_reaches_the_client(live_endpoint, monkeypatch):
-    def refuse(self, info):
-        raise ConnectionRefusedError(61, 'Connection refused')
-    monkeypatch.setattr(server.SessionManager, '_connect', refuse)
-    assert 'Connection refused' in _call('list_buffers', {}).content[0].text
+@pytest.mark.parametrize('mode', ['legacy', 'auto'])
+@pytest.mark.parametrize('error, text', [
+    (ConnectionRefusedError(61, 'Connection refused'), 'Connection refused'),
+    (TimeoutError('timed out'), 'timed out'),
+])
+def test_raw_socket_error_reaches_the_client(live_endpoint, monkeypatch,
+                                             mode, error, text):
+    def fail(self, info):
+        raise error
+    monkeypatch.setattr(server.SessionManager, '_connect', fail)
+    result = _call('list_buffers', {}, mode=mode)
+    assert result.is_error
+    assert text in result.content[0].text
+
+
+@pytest.mark.parametrize('mode', ['legacy', 'auto'])
+def test_a_refused_overwrite_reaches_the_client(live_endpoint, dump_dir,
+                                                mode):
+    args = {'symbol': 'grad', 'path': 'out.npy'}
+    assert not _call('dump', args, mode=mode).is_error
+    result = _call('dump', args, mode=mode)
+    assert result.is_error
+    assert 'overwrite=true' in result.content[0].text
 
 
 def test_deliberate_error_keeps_its_exact_text(live_viewer):

@@ -254,10 +254,10 @@ def test_a_viewer_call_waiting_for_a_slot_follows_a_restart(
     monkeypatch.setattr(server, '_reap', reaped.append)
     slots = mgr._connection_slots(a)
     for _ in range(server._CONNECTIONS_PER_ENDPOINT):
-        slots.acquire()
+        assert slots.acquire(timeout=1)
     slots_b = mgr._connection_slots(b)
     for _ in range(server._CONNECTIONS_PER_ENDPOINT):
-        slots_b.acquire()
+        assert slots_b.acquire(timeout=1)
 
     def run():
         try:
@@ -647,10 +647,10 @@ def test_a_fetch_waiting_for_a_slot_follows_the_resolver(monkeypatch):
     monkeypatch.setattr(server, 'decode_buffer', lambda meta, raw: raw)
     slots = mgr._connection_slots(a)
     for _ in range(server._CONNECTIONS_PER_ENDPOINT):
-        slots.acquire()
+        assert slots.acquire(timeout=1)
     slots_b = mgr._connection_slots(b)
     for _ in range(server._CONNECTIONS_PER_ENDPOINT):
-        slots_b.acquire()
+        assert slots_b.acquire(timeout=1)
 
     def run():
         try:
@@ -704,7 +704,7 @@ def test_a_call_whose_debugger_exits_in_the_slot_wait_falls_back(
     monkeypatch.setattr(server, 'decode_buffer', lambda meta, raw: raw)
     slots = mgr._connection_slots(Endpoint())
     for _ in range(server._CONNECTIONS_PER_ENDPOINT):
-        slots.acquire()
+        assert slots.acquire(timeout=1)
 
     def run():
         try:

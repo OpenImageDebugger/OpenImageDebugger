@@ -260,6 +260,26 @@ def test_a_request_starting_counts_as_progress_for_the_next():
     assert [getattr(r, 'code', None) for r in results] == [None, None]
 
 
+def test_a_request_finishing_counts_as_progress_for_the_next():
+    # Without A's finish stamp, B's idle clock ends at 1.0 s; B starts at 1.2.
+    bridge = SerialBridge(delay=0.6, symbols=['grad'],
+                          buffers={'grad': make_meta(4, 3, type_value=0)})
+    endpoint = make_endpoint(bridge=bridge, request_timeout=0.9)
+    request = {'method': 'get_buffer', 'symbol': 'grad'}
+    first, idle = [], endpoint._progress
+    a = threading.Thread(daemon=True, target=lambda: first.extend(
+        _call_in_threads(endpoint, request, 1, 5)))
+    a.start()
+    deadline = time.monotonic() + 5
+    while endpoint._progress == idle and time.monotonic() < deadline:
+        time.sleep(0.01)
+    bridge.queue_request(lambda: time.sleep(0.6))
+    [second] = _call_in_threads(endpoint, request, 1, 5)
+    a.join(5)
+    assert getattr(second, 'code', None) is None
+    assert [getattr(r, 'code', None) for r in first] == [None]
+
+
 def test_a_hung_debugger_still_times_out_queued_requests():
     # 1.1 s is ~3.7 timeouts: a 4+ timeout wait or chained give-ups fail.
     timeout = 0.3
