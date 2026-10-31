@@ -40,6 +40,11 @@ def test_start_writes_discovery_file(endpoint_session):
     assert os.path.basename(path) == '%d.json' % os.getpid()
 
 
+def test_discovery_file_advertises_three_in_flight_requests(endpoint_session):
+    path, _ = endpoint_session
+    assert json.loads(Path(path).read_text()).get('max_inflight') == 3
+
+
 @pytest.mark.skipif(sys.platform == 'win32', reason='POSIX permissions')
 def test_discovery_artifacts_are_private(endpoint_session):
     path, _ = endpoint_session
@@ -262,3 +267,21 @@ def test_stale_tmp_does_not_block_start(tmp_path, monkeypatch):
         assert path is not None and os.path.exists(path)
     finally:
         ep.shutdown()
+
+
+def test_listen_backlog_matches_the_client_cap(monkeypatch, tmp_path):
+    monkeypatch.setenv('OID_AGENT_DIR', str(tmp_path / 'agent'))
+    backlogs = []
+    real_listen = socket.socket.listen
+
+    def spy(self, *args):
+        backlogs.extend(args)
+        return real_listen(self, *args)
+
+    monkeypatch.setattr(socket.socket, 'listen', spy)
+    endpoint = ep.AgentEndpoint(FakeBridge(), FakeWindow(), token='t')
+    server = ep._EndpointServer(endpoint)
+    try:
+        assert backlogs == [ep.MAX_CLIENTS]
+    finally:
+        server.close()
