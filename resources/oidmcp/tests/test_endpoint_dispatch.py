@@ -1,3 +1,7 @@
+import queue
+import threading
+import time
+
 import pytest
 
 from oidscripts import agentendpoint as ep
@@ -181,3 +185,178 @@ def test_get_buffer_honors_smaller_client_cap(monkeypatch):
     _, payload = endpoint.handle_request(
         {'method': 'get_buffer', 'symbol': 'img', 'max_bytes': 48})
     assert bytes(payload) == raw
+
+
+class SerialBridge(FakeBridge):
+    # One drain thread runs queued callables in order, like the debugger.
+
+    def __init__(self, delay=0.0, **kwargs):
+        super().__init__(**kwargs)
+        self.delay = delay
+        self._queue = queue.Queue()
+        threading.Thread(target=self._drain, daemon=True).start()
+
+    def queue_request(self, callable_request):
+        self._queue.put(callable_request)
+
+    def _drain(self):
+        while True:
+            self._queue.get()()
+
+    def get_buffer_metadata(self, variable, max_bytes=None):
+        time.sleep(self.delay)
+        return super().get_buffer_metadata(variable, max_bytes=max_bytes)
+
+
+def _call_in_threads(endpoint, request, count, join_timeout):
+    results = [None] * count
+
+    def run(index):
+        try:
+            results[index] = endpoint.handle_request(dict(request))
+        except ep.EndpointError as error:
+            results[index] = error
+
+    threads = [threading.Thread(target=run, args=(i,), daemon=True)
+               for i in range(count)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(join_timeout)
+    assert not any(thread.is_alive() for thread in threads), 'hung'
+    return results
+
+
+def test_a_start_is_stamped_before_waiters_can_see_it(monkeypatch):
+    endpoint = make_endpoint(bridge=FakeBridge(symbols=['grad']))
+    endpoint._progress = idle = 0.0
+    seen = []
+
+    class Recording(threading.Event):
+        def set(self):
+            seen.append(endpoint._progress)
+            super().set()
+
+    monkeypatch.setattr(ep.threading, 'Event', Recording)
+    endpoint.handle_request({'method': 'list_symbols'})
+    assert seen and all(progress > idle for progress in seen)
+
+
+def test_a_start_at_the_deadline_is_answered_not_timed_out(monkeypatch):
+    bridge = FakeBridge(dead=True, buffers={'img': make_meta(1, 1)})
+    endpoint = make_endpoint(bridge=bridge, request_timeout=0)
+
+    class StartsAsItTimesOut(threading.Event):
+        def wait(self, timeout=None):
+            if bridge.pending:
+                bridge.pending.pop()()
+                return False
+            return super().wait(timeout)
+
+    monkeypatch.setattr(ep.threading, 'Event', StartsAsItTimesOut)
+    endpoint.handle_request({'method': 'get_buffer', 'symbol': 'img'})
+    assert bridge.fetch_count == 1
+
+
+def test_each_queued_request_gets_the_full_timeout():
+    # The last starts at ~2.3 s, over 4 timeouts; progress keeps it alive.
+    bridge = SerialBridge(delay=0.1, symbols=['grad'],
+                          buffers={'grad': make_meta(4, 3, type_value=0)})
+    endpoint = make_endpoint(bridge=bridge, request_timeout=0.5)
+    results = _call_in_threads(
+        endpoint, {'method': 'get_buffer', 'symbol': 'grad'}, 24, 10)
+    assert not any(isinstance(r, ep.EndpointError) for r in results)
+    assert all(r[0]['width'] == 4 for r in results)
+
+
+def test_a_request_after_an_idle_pause_still_runs():
+    # Idle past the timeout, then the first request must not expire at once.
+    bridge = SerialBridge(delay=0.05, symbols=['grad'],
+                          buffers={'grad': make_meta(4, 3, type_value=0)})
+    endpoint = make_endpoint(bridge=bridge, request_timeout=0.2)
+    time.sleep(0.3)
+    [result] = _call_in_threads(
+        endpoint, {'method': 'get_buffer', 'symbol': 'grad'}, 1, 5)
+    assert result[0]['width'] == 4
+
+
+def test_a_request_starting_counts_as_progress_for_the_next():
+    # B's idle clock would expire at 0.9 s; A starts at 0.6 s, ends at 1.2 s.
+    bridge = SerialBridge(delay=0.6, symbols=['grad'],
+                          buffers={'grad': make_meta(4, 3, type_value=0)})
+    endpoint = make_endpoint(bridge=bridge, request_timeout=0.9)
+    bridge.queue_request(lambda: time.sleep(0.6))
+    results = _call_in_threads(
+        endpoint, {'method': 'get_buffer', 'symbol': 'grad'}, 2, 5)
+    assert [getattr(r, 'code', None) for r in results] == [None, None]
+
+
+def test_a_request_finishing_counts_as_progress_for_the_next():
+    # Without A's finish stamp, B's idle clock ends at 1.0 s; B starts at 1.2.
+    bridge = SerialBridge(delay=0.6, symbols=['grad'],
+                          buffers={'grad': make_meta(4, 3, type_value=0)})
+    endpoint = make_endpoint(bridge=bridge, request_timeout=0.9)
+    request = {'method': 'get_buffer', 'symbol': 'grad'}
+    first, idle = [], endpoint._progress
+    a = threading.Thread(daemon=True, target=lambda: first.extend(
+        _call_in_threads(endpoint, request, 1, 5)))
+    a.start()
+    deadline = time.monotonic() + 5
+    while endpoint._progress == idle and time.monotonic() < deadline:
+        time.sleep(0.01)
+    bridge.queue_request(lambda: time.sleep(0.6))
+    [second] = _call_in_threads(endpoint, request, 1, 5)
+    a.join(5)
+    assert getattr(second, 'code', None) is None
+    assert [getattr(r, 'code', None) for r in first] == [None]
+
+
+def test_a_hung_debugger_still_times_out_queued_requests():
+    # 1.1 s is ~3.7 timeouts: a 4+ timeout wait or chained give-ups fail.
+    timeout = 0.3
+    window = 2 * timeout + 0.5
+    endpoint = make_endpoint(bridge=FakeBridge(dead=True),
+                             request_timeout=timeout)
+    started = time.monotonic()
+    results = _call_in_threads(
+        endpoint, {'method': 'list_symbols'}, ep.MAX_CLIENTS, window)
+    assert time.monotonic() - started < window
+    assert [r.code for r in results] == [ep.ERROR_TIMEOUT] * ep.MAX_CLIENTS
+
+
+def test_a_task_started_after_its_caller_gave_up_does_nothing():
+    bridge = FakeBridge(dead=True,
+                        buffers={'img': make_meta(4, 3, type_value=0)})
+    endpoint = make_endpoint(bridge=bridge, request_timeout=0.05)
+    [result] = _call_in_threads(
+        endpoint, {'method': 'get_buffer', 'symbol': 'img'}, 1, 5)
+    assert result.code == ep.ERROR_TIMEOUT
+    for late in bridge.pending:
+        late()
+    assert bridge.fetch_count == 0
+
+
+def test_a_started_request_that_hangs_still_times_out():
+    release = threading.Event()
+
+    class HangingBridge(SerialBridge):
+        def get_buffer_metadata(self, variable, max_bytes=None):
+            release.wait()
+            return super().get_buffer_metadata(variable, max_bytes)
+
+    endpoint = make_endpoint(bridge=HangingBridge(), request_timeout=0.3)
+    results = []
+
+    def run():
+        try:
+            endpoint.handle_request(
+                {'method': 'get_buffer', 'symbol': 'img'})
+        except ep.EndpointError as error:
+            results.append(error)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    thread.join(3)
+    release.set()
+    assert not thread.is_alive(), 'hung'
+    assert [r.code for r in results] == [ep.ERROR_TIMEOUT]
