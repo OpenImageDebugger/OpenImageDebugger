@@ -239,7 +239,8 @@ def test_a_start_is_stamped_before_waiters_can_see_it(monkeypatch):
 
     monkeypatch.setattr(ep.threading, 'Event', Recording)
     endpoint.handle_request({'method': 'list_symbols'})
-    assert seen and all(progress > idle for progress in seen)
+    assert seen
+    assert all(progress > idle for progress in seen)
 
 
 def test_a_start_at_the_deadline_is_answered_not_timed_out(monkeypatch):

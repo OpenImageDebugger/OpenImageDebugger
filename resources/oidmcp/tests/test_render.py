@@ -67,8 +67,9 @@ def test_channel_out_of_range():
 @pytest.mark.parametrize('max_px', [0, -1])
 def test_max_px_below_one_is_rejected(max_px):
     arr = np.zeros((4, 4, 1), dtype=np.float32)
+    meta = gray_meta(arr)
     with pytest.raises(ValueError, match='max_px'):
-        render_view(arr, gray_meta(arr), max_px=max_px)
+        render_view(arr, meta, max_px=max_px)
 
 
 def test_bgra_layout_swaps_red_and_blue():
