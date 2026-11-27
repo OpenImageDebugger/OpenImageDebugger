@@ -26,7 +26,7 @@ name: Publish release
 on:
   push:
     branches: [main]
-  workflow_run:
+  workflow_run: # zizmor: ignore[dangerous-triggers]
     # pushes done by a workflow won't trigger on.push without a GH PAT. Using on.workflow_run instead.
     # see:
     #   - https://github.com/orgs/community/discussions/25702
