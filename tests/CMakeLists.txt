@@ -543,6 +543,7 @@ if(OID_BUILD_IMGUI_FRONTEND)
     )
 
     target_include_directories(glfw_geometry_test SYSTEM
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/thirdparty/stb_image_resize
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src/thirdparty/stb
     )
 

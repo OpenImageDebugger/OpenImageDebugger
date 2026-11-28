@@ -249,6 +249,7 @@ if(OID_BUILD_IMGUI_FRONTEND)
   # Qt-free export/text-overlay utilities for oidwindow; scoped to this
   # target alone, same as the nlohmann/json include above.
   target_include_directories(oidwindow SYSTEM
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/stb_image_resize
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/stb)
 
   # nanosvg (single-header) backs svg_raster.cpp's SVG-to-RGBA8 raster core

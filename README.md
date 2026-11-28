@@ -84,6 +84,7 @@ All other third-party libraries are bundled as git submodules and built from sou
 * [Asio](https://github.com/chriskohlhoff/asio) (standalone) — IPC between the debugger bridge and the viewer
 * [nlohmann/json](https://github.com/nlohmann/json) — settings persistence
 * [stb](https://github.com/nothings/stb) — image decoding for opening files, plus PNG export and text rendering (`stb_image`, `stb_image_write`, `stb_truetype`)
+* [stb_image_resize](https://github.com/nothings/stb_image_resize): window icon downscaling
 * [nanosvg](https://github.com/memononen/nanosvg) — toolbar icon rasterization
 * [nativefiledialog-extended](https://github.com/btzy/nativefiledialog-extended) — native OS dialog for File → Open (native builds only)
 * [GoogleTest](https://github.com/google/googletest) — unit tests

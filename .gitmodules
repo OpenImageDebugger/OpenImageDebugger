@@ -27,3 +27,6 @@
 [submodule "src/thirdparty/nativefiledialog-extended"]
 	path = src/thirdparty/nativefiledialog-extended
 	url = https://github.com/btzy/nativefiledialog-extended.git
+[submodule "src/thirdparty/stb_image_resize"]
+	path = src/thirdparty/stb_image_resize
+	url = https://github.com/nothings/stb_image_resize.git
