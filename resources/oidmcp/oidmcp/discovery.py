@@ -24,6 +24,7 @@ class SessionInfo:
     token: str
     debugger: str
     start_time: float
+    max_inflight: int = 1
 
 
 @dataclass(frozen=True)
@@ -207,7 +208,15 @@ def _parse_session(path: Path, info: dict) -> SessionInfo:
         token=str(info['token']),
         debugger=str(info['debugger']),
         start_time=float(info['start_time']),
+        max_inflight=_parse_max_inflight(info.get('max_inflight')),
     )
+
+
+def _parse_max_inflight(value) -> int:
+    # Older endpoints omit it and time out queued requests: one at a time.
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        return 1
+    return value
 
 
 def _parse_viewer(path: Path, info: dict) -> ViewerSessionInfo:
